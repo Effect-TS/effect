@@ -256,7 +256,7 @@ export const map = dual<
  *
  * **Details**
  *
- * Writes to the console inside the `log` call. Nothing is buffered.
+ * Writes to the console inside the `log` call.
  *
  * **Example** (Writing logger output with console.log)
  *
@@ -301,7 +301,7 @@ export const withConsoleLog = <Message, Output>(
  *
  * **Details**
  *
- * Writes to the console inside the `log` call. Nothing is buffered.
+ * Writes to the console inside the `log` call.
  *
  * **Example** (Writing logger output with console.error)
  *
@@ -341,9 +341,9 @@ export const withConsoleError = <Message, Output>(
  *
  * **Details**
  *
- * Writes to the console inside the `log` call. Nothing is buffered. Will use the
- * appropriate console method (i.e. `console.log`, `console.error`, etc.) based
- * upon the current `LogLevel`.
+ * Writes to the console inside the `log` call. Will use the appropriate console
+ * method (i.e. `console.log`, `console.error`, etc.) based upon the current
+ * `LogLevel`.
  *
  * `Debug` uses `console.debug`, `Info` uses `console.info`, `Trace` uses
  * `console.trace`, `Warn` uses `console.warn`, `Error` and `Fatal` use
@@ -709,10 +709,10 @@ export const formatJson = map(formatStructured, Formatter.formatJson)
  * **Details**
  *
  * The returned logger formats each event with `self` and buffers the output
- * during the log call. A background fiber periodically passes pending entries
- * to `flush` once per window (skipping empty windows). When the scope closes,
- * the background fiber is interrupted and the scope finalizer flushes any
- * remaining entries.
+ * during the log call. A background fiber passes pending entries to `flush`
+ * once per window, skipping empty windows. When the scope closes, the
+ * background fiber is interrupted and the scope finalizer flushes any remaining
+ * entries.
  *
  * **Example** (Batching logger output)
  *
@@ -1110,10 +1110,10 @@ export const layer = <
  *
  * **Details**
  *
- * Built on `batched`: formatting happens inline and file writes happen in the
- * background flush. The returned effect requires `FileSystem` and `Scope`. The
- * file logger batches string output, writes each batch to the specified path,
- * and flushes remaining entries when the scope closes.
+ * The returned effect requires `FileSystem` and `Scope`. The file logger is
+ * built on `batched`, so each log call formats and buffers its string output.
+ * Each flushed batch is written to the specified path, and remaining entries
+ * are flushed when the scope closes.
  *
  * **Example** (Writing JSON logs to a file)
  *

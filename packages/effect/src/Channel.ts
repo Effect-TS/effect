@@ -7234,8 +7234,8 @@ export const unwrap = <OutElem, OutErr, OutDone, InElem, InErr, InDone, R2, E, R
  * The provided scope closes when the channel ends on its own (completion,
  * failure, or defect), before downstream observes that end. If a downstream
  * operator stops pulling first, it closes no later than when the channel scope
- * closes. It satisfies the `Scope` service requirement only; `callback`,
- * `callbackArray`, and `unwrap` keep using the channel scope.
+ * closes. It satisfies the `Scope` service requirement only; constructors that
+ * register finalizers in the channel scope, such as `callback`, keep using it.
  *
  * @stability stable
  * @category resource management
@@ -8325,11 +8325,6 @@ export const runCount = <OutElem, OutErr, OutDone, Env>(
 
 /**
  * Runs a channel and discards all output elements, returning only the final result.
- *
- * **Details**
- *
- * Runs the channel in a scope of its own, which is closed before the effect
- * completes, however the channel ends.
  *
  * **Example** (Draining channel output at runtime)
  *

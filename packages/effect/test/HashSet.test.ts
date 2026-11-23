@@ -1,5 +1,6 @@
 import { Equal, Hash, HashSet } from "effect"
 import { describe, expect, it } from "vitest"
+import { assertNoDeferredEqualHashCalls } from "./utils/equalHashCalls.ts"
 
 describe("HashSet", () => {
   describe("constructors", () => {
@@ -281,51 +282,15 @@ describe("HashSet", () => {
       expect(HashSet.size(withDuplicate)).toBe(2) // Should not add duplicate
     })
 
-    it("calls value Equal and Hash implementations only synchronously during set operations", async () => {
-      let insideOperation = false
-      const outOfOperation: Array<string> = []
-      const runInside = <A>(f: () => A): A => {
-        insideOperation = true
-        try {
-          return f()
-        } finally {
-          insideOperation = false
-        }
-      }
-
-      class GuardedKey implements Equal.Equal {
-        constructor(readonly id: string) {}
-
-        [Hash.symbol](): number {
-          if (!insideOperation) outOfOperation.push(`hash:${this.id}`)
-          return 0
-        }
-
-        [Equal.symbol](that: unknown): boolean {
-          if (!insideOperation) outOfOperation.push(`equal:${this.id}`)
-          return that instanceof GuardedKey && this.id === that.id
-        }
-      }
-
-      const a = new GuardedKey("a")
-      const b = new GuardedKey("b")
-      const c = new GuardedKey("c")
-      const aLookup = new GuardedKey("a")
-
-      const set1 = runInside(() => HashSet.make(a, b))
-      const set2 = runInside(() => HashSet.add(set1, c))
-      const present = runInside(() => HashSet.has(set2, aLookup))
-      const set3 = runInside(() => HashSet.remove(set2, c))
-      const merged = runInside(() => HashSet.union(set3, set1))
-      const same = runInside(() => Equal.equals(set1, merged))
-      runInside(() => Hash.hash(merged))
-
-      await new Promise((resolve) => setTimeout(resolve, 0))
-
-      expect(present).toBe(true)
-      expect(same).toBe(true)
-      expect(outOfOperation).toEqual([])
-    })
+    it("calls value Equal and Hash implementations only synchronously during set operations", () =>
+      assertNoDeferredEqualHashCalls((key) => {
+        const set = HashSet.make(key("a"), key("b"))
+        const added = HashSet.add(set, key("c"))
+        HashSet.has(added, key("a"))
+        const merged = HashSet.union(HashSet.remove(added, key("c")), set)
+        Equal.equals(set, merged)
+        Hash.hash(merged)
+      }))
   })
 
   describe("type guards", () => {

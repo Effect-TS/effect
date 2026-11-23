@@ -281,15 +281,14 @@ describe("Logger", () => {
         }
       })
 
-      const [id, exit] = yield* Effect.gen(function*() {
+      yield* Effect.gen(function*() {
         const id = yield* Effect.fiberId
         yield* Effect.log("ok")
         events.push("after-ok")
         const exit = yield* Effect.exit(Effect.log("boom"))
-        return [id, exit] as const
-      }).pipe(Effect.provide(Logger.layer([logger])))
 
-      assert.deepStrictEqual(events, [`log:${id}:ok`, "after-ok", `log:${id}:boom`])
-      assert.deepStrictEqual(exit, Exit.die(sentinel))
+        assert.deepStrictEqual(events, [`log:${id}:ok`, "after-ok", `log:${id}:boom`])
+        assert.deepStrictEqual(exit, Exit.die(sentinel))
+      }).pipe(Effect.provide(Logger.layer([logger])))
     }))
 })

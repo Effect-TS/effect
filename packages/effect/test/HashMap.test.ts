@@ -2,6 +2,7 @@ import { assert } from "@effect/vitest"
 import { Equal, Hash, HashMap, Option, Result } from "effect"
 import * as fc from "fast-check"
 import { describe, expect, it } from "vitest"
+import { assertNoDeferredEqualHashCalls } from "./utils/equalHashCalls.ts"
 
 describe("HashMap", () => {
   describe("constructors", () => {
@@ -527,52 +528,16 @@ describe("HashMap", () => {
       expect(HashMap.size(map2)).toBe(2) // Should not increase size
     })
 
-    it("calls key Equal and Hash implementations only synchronously during map operations", async () => {
-      let insideOperation = false
-      const outOfOperation: Array<string> = []
-      const runInside = <A>(f: () => A): A => {
-        insideOperation = true
-        try {
-          return f()
-        } finally {
-          insideOperation = false
-        }
-      }
-
-      class GuardedKey implements Equal.Equal {
-        constructor(readonly id: string) {}
-
-        [Hash.symbol](): number {
-          if (!insideOperation) outOfOperation.push(`hash:${this.id}`)
-          return 0
-        }
-
-        [Equal.symbol](that: unknown): boolean {
-          if (!insideOperation) outOfOperation.push(`equal:${this.id}`)
-          return that instanceof GuardedKey && this.id === that.id
-        }
-      }
-
-      const a = new GuardedKey("a")
-      const b = new GuardedKey("b")
-      const aLookup = new GuardedKey("a")
-
-      const map1 = runInside(() => HashMap.make([a, 1], [b, 2]))
-      const map2 = runInside(() => HashMap.set(map1, aLookup, 10))
-      const found = runInside(() => HashMap.get(map2, a))
-      const present = runInside(() => HashMap.has(map2, b))
-      const map3 = runInside(() => HashMap.remove(map2, b))
-      const merged = runInside(() => HashMap.union(map3, map1))
-      const same = runInside(() => Equal.equals(map1, merged))
-      runInside(() => Hash.hash(merged))
-
-      await new Promise((resolve) => setTimeout(resolve, 0))
-
-      expect(found).toEqual(Option.some(10))
-      expect(present).toBe(true)
-      expect(same).toBe(true)
-      expect(outOfOperation).toEqual([])
-    })
+    it("calls key Equal and Hash implementations only synchronously during map operations", () =>
+      assertNoDeferredEqualHashCalls((key) => {
+        const map = HashMap.make([key("a"), 1], [key("b"), 2])
+        const updated = HashMap.set(map, key("a"), 10)
+        HashMap.get(updated, key("a"))
+        HashMap.has(updated, key("b"))
+        const merged = HashMap.union(HashMap.remove(updated, key("b")), map)
+        Equal.equals(map, merged)
+        Hash.hash(merged)
+      }))
   })
 
   describe("regressions", () => {

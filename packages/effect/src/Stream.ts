@@ -750,19 +750,6 @@ export const toChannel = <A, E, R>(
  * import { Effect, Queue, Stream } from "effect"
  *
  * const listeners = new Set<(value: number) => void>()
- * const source = {
- *   add(listener: (value: number) => void) {
- *     listeners.add(listener)
- *   },
- *   remove(listener: (value: number) => void) {
- *     listeners.delete(listener)
- *   },
- *   emit(value: number) {
- *     for (const listener of listeners) {
- *       listener(value)
- *     }
- *   }
- * }
  *
  * const stream = Stream.callback<number>((queue) =>
  *   Effect.gen(function*() {
@@ -770,11 +757,10 @@ export const toChannel = <A, E, R>(
  *       Queue.offerUnsafe(queue, value)
  *     }
  *     yield* Effect.acquireRelease(
- *       Effect.sync(() => source.add(listener)),
- *       () => Effect.sync(() => source.remove(listener))
+ *       Effect.sync(() => listeners.add(listener)),
+ *       () => Effect.sync(() => listeners.delete(listener))
  *     )
- *     source.emit(1)
- *     source.emit(2)
+ *     listeners.forEach((notify) => notify(1))
  *   })
  * )
  *
@@ -1795,8 +1781,8 @@ export const unwrap = <A, E2, R2, E, R>(
  * The provided scope closes when the stream ends on its own (completion,
  * failure, or defect), before downstream observes that end. If a downstream
  * operator stops pulling first, it closes no later than when the stream's scope
- * closes. It satisfies the `Scope` service requirement only; `callback` and
- * `unwrap` keep using the stream's scope.
+ * closes. It satisfies the `Scope` service requirement only; constructors that
+ * register finalizers in the stream's scope, such as `callback`, keep using it.
  *
  * **Example** (Scoping a stream)
  *
@@ -11243,11 +11229,6 @@ const runSink = <A, E, R, A2, L, E2, R2>(
 /**
  * Runs the stream and collects all elements into an array.
  *
- * **Details**
- *
- * Runs the stream in a scope of its own, which is closed before the effect
- * completes, however the stream ends.
- *
  * **Example** (Collecting stream values)
  *
  * ```ts import.meta.vitest
@@ -11634,11 +11615,6 @@ export const runForEachArray: {
 
 /**
  * Runs the stream for its effects, discarding emitted elements.
- *
- * **Details**
- *
- * Runs the stream in a scope of its own, which is closed before the effect
- * completes, however the stream ends.
  *
  * **Example** (Draining a stream run)
  *

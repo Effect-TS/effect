@@ -227,12 +227,10 @@ describe("Stream", () => {
         const scope = yield* Scope.make()
         const pull = yield* Stream.callback<number>((queue) =>
           Effect.gen(function*() {
-            yield* Effect.acquireRelease(
-              Effect.void,
-              () =>
-                Effect.sync(() => {
-                  log.push("callback-released")
-                })
+            yield* Effect.addFinalizer(() =>
+              Effect.sync(() => {
+                log.push("callback-released")
+              })
             )
             Queue.offerUnsafe(queue, 1)
             Queue.endUnsafe(queue)
@@ -272,7 +270,6 @@ describe("Stream", () => {
     it.effect("toQueue finalizes the stream before the surrounding scope closes", () =>
       Effect.gen(function*() {
         const log: Array<string> = []
-        const scope = yield* Scope.make()
         const queue = yield* Stream.unwrap(
           Effect.acquireRelease(
             Effect.succeed(Stream.make(1)),
@@ -281,14 +278,10 @@ describe("Stream", () => {
                 log.push("released")
               })
           )
-        ).pipe(
-          Stream.toQueue({ capacity: "unbounded" }),
-          Scope.provide(scope)
-        )
+        ).pipe(Stream.toQueue({ capacity: "unbounded" }))
         assert.strictEqual(yield* Queue.take(queue), 1)
         assert.deepStrictEqual(yield* Effect.exit(Queue.take(queue)), Exit.fail(Cause.Done()))
         assert.deepStrictEqual(log, ["released"])
-        yield* Scope.close(scope, Exit.void)
       }))
 
     it.effect.each([0, 1])(
