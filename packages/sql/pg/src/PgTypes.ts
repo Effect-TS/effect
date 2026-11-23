@@ -1017,6 +1017,9 @@ interface UnsafeCodec<A> {
 
 type Lookup = (oid: number) => UnsafeCodec<any> | undefined
 
+const requireCodec = (oid: number, lookup: Lookup): UnsafeCodec<any> =>
+  lookup(oid) ?? fail(`No codec registered for OID ${oid}`)
+
 const toUnsafeCodec = <A>(codec: Codec<A>): UnsafeCodec<A> => ({
   encode(value) {
     const encoded = codec.encode(value)
@@ -1493,22 +1496,14 @@ const builtinScalars = new Map<number, UnsafeCodec<any>>([
   [OID.interval, intervalCodec]
 ])
 
-const rangeToSubtype: ReadonlyArray<readonly [number, number]> = [
-  [OID.int4range, OID.int4],
-  [OID.numrange, OID.numeric],
-  [OID.tsrange, OID.timestamp],
-  [OID.tstzrange, OID.timestamptz],
-  [OID.daterange, OID.date],
-  [OID.int8range, OID.int8]
-]
-
-const multirangeToRange: ReadonlyArray<readonly [number, number]> = [
-  [OID.int4multirange, OID.int4range],
-  [OID.nummultirange, OID.numrange],
-  [OID.tsmultirange, OID.tsrange],
-  [OID.tstzmultirange, OID.tstzrange],
-  [OID.datemultirange, OID.daterange],
-  [OID.int8multirange, OID.int8range]
+/** Each built-in range type with its subtype and its multirange type. */
+const rangeTypes: ReadonlyArray<readonly [range: number, subtype: number, multirange: number]> = [
+  [OID.int4range, OID.int4, OID.int4multirange],
+  [OID.numrange, OID.numeric, OID.nummultirange],
+  [OID.tsrange, OID.timestamp, OID.tsmultirange],
+  [OID.tstzrange, OID.timestamptz, OID.tstzmultirange],
+  [OID.daterange, OID.date, OID.datemultirange],
+  [OID.int8range, OID.int8, OID.int8multirange]
 ]
 
 const makeArrayCodec = (elementOid: number, lookup: Lookup): UnsafeCodec<ReadonlyArray<unknown>> =>
@@ -1550,10 +1545,8 @@ const makeRecordCodec = (lookup: Lookup): UnsafeCodec<ReadonlyArray<unknown>> =>
  */
 const makeBuiltins = (lookup: Lookup): Map<number, UnsafeCodec<any>> => {
   const codecs = new Map<number, UnsafeCodec<any>>(builtinScalars)
-  for (const [rangeOid, subtypeOid] of rangeToSubtype) {
+  for (const [rangeOid, subtypeOid, multirangeOid] of rangeTypes) {
     codecs.set(rangeOid, makeRangeCodec(subtypeOid, lookup))
-  }
-  for (const [multirangeOid, rangeOid] of multirangeToRange) {
     codecs.set(multirangeOid, makeMultirangeCodec(rangeOid, lookup))
   }
   for (const [arrayOid, elementOid] of arrayToElement) {
@@ -1583,7 +1576,7 @@ const builtins = makeBuiltins(lookup)
 const codecs = new Map<number, UnsafeCodec<any>>(builtins)
 
 for (const [oid, codec] of codecs) {
-  if (oid >= 0 && oid < tableSize) table[oid] = codec
+  if (oid < tableSize) table[oid] = codec
 }
 
 interface RegistryState {
@@ -1678,8 +1671,7 @@ const encodeArray = (value: unknown, elementOid: number, lookup: Lookup): Uint8A
   if (!Array.isArray(value)) {
     return fail("Expected an array")
   }
-  const codec = lookup(elementOid)
-  if (codec === undefined) return fail(`No codec registered for OID ${elementOid}`)
+  const codec = requireCodec(elementOid, lookup)
   const count = value.length
   const elements: Array<Uint8Array | null> = new Array(count)
   let hasNull = false
@@ -1863,7 +1855,38 @@ const RANGE_LB_INC = 0x02
 const RANGE_UB_INC = 0x04
 const RANGE_LB_INF = 0x08
 const RANGE_UB_INF = 0x10
-const RANGE_FLAGS_MASK = 0x1f
+
+/** The int32 length of the value framed at `offset`, which has to end by `limit`. */
+const frameSize = (bytes: Uint8Array, offset: number, limit: number, name: string): number => {
+  if (offset + 4 > limit) return fail(`Truncated ${name}`)
+  const size = readInt32(bytes, offset)
+  if (size < 0) return fail(`Invalid ${name} length: ${size}`)
+  if (offset + 4 + size > limit) return fail(`Truncated ${name}`)
+  return size
+}
+
+const readWith = (codec: UnsafeCodec<any>, bytes: Uint8Array, offset: number, size: number): unknown =>
+  codec.read !== undefined ? codec.read(bytes, offset, size) : codec.decode(region(bytes, offset, size))
+
+/** `headerSize` bytes for the caller to fill, then each part behind its int32 length. */
+const framed = (headerSize: number, parts: ReadonlyArray<Uint8Array>): Uint8Array => {
+  let size = headerSize
+  for (const part of parts) size += 4 + part.length
+  const bytes = new Uint8Array(size)
+  let offset = headerSize
+  for (const part of parts) {
+    writeInt32(bytes, offset, part.length)
+    bytes.set(part, offset + 4)
+    offset += 4 + part.length
+  }
+  return bytes
+}
+
+const writeFramed = (sink: ValueSink, value: unknown, oid: number, lookup: Lookup): void => {
+  const token = sink.beginLength()
+  writeValue(sink, value, oid, lookup)
+  sink.endLength(token)
+}
 
 const rangeValue = (value: unknown): Range<unknown> => {
   if (typeof value !== "object" || value === null) return fail("Expected an object for range")
@@ -1890,60 +1913,21 @@ const rangeFlags = (range: Range<unknown>): number => {
 const encodeRange = (value: unknown, subtypeOid: number, lookup: Lookup): Uint8Array => {
   const range = rangeValue(value)
   if (range.empty) return new Uint8Array([RANGE_EMPTY])
-  const flags = rangeFlags(range)
-  const hasLower = range.lower !== null
-  const hasUpper = range.upper !== null
-  if (!hasLower && !hasUpper) return new Uint8Array([flags])
-  const codec = lookup(subtypeOid)
-  if (codec === undefined) return fail(`No codec registered for OID ${subtypeOid}`)
-  const lower = hasLower ? codec.encode(range.lower) : undefined
-  const upper = hasUpper ? codec.encode(range.upper) : undefined
-  const bytes = new Uint8Array(
-    1 + (lower === undefined ? 0 : 4 + lower.length) + (upper === undefined ? 0 : 4 + upper.length)
-  )
-  bytes[0] = flags
-  let offset = 1
-  if (lower !== undefined) {
-    writeInt32(bytes, offset, lower.length)
-    bytes.set(lower, offset + 4)
-    offset += 4 + lower.length
-  }
-  if (upper !== undefined) {
-    writeInt32(bytes, offset, upper.length)
-    bytes.set(upper, offset + 4)
-  }
+  const codec = requireCodec(subtypeOid, lookup)
+  const bounds: Array<Uint8Array> = []
+  if (range.lower !== null) bounds.push(codec.encode(range.lower))
+  if (range.upper !== null) bounds.push(codec.encode(range.upper))
+  const bytes = framed(1, bounds)
+  bytes[0] = rangeFlags(range)
   return bytes
 }
 
 const writeRange = (sink: ValueSink, value: unknown, subtypeOid: number, lookup: Lookup): void => {
   const range = rangeValue(value)
-  if (range.empty) {
-    sink.uint8(RANGE_EMPTY)
-    return
-  }
-  const flags = rangeFlags(range)
-  const hasLower = range.lower !== null
-  const hasUpper = range.upper !== null
-  if (!hasLower && !hasUpper) {
-    sink.uint8(flags)
-    return
-  }
-  const codec = lookup(subtypeOid)
-  if (codec === undefined) return fail(`No codec registered for OID ${subtypeOid}`)
-  const write = codec.write
-  sink.uint8(flags)
-  if (hasLower) {
-    const token = sink.beginLength()
-    if (write === undefined) sink.raw(codec.encode(range.lower))
-    else write(sink, range.lower)
-    sink.endLength(token)
-  }
-  if (hasUpper) {
-    const token = sink.beginLength()
-    if (write === undefined) sink.raw(codec.encode(range.upper))
-    else write(sink, range.upper)
-    sink.endLength(token)
-  }
+  if (range.empty) return sink.uint8(RANGE_EMPTY)
+  sink.uint8(rangeFlags(range))
+  if (range.lower !== null) writeFramed(sink, range.lower, subtypeOid, lookup)
+  if (range.upper !== null) writeFramed(sink, range.upper, subtypeOid, lookup)
 }
 
 const decodeRange = (
@@ -1954,40 +1938,33 @@ const decodeRange = (
   lookup: Lookup
 ): Range<unknown> => {
   if (size < 1) return fail("Truncated range value")
-  const flags = bytes[start] & RANGE_FLAGS_MASK
-  if ((flags & RANGE_EMPTY) !== 0) {
-    if (size !== 1) return fail("Range value has trailing bytes")
-    return { lower: null, upper: null, lowerInclusive: false, upperInclusive: false, empty: true }
-  }
-  const hasLower = (flags & RANGE_LB_INF) === 0
-  const hasUpper = (flags & RANGE_UB_INF) === 0
-  const lowerInclusive = hasLower && (flags & RANGE_LB_INC) !== 0
-  const upperInclusive = hasUpper && (flags & RANGE_UB_INC) !== 0
+  const flags = bytes[start]
+  // An empty range has no bounds, whatever its other flags say.
+  const hasLower = (flags & (RANGE_EMPTY | RANGE_LB_INF)) === 0
+  const hasUpper = (flags & (RANGE_EMPTY | RANGE_UB_INF)) === 0
+  const codec = requireCodec(subtypeOid, lookup)
   const limit = start + size
   let offset = start + 1
   let lower: unknown = null
   let upper: unknown = null
-  if (hasLower || hasUpper) {
-    const codec = lookup(subtypeOid)
-    if (codec === undefined) return fail(`No codec registered for OID ${subtypeOid}`)
-    const read = codec.read
-    const readBound = (): unknown => {
-      if (offset + 4 > limit) return fail("Truncated range bound")
-      const boundSize = readInt32(bytes, offset)
-      offset += 4
-      if (boundSize < 0) return fail(`Invalid range bound length: ${boundSize}`)
-      if (offset + boundSize > limit) return fail("Truncated range bound")
-      const bound = read !== undefined
-        ? read(bytes, offset, boundSize)
-        : codec.decode(region(bytes, offset, boundSize))
-      offset += boundSize
-      return bound
-    }
-    if (hasLower) lower = readBound()
-    if (hasUpper) upper = readBound()
+  if (hasLower) {
+    const boundSize = frameSize(bytes, offset, limit, "range bound")
+    lower = readWith(codec, bytes, offset + 4, boundSize)
+    offset += 4 + boundSize
+  }
+  if (hasUpper) {
+    const boundSize = frameSize(bytes, offset, limit, "range bound")
+    upper = readWith(codec, bytes, offset + 4, boundSize)
+    offset += 4 + boundSize
   }
   if (offset !== limit) return fail("Range value has trailing bytes")
-  return { lower, upper, lowerInclusive, upperInclusive, empty: false }
+  return {
+    lower,
+    upper,
+    lowerInclusive: hasLower && (flags & RANGE_LB_INC) !== 0,
+    upperInclusive: hasUpper && (flags & RANGE_UB_INC) !== 0,
+    empty: (flags & RANGE_EMPTY) !== 0
+  }
 }
 
 /**
@@ -1996,41 +1973,16 @@ const decodeRange = (
  */
 const encodeMultirange = (value: unknown, rangeOid: number, lookup: Lookup): Uint8Array => {
   if (!Array.isArray(value)) return fail("Expected an array for multirange")
-  const codec = lookup(rangeOid)
-  if (codec === undefined) return fail(`No codec registered for OID ${rangeOid}`)
-  const count = value.length
-  const ranges: Array<Uint8Array> = new Array(count)
-  let payloadSize = 0
-  for (let i = 0; i < count; i++) {
-    const encoded = codec.encode(value[i])
-    ranges[i] = encoded
-    payloadSize += 4 + encoded.length
-  }
-  const bytes = new Uint8Array(4 + payloadSize)
-  writeInt32(bytes, 0, count)
-  let offset = 4
-  for (let i = 0; i < count; i++) {
-    const encoded = ranges[i]
-    writeInt32(bytes, offset, encoded.length)
-    bytes.set(encoded, offset + 4)
-    offset += 4 + encoded.length
-  }
+  const codec = requireCodec(rangeOid, lookup)
+  const bytes = framed(4, value.map((range) => codec.encode(range)))
+  writeInt32(bytes, 0, value.length)
   return bytes
 }
 
 const writeMultirange = (sink: ValueSink, value: unknown, rangeOid: number, lookup: Lookup): void => {
   if (!Array.isArray(value)) return fail("Expected an array for multirange")
-  const codec = lookup(rangeOid)
-  if (codec === undefined) return fail(`No codec registered for OID ${rangeOid}`)
-  const write = codec.write
-  const count = value.length
-  sink.int32(count)
-  for (let i = 0; i < count; i++) {
-    const token = sink.beginLength()
-    if (write === undefined) sink.raw(codec.encode(value[i]))
-    else write(sink, value[i])
-    sink.endLength(token)
-  }
+  sink.int32(value.length)
+  for (let i = 0; i < value.length; i++) writeFramed(sink, value[i], rangeOid, lookup)
 }
 
 const decodeMultirange = (
@@ -2043,25 +1995,16 @@ const decodeMultirange = (
   if (size < 4) return fail("Truncated multirange value")
   const count = readInt32(bytes, start)
   if (count < 0) return fail(`Invalid multirange length: ${count}`)
+  // Each range has at least its length, so a larger count cannot be real.
   if (count * 4 > size - 4) return fail("Truncated multirange value")
+  const codec = requireCodec(rangeOid, lookup)
   const values: Array<Range<unknown>> = new Array(count)
   const limit = start + size
   let offset = start + 4
-  if (count > 0) {
-    const codec = lookup(rangeOid)
-    if (codec === undefined) return fail(`No codec registered for OID ${rangeOid}`)
-    const read = codec.read
-    for (let i = 0; i < count; i++) {
-      if (offset + 4 > limit) return fail("Truncated multirange element")
-      const elementSize = readInt32(bytes, offset)
-      offset += 4
-      if (elementSize < 0) return fail(`Invalid multirange element length: ${elementSize}`)
-      if (offset + elementSize > limit) return fail("Truncated multirange element")
-      values[i] = read !== undefined
-        ? read(bytes, offset, elementSize)
-        : codec.decode(region(bytes, offset, elementSize))
-      offset += elementSize
-    }
+  for (let i = 0; i < count; i++) {
+    const rangeSize = frameSize(bytes, offset, limit, "multirange element")
+    values[i] = readWith(codec, bytes, offset + 4, rangeSize) as Range<unknown>
+    offset += 4 + rangeSize
   }
   if (offset !== limit) return fail("Multirange value has trailing bytes")
   return values
@@ -2152,11 +2095,7 @@ export const makeFieldReader = (
  * @since 4.0.0
  */
 export const encode = (value: unknown, oid: number, registry?: Registry): Result.Result<Uint8Array, CodecError> =>
-  result(() => {
-    const codec = lookupFor(registry)(oid)
-    if (codec === undefined) return fail(`No codec registered for OID ${oid}`)
-    return codec.encode(value)
-  })
+  result(() => requireCodec(oid, lookupFor(registry)).encode(value))
 
 /**
  * Decodes the binary representation of the given OID.
@@ -2245,8 +2184,7 @@ export const encodeParameter = (
   parameter.value === null ? Result.succeed(null) : encode(parameter.value, parameter.oid, registry)
 
 const writeValue = (sink: ValueSink, value: unknown, oid: number, lookup: Lookup): void => {
-  const codec = lookup(oid)
-  if (codec === undefined) return fail(`No codec registered for OID ${oid}`)
+  const codec = requireCodec(oid, lookup)
   if (codec.write === undefined) sink.raw(codec.encode(value))
   else codec.write(sink, value)
 }
