@@ -88,8 +88,10 @@ interface ServerRequest {
   fork: boolean
   // The handler exit as the server reported it, read inside the transaction.
   reported: Exit.Exit<unknown, unknown> | undefined
-  // Set when the handler transaction ended without a known commit: the
-  // server has already reported the handler exit, but it may not be durable.
+  // The encoded reply the handler transaction saved, valid once it commits.
+  committedReply: string | undefined
+  // Set when the handler transaction failed in storage, so its commit is
+  // unknown: only the durable rows say whether the reply and writes landed.
   commitFailure: Cause.Cause<unknown> | undefined
 }
 
@@ -112,6 +114,13 @@ export class UncommittedTransaction extends Error {
 
 const isUncommitted = (cause: Cause.Cause<unknown>) =>
   cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect instanceof UncommittedTransaction)
+
+// How a run answers its caller: `reply` saves a reply and answers with it;
+// `stored` answers with a reply that is already durable.
+interface Responder {
+  readonly reply: (reply: Reply.Reply<any>) => Effect.Effect<void>
+  readonly stored: (encoded: string) => Effect.Effect<void>
+}
 
 /** @internal */
 export const makeEntityRuntime = Effect.fnUntraced(function*(
@@ -337,7 +346,10 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
   (effect: Effect.Effect<any, any, any>): Effect.Effect<any, any, any> =>
     database.transaction("cluster_handler", (tx: SqlExecutor) =>
       Effect.gen(function*() {
-        yield* (Effect.provideService(effect, CurrentEntityDatabase, tx) as Effect.Effect<unknown, unknown>)
+        // The server reports the handler exit before the request effect ends,
+        // and the effect fails with the handler's own failure. That is a
+        // rollback, not a storage failure, so only `reported` decides.
+        yield* Effect.exit(Effect.provideService(effect, CurrentEntityDatabase, tx) as Effect.Effect<unknown, unknown>)
         const exit = request().reported
         if (exit === undefined || Exit.isFailure(exit)) {
           return yield* Effect.fail(new TransactionRollback())
@@ -351,11 +363,16 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
           new Reply.WithExit({ requestId: envelope.requestId, id: replyId as any, exit: exit as any })
         )
         yield* Effect.orDie(saveReply(tx, encoded))
+        request().committedReply = encoded
       })).pipe(
         Effect.catchIf((error) => error instanceof TransactionRollback, () => Effect.void),
         Effect.catchCause((cause) =>
           Cause.hasInterruptsOnly(cause) ? Effect.failCause(cause) : Effect.sync(() => {
-            request().commitFailure = cause
+            const current = request()
+            current.commitFailure = cause
+            // A transaction that failed to begin never ran the handler, so the
+            // server reports no exit for it.
+            Deferred.doneUnsafe(current.exit, Effect.succeed(Exit.die(new UncommittedTransaction(cause))))
           })
         )
       )
@@ -363,7 +380,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
   const run = (
     envelope: Envelope.Request.Any,
     discard: boolean,
-    respond: (reply: Reply.Reply<any>) => Effect.Effect<void>,
+    respond: Responder,
     persisted: boolean
   ): Effect.Effect<void> =>
     Effect.uninterruptibleMask((restore) =>
@@ -378,9 +395,10 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     entry: CachedHandlers,
     envelope: Envelope.Request.Any,
     discard: boolean,
-    respond: (reply: Reply.Reply<any>) => Effect.Effect<void>,
+    responder: Responder,
     persisted: boolean
   ) {
+    const respond = responder.reply
     const rpc = registration.entity.protocol.requests.get(envelope.tag) as Rpc.AnyWithProps | undefined
     const handler = entry.handlers[envelope.tag]
     if (rpc === undefined || handler === undefined) {
@@ -395,9 +413,8 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
       }
       return
     }
-    // The success reply of a `WithTransaction` request is written twice with
-    // the same id: once in the handler transaction, then as a no-op by
-    // `respond`, which also covers the failure path after rollback.
+    // A `WithTransaction` success reply is saved in the handler transaction;
+    // after a rollback, `respond` saves the failure in its own.
     const replyId = nextId()
     const transactional = persisted && Context.get(rpc.annotations, WithTransaction)
     const semaphore = handlerSemaphore
@@ -416,6 +433,7 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
         interrupted: false,
         fork: false,
         reported: undefined,
+        committedReply: undefined,
         commitFailure: undefined
       }
       current = request
@@ -431,10 +449,24 @@ export const makeEntityRuntime = Effect.fnUntraced(function*(
     )
     const exit = yield* Effect.provideContext(runWithDefectRetry(execute), entry.context)
     const commitFailure = current?.commitFailure
-    // The server reported the handler exit before the commit failed. Only the
-    // durable row says whether the reply and the handler's writes landed.
-    if (commitFailure !== undefined && !(yield* isProcessed(database, String(envelope.requestId)))) {
-      return yield* Effect.die(new UncommittedTransaction(commitFailure))
+    if (commitFailure !== undefined) {
+      // The commit may have landed with a lost acknowledgement. Answer only
+      // from durable state; anything else leaves the row for a retry.
+      const requestId = String(envelope.requestId)
+      const durable = yield* Effect.catchCause(
+        discard
+          ? Effect.map(isProcessed(database, requestId), (processed) => processed ? "" : undefined)
+          : loadReply(database, requestId),
+        () => Effect.succeed(undefined)
+      )
+      if (durable === undefined) return yield* Effect.die(new UncommittedTransaction(commitFailure))
+      if (!discard) yield* responder.stored(durable)
+      return
+    }
+    const committedReply = current?.committedReply
+    if (committedReply !== undefined) {
+      if (!discard) yield* responder.stored(committedReply)
+      return
     }
     if (!discard) {
       yield* respond(
@@ -597,11 +629,14 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         pendingRuns.add(requestId)
         yield* startPersisted
       }
-      const execute = entityRuntime.run(envelope, discard, (reply) =>
-        Effect.flatMap(
-          encodeReplyFor(registration, rpc, reply),
-          (encoded) => persisted ? saveReplyLogged(encoded) : Effect.void
-        ), persisted)
+      const execute = entityRuntime.run(envelope, discard, {
+        reply: (reply) =>
+          Effect.flatMap(
+            encodeReplyFor(registration, rpc, reply),
+            (encoded) => persisted ? saveReplyLogged(encoded) : Effect.void
+          ),
+        stored: () => Effect.void
+      }, persisted)
       const fiber = yield* Effect.forkDetach(
         execute.pipe(
           Effect.onExit((exit) =>
@@ -663,7 +698,10 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       Deferred.doneUnsafe(reply, Effect.succeed(encoded))
     })
     session.fiber = yield* Effect.forkDetach(
-      entityRuntime.run(envelope, discard, respond, persisted).pipe(
+      entityRuntime.run(envelope, discard, {
+        reply: respond,
+        stored: (encoded) => Effect.sync(() => Deferred.doneUnsafe(reply, Effect.succeed(encoded)))
+      }, persisted).pipe(
         Effect.onExit((exit) => {
           const cleanup = Effect.sync(() => {
             Deferred.doneUnsafe(reply, Exit.isSuccess(exit) ? Effect.succeed(undefined) : Effect.failCause(exit.cause))

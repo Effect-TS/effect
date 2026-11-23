@@ -1,7 +1,7 @@
 import * as RivetCluster from "@effect/platform-rivet/RivetCluster"
 import { EntityDatabase } from "@effect/platform-rivet/RivetEntityDatabase"
 import { assert, describe, layer } from "@effect/vitest"
-import { Context, Deferred, Effect, Exit, Fiber, Layer, Schedule, Schema } from "effect"
+import { Context, Deferred, Effect, Exit, Fiber, Layer, Option, Schedule, Schema } from "effect"
 import { ClusterSchema, Entity } from "effect/cluster"
 import { Rpc } from "effect/rpc"
 import { makeActors } from "./fixtures/inProcess.ts"
@@ -9,6 +9,8 @@ import { makeActors } from "./fixtures/inProcess.ts"
 class Greeting extends Context.Service<Greeting, { readonly text: string }>()("Greeting") {}
 
 const Op = { op: Schema.String }
+
+class Rejected extends Schema.TaggedError<Rejected>()("Rejected", { op: Schema.String }) {}
 
 // Every RPC is persisted and runs in a handler transaction.
 const Tx = Entity.make("Tx", [
@@ -19,7 +21,8 @@ const Tx = Entity.make("Tx", [
     success: Schema.Struct({ greeting: Schema.String, writes: Schema.Number })
   }),
   Rpc.make("WriteDeferred", { payload: Op, primaryKey: ({ op }) => op, success: Schema.Number }),
-  Rpc.make("WriteAndBlock", { payload: Op, primaryKey: ({ op }) => op })
+  Rpc.make("WriteAndBlock", { payload: Op, primaryKey: ({ op }) => op }),
+  Rpc.make("WriteThenFail", { payload: Op, primaryKey: ({ op }) => op, error: Rejected })
 ]).annotateRpcs(ClusterSchema.Persisted, true).annotateRpcs(ClusterSchema.WithTransaction, true)
 
 // Signals from WriteAndBlock, by op.
@@ -27,6 +30,9 @@ const blocked = new Map<
   string,
   { readonly wrote: Deferred.Deferred<void>; readonly stopped: Deferred.Deferred<void> }
 >()
+
+// Executions of WriteThenFail, by op.
+const failRuns = new Map<string, number>()
 
 const insert = Effect.fnUntraced(function*(op: string) {
   const db = yield* EntityDatabase.orDie
@@ -56,6 +62,11 @@ const TxLayer = Tx.toLayer(Effect.gen(function*() {
       yield* insert(op)
       yield* Deferred.succeed(signals.wrote, undefined)
       return yield* Effect.never.pipe(Effect.onInterrupt(() => Deferred.succeed(signals.stopped, undefined)))
+    }),
+    WriteThenFail: Effect.fnUntraced(function*({ payload: { op } }) {
+      failRuns.set(op, (failRuns.get(op) ?? 0) + 1)
+      yield* insert(op)
+      return yield* new Rejected({ op })
     })
   })
 }))
@@ -113,10 +124,11 @@ describe("RivetCluster WithTransaction", () => {
         const { access, manager } = yield* actor("late-interrupt")
         let interrupting: Fiber.Fiber<void> | undefined
         access.afterCommit = (name) => {
-          if (name !== "cluster_handler") return
+          if (name !== "cluster_handler") return undefined
           access.afterCommit = undefined
           const [row] = access.database.prepare("SELECT request_id FROM cluster_messages").all()
           interrupting = Effect.runFork(manager.interrupt(String(row.request_id)))
+          return undefined
         }
         const client = (yield* Tx.client)("late-interrupt")
 
@@ -162,6 +174,70 @@ describe("RivetCluster WithTransaction", () => {
         assert.strictEqual(writes, 1)
         assert.strictEqual(yield* count("deferred", "SELECT COUNT(*) AS n FROM writes"), 1)
         assert.strictEqual(yield* count("deferred", "SELECT COUNT(*) AS n FROM cluster_replies"), 1)
+      }))
+
+    it.effect("returns the stored reply when the commit lands but its acknowledgement is lost", () =>
+      Effect.gen(function*() {
+        const { access } = yield* actor("lost-ack")
+        access.afterCommit = (name) => {
+          if (name !== "cluster_handler") return undefined
+          access.afterCommit = undefined
+          return new Error("commit acknowledgement lost")
+        }
+        // The reply is already durable, so no further reply save is needed.
+        access.onCommit = (name) => name === "cluster_save_reply" ? new Error("reply save rejected") : undefined
+        const client = (yield* Tx.client)("lost-ack")
+
+        const first = yield* Effect.exit(client.Write({ op: "a" }))
+        const retry = yield* Effect.exit(client.Write({ op: "a" }))
+        access.onCommit = undefined
+        assert.deepStrictEqual(first, Exit.succeed(1))
+        assert.deepStrictEqual(retry, Exit.succeed(1))
+        assert.strictEqual(yield* count("lost-ack", "SELECT COUNT(*) AS n FROM writes"), 1)
+        assert.strictEqual(yield* count("lost-ack", "SELECT COUNT(*) AS n FROM cluster_replies"), 1)
+      }))
+
+    it.effect("stores a typed handler failure once and rolls back its writes", () =>
+      Effect.gen(function*() {
+        const client = (yield* Tx.client)("typed-failure")
+
+        const first = yield* Effect.exit(client.WriteThenFail({ op: "a" }))
+        assert.deepStrictEqual(first, Exit.fail(new Rejected({ op: "a" })))
+        assert.strictEqual(yield* count("typed-failure", "SELECT COUNT(*) AS n FROM writes"), 0)
+        assert.strictEqual(
+          yield* count("typed-failure", "SELECT COUNT(*) AS n FROM cluster_messages WHERE processed = 1"),
+          1
+        )
+        const [reply] = yield* query("typed-failure", "SELECT reply FROM cluster_replies")
+        assert.include(String(reply.reply), "Rejected")
+
+        const retry = yield* Effect.exit(client.WriteThenFail({ op: "a" }))
+        assert.deepStrictEqual(retry, Exit.fail(new Rejected({ op: "a" })))
+        assert.strictEqual(failRuns.get("a"), 1, "the retry must not run the handler again")
+      }))
+
+    it.effect("fails promptly and keeps the request when the handler transaction cannot begin", () =>
+      Effect.gen(function*() {
+        const { access } = yield* actor("rejected-begin")
+        access.onBegin = (name) => {
+          if (name !== "cluster_handler") return undefined
+          access.onBegin = undefined
+          return new Error("BEGIN rejected")
+        }
+        const client = (yield* Tx.client)("rejected-begin")
+
+        const first = yield* Effect.timeoutOption(Effect.exit(client.Write({ op: "a" })), "5 seconds")
+        assert.isTrue(Option.isSome(first), "the call hung after a rejected BEGIN")
+        assert.isTrue(Exit.isFailure(first.pipe(Option.getOrThrow)))
+        assert.strictEqual(yield* count("rejected-begin", "SELECT COUNT(*) AS n FROM writes"), 0)
+        assert.strictEqual(
+          yield* count("rejected-begin", "SELECT COUNT(*) AS n FROM cluster_messages WHERE processed = 0"),
+          1
+        )
+
+        const retry = yield* Effect.exit(client.Write({ op: "a" }))
+        assert.deepStrictEqual(retry, Exit.succeed(1))
+        assert.strictEqual(yield* count("rejected-begin", "SELECT COUNT(*) AS n FROM writes"), 1)
       }))
   })
 })
