@@ -63,18 +63,16 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
         const awaitedId = yield* Self.execute({ key: "await", discard: false }, { discard: true })
         const awaited = yield* pollUntil(Self, awaitedId, "Complete")
-        assert(awaited._tag === "Complete" && Exit.isFailure(awaited.exit))
-        const defect = Cause.findDefect(awaited.exit.cause)
+        assert(awaited._tag === "Complete")
+        const defect = Exit.findDefect(awaited.exit)
         assert(Result.isSuccess(defect))
         assert.include(String(defect.success), Self._tag)
         assert.include(String(defect.success), awaitedId)
       }).pipe(
         Effect.provide(
-          Self.toLayer(({ discard, key }) =>
-            discard
-              ? Self.execute({ key, discard: false }, { discard: true })
-              : Self.execute({ key, discard: true })
-          ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+          Self.toLayer((payload) => Self.execute(payload, { discard: payload.discard })).pipe(
+            Layer.provideMerge(makeTestWorkflowEngine())
+          )
         )
       )
     }))
