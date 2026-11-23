@@ -70,9 +70,9 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         assert.include(String(defect.success), awaitedId)
       }).pipe(
         Effect.provide(
-          Self.toLayer((payload) => Self.execute(payload, { discard: payload.discard })).pipe(
-            Layer.provideMerge(makeTestWorkflowEngine())
-          )
+          Self.toLayer((payload) =>
+            Self.execute({ ...payload, discard: !payload.discard }, { discard: payload.discard })
+          ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
         )
       )
     }))
