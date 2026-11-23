@@ -5161,6 +5161,35 @@ describe("Stream", () => {
         )
         deepStrictEqual(result, [1])
       }))
+
+    it.effect("starts both sides immediately", () =>
+      Effect.gen(function*() {
+        let leftStarted = false
+        let rightStarted = false
+        const leftLatch = yield* Latch.make()
+        const rightLatch = yield* Latch.make()
+        const left = Stream.fromEffect(
+          Effect.gen(function*() {
+            leftStarted = true
+            yield* leftLatch.open
+            yield* rightLatch.await
+            return "left"
+          })
+        )
+        const right = Stream.fromEffect(
+          Effect.gen(function*() {
+            rightStarted = true
+            yield* rightLatch.open
+            yield* leftLatch.await
+            return "right"
+          })
+        )
+        const pull = yield* Stream.toPull(Stream.merge(left, right))
+        assert.isTrue(leftStarted)
+        assert.isTrue(rightStarted)
+        const values = [...(yield* pull), ...(yield* pull)]
+        deepStrictEqual(values.sort(), ["left", "right"])
+      }))
   })
 
   describe("partition", () => {
