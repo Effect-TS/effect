@@ -13,6 +13,7 @@ import * as Queue from "effect/Queue"
 import * as Result from "effect/Result"
 import * as Schedule from "effect/Schedule"
 import * as Scheduler from "effect/Scheduler"
+import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 
 describe("Channel", () => {
@@ -358,6 +359,30 @@ describe("Channel", () => {
           () => Effect.die("release failure")
         ).pipe(Channel.runDrain, Effect.exit)
         assert.deepStrictEqual(result, Exit.die("release failure"))
+      }))
+
+    it.effect("acquireUseRelease releases before Done under toPullScoped when ending on its own", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const scope = yield* Scope.make()
+        const pull = yield* Channel.toPullScoped(
+          Channel.acquireUseRelease(
+            Effect.sync(() => {
+              log.push("acquire")
+              return 1
+            }),
+            (n) => Channel.succeed(n),
+            () =>
+              Effect.sync(() => {
+                log.push("release")
+              })
+          ),
+          scope
+        )
+        assert.strictEqual(yield* pull, 1)
+        assert.deepStrictEqual(yield* Effect.exit(pull), Cause.done())
+        assert.deepStrictEqual(log, ["acquire", "release"])
+        yield* Scope.close(scope, Exit.void)
       }))
   })
 

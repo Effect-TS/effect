@@ -526,6 +526,53 @@ describe("HashMap", () => {
       expect(HashMap.get(map2, person1)).toEqual(Option.some("updated"))
       expect(HashMap.size(map2)).toBe(2) // Should not increase size
     })
+
+    it("calls key Equal and Hash implementations only synchronously during map operations", async () => {
+      let insideOperation = false
+      const outOfOperation: Array<string> = []
+      const runInside = <A>(f: () => A): A => {
+        insideOperation = true
+        try {
+          return f()
+        } finally {
+          insideOperation = false
+        }
+      }
+
+      class GuardedKey implements Equal.Equal {
+        constructor(readonly id: string) {}
+
+        [Hash.symbol](): number {
+          if (!insideOperation) outOfOperation.push(`hash:${this.id}`)
+          return 0
+        }
+
+        [Equal.symbol](that: unknown): boolean {
+          if (!insideOperation) outOfOperation.push(`equal:${this.id}`)
+          return that instanceof GuardedKey && this.id === that.id
+        }
+      }
+
+      const a = new GuardedKey("a")
+      const b = new GuardedKey("b")
+      const aLookup = new GuardedKey("a")
+
+      const map1 = runInside(() => HashMap.make([a, 1], [b, 2]))
+      const map2 = runInside(() => HashMap.set(map1, aLookup, 10))
+      const found = runInside(() => HashMap.get(map2, a))
+      const present = runInside(() => HashMap.has(map2, b))
+      const map3 = runInside(() => HashMap.remove(map2, b))
+      const merged = runInside(() => HashMap.union(map3, map1))
+      const same = runInside(() => Equal.equals(map1, merged))
+      runInside(() => Hash.hash(merged))
+
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(found).toEqual(Option.some(10))
+      expect(present).toBe(true)
+      expect(same).toBe(true)
+      expect(outOfOperation).toEqual([])
+    })
   })
 
   describe("regressions", () => {

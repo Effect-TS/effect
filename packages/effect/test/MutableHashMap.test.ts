@@ -340,4 +340,47 @@ describe("MutableHashMap", () => {
   it("pipe()", () => {
     deepStrictEqual(HM.empty<string, string>().pipe(HM.set("key", "value")), HM.make(["key", "value"]))
   })
+
+  it("calls key Equal and Hash implementations only synchronously during map operations", async () => {
+    let insideOperation = false
+    const outOfOperation: Array<string> = []
+    const runInside = <A>(f: () => A): A => {
+      insideOperation = true
+      try {
+        return f()
+      } finally {
+        insideOperation = false
+      }
+    }
+
+    class GuardedKey implements Equal.Equal {
+      constructor(readonly id: string) {}
+
+      [Hash.symbol](): number {
+        if (!insideOperation) outOfOperation.push(`hash:${this.id}`)
+        return 0
+      }
+
+      [Equal.symbol](that: unknown): boolean {
+        if (!insideOperation) outOfOperation.push(`equal:${this.id}`)
+        return that instanceof GuardedKey && this.id === that.id
+      }
+    }
+
+    const a = new GuardedKey("a")
+    const b = new GuardedKey("b")
+    const aLookup = new GuardedKey("a")
+
+    const map = runInside(() => HM.make([a, 1], [b, 2]))
+    runInside(() => HM.set(map, aLookup, 10))
+    const found = runInside(() => HM.get(map, a))
+    const present = runInside(() => HM.has(map, b))
+    runInside(() => HM.remove(map, b))
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    assertSome(found, 10)
+    assertTrue(present)
+    deepStrictEqual(outOfOperation, [])
+  })
 })

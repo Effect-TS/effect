@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertNone, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Cause, Context, Duration, Effect, Exit, Fiber, Layer, Scheduler, Tracer } from "effect"
+import { Cause, Context, Duration, Effect, Exit, Fiber, Layer, Logger, Scheduler, Tracer } from "effect"
 import { HttpBody, HttpClient, HttpClientResponse } from "effect/http"
 import { OtlpSerialization, OtlpTracer } from "effect/observability"
 import { TestClock } from "effect/testing"
@@ -489,6 +489,38 @@ describe("Tracer", () => {
           annotations: Context.empty()
         })
       ))
+
+    it.effect("treats an external span as parent context rather than a recording target", () =>
+      Effect.gen(function*() {
+        const external = Tracer.externalSpan({ traceId: "trace", spanId: "span" })
+        const { child, currentError, outer, parent } = yield* Effect.gen(function*() {
+          const outer = (yield* Effect.currentSpan) as Tracer.NativeSpan
+          const inner = yield* Effect.gen(function*() {
+            yield* Effect.log("under external")
+            yield* Effect.annotateCurrentSpan("key", "value")
+            const currentError = yield* Effect.flip(Effect.currentSpan)
+            const parent = yield* Effect.currentParentSpan
+            const child = (yield* Effect.log("under child").pipe(
+              Effect.andThen(Effect.currentSpan),
+              Effect.withSpan("child")
+            )) as Tracer.NativeSpan
+            return { currentError, parent, child }
+          }).pipe(Effect.withParentSpan(external))
+          return { outer, ...inner }
+        }).pipe(
+          Effect.withSpan("outer"),
+          Effect.provide(Logger.layer([Logger.tracerLogger]))
+        )
+
+        deepStrictEqual(external, Tracer.externalSpan({ traceId: "trace", spanId: "span" }))
+        assert.isTrue(Cause.isNoSuchElementError(currentError))
+        strictEqual(parent, external)
+        strictEqual(outer.attributes.has("key"), false)
+        deepStrictEqual(outer.events, [])
+        strictEqual(getParent(child), external)
+        assert.lengthOf(child.events, 1)
+        strictEqual(child.events[0]![0], "under child")
+      }))
   })
 
   describe("Effect.withTracerEnabled", () => {
