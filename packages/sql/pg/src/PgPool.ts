@@ -277,14 +277,10 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
     ) => Effect.Effect<A, SqlError>
   ): Effect.Effect<A, SqlError, Scope.Scope> =>
     Effect.uninterruptibleMask((restore) =>
-      Effect.flatMap(
-        Effect.scope,
-        (parent) =>
-          Effect.flatMap(
-            Scope.fork(parent),
-            (scope) => Effect.onError(f(scope, restore), (cause) => Scope.close(scope, Exit.failCause(cause)))
-          )
-      )
+      Effect.withFiber((fiber) => {
+        const scope = Scope.forkUnsafe(Context.getUnsafe(fiber.context, Scope.Scope))
+        return Effect.onError(f(scope, restore), (cause) => Scope.close(scope, Exit.failCause(cause)))
+      })
     )
 
   // One checkout attempt (`undefined` if rejected). Closes the attempt scope
@@ -310,15 +306,17 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
 
   // Without a TTL, only dead sessions are rejected so the common path stays a
   // plain flatMap. With a TTL, an expired session's transport may still be
-  // open, so every checkout goes through `retry` to release that lease first.
-  const checkout: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = connectionTTL !== undefined
-    ? retry
-    : Effect.suspend(() =>
-      deadConnections.size > 0 ? retry : Effect.flatMap(Pool.get(pool), (connection) =>
-        expired(connection)
-          ? Effect.andThen(Pool.invalidate(pool, connection), retry)
-          : Effect.succeed(connection))
-    )
+  // open, so every attempt leases into its own scope and a rejected lease is
+  // released before the next attempt.
+  const first: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = connectionTTL !== undefined
+    ? Effect.flatMap(attempt, (connection) => connection === undefined ? retry : Effect.succeed(connection))
+    : Effect.flatMap(Pool.get(pool), (connection) =>
+      expired(connection)
+        ? Effect.andThen(Pool.invalidate(pool, connection), retry)
+        : Effect.succeed(connection))
+  const checkout: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> = Effect.suspend(() =>
+    deadConnections.size > 0 ? retry : first
+  )
 
   const acquireTimedOut = () =>
     Effect.fail(
@@ -343,6 +341,7 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
         }))
       )
 
+  const rejected: unique symbol = Symbol()
   const handedOut = Effect.flatMap(checkout, handOut)
   const get = withAcquireTimeout(handedOut)
 
@@ -350,22 +349,28 @@ export const make = Effect.fnUntraced(function*(options: Config): Effect.fn.Retu
   // for shared statements to drain, so the acquire timeout covers it too.
   const reserve = withAcquireTimeout(Effect.flatMap(handedOut, (connection) => connection.pin))
 
-  // `Pool.use` cannot pre-check a session or bound its wait. Use it only when
-  // no TTL or acquire timeout applies and no connection awaits retirement.
-  // Checking inside its callback can deadlock a size-one pool while acquiring
-  // a replacement.
+  // `Pool.use` cannot bound its wait, so it is used only when no acquire
+  // timeout applies and no connection awaits retirement.
   const use = <A, E, R>(
     f: (connection: PgConnection.PgConnection) => Effect.Effect<A, E, R>
   ): Effect.Effect<A, E | SqlError, R> =>
-    Effect.suspend(() =>
-      connectionTTL === undefined && acquireTimeout === undefined && deadConnections.size === 0
-        ? Pool.use(
-          pool,
-          (connection) =>
-            connects.has(connection) ? Effect.andThen(reportConnect(connection), f(connection)) : f(connection)
-        )
-        : Effect.scoped(Effect.flatMap(get, f))
-    )
+    Effect.suspend(() => {
+      if (acquireTimeout !== undefined || deadConnections.size > 0) return Effect.scoped(Effect.flatMap(get, f))
+      const run = (connection: PgConnection.PgConnection) =>
+        connects.has(connection) ? Effect.andThen(reportConnect(connection), f(connection)) : f(connection)
+      if (connectionTTL === undefined) return Pool.use(pool, run)
+      // An expired session is rejected inside the lease and replaced after it:
+      // requesting the replacement while holding the lease can deadlock a
+      // size-one pool. The callback keeps its own scope, as on the scoped path.
+      return Effect.flatMap(
+        Pool.use(pool, (connection): Effect.Effect<A | typeof rejected, E, R> =>
+          expired(connection)
+            ? Effect.as(Pool.invalidate(pool, connection), rejected)
+            : Effect.scoped(run(connection))),
+        (a): Effect.Effect<A, E | SqlError, R> =>
+          a === rejected ? Effect.scoped(Effect.flatMap(get, f)) : Effect.succeed(a)
+      )
+    })
 
   const pgPool: PgPool = {
     [TypeId]: TypeId,

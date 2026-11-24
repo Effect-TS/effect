@@ -608,43 +608,63 @@ describe("PgPool transport capacity", () => {
     }).pipe(Effect.ensuring(Effect.sync(releaseClose)))
   })
 
-  it.live("does not strand an expired lease when a TTL checkout is interrupted at the expiry check", () =>
-    Effect.gen(function*() {
-      let opened = 0
-      let onExpiryCheck: (() => void) | undefined
-      const baseClock = yield* Clock.Clock
-      const hookedClock: Clock.Clock = Object.assign(Object.create(baseClock), {
-        currentTimeMillisUnsafe() {
-          const hook = onExpiryCheck
-          onExpiryCheck = undefined
-          hook?.()
-          return baseClock.currentTimeMillisUnsafe()
+  it.live.each([
+    { name: "pool.get", checkOut: (pool: PgPool.PgPool): Effect.Effect<unknown, SqlError, Scope.Scope> => pool.get },
+    { name: "pool.use", checkOut: (pool: PgPool.PgPool) => pool.use(() => Effect.void) }
+  ])(
+    "does not strand an expired lease when a TTL checkout is interrupted at the expiry check ($name)",
+    ({ checkOut }) =>
+      Effect.gen(function*() {
+        let opened = 0
+        let onExpiryCheck: (() => void) | undefined
+        const baseClock = yield* Clock.Clock
+        const hookedClock: Clock.Clock = Object.assign(Object.create(baseClock), {
+          currentTimeMillisUnsafe() {
+            const hook = onExpiryCheck
+            onExpiryCheck = undefined
+            hook?.()
+            return baseClock.currentTimeMillisUnsafe()
+          }
+        })
+        const pool = yield* PgPool.make({
+          username: "test",
+          maxConnections: 1,
+          connectionTTL: 0,
+          prepare: false,
+          stream: () => {
+            opened++
+            return backend(emptyQueryResult)
+          }
+        }).pipe(Effect.provideService(Clock.Clock, hookedClock))
+
+        yield* pool.use((conn) => conn.query("SELECT 1", [], false))
+
+        let interruptedAtExpiry = false
+        let checkout!: Fiber.Fiber<unknown, unknown>
+        onExpiryCheck = () => {
+          interruptedAtExpiry = true
+          checkout.interruptUnsafe()
         }
+        checkout = yield* Effect.forkChild(checkOut(pool))
+        yield* Fiber.await(checkout)
+        assert.isTrue(interruptedAtExpiry)
+
+        yield* pool.use((conn) => conn.query("SELECT 2", [], false)).pipe(Effect.timeout("250 millis"))
+        assert.strictEqual(opened, 2)
       })
+  )
+
+  it.live("closes a pool.use callback's scope with the callback on a TTL pool", () =>
+    Effect.gen(function*() {
       const pool = yield* PgPool.make({
         username: "test",
         maxConnections: 1,
-        connectionTTL: 0,
+        connectionTTL: "1 day",
         prepare: false,
-        stream: () => {
-          opened++
-          return backend(emptyQueryResult)
-        }
-      }).pipe(Effect.provideService(Clock.Clock, hookedClock))
-
-      yield* pool.use((conn) => conn.query("SELECT 1", [], false))
-
-      let interruptedAtExpiry = false
-      let checkout!: Fiber.Fiber<unknown, unknown>
-      onExpiryCheck = () => {
-        interruptedAtExpiry = true
-        checkout.interruptUnsafe()
-      }
-      checkout = yield* Effect.forkChild(pool.get)
-      yield* Fiber.await(checkout)
-      assert.isTrue(interruptedAtExpiry)
-
-      yield* pool.use((conn) => conn.query("SELECT 2", [], false)).pipe(Effect.timeout("250 millis"))
-      assert.strictEqual(opened, 2)
+        stream: () => backend(emptyQueryResult)
+      })
+      // Left to the test's scope, the pin would block the next statement.
+      yield* pool.use((conn) => conn.pin)
+      yield* pool.use((conn) => conn.query("SELECT 1", [], false)).pipe(Effect.timeout("250 millis"))
     }))
 })
