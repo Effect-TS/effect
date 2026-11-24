@@ -7,7 +7,8 @@
  * with stdin sinks, stdout and stderr streams, exit-code waiting,
  * interruption-time cleanup, process killing, and custom file-descriptor pipes.
  * Provide {@link layerProxyProcess} instead to launch commands from a separate
- * proxy process, which keeps spawning from stalling a large Node.js process.
+ * proxy process, for Node.js builds where spawning from a process that holds a
+ * lot of memory stalls the event loop.
  *
  * The implementation sits below the command-building API. It validates and
  * resolves `cwd` through the Effect `FileSystem` and `Path` services,
@@ -554,7 +555,10 @@ const makeWith = Effect.fnUntraced(function*(spawnProcess: SpawnProcess) {
       return Effect.void
     })
 
-  /** Waits for the leader and its process group, bounded by native time. */
+  /**
+   * Waits for the leader and its process group, bounded by native time. Stops
+   * waiting when the exit status can no longer be observed.
+   */
   const awaitProcessExit = (
     command: ChildProcess.StandardCommand,
     childProcess: SpawnedProcess,
@@ -566,10 +570,11 @@ const makeWith = Effect.fnUntraced(function*(spawnProcess: SpawnProcess) {
       const stop = () => {
         clearTimeout(timer)
         childProcess.removeListener("exit", poll)
+        childProcess.removeListener("lost", poll)
       }
       const poll = () => {
         clearTimeout(timer)
-        if (Date.now() >= deadline || !isProcessAlive(command, childProcess)) {
+        if (Date.now() >= deadline || childProcess.lost === true || !isProcessAlive(command, childProcess)) {
           stop()
           resume(Effect.void)
           return
@@ -577,6 +582,7 @@ const makeWith = Effect.fnUntraced(function*(spawnProcess: SpawnProcess) {
         timer = setTimeout(poll, processGroupPollIntervalMillis)
       }
       childProcess.on("exit", poll)
+      childProcess.on("lost", poll)
       poll()
       return Effect.sync(stop)
     })
@@ -605,7 +611,9 @@ const makeWith = Effect.fnUntraced(function*(spawnProcess: SpawnProcess) {
       yield* awaitProcessExit(command, childProcess, processGroupGraceMillis)
     } else {
       yield* awaitProcessExit(command, childProcess, Duration.toMillis(options.forceKillAfter))
-      if (isProcessAlive(command, childProcess)) {
+      // A lost process may have exited and its ID been reused, so it is not
+      // escalated
+      if (childProcess.lost !== true && isProcessAlive(command, childProcess)) {
         yield* signalGroup("SIGKILL")
         yield* awaitProcessExit(command, childProcess, processGroupGraceMillis)
       }
@@ -679,8 +687,12 @@ const makeWith = Effect.fnUntraced(function*(spawnProcess: SpawnProcess) {
           childProcess: SpawnedProcess,
           exitSignal: ExitSignal
         ) {
+          // A child whose exit status can no longer be observed may have exited
+          // and its ID been reused, so it is left alone
+          if (childProcess.lost === true) {
+            return
+          }
           const exit = Deferred.isDoneUnsafe(exitSignal) ? yield* Effect.exit(Deferred.await(exitSignal)) : undefined
-          // A child whose exit status can no longer be observed is treated as running
           if (exit !== undefined && Exit.isSuccess(exit)) {
             const [code] = exit.value
             if (code !== 0 && Predicate.isNotNull(code)) {
@@ -885,11 +897,10 @@ export const layer: Layer.Layer<
  *
  * **When to use**
  *
- * Use when spawning stalls the event loop of a large Node.js application on
- * Linux. Each spawn copies the page tables of the spawning process, so the
- * stall grows with memory held outside the JavaScript heap, such as large
- * `Buffer`s. The proxy process stays small, so launching from it does not
- * block the application.
+ * Use when spawning a command measurably stalls the event loop of a Node.js
+ * application on Linux that holds a lot of memory outside the JavaScript heap,
+ * such as large `Buffer`s. The stall depends on the Node.js build, so measure
+ * a direct spawn with {@link layer} on the deployed build first.
  *
  * **Details**
  *
@@ -904,12 +915,18 @@ export const layer: Layer.Layer<
  *
  * **Gotchas**
  *
- * - Build the layer early: starting the proxy process from an already large
- *   process stalls once.
+ * - Commands run with the user and group IDs the proxy process started with.
+ *   Build the layer after the application has changed its credentials, and
+ *   before it has grown large, since starting the proxy process from a large
+ *   process stalls once. If the credentials change later, the next spawn
+ *   starts a new proxy process.
  * - If the proxy process exits early, the next spawn starts a new one.
- *   Commands it launched keep their stdio, and `kill` still sends the signal,
- *   but `exitCode`, `isRunning` and `kill` fail with a `PlatformError`
- *   because their exit can no longer be observed.
+ *   Commands it launched keep their stdio, but `exitCode`, `isRunning` and
+ *   `kill` fail with a `PlatformError` because their exit can no longer be
+ *   observed. `kill` still sends its first signal, without escalating, and
+ *   that signal can reach an unrelated process if the command has already
+ *   exited and its ID has been reused. Scope release does not signal these
+ *   commands, so they keep running.
  * - The socket path under `os.tmpdir()` must fit the platform limit of about
  *   100 bytes. Spawns fail with a `PlatformError` otherwise.
  *

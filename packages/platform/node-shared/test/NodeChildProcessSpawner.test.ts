@@ -1,4 +1,5 @@
 import { buildSpawnOptions } from "@effect/platform-node-shared/internal/nodeChildProcessSpawner"
+import { ProxiedProcess } from "@effect/platform-node-shared/internal/proxyProcess"
 import * as NodeChildProcessSpawner from "@effect/platform-node-shared/NodeChildProcessSpawner"
 import * as NodeFileSystem from "@effect/platform-node-shared/NodeFileSystem"
 import * as NodePath from "@effect/platform-node-shared/NodePath"
@@ -8,6 +9,7 @@ import * as ByteSize from "effect/ByteSize"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as ChildProcess from "effect/process/ChildProcess"
@@ -16,6 +18,7 @@ import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import NodeChildProcess, { spawnSync } from "node:child_process"
 import { syncBuiltinESMExports } from "node:module"
+import * as Net from "node:net"
 import { join } from "node:path"
 import { vi } from "vitest"
 
@@ -42,7 +45,7 @@ describe("shared suite", { concurrent: false }, () => {
   })
 })
 
-describe.skipIf(process.platform === "win32")("layerProxyProcess", () => {
+describe.skipIf(process.platform === "win32")("layerProxyProcess", { concurrent: false }, () => {
   // Commands are launched by the proxy process, so their parent is the proxy
   const proxyPid = Effect.gen(function*() {
     const spawner = yield* ChildProcessSpawner
@@ -80,13 +83,93 @@ describe.skipIf(process.platform === "win32")("layerProxyProcess", () => {
       const output = yield* Stream.mkString(Stream.decodeText(echo.stdout))
       assert.strictEqual(output, "got hello\n")
 
-      yield* Effect.ignore(sleep.kill())
+      // The signal is delivered, but the exit can no longer be observed
+      assert.strictEqual((yield* Effect.flip(sleep.kill()))._tag, "PlatformError")
       // stdout closes once the signalled command has exited
       yield* Stream.runDrain(sleep.stdout).pipe(Effect.timeout("2 seconds"))
 
       const nextPid = yield* proxyPid
       assert.notStrictEqual(nextPid, pid)
     }).pipe(Effect.provide(ProxyServices)))
+
+  it.live("stops escalating and does not signal on release once the exit is lost", () =>
+    Effect.gen(function*() {
+      const kill = vi.spyOn(process, "kill")
+      yield* Effect.addFinalizer(() => Effect.sync(() => kill.mockRestore()))
+      const signalsTo = (pid: number) =>
+        kill.mock.calls.filter(([target, signal]) => Math.abs(target) === pid && signal !== 0).map(([, signal]) =>
+          signal
+        )
+
+      const pid = yield* proxyPid
+      const scope = yield* Scope.make()
+      // Ignores SIGTERM, so only an escalation could stop it
+      const stubborn = yield* Scope.provide(scope)(
+        ChildProcess.make("sh", ["-c", "trap '' TERM; echo ready; sleep 30"])
+      )
+      const idle = yield* Scope.provide(scope)(ChildProcess.make("sleep", ["30"]))
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          kill.mockRestore()
+          for (const handle of [stubborn, idle]) {
+            try {
+              process.kill(-handle.pid, "SIGKILL")
+            } catch {
+              // already exited
+            }
+          }
+        })
+      )
+      yield* Stream.runDrain(Stream.take(stubborn.stdout, 1))
+
+      const killing = yield* Effect.forkChild(Effect.flip(stubborn.kill({ forceKillAfter: "30 seconds" })))
+      while (signalsTo(stubborn.pid).length === 0) yield* Effect.sleep("5 millis")
+      process.kill(pid, "SIGKILL")
+
+      const error = yield* Fiber.join(killing).pipe(Effect.timeout("5 seconds"))
+      assert.strictEqual(error._tag, "PlatformError")
+      yield* Scope.close(scope, Exit.void)
+
+      assert.deepStrictEqual(signalsTo(stubborn.pid), ["SIGTERM"])
+      assert.deepStrictEqual(signalsTo(idle.pid), [])
+    }).pipe(Effect.provide(ProxyServices)))
+
+  it("fails a spawn whose exit is lost while its stdio sockets are pending", () => {
+    const released: Array<number> = []
+    const child = new ProxiedProcess({ ref() {}, unref() {}, release: (id) => released.push(id) }, 7, [true, true])
+    const events: Array<string> = []
+    child.on("spawn", () => events.push("spawn"))
+    child.on("lost", () => events.push("lost"))
+    child.on("error", (error: Error) => events.push(`error: ${error.message}`))
+
+    const stdin = new Net.Socket()
+    assert.isTrue(child.attach(0, stdin))
+    child.onSpawned(1234)
+    child.onLost(new Error("proxy exited"))()
+
+    const lateStdout = new Net.Socket()
+    assert.isFalse(child.attach(1, lateStdout))
+    lateStdout.destroy()
+    assert.deepStrictEqual(events, ["error: proxy exited"])
+    assert.isTrue(stdin.destroyed)
+    assert.deepStrictEqual(released, [7])
+  })
+
+  it.live("starts a new proxy process when the application's credentials change", () =>
+    Effect.gen(function*() {
+      const pid = yield* proxyPid
+      const running = yield* ChildProcess.make("sh", ["-c", "read line; exit 3"])
+
+      const getuid = vi.spyOn(process, "getuid").mockReturnValue(process.getuid!() + 1)
+      yield* Effect.addFinalizer(() => Effect.sync(() => getuid.mockRestore()))
+      const nextPid = yield* proxyPid
+      assert.notStrictEqual(nextPid, pid)
+
+      // The retired proxy process still reports its command's exit, then exits
+      yield* Stream.run(Stream.make(new TextEncoder().encode("\n")), running.stdin)
+      assert.strictEqual(yield* running.exitCode, 3)
+      while (isAlive(pid)) yield* Effect.sleep("10 millis")
+    }).pipe(Effect.provide(ProxyServices), Effect.timeout("5 seconds")))
 })
 
 describe.skipIf(process.platform === "win32")("error descriptions", () => {

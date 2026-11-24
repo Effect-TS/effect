@@ -3,4 +3,4 @@
 "@effect/platform-node-shared": patch
 ---
 
-Add `NodeChildProcessSpawner.layerProxyProcess`, which launches commands from a small proxy process so spawning no longer stalls the event loop of a large Node.js application.
+Add `NodeChildProcessSpawner.layerProxyProcess`, which launches commands from a small proxy process, for Node.js builds where spawning from a process holding a lot of memory stalls the event loop.

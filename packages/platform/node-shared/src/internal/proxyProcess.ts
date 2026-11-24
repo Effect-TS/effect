@@ -79,8 +79,17 @@ type Message =
 const deserializeError = ({ message, ...props }: { readonly message: string }): Error =>
   Object.assign(new Error(message), props)
 
-class ProxiedProcess extends EventEmitter implements SpawnedProcess {
+/** @internal */
+export interface ProxiedProcessOwner {
+  ref(): void
+  unref(): void
+  release(id: number): void
+}
+
+/** @internal */
+export class ProxiedProcess extends EventEmitter implements SpawnedProcess {
   pid: number | undefined = undefined
+  lost = false
   exitCode: number | null = null
   signalCode: NodeJS.Signals | null = null
   readonly stdio: Array<Net.Socket | null>
@@ -91,11 +100,11 @@ class ProxiedProcess extends EventEmitter implements SpawnedProcess {
   private pendingExit: readonly [number | null, NodeJS.Signals | null] | undefined = undefined
   private pendingKill: NodeJS.Signals | number | undefined = undefined
 
-  private readonly proxy: Proxy
+  private readonly proxy: ProxiedProcessOwner
   readonly id: number
   private readonly pipes: ReadonlyArray<boolean>
 
-  constructor(proxy: Proxy, id: number, pipes: ReadonlyArray<boolean>) {
+  constructor(proxy: ProxiedProcessOwner, id: number, pipes: ReadonlyArray<boolean>) {
     super()
     this.proxy = proxy
     this.id = id
@@ -170,19 +179,26 @@ class ProxiedProcess extends EventEmitter implements SpawnedProcess {
     this.emit("exit", code, signal)
   }
 
+  /** Fails the spawn, unless the handle has already been published. */
   onError(error: Error): void {
-    if (this.pid !== undefined) return
+    if (this.spawned || this.done) return
     this.finish()
     for (const socket of this.stdio) socket?.destroy()
     this.emit("error", error)
   }
 
-  /** The exit status can no longer be observed. */
-  onLost(error: Error): void {
-    if (this.done) return
-    if (!this.spawned) return this.onError(error)
+  /**
+   * The exit status can no longer be observed. Marks the process, and returns
+   * a function that reports it, so that every process of a proxy process is
+   * marked before listeners can observe any of them.
+   */
+  onLost(error: Error): () => void {
+    if (this.done) return () => {}
+    // A spawn still waiting for its stdio sockets fails, and late sockets are rejected
+    if (!this.spawned) return () => this.onError(error)
+    this.lost = true
     this.finish()
-    this.emit("lost", error)
+    return () => this.emit("lost", error)
   }
 
   private emitSpawn(): void {
@@ -195,13 +211,28 @@ class ProxiedProcess extends EventEmitter implements SpawnedProcess {
   private finish(): void {
     this.unref()
     this.done = true
-    this.proxy.commands.delete(this.id)
+    this.proxy.release(this.id)
   }
 }
 
-class Proxy {
+// Commands run with the credentials of the proxy process, which are fixed when
+// it starts
+const credentials = (): string => {
+  const process = globalThis.process
+  return [
+    process.getuid?.(),
+    process.geteuid?.(),
+    process.getgid?.(),
+    process.getegid?.(),
+    process.getgroups?.().join(",")
+  ].join(":")
+}
+
+class Proxy implements ProxiedProcessOwner {
   readonly commands = new Map<number, ProxiedProcess>()
+  readonly credentials = credentials()
   exited = false
+  private retired = false
   private readonly token = Crypto.randomBytes(tokenLength)
   private nextId = 0
   private refs = 0
@@ -278,6 +309,17 @@ class Proxy {
     this.updateRef()
   }
 
+  release(id: number): void {
+    this.commands.delete(id)
+    if (this.retired && this.commands.size === 0) this.disconnect()
+  }
+
+  /** Stops taking spawns, and disconnects once the running commands have exited. */
+  retire(): void {
+    this.retired = true
+    if (this.commands.size === 0) this.disconnect()
+  }
+
   unref(): void {
     this.refs--
     this.updateRef()
@@ -295,10 +337,14 @@ class Proxy {
       child.ref()
       child.once("exit", () => resume(Effect.void))
     }
-    if (child.connected) child.disconnect()
-    this.closeServer()
+    this.disconnect()
     if (!wait) resume(Effect.void)
   })
+
+  private disconnect(): void {
+    if (this.child?.connected === true) this.child.disconnect()
+    this.closeServer()
+  }
 
   private updateRef(): void {
     if (this.refs > 0) {
@@ -352,24 +398,38 @@ class Proxy {
   private end(cause: Error): void {
     if (this.exited) return
     this.exited = true
-    if (this.child?.connected === true) this.child.disconnect()
-    this.closeServer()
+    this.disconnect()
     const error = new Error("The proxy process exited before the command's exit status was received", { cause })
-    // Deleting the visited entry while iterating a Map is safe
-    for (const command of this.commands.values()) command.onLost(error)
+    const reports = Array.from(this.commands.values(), (command) => command.onLost(error))
+    for (const report of reports) report()
   }
 }
 
 /** @internal */
 export const make = () => {
   let current = new Proxy()
+  // Retired proxy processes still running commands
+  const retired = new Set<Proxy>()
   const get = () => {
-    if (current.exited) current = new Proxy()
+    if (current.exited) {
+      current = new Proxy()
+    } else if (current.credentials !== credentials()) {
+      // The application changed its credentials, so its commands must not
+      // run with the old ones
+      current.retire()
+      retired.add(current)
+      current = new Proxy()
+    }
+    for (const proxy of retired) {
+      if (proxy.exited) retired.delete(proxy)
+    }
     return current
   }
   return {
     spawn: (command: string, args: ReadonlyArray<string>, options: NodeChildProcess.SpawnOptions): SpawnedProcess =>
       get().spawn(command, args, options),
-    close: Effect.suspend(() => current.close)
+    close: Effect.suspend(() =>
+      Effect.forEach([current, ...retired], (proxy) => proxy.close, { concurrency: "unbounded", discard: true })
+    )
   }
 }

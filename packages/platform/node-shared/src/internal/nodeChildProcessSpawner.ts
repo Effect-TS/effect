@@ -18,6 +18,11 @@ export interface SpawnedProcess {
   readonly stdio: ReadonlyArray<Readable | Writable | null | undefined>
   readonly exitCode: number | null
   readonly signalCode: NodeJS.Signals | null
+  /**
+   * Whether the exit status can no longer be observed. The process may have
+   * exited and its PID been reused, so it must not be signalled automatically.
+   */
+  readonly lost?: boolean | undefined
   kill(signal?: NodeJS.Signals | number): boolean
   ref(): void
   unref(): void
