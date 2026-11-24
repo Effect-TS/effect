@@ -60,8 +60,8 @@ export const packagesAtBump = (
   Effect.gen(function*() {
     const read = (path: string) => Process.run("git", ["cat-file", "blob", `${revision}:${path}`], { cwd })
     const source = yield* read("pnpm-workspace.yaml")
-    const { packages: patterns } = yield* Effect.try(() =>
-      Schema.decodeUnknownSync(WorkspaceConfig)(Yaml.parse(source))
+    const { packages: patterns } = yield* Effect.fromResult(Yaml.parse(source)).pipe(
+      Effect.flatMap(Schema.decodeUnknownEffect(WorkspaceConfig))
     )
     // Support literal path components and single-component wildcards. Never silently
     // misinterpret an exclusion or a more complex pnpm glob as a missing package.

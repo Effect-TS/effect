@@ -13,6 +13,7 @@ import * as Cause from "../Cause.ts"
 import * as Effect from "../Effect.ts"
 import * as Yaml from "../encoding/Yaml.ts"
 import * as Predicate from "../Predicate.ts"
+import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 
@@ -184,9 +185,9 @@ const parseSkillMarkdown = (
   if (match === null) return undefined
   try {
     const parsed = Yaml.parse(match[1])
-    if (!Predicate.isObject(parsed)) return undefined
+    if (Result.isFailure(parsed) || !Predicate.isObject(parsed.success)) return undefined
     // Keep only JSON values so `.inf` and `.nan` normalize to `null`.
-    const frontmatter: Record<string, unknown> = JSON.parse(JSON.stringify(parsed))
+    const frontmatter: Record<string, unknown> = JSON.parse(JSON.stringify(parsed.success))
     const instructions = markdown.slice(match[0].length).replace(/^\r?\n/, "")
     return { frontmatter, instructions }
   } catch {
