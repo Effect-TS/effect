@@ -1813,6 +1813,24 @@ export const ExceededCapacityErrorReviver: DeclarationReviver<null> = makeFixedD
 )
 
 /**
+ * Reviver for persisted {@link Schema.UnknownError} declarations.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain the {@link Schema.UnknownError} schema.
+ *
+ * @see {@link Schema.UnknownError} for the corresponding schema
+ *
+ * @stability stable
+ * @category schemas
+ * @since 4.2.0
+ */
+export const UnknownErrorReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/UnknownError",
+  Schema.UnknownError
+)
+
+/**
  * Reviver for persisted `Exit` declarations.
  *
  * **When to use**

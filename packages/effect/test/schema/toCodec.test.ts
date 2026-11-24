@@ -1104,6 +1104,29 @@ describe("Serializers", () => {
         await decoding.succeed({ _tag: "ExceededCapacityError" }, new Cause.ExceededCapacityError())
       })
 
+      it("UnknownError", async () => {
+        const schema = Schema.UnknownError
+        const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
+
+        const encoding = asserts.encoding()
+        await encoding.succeed(
+          new Cause.UnknownError(new Error("b"), "a"),
+          { _tag: "UnknownError", message: "a", cause: { name: "Error", message: "b" } }
+        )
+        await encoding.succeed(new Cause.UnknownError("b"), { _tag: "UnknownError", cause: "b" })
+        await encoding.succeed(new Cause.UnknownError(undefined, "a"), { _tag: "UnknownError", message: "a" })
+        await encoding.succeed(new Cause.UnknownError(undefined), { _tag: "UnknownError" })
+
+        const decoding = asserts.decoding()
+        await decoding.succeed(
+          { _tag: "UnknownError", message: "a", cause: { name: "Error", message: "b" } },
+          new Cause.UnknownError(new Error("b"), "a")
+        )
+        await decoding.succeed({ _tag: "UnknownError", cause: "b" }, new Cause.UnknownError("b"))
+        await decoding.succeed({ _tag: "UnknownError", message: "a" }, new Cause.UnknownError(undefined, "a"))
+        await decoding.succeed({ _tag: "UnknownError" }, new Cause.UnknownError(undefined))
+      })
+
       it("ErrorInstance", async () => {
         const schema = Schema.ErrorInstance()
         const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))

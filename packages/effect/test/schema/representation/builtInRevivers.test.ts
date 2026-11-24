@@ -1010,6 +1010,15 @@ describe("SchemaRepresentation built-in declaration revivers", () => {
     })
   })
 
+  it("revives UnknownError", () => {
+    assertDeclarationReviver({
+      schema: Schema.UnknownError,
+      id: "effect/schema/UnknownError",
+      payload: null,
+      reviver: SchemaRepresentation.UnknownErrorReviver
+    })
+  })
+
   it("revives ByteSize", () => {
     assertDeclarationReviver({
       schema: Schema.ByteSize,

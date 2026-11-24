@@ -9715,6 +9715,74 @@ export const ExceededCapacityError: ExceededCapacityError = declare(
   }
 )
 /**
+ * Type-level representation of {@link UnknownError}.
+ *
+ * @stability stable
+ * @category models
+ * @since 4.2.0
+ */
+export interface UnknownError extends declare<Cause_.UnknownError> {
+  readonly "Rebuild": UnknownError
+}
+/**
+ * Schema for `Cause.UnknownError` values.
+ *
+ * **When to use**
+ *
+ * Use when a schema-defined error or value needs to carry an `UnknownError`,
+ * for example as the reason of a service error.
+ *
+ * **Details**
+ *
+ * The default JSON serializer encodes an `UnknownError` as an object with
+ * `_tag`, an optional `message` and an optional `cause`, and decodes that
+ * object back into an `UnknownError`. The `cause` is encoded with
+ * {@link Defect}, so an `Error` cause decodes back as a plain `Error` without
+ * its stack.
+ *
+ * **Example** (Encoding an UnknownError to JSON)
+ *
+ * ```ts import.meta.vitest
+ * import { Cause, Schema } from "effect"
+ *
+ * const codec = Schema.toCodecJson(Schema.UnknownError)
+ *
+ * Schema.encodeSync(codec)(new Cause.UnknownError("boom", "failed")) // => { _tag: "UnknownError", message: "failed", cause: "boom" }
+ * Cause.isUnknownError(Schema.decodeSync(codec)({ _tag: "UnknownError" })) // => true
+ * ```
+ *
+ * @stability stable
+ * @category schemas
+ * @since 4.2.0
+ */
+export const UnknownError: UnknownError = declare(
+  Cause_.isUnknownError,
+  {
+    representation: {
+      id: "effect/schema/UnknownError",
+      payload: null
+    },
+    toCode: () => ({
+      runtime: `Schema.UnknownError`,
+      Type: `Cause.UnknownError`,
+      importDeclarations: [`import * as Cause from "effect/Cause"`]
+    }),
+    expected: "UnknownError",
+    toCodecJson: () =>
+      link<Cause_.UnknownError>()(
+        Struct({ _tag: Literal("UnknownError"), message: optionalKey(String), cause: optionalKey(Defect()) }),
+        SchemaTransformation.transform({
+          decode: (encoded) => new Cause_.UnknownError(encoded.cause, encoded.message),
+          encode: (error) => ({
+            _tag: "UnknownError" as const,
+            ...(error.message === undefined ? {} : { message: error.message }),
+            ...(error.cause === undefined ? {} : { cause: error.cause })
+          })
+        })
+      )
+  }
+)
+/**
  * Type-level representation returned by {@link ReadonlyMap}.
  *
  * @stability stable
