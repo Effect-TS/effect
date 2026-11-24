@@ -74,6 +74,12 @@ describe("Skill", () => {
         Skill.fromFiles({ "SKILL.md": "---\nname: Bad_Name\ndescription: bad\n---\n\nBody" })
       )
       assert.isTrue(Cause.isIllegalArgumentError(badFrontmatter))
+
+      const malformedYaml = yield* Effect.flip(
+        Skill.fromFiles({ "SKILL.md": "---\nname: [unclosed\n---\n\nBody" })
+      )
+      assert.isTrue(Cause.isIllegalArgumentError(malformedYaml))
+      assert.strictEqual(malformedYaml.message, "SKILL.md is missing valid YAML frontmatter")
     }))
 
   it.effect("round-trips text and binary files through JSON", () =>

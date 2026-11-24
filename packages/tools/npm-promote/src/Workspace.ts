@@ -2,6 +2,7 @@ import * as Effect from "effect/Effect"
 import * as Yaml from "effect/encoding/Yaml"
 import * as Option from "effect/Option"
 import type * as ChildProcessSpawner from "effect/process/ChildProcessSpawner"
+import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 import * as Semver from "semver"
 import type { ReleasePackage } from "./NpmPromote.ts"
@@ -61,7 +62,7 @@ export const packagesAtBump = (
     const read = (path: string) => Process.run("git", ["cat-file", "blob", `${revision}:${path}`], { cwd })
     const source = yield* read("pnpm-workspace.yaml")
     const { packages: patterns } = yield* Effect.try(() =>
-      Schema.decodeUnknownSync(WorkspaceConfig)(Yaml.parse(source))
+      Schema.decodeUnknownSync(WorkspaceConfig)(Result.getOrThrow(Yaml.parse(source)))
     )
     // Support literal path components and single-component wildcards. Never silently
     // misinterpret an exclusion or a more complex pnpm glob as a missing package.
