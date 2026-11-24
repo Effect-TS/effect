@@ -396,9 +396,8 @@ describe("MssqlClient connection lifecycle", { concurrent: false }, () => {
           [{ requestTimeout: "Infinity" }, 0]
         ] as const
       ) {
-        const before = state.connections.length
         yield* MssqlClient.make({ server: "localhost", ...config })
-        assert.strictEqual(state.connections[before].config.options?.requestTimeout, expected)
+        assert.strictEqual(state.connections.at(-1)!.config.options?.requestTimeout, expected)
       }
     }).pipe(Effect.scoped, Effect.provide(Reactivity.layer)))
 

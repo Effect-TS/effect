@@ -242,9 +242,9 @@ export interface MssqlClientConfig {
    */
   readonly cancelTimeout?: Duration.Input | undefined
   /**
-   * How long Tedious waits for a request to complete before cancelling and
-   * failing it. Defaults to 15 seconds. Pass a zero or infinite duration to
-   * disable the timeout.
+   * How long Tedious waits for the first response packet of a request before
+   * cancelling and failing it. Defaults to 15 seconds. Pass a zero or infinite
+   * duration to disable the timeout.
    */
   readonly requestTimeout?: Duration.Input | undefined
   readonly connectionRetryInterval?: Duration.Input | undefined
