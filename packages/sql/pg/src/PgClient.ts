@@ -10,6 +10,7 @@ import * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import type * as Pool from "effect/Pool"
 import type * as Queue from "effect/Queue"
 import * as Reactivity from "effect/reactivity/Reactivity"
@@ -77,6 +78,39 @@ export interface PgClient extends Client.Base {
    * on it.
    */
   readonly poolStats: Effect.Effect<Pool.Stats>
+  /**
+   * Runs a query and returns positional rows with each value as the server's
+   * text, for a caller that decodes values itself. No codec runs, the
+   * client's `types` included, and column names are not transformed.
+   *
+   * **Details**
+   *
+   * Inside `withTransaction` it runs on the transaction's connection;
+   * otherwise it takes a connection as any other statement does. Other
+   * statements decode as before.
+   *
+   * **Example** (Reading values as text)
+   *
+   * ```ts
+   * import { PgClient } from "@effect/sql-pg"
+   * import { Effect } from "effect"
+   *
+   * const program = Effect.gen(function*() {
+   *   const sql = yield* PgClient.PgClient
+   *   const result = yield* sql.withTransaction(
+   *     sql.queryText("SELECT now() AS at, $1::numeric AS amount", ["1.50"])
+   *   )
+   *   // result.fields: [{ name: "at", dataTypeId: 1184 }, { name: "amount", dataTypeId: 1700 }]
+   *   // result.rows: [["2026-11-24 12:00:00.123456+00", "1.50"]]
+   * })
+   * ```
+   *
+   * @since 4.1.6
+   */
+  readonly queryText: (
+    sql: string,
+    params?: ReadonlyArray<unknown>
+  ) => Effect.Effect<PgConnection.TextResult, SqlError>
 }
 
 /**
@@ -321,37 +355,70 @@ const makeImpl = Effect.fnUntraced(function*<R>(
   ): Effect.Effect<Queue.Dequeue<PgConnection.Notification, SqlError>, SqlError, Scope.Scope> =>
     Effect.flatMap(listenAcquirer, (connection) => connection.listen(channel))
 
+  const spanAttributes: ReadonlyArray<readonly [string, unknown]> = [
+    ...(config.spanAttributes ? Object.entries(config.spanAttributes) : []),
+    [ATTR_DB_SYSTEM_NAME, "postgresql"],
+    // PostgreSQL connects to the database named after the user when none is given.
+    [ATTR_DB_NAMESPACE, resolved.startupParameters.database ?? resolved.username],
+    [ATTR_SERVER_ADDRESS, resolved.host],
+    [ATTR_SERVER_PORT, resolved.port]
+  ]
+
+  const client = yield* Client.make({
+    driver: "pg",
+    acquirer,
+    borrower,
+    // Postgres prepares transaction control like anything else, and a client
+    // with preparation turned off falls back to the unnamed path anyway.
+    prepareTransactionControls: true,
+    commit,
+    onCommitFailure,
+    // A session the server ended has nothing left to roll back.
+    isTransaction: (conn) => connectionInternals((conn as ConnectionImpl).connection).deadError() === undefined,
+    releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
+    transactionAcquirer,
+    compiler,
+    spanAttributes,
+    transformRows
+  })
+
+  // Routed as a statement is: on the transaction's connection inside one.
+  const withConnection = <A>(
+    f: (connection: PgConnection.PgConnection) => Effect.Effect<A, SqlError>
+  ): Effect.Effect<A, SqlError> => {
+    const run = (connection: Connection) => f((connection as ConnectionImpl).connection)
+    return Effect.flatMap(
+      Effect.serviceOption(client.transactionService),
+      Option.match({
+        onNone: () => borrower === undefined ? Effect.scoped(Effect.flatMap(acquirer, run)) : borrower(run),
+        onSome: (transaction) => Effect.flatMap(Client.activeTransactionConnection(transaction), run)
+      })
+    )
+  }
+
+  const queryText = (sql: string, params?: ReadonlyArray<unknown>) =>
+    Effect.withSpan(
+      withConnection((connection) => connection.queryText(sql, params)),
+      Statement.spanName(spanAttributes),
+      {
+        kind: "client",
+        attributes: {
+          ...Object.fromEntries(spanAttributes),
+          [ATTR_SQL_METHOD]: "queryText",
+          [ATTR_DB_QUERY_TEXT]: sql
+        }
+      }
+    )
+
   return Object.assign(
-    yield* Client.make({
-      driver: "pg",
-      acquirer,
-      borrower,
-      // Postgres prepares transaction control like anything else, and a client
-      // with preparation turned off falls back to the unnamed path anyway.
-      prepareTransactionControls: true,
-      commit,
-      onCommitFailure,
-      // A session the server ended has nothing left to roll back.
-      isTransaction: (conn) => connectionInternals((conn as ConnectionImpl).connection).deadError() === undefined,
-      releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
-      transactionAcquirer,
-      compiler,
-      spanAttributes: [
-        ...(config.spanAttributes ? Object.entries(config.spanAttributes) : []),
-        [ATTR_DB_SYSTEM_NAME, "postgresql"],
-        // PostgreSQL connects to the database named after the user when none is given.
-        [ATTR_DB_NAMESPACE, resolved.startupParameters.database ?? resolved.username],
-        [ATTR_SERVER_ADDRESS, resolved.host],
-        [ATTR_SERVER_PORT, resolved.port]
-      ],
-      transformRows
-    }),
+    client,
     {
       [TypeId]: TypeId as TypeId,
       config,
       poolStats: options.poolStats,
       json: (_: unknown) => Statement.fragment([PgJson(_)]),
       listen,
+      queryText,
       notify: (channel: string, payload: string) => {
         const channelError = validateChannelName(channel, "notify")
         return channelError !== undefined ?
@@ -581,3 +648,5 @@ const ATTR_DB_SYSTEM_NAME = "db.system.name"
 const ATTR_DB_NAMESPACE = "db.namespace"
 const ATTR_SERVER_ADDRESS = "server.address"
 const ATTR_SERVER_PORT = "server.port"
+const ATTR_DB_QUERY_TEXT = "db.query.text"
+const ATTR_SQL_METHOD = "effect.sql.method"

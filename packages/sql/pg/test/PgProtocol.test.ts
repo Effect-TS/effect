@@ -115,6 +115,21 @@ describe("PgProtocol", () => {
       )
     })
 
+    it("asks for text results when textResults is set", () => {
+      const encodeBind = PgProtocol.makeBindEncoder<Uint8Array | null>((sink, value) => {
+        if (value === null) sink.sqlNull()
+        else sink.raw(value)
+        return Result.void
+      })
+      const options = { portal: "p1", statement: "s1", parameters: [bytes("00000001"), null] }
+      const binary = success(encodeBind(options))
+      const text = success(encodeBind({ ...options, textResults: true }))
+      // The frame ends with its one result format code: 1 for binary, 0 for text.
+      assert.strictEqual(hex(text.subarray(0, -1)), hex(binary.subarray(0, -1)))
+      assert.strictEqual(binary.at(-1), 1)
+      assert.strictEqual(text.at(-1), 0)
+    })
+
     it("frames each sink-written parameter with the bytes it wrote", () => {
       const encodeBind = PgProtocol.makeBindEncoder<number>((sink, value) => {
         sink.int16(value)

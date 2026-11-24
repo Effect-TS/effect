@@ -304,6 +304,23 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
       }))
     }))
 
+  it.effect("queryText runs on the transaction's connection", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      yield* sql`CREATE TABLE query_text (at timestamptz)`
+      const [outside, inside] = yield* sql.withTransaction(Effect.gen(function*() {
+        yield* sql`INSERT INTO query_text VALUES ('infinity')`
+        const inside = yield* sql.queryText("SELECT at FROM query_text")
+        const outside = yield* sql.queryText("SELECT at FROM query_text").pipe(
+          Effect.updateContext((context: Context.Context<never>) => Context.omit(sql.transactionService)(context))
+        )
+        return [outside, inside] as const
+      }))
+      assert.deepStrictEqual(inside.fields, [{ name: "at", dataTypeId: PgTypes.OID.timestamptz }])
+      assert.deepStrictEqual(inside.rows, [["infinity"]])
+      assert.deepStrictEqual(outside.rows, [])
+    }))
+
   it.effect("reads anonymous records and record arrays", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
@@ -728,6 +745,14 @@ it.layer(PgContainer.layerClientWithTransforms, { timeout: "30 seconds" })("PgCl
       const [query, params] = sql`INSERT INTO people ${sql.insert({ first_name: "Tim", age: 10 })}`.compile()
       expect(query).toEqual(`INSERT INTO people ("first_name","age") VALUES ($1,$2)`)
       expect(params).toEqual(["Tim", 10])
+    }))
+
+  it.effect("queryText leaves column names as the server sends them", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const result = yield* sql.queryText("SELECT 1 AS first_name")
+      assert.deepStrictEqual(result.fields, [{ name: "first_name", dataTypeId: PgTypes.OID.int4 }])
+      assert.deepStrictEqual(result.rows, [["1"]])
     }))
 
   it.effect("rejects multi-statement queries", () =>

@@ -2034,11 +2034,12 @@ export interface Column {
  * **Details**
  *
  * Codecs are resolved once per column. SQL `NULL` becomes `null`.
- * Unregistered OIDs decode as UTF-8 text. Text-format columns fail with
- * `CodecError`, as do unregistered values that are invalid UTF-8 or contain a
- * NUL byte, which no PostgreSQL text value does. Those errors name the column
- * and its type OID. A binary layout with no NUL bytes still decodes as
- * garbled text, so register a codec for binary user-defined types.
+ * Text-format columns read as the server's text, whatever their type.
+ * Unregistered OIDs decode as UTF-8 text. Unregistered values that are invalid
+ * UTF-8 or contain a NUL byte, which no PostgreSQL text value does, fail with
+ * `CodecError`, naming the column and its type OID. A binary layout with no
+ * NUL bytes still decodes as garbled text, so register a codec for binary
+ * user-defined types.
  *
  * **Example** (Updating the reader after `RowDescription`)
  *
@@ -2062,8 +2063,10 @@ export const makeFieldReader = (
   result(() => {
     const lookup = lookupFor(registry)
     const codecs = columns.map((column, index) => {
+      // A text-format value is the server's text, whatever the column's type.
+      if (column.format === 0) return utf8Codec
       if (column.format !== 1) {
-        return fail(`Only the binary format is supported, column ${index} has format ${column.format}`)
+        return fail(`Unknown format ${column.format} for column ${index}`)
       }
       return lookup(column.dataTypeOid)
     })

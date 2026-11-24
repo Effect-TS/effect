@@ -1320,10 +1320,22 @@ describe("PgTypes", () => {
       }
     })
 
-    it("rejects a text column when the reader is built, not once per row", () => {
+    it("reads text-format columns as the server's text, whatever their type", () => {
+      const reader = success(PgTypesResult.makeFieldReader([
+        { dataTypeOid: PgTypes.OID.int4, format: 0 },
+        { dataTypeOid: PgTypes.OID.timestamptz, format: 0 },
+        { dataTypeOid: 90003, format: 0 }
+      ]))
+      const parser = PgProtocol.makeParser({ readField: reader })
+      const text = new TextEncoder()
+      const [row] = parser.push(dataRow([text.encode("7"), text.encode("infinity"), null]))
+      assert.deepStrictEqual((row as PgProtocol.DataRow<unknown>).values, ["7", "infinity", null])
+    })
+
+    it("rejects an unknown column format when the reader is built, not once per row", () => {
       assertThrowsTagged(
         "PgTypesCodecError",
-        () => PgTypes.makeFieldReader([{ dataTypeOid: PgTypes.OID.int4, format: 0 }])
+        () => PgTypes.makeFieldReader([{ dataTypeOid: PgTypes.OID.int4, format: 2 }])
       )
     })
 
