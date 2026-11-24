@@ -167,6 +167,58 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
       }).pipe(Effect.provide(layer))
     }))
 
+  it.effect("retains an unanswered keep-alive when disabled and immediately re-enabled", () =>
+    Effect.gen(function*() {
+      const Holder = Entity.make("KeepAliveSwap", [
+        Rpc.make("Enable"),
+        Rpc.make("Swap"),
+        Rpc.make("Release")
+      ]).annotateRpcs(ClusterSchema.Persisted, true)
+      const layer = Holder.toLayer(Effect.gen(function*() {
+        const address = yield* Entity.CurrentAddress
+        const keepAlive = (enabled: boolean) =>
+          Entity.keepAlive(enabled).pipe(Effect.provideService(Entity.CurrentAddress, address))
+        return Holder.of({
+          Enable: () => keepAlive(true),
+          Swap: () => keepAlive(false).pipe(Effect.andThen(keepAlive(true))),
+          Release: () => keepAlive(false)
+        })
+      })).pipe(Layer.provideMerge(CappedSharding({ refreshAssignmentsInterval: 60_000 })))
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const sharding = yield* Sharding.Sharding
+        const driver = yield* MessageStorage.MemoryDriver
+        const client = (yield* Holder.client)("holder")
+        const keepAliveReplyCounts = () =>
+          driver.journal.flatMap((envelope) =>
+            envelope._tag === "Request" && envelope.tag === Entity.KeepAliveRpc._tag
+              ? [driver.requests.get(envelope.requestId)!.replies.length]
+              : []
+          )
+
+        yield* client.Enable()
+        yield* sharding.pollStorage
+        yield* TestClock.adjust(1)
+        assert.deepStrictEqual(keepAliveReplyCounts(), [0])
+
+        yield* client.Swap()
+        yield* sharding.pollStorage
+        yield* TestClock.adjust(1)
+        const afterSwap = keepAliveReplyCounts()
+        assert.strictEqual(afterSwap.length, 2)
+        assert.strictEqual(
+          afterSwap.filter((count) => count === 0).length,
+          1,
+          `expected one unanswered keep-alive after swap, got reply counts [${afterSwap.join(", ")}]`
+        )
+
+        yield* client.Release()
+        yield* TestClock.adjust(1)
+        assert.deepStrictEqual(keepAliveReplyCounts(), [1, 1], "release must answer the retained keep-alive")
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("reactivates a held keep-alive after its runner scope closes without replying", () =>
     Effect.gen(function*() {
       const inner = yield* makeSharedMemoryStorage
