@@ -8,6 +8,27 @@
 npm install effect @effect/atom-solid
 ```
 
+## Solid versions
+
+Requires Solid 2 (`solid-js` 2.0 or later). Solid 1 is no longer supported.
+
+### Migrating from Solid 1
+
+- `useAtomResource` was removed because Solid 2 has no `createResource`. Read the `AsyncResult` atom with `useAtomValue` and match on the result:
+
+  ```tsx
+  const user = useAtomValue(() => userAtom)
+
+  const name = () =>
+    AsyncResult.match(user(), {
+      onInitial: () => "Loading...",
+      onFailure: () => "Could not load user",
+      onSuccess: ({ value }) => value.name
+    })
+  ```
+
+- Solid 2 contexts have no `.Provider`. Replace `<RegistryContext.Provider value={registry}>` with `<RegistryContext value={registry}>`, or use `<RegistryProvider>`.
+
 ## Links
 
 - [Website](https://effect.website): documentation, guides, and news.
