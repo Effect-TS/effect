@@ -33,13 +33,13 @@ export const suiteWith = <R>(
 ) => {
   const timeout = options?.timeout ?? "30 seconds"
   const hookTimeout = options?.hookTimeout ?? timeout
-  const nonDeliveryWait = Duration.toMillis(options?.nonDeliveryWait ?? "1 second")
+  const nonDeliveryWait = options?.nonDeliveryWait ?? "1 second"
   // Tests share and advance the same TestClock.
   const testOptions = { timeout: Duration.toMillis(timeout) }
 
   // give real-time stores a moment of wall-clock time
-  const liveSleep = (millis: number) =>
-    options?.virtualTime ? Effect.yieldNow : Effect.sleep(millis).pipe(TestClock.withLive)
+  const liveSleep = (duration: Duration.Input) =>
+    options?.virtualTime ? Effect.yieldNow : Effect.sleep(duration).pipe(TestClock.withLive)
 
   // advance the virtual clock one poll cycle, give real-time stores a moment,
   // then check the forked take is still waiting. State-only checks use
@@ -47,28 +47,21 @@ export const suiteWith = <R>(
   // to the store's clock.
   const assertNotDelivered = Effect.fnUntraced(function*<A, E>(
     fiber: Fiber.Fiber<A, E>,
-    waitMillis = nonDeliveryWait
+    wait: Duration.Input = nonDeliveryWait
   ) {
     yield* TestClock.adjust(1000)
-    yield* liveSleep(waitMillis)
+    yield* liveSleep(wait)
     assert.isUndefined(fiber.pollUnsafe())
   })
 
   // advance both clocks until the forked take completes, including acknowledgement.
   // Keep advancing while it is pending: an SQL poll can miss a virtual-clock
-  // wakeup, and acknowledgement retries also sleep on the virtual clock.
+  // wakeup, and acknowledgement retries also sleep on the virtual clock. Each
+  // live wait ends as soon as the take settles.
   const awaitDelivery = Effect.fnUntraced(function*<A, E>(fiber: Fiber.Fiber<A, E>) {
     for (let i = 0; i < 8 && fiber.pollUnsafe() === undefined; i++) {
       yield* TestClock.adjust(1000)
-      if (options?.virtualTime) {
-        if (fiber.pollUnsafe() === undefined) {
-          yield* Effect.yieldNow
-        }
-      } else {
-        for (let waited = 0; waited < 700 && fiber.pollUnsafe() === undefined; waited += 10) {
-          yield* liveSleep(10)
-        }
-      }
+      yield* Effect.raceFirst(Fiber.await(fiber), liveSleep(700))
     }
     assert.isDefined(fiber.pollUnsafe())
     return yield* Fiber.join(fiber)
@@ -616,10 +609,5 @@ export const suiteWith = <R>(
 export const suite = (
   name: string,
   layer: Layer.Layer<PersistedQueue.PersistedQueueStore, unknown>,
-  options?: {
-    readonly virtualTime?: boolean | undefined
-    readonly cleanupUsesClock?: boolean | undefined
-    readonly cleanup?: "supported" | "unsupported" | undefined
-    readonly nonDeliveryWait?: Duration.Input | undefined
-  }
+  options?: Parameters<typeof suiteWith>[3]
 ) => suiteWith(name, layer, it, options)

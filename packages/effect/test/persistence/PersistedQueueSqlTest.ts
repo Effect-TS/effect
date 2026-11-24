@@ -154,28 +154,12 @@ export const suiteWith = (
       }).pipe(TestClock.withLive), { timeout: 30000 })
   })
 
-  const concurrentClaims = options?.concurrentClaims ?? true
-  const claimCases = [["failure", true], ["failure", false], ["success", true]] as const
-  const claimTableName = (settlement: "failure" | "success", sameStore: boolean) =>
-    `effect_queue_stale_${settlement}_${sameStore ? "same" : "other"}`
-
-  // Create and migrate each claim table sequentially before running the tests
-  // concurrently so parallel DDL does not contend on shared connection pools.
-  const claimTablesLayer = concurrentClaims
-    ? Layer.effectDiscard(
-      Effect.forEach(
-        claimCases,
-        ([settlement, sameStore]) =>
-          Effect.scoped(PersistedQueue.makeStoreSql({ tableName: claimTableName(settlement, sameStore) })),
-        { discard: true }
-      )
-    )
-    : Layer.empty
-
   // Each test uses its own table and private TestClock so paused lock refreshes
   // do not interfere across concurrent runs.
-  const claimLayerOptions = { concurrent: concurrentClaims, timeout: "90 seconds" } as const
-  testApi.layer(claimTablesLayer, claimLayerOptions)("PersistedQueue SQL claims", (it) => {
+  testApi.layer(Layer.empty, {
+    concurrent: options?.concurrentClaims ?? true,
+    timeout: "90 seconds"
+  })("PersistedQueue SQL claims", (it) => {
     const makeOwnershipQueue = Effect.fnUntraced(function*(tableName: string) {
       const store = yield* PersistedQueue.makeStoreSql({
         tableName,
@@ -189,12 +173,12 @@ export const suiteWith = (
       return yield* factory.make({ name: tableName, schema: Schema.String, retrySchedule: Schedule.spaced(0) })
     })
 
-    for (const [settlement, sameStore] of claimCases) {
+    for (const [settlement, sameStore] of [["failure", true], ["failure", false], ["success", true]] as const) {
       it.effect(
         `a stale ${settlement} preserves a newer claim from ${sameStore ? "the same" : "another"} store`,
         () =>
           Effect.gen(function*() {
-            const tableName = claimTableName(settlement, sameStore)
+            const tableName = `effect_queue_stale_${settlement}_${sameStore ? "same" : "other"}`
             const stale = yield* makeOwnershipQueue(tableName)
             const queue = sameStore ? stale : yield* makeOwnershipQueue(tableName)
             yield* stale.offer("job", { id: "job-1" })
