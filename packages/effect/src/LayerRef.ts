@@ -16,7 +16,7 @@ import { getStackTraceLimit, setStackTraceLimit } from "./internal/stackTraceLim
 import * as Layer from "./Layer.ts"
 import * as RcRef from "./RcRef.ts"
 import type * as Schedule from "./Schedule.ts"
-import * as Scope from "./Scope.ts"
+import type * as Scope from "./Scope.ts"
 import type { Mutable } from "./Types.ts"
 
 const TypeId = "~effect/LayerRef"
@@ -156,12 +156,8 @@ export const make = Effect.fnUntraced(
     [Preload] extends [true] ? E : never,
     Scope.Scope | R | SR
   > {
-    const context = yield* Effect.context<never>()
-
     const rcRef = yield* RcRef.make({
-      acquire: Effect.contextWith((_: Context.Context<Scope.Scope>) =>
-        Layer.buildWithMemoMap(layer, Layer.CurrentMemoMap.forkOrCreate(context), Context.get(_, Scope.Scope))
-      ),
+      acquire: Layer.build(layer),
       idleTimeToLive: options?.idleTimeToLive
     })
 
