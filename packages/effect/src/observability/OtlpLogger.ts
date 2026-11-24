@@ -60,6 +60,8 @@ export const make: (
     readonly compression?: "gzip" | "none" | undefined
     readonly exportInterval?: Duration.Input | undefined
     readonly maxBatchSize?: number | undefined
+    readonly maxQueueSize?: number | undefined
+    readonly onDrop?: ((count: number) => void) | undefined
     readonly shutdownTimeout?: Duration.Input | undefined
     readonly excludeLogSpans?: boolean | undefined
   }
@@ -81,6 +83,8 @@ export const make: (
     headers: options.headers,
     compression: options.compression,
     maxBatchSize: options.maxBatchSize ?? 1000,
+    maxQueueSize: options.maxQueueSize,
+    onDrop: options.onDrop,
     exportInterval: options.exportInterval ?? Duration.seconds(1),
     body: (data) => [
       serialization.logs({
@@ -132,6 +136,8 @@ export const layer = (options: {
   readonly compression?: "gzip" | "none" | undefined
   readonly exportInterval?: Duration.Input | undefined
   readonly maxBatchSize?: number | undefined
+  readonly maxQueueSize?: number | undefined
+  readonly onDrop?: ((count: number) => void) | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
   readonly excludeLogSpans?: boolean | undefined
   readonly mergeWithExisting?: boolean | undefined
@@ -161,6 +167,7 @@ export const layerFromConfig = (options?: {
     readonly attributes?: Record<string, unknown>
   } | undefined
   readonly headers?: Headers.Input | undefined
+  readonly onDrop?: ((count: number) => void) | undefined
   readonly excludeLogSpans?: boolean | undefined
   readonly mergeWithExisting?: boolean | undefined
 }): Layer.Layer<Exporter.Flusher, never, HttpClient.HttpClient | OtlpSerialization> =>
@@ -182,7 +189,8 @@ export const layerFromConfig = (options?: {
       logsTimeout,
       exportTimeout,
       scheduleDelay,
-      maxBatchSize
+      maxBatchSize,
+      maxQueueSize
     } = yield* Config.all({
       baseCompression: Config.option(Config.Literals(["gzip", "none"], "OTEL_EXPORTER_OTLP_COMPRESSION")),
       compression: Config.option(Config.Literals(["gzip", "none"], "OTEL_EXPORTER_OTLP_LOGS_COMPRESSION")),
@@ -190,7 +198,8 @@ export const layerFromConfig = (options?: {
       logsTimeout: Config.option(Config.Int("OTEL_EXPORTER_OTLP_LOGS_TIMEOUT")),
       exportTimeout: Config.option(Config.Int("OTEL_BLRP_EXPORT_TIMEOUT")),
       scheduleDelay: Config.option(Config.Int("OTEL_BLRP_SCHEDULE_DELAY")),
-      maxBatchSize: Config.option(Config.Int("OTEL_BLRP_MAX_EXPORT_BATCH_SIZE"))
+      maxBatchSize: Config.option(Config.Int("OTEL_BLRP_MAX_EXPORT_BATCH_SIZE")),
+      maxQueueSize: Config.option(Config.Int("OTEL_BLRP_MAX_QUEUE_SIZE"))
     })
 
     const shutdownTimeout = Option.firstSomeOf([logsTimeout, baseTimeout, exportTimeout]).pipe(
@@ -205,6 +214,8 @@ export const layerFromConfig = (options?: {
       compression: Option.getOrElse(Option.firstSomeOf([compression, baseCompression]), () => "none" as const),
       exportInterval: Option.getOrUndefined(exportInterval),
       maxBatchSize: Option.getOrUndefined(maxBatchSize),
+      maxQueueSize: Option.getOrUndefined(maxQueueSize),
+      onDrop: options?.onDrop,
       shutdownTimeout: Option.getOrUndefined(shutdownTimeout),
       excludeLogSpans: options?.excludeLogSpans,
       mergeWithExisting: options?.mergeWithExisting

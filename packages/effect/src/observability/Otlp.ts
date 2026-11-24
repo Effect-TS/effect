@@ -53,6 +53,8 @@ export const layer = (options: {
    */
   readonly compression?: "gzip" | "none" | undefined
   readonly maxBatchSize?: number | undefined
+  readonly maxQueueSize?: number | undefined
+  readonly onDrop?: ((count: number) => void) | undefined
   readonly tracerContext?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
   readonly loggerExportInterval?: Duration.Input | undefined
   readonly loggerExcludeLogSpans?: boolean | undefined
@@ -72,6 +74,8 @@ export const layer = (options: {
       compression: options.compression,
       exportInterval: options.loggerExportInterval,
       maxBatchSize: options.maxBatchSize,
+      maxQueueSize: options.maxQueueSize,
+      onDrop: options.onDrop,
       shutdownTimeout: options.shutdownTimeout,
       excludeLogSpans: options.loggerExcludeLogSpans,
       mergeWithExisting: options.loggerMergeWithExisting
@@ -92,6 +96,8 @@ export const layer = (options: {
       compression: options.compression,
       exportInterval: options.tracerExportInterval,
       maxBatchSize: options.maxBatchSize,
+      maxQueueSize: options.maxQueueSize,
+      onDrop: options.onDrop,
       context: options.tracerContext,
       shutdownTimeout: options.shutdownTimeout
     })
@@ -119,6 +125,7 @@ export const layerFromConfig = (options?: {
     readonly attributes?: Record<string, unknown>
   } | undefined
   readonly headers?: Headers.Input | undefined
+  readonly onDrop?: ((count: number) => void) | undefined
   readonly tracerContext?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
   readonly loggerExcludeLogSpans?: boolean | undefined
   readonly loggerMergeWithExisting?: boolean | undefined
@@ -127,6 +134,7 @@ export const layerFromConfig = (options?: {
     OtlpLogger.layerFromConfig({
       resource: options?.resource,
       headers: options?.headers,
+      onDrop: options?.onDrop,
       excludeLogSpans: options?.loggerExcludeLogSpans,
       mergeWithExisting: options?.loggerMergeWithExisting
     }),
@@ -137,6 +145,7 @@ export const layerFromConfig = (options?: {
     OtlpTracer.layerFromConfig({
       resource: options?.resource,
       headers: options?.headers,
+      onDrop: options?.onDrop,
       context: options?.tracerContext
     })
   )
@@ -163,6 +172,8 @@ export const layerJson: (options: {
    */
   readonly compression?: "gzip" | "none" | undefined
   readonly maxBatchSize?: number | undefined
+  readonly maxQueueSize?: number | undefined
+  readonly onDrop?: ((count: number) => void) | undefined
   readonly tracerContext?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
   readonly loggerExportInterval?: Duration.Input | undefined
   readonly loggerExcludeLogSpans?: boolean | undefined
@@ -198,6 +209,8 @@ export const layerProtobuf: (options: {
    */
   readonly compression?: "gzip" | "none" | undefined
   readonly maxBatchSize?: number | undefined
+  readonly maxQueueSize?: number | undefined
+  readonly onDrop?: ((count: number) => void) | undefined
   readonly tracerContext?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
   readonly loggerExportInterval?: Duration.Input | undefined
   readonly loggerExcludeLogSpans?: boolean | undefined

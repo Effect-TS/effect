@@ -62,6 +62,8 @@ export const make: (
     readonly compression?: "gzip" | "none" | undefined
     readonly exportInterval?: Duration.Input | undefined
     readonly maxBatchSize?: number | undefined
+    readonly maxQueueSize?: number | undefined
+    readonly onDrop?: ((count: number) => void) | undefined
     readonly context?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
     readonly shutdownTimeout?: Duration.Input | undefined
   }
@@ -84,6 +86,8 @@ export const make: (
     compression: options.compression,
     exportInterval: options.exportInterval ?? Duration.seconds(5),
     maxBatchSize: options.maxBatchSize ?? 1000,
+    maxQueueSize: options.maxQueueSize,
+    onDrop: options.onDrop,
     body(spans) {
       const data: TraceData = {
         resourceSpans: [{
@@ -141,6 +145,8 @@ export const layer: (options: {
   readonly compression?: "gzip" | "none" | undefined
   readonly exportInterval?: Duration.Input | undefined
   readonly maxBatchSize?: number | undefined
+  readonly maxQueueSize?: number | undefined
+  readonly onDrop?: ((count: number) => void) | undefined
   readonly context?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
 }) => Layer.Layer<Exporter.Flusher, never, OtlpSerialization | HttpClient.HttpClient> = flow(
@@ -170,6 +176,7 @@ export const layerFromConfig = (options?: {
     readonly attributes?: Record<string, unknown>
   } | undefined
   readonly headers?: Headers.Input | undefined
+  readonly onDrop?: ((count: number) => void) | undefined
   readonly context?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
 }): Layer.Layer<Exporter.Flusher, never, HttpClient.HttpClient | OtlpSerialization> =>
   Effect.gen(function*() {
@@ -190,7 +197,8 @@ export const layerFromConfig = (options?: {
       tracesTimeout,
       exportTimeout,
       scheduleDelay,
-      maxBatchSize
+      maxBatchSize,
+      maxQueueSize
     } = yield* Config.all({
       baseCompression: Config.option(Config.Literals(["gzip", "none"], "OTEL_EXPORTER_OTLP_COMPRESSION")),
       compression: Config.option(Config.Literals(["gzip", "none"], "OTEL_EXPORTER_OTLP_TRACES_COMPRESSION")),
@@ -202,7 +210,8 @@ export const layerFromConfig = (options?: {
           Config.map(Duration.millis)
         )
       ),
-      maxBatchSize: Config.option(Config.Int("OTEL_BSP_MAX_EXPORT_BATCH_SIZE"))
+      maxBatchSize: Config.option(Config.Int("OTEL_BSP_MAX_EXPORT_BATCH_SIZE")),
+      maxQueueSize: Config.option(Config.Int("OTEL_BSP_MAX_QUEUE_SIZE"))
     })
 
     const shutdownTimeout = Option.firstSomeOf([tracesTimeout, baseTimeout, exportTimeout]).pipe(
@@ -216,6 +225,8 @@ export const layerFromConfig = (options?: {
       compression: Option.getOrElse(Option.firstSomeOf([compression, baseCompression]), () => "none" as const),
       exportInterval: Option.getOrUndefined(scheduleDelay),
       maxBatchSize: Option.getOrUndefined(maxBatchSize),
+      maxQueueSize: Option.getOrUndefined(maxQueueSize),
+      onDrop: options?.onDrop,
       context: options?.context,
       shutdownTimeout: Option.getOrUndefined(shutdownTimeout)
     })
