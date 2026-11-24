@@ -6,6 +6,7 @@
  * Subscriptions live in memory. Every grant is finite, so a subscription lost
  * in a restart comes back on the client's next refresh, from its cursor.
  */
+import * as Cause from "../../Cause.ts"
 import * as Clock from "../../Clock.ts"
 import * as Digest from "../../crypto/Digest.ts"
 import * as Mac from "../../crypto/Mac.ts"
@@ -15,6 +16,7 @@ import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Base64 from "../../encoding/Base64.ts"
 import * as Base64Url from "../../encoding/Base64Url.ts"
+import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import * as FetchHttpClient from "../../http/FetchHttpClient.ts"
 import * as HttpClient from "../../http/HttpClient.ts"
@@ -450,7 +452,7 @@ export const make = Effect.fnUntraced(function*(options: Options) {
             )
           case "Error":
             // A webhook has no envelope for an error that leaves the subscription open.
-            return Effect.void
+            return Effect.logWarning("Webhook delivery skipped a failed event", item.error)
         }
       }),
       // Ended before it says so, so a refresh meanwhile starts afresh instead of reporting it live.
@@ -478,7 +480,8 @@ export const make = Effect.fnUntraced(function*(options: Options) {
       yield* messageId("msg_verification"),
       true
     )
-    if (outcome._tag === "Failed") return yield* Effect.fail(outcome.category)
+    // The endpoint's answer is never reported, only that the challenge was not met.
+    if (outcome._tag === "Failed") return yield* Effect.fail<FailureCategory>("challenge_failed")
     const echoed = outcome.body === undefined ? undefined : echoedChallenge(outcome.body)
     if (echoed === undefined || !Mac.timingSafeEqual(encoder.encode(echoed), encoder.encode(challenge))) {
       return yield* Effect.fail<FailureCategory>("challenge_failed")
@@ -486,51 +489,59 @@ export const make = Effect.fnUntraced(function*(options: Options) {
   })
 
   // Cached per (principal, url) either way; concurrent subscribes share one handshake.
-  const verify = Effect.fnUntraced(function*(subscription: Subscription) {
-    const key = JSON.stringify([subscription.principal, subscription.url.href])
-    const now = yield* Clock.currentTimeMillis
-    for (const [entry, until] of verified) if (until <= now) verified.delete(entry)
-    for (const [entry, failure] of failedVerifications) if (failure.until <= now) failedVerifications.delete(entry)
-    if (verified.has(key)) return
-    const failure = failedVerifications.get(key)
-    if (failure !== undefined) return yield* callbackError(failure.category)
-    const inFlight = verifying.get(key)
-    if (inFlight !== undefined) return yield* Deferred.await(inFlight)
-    const host = subscription.url.hostname
-    const recent = (verificationsByHost.get(host) ?? []).filter((at) => at > now - MINUTE_MS)
-    if (recent.length >= VERIFICATIONS_PER_HOST_PER_MINUTE) {
-      verificationsByHost.set(host, recent)
-      return yield* new PublicMcpSchema.ResourceExhausted({
-        message: "Too many callback verifications for this host",
-        data: { limit: "verifications", max: VERIFICATIONS_PER_HOST_PER_MINUTE }
-      })
-    }
-    for (const [entry, times] of verificationsByHost) {
-      if (times.every((at) => at <= now - MINUTE_MS)) verificationsByHost.delete(entry)
-    }
-    verificationsByHost.set(host, [...recent, now])
-    const done = Deferred.makeUnsafe<void, PublicMcpSchema.CallbackEndpointError>()
-    verifying.set(key, done)
-    return yield* handshake(subscription).pipe(
-      Effect.tap(() =>
-        Effect.map(Clock.currentTimeMillis, (at) => {
-          verified.set(key, at + VERIFIED_FOR_MS)
+  const verify: (
+    subscription: Subscription
+  ) => Effect.Effect<void, PublicMcpSchema.CallbackEndpointError | PublicMcpSchema.ResourceExhausted> = Effect
+    .fnUntraced(function*(subscription: Subscription) {
+      const key = JSON.stringify([subscription.principal, subscription.url.href])
+      const now = yield* Clock.currentTimeMillis
+      for (const [entry, until] of verified) if (until <= now) verified.delete(entry)
+      for (const [entry, failure] of failedVerifications) if (failure.until <= now) failedVerifications.delete(entry)
+      if (verified.has(key)) return
+      const failure = failedVerifications.get(key)
+      if (failure !== undefined) return yield* callbackError(failure.category)
+      const inFlight = verifying.get(key)
+      if (inFlight !== undefined) {
+        const exit = yield* Effect.exit(Deferred.await(inFlight))
+        // The handshake ran on another request's fiber, and that request was cancelled.
+        if (Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)) return yield* verify(subscription)
+        return yield* exit
+      }
+      const host = subscription.url.hostname
+      const recent = (verificationsByHost.get(host) ?? []).filter((at) => at > now - MINUTE_MS)
+      if (recent.length >= VERIFICATIONS_PER_HOST_PER_MINUTE) {
+        verificationsByHost.set(host, recent)
+        return yield* new PublicMcpSchema.ResourceExhausted({
+          message: "Too many callback verifications for this host",
+          data: { limit: "verifications", max: VERIFICATIONS_PER_HOST_PER_MINUTE }
         })
-      ),
-      Effect.tapError((category) =>
-        Effect.map(Clock.currentTimeMillis, (at) => {
-          failedVerifications.set(key, { until: at + FAILED_FOR_MS, category })
-        })
-      ),
-      Effect.mapError(callbackError),
-      Effect.onExit((exit) =>
-        Effect.sync(() => {
-          verifying.delete(key)
-          Deferred.doneUnsafe(done, exit)
-        })
+      }
+      for (const [entry, times] of verificationsByHost) {
+        if (times.every((at) => at <= now - MINUTE_MS)) verificationsByHost.delete(entry)
+      }
+      verificationsByHost.set(host, [...recent, now])
+      const done = Deferred.makeUnsafe<void, PublicMcpSchema.CallbackEndpointError>()
+      verifying.set(key, done)
+      return yield* handshake(subscription).pipe(
+        Effect.tap(() =>
+          Effect.map(Clock.currentTimeMillis, (at) => {
+            verified.set(key, at + VERIFIED_FOR_MS)
+          })
+        ),
+        Effect.tapError((category) =>
+          Effect.map(Clock.currentTimeMillis, (at) => {
+            failedVerifications.set(key, { until: at + FAILED_FOR_MS, category })
+          })
+        ),
+        Effect.mapError(callbackError),
+        Effect.onExit((exit) =>
+          Effect.sync(() => {
+            verifying.delete(key)
+            Deferred.doneUnsafe(done, exit)
+          })
+        )
       )
-    )
-  })
+    })
 
   // A caller that joins while the first subscribe's stream is opening waits for it and gets
   // where it started; one whose subscription went away meanwhile subscribes afresh.

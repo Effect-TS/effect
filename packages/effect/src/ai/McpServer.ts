@@ -4529,8 +4529,8 @@ export const layerCallbackGuard = (options?: {
  * arguments, so the principal must stay the same across token refreshes.
  *
  * Callbacks are admitted by the current {@link CallbackGuard}, which refuses
- * every URL by default, and POSTed with the provided `HttpClient`, without
- * following redirects.
+ * every URL by default, and POSTed with the provided `HttpClient`, which must
+ * not follow redirects.
  *
  * **Gotchas**
  *

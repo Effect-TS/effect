@@ -13,7 +13,8 @@ const zone = Dns.layerStatic({
     "metadata.example": ["169.254.169.254"],
     "ula.example": ["fd00::1"],
     "mixed.example": ["93.184.215.14", "192.168.1.10"],
-    "localhost": ["127.0.0.1", "::1"]
+    "localhost": ["127.0.0.1", "::1"],
+    "empty.example": []
   }
 })
 
@@ -49,8 +50,11 @@ describe("McpServer.layerCallbackGuard", () => {
     it.effect("refuses a name when any resolved address is not global", () =>
       assertRefused("https://mixed.example/hook").pipe(Effect.provide(guardLayer())))
 
-    it.effect("refuses a name that does not resolve", () =>
-      assertRefused("https://unknown.example/hook").pipe(Effect.provide(guardLayer())))
+    it.effect("refuses a name that does not resolve to any address", () =>
+      Effect.gen(function*() {
+        yield* assertRefused("https://unknown.example/hook")
+        yield* assertRefused("https://empty.example/hook")
+      }).pipe(Effect.provide(guardLayer())))
 
     it.effect("fails with a generic CallbackRejected", () =>
       Effect.gen(function*() {

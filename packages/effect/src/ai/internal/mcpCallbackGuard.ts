@@ -69,7 +69,8 @@ export const make = (options: {
         return dns.lookup(host).pipe(
           Effect.matchEffect({
             onFailure: () => refused,
-            onSuccess: (addresses) => addresses.every(NetAddress.isGlobal) ? Effect.void : refused
+            onSuccess: (addresses) =>
+              addresses.length > 0 && addresses.every(NetAddress.isGlobal) ? Effect.void : refused
           })
         )
       },
