@@ -329,7 +329,13 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             }),
             supportedVersions: [McpSchema2026.protocolVersion],
             serverInfo: { name: "SubscriptionConformance", version: "1.0.0" },
-            registrationPresence: Effect.succeed({ tools: true, resources: false, prompts: false, skills: false })
+            registrationPresence: Effect.succeed({
+              tools: true,
+              resources: false,
+              prompts: false,
+              skills: false,
+              events: false
+            })
           })
           const listener = yield* handlers["subscriptions/listen"](
             { notifications: { toolsListChanged: true }, _meta: httpMetadata(protocol) },
@@ -386,7 +392,13 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             sendNotification: () => Effect.void,
             supportedVersions: [McpSchema2026.protocolVersion],
             serverInfo: { name: "SubscriptionConformance", version: "1.0.0" },
-            registrationPresence: Effect.succeed({ tools: true, resources: false, prompts: false, skills: false })
+            registrationPresence: Effect.succeed({
+              tools: true,
+              resources: false,
+              prompts: false,
+              skills: false,
+              events: false
+            })
           })
           const listener = yield* handlers["subscriptions/listen"](
             { notifications: { toolsListChanged: true }, _meta: httpMetadata(protocol) },

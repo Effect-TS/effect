@@ -746,7 +746,7 @@ export const UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE = -32022 as const
  *
  * @stability unstable
  * @category constants
- * @since 4.1.4
+ * @since 4.1.6
  */
 export const NOT_FOUND_ERROR_CODE = -32023 as const
 
@@ -756,7 +756,7 @@ export const NOT_FOUND_ERROR_CODE = -32023 as const
  *
  * @stability unstable
  * @category constants
- * @since 4.1.4
+ * @since 4.1.6
  */
 export const FORBIDDEN_ERROR_CODE = -32024 as const
 
@@ -766,7 +766,7 @@ export const FORBIDDEN_ERROR_CODE = -32024 as const
  *
  * @stability unstable
  * @category constants
- * @since 4.1.4
+ * @since 4.1.6
  */
 export const RESOURCE_EXHAUSTED_ERROR_CODE = -32025 as const
 
@@ -777,7 +777,7 @@ export const RESOURCE_EXHAUSTED_ERROR_CODE = -32025 as const
  *
  * @stability unstable
  * @category constants
- * @since 4.1.4
+ * @since 4.1.6
  */
 export const UNSUPPORTED_ERROR_CODE = -32026 as const
 
@@ -787,7 +787,7 @@ export const UNSUPPORTED_ERROR_CODE = -32026 as const
  *
  * @stability unstable
  * @category constants
- * @since 4.1.4
+ * @since 4.1.6
  */
 export const CALLBACK_ENDPOINT_ERROR_CODE = -32027 as const
 
@@ -908,7 +908,7 @@ export class InternalError extends Schema.Error<InternalError>("effect/ai/McpSch
  *
  * @stability unstable
  * @category errors
- * @since 4.1.4
+ * @since 4.1.6
  */
 export class NotFound extends Schema.Error<NotFound>("effect/ai/McpSchema/NotFound")({
   ...McpErrorBase.fields,
@@ -921,7 +921,7 @@ export class NotFound extends Schema.Error<NotFound>("effect/ai/McpSchema/NotFou
  *
  * @stability unstable
  * @category errors
- * @since 4.1.4
+ * @since 4.1.6
  */
 export class Forbidden extends Schema.Error<Forbidden>("effect/ai/McpSchema/Forbidden")({
   ...McpErrorBase.fields,
@@ -934,7 +934,7 @@ export class Forbidden extends Schema.Error<Forbidden>("effect/ai/McpSchema/Forb
  *
  * @stability unstable
  * @category errors
- * @since 4.1.4
+ * @since 4.1.6
  */
 export class ResourceExhausted extends Schema.Error<ResourceExhausted>("effect/ai/McpSchema/ResourceExhausted")({
   ...McpErrorBase.fields,
@@ -947,7 +947,7 @@ export class ResourceExhausted extends Schema.Error<ResourceExhausted>("effect/a
  *
  * @stability unstable
  * @category errors
- * @since 4.1.4
+ * @since 4.1.6
  */
 export class Unsupported extends Schema.Error<Unsupported>("effect/ai/McpSchema/Unsupported")({
   ...McpErrorBase.fields,
@@ -961,7 +961,7 @@ export class Unsupported extends Schema.Error<Unsupported>("effect/ai/McpSchema/
  *
  * @stability unstable
  * @category errors
- * @since 4.1.4
+ * @since 4.1.6
  */
 export class CallbackEndpointError
   extends Schema.Error<CallbackEndpointError>("effect/ai/McpSchema/CallbackEndpointError")({
@@ -985,6 +985,11 @@ export const McpError = Schema.Union([
   MethodNotFound,
   InvalidParams,
   InternalError,
+  NotFound,
+  Forbidden,
+  ResourceExhausted,
+  Unsupported,
+  CallbackEndpointError,
   McpErrorBase
 ])
 
@@ -1631,14 +1636,16 @@ export class Skill extends Schema.Class<Skill>(
  *
  * @stability unstable
  * @category events
- * @since 4.1.4
+ * @since 4.1.6
  */
 export const EventDelivery = Schema.Literals(["poll", "push", "webhook"])
 
 /**
+ * The type of {@link EventDelivery}.
+ *
  * @stability unstable
  * @category events
- * @since 4.1.4
+ * @since 4.1.6
  */
 export type EventDelivery = typeof EventDelivery.Type
 
@@ -1648,7 +1655,7 @@ export type EventDelivery = typeof EventDelivery.Type
  *
  * @stability unstable
  * @category events
- * @since 4.1.4
+ * @since 4.1.6
  */
 export const EventDescriptor = Schema.Struct({
   name: Schema.String,
@@ -1660,9 +1667,11 @@ export const EventDescriptor = Schema.Struct({
 })
 
 /**
+ * The type of {@link EventDescriptor}.
+ *
  * @stability unstable
  * @category events
- * @since 4.1.4
+ * @since 4.1.6
  */
 export type EventDescriptor = typeof EventDescriptor.Type
 
@@ -1672,7 +1681,7 @@ export type EventDescriptor = typeof EventDescriptor.Type
  *
  * @stability unstable
  * @category events
- * @since 4.1.4
+ * @since 4.1.6
  */
 export const EventOccurrence = Schema.Struct({
   eventId: Schema.String,
@@ -1684,9 +1693,11 @@ export const EventOccurrence = Schema.Struct({
 })
 
 /**
+ * The type of {@link EventOccurrence}.
+ *
  * @stability unstable
  * @category events
- * @since 4.1.4
+ * @since 4.1.6
  */
 export type EventOccurrence = typeof EventOccurrence.Type
 

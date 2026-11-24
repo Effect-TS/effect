@@ -78,7 +78,6 @@ export interface Guard {
  * @internal
  */
 export interface Options {
-  readonly principal: Effect.Effect<string, PublicMcpSchema.Forbidden>
   readonly guard: Guard
   readonly client: HttpClient.HttpClient
 }
@@ -87,6 +86,8 @@ export interface Options {
  * @internal
  */
 export interface SubscribeRequest {
+  // The authenticated subject, part of the subscription's identity.
+  readonly principal: string
   readonly name: string
   readonly arguments: Readonly<Record<string, unknown>>
   readonly delivery: Readonly<Record<string, unknown>>
@@ -120,6 +121,7 @@ export interface SubscribeResult {
  * @internal
  */
 export interface UnsubscribeRequest {
+  readonly principal: string
   readonly name: string
   readonly arguments: Readonly<Record<string, unknown>>
   readonly delivery: Readonly<Record<string, unknown>>
@@ -167,6 +169,11 @@ type Outcome =
   | { readonly _tag: "Failed"; readonly category: FailureCategory; readonly retryable: boolean }
 
 const invalid = (message: string) => new PublicMcpSchema.InvalidParams({ message })
+
+const checkMode = (delivery: Readonly<Record<string, unknown>>) =>
+  delivery.mode === undefined || delivery.mode === "webhook"
+    ? Effect.void
+    : Effect.fail(invalid("delivery.mode must be 'webhook'"))
 
 /**
  * The TTL granted for a suggested one: the default when none is suggested, and
@@ -316,18 +323,9 @@ export const make = Effect.fnUntraced(function*(options: Options) {
       Effect.map((hex) => `sub_${hex.slice(0, 32)}`)
     )
 
-  // High entropy and unrelated to the eventId; a retry reuses it.
+  // High entropy and never derived from the eventId; a retry reuses it.
   const messageId = (prefix: string) =>
     Effect.map(random.randomBytes(18), (bytes) => `${prefix}_${Base64Url.encode(bytes)}`)
-
-  // Bridge for clients predating SEP-3415 (ChatGPT, @ai-sdk/mcp); drop per #41158.
-  // They require an event's webhook-id to equal its eventId. Both become this id, derived per
-  // subscription so two subscriptions to one URL never share it; poll and push keep the eventId.
-  const deliveryId = (subscription: Subscription, eventId: string) =>
-    Effect.map(
-      digest.digest(Digest.sha256, encoder.encode(`${subscription.id}\0${eventId}`)),
-      (hash) => `evt_${Base64Url.encode(hash).slice(0, 22)}`
-    )
 
   const MAX_CURSORS_SINCE_GAP = 1_024
   const advance = (subscription: Subscription, cursor: string | null) => {
@@ -430,9 +428,9 @@ export const make = Effect.fnUntraced(function*(options: Options) {
       Stream.runForEach((item): Effect.Effect<void> => {
         switch (item._tag) {
           case "Event":
-            return Effect.flatMap(deliveryId(subscription, item.eventId), (webhookId) => {
+            return Effect.flatMap(messageId("msg"), (webhookId) => {
               const body = JSON.stringify({
-                eventId: webhookId,
+                eventId: item.eventId,
                 name,
                 timestamp: item.timestamp,
                 data: item.data,
@@ -464,14 +462,13 @@ export const make = Effect.fnUntraced(function*(options: Options) {
       )
     )
 
-  const expiry = (subscription: Subscription) =>
-    Effect.gen(function*() {
-      while (true) {
-        const left = subscription.expiresAt - (yield* Clock.currentTimeMillis)
-        if (left <= 0) return forget(subscription)
-        yield* Effect.raceFirst(Effect.sleep(Duration.millis(left)), Deferred.await(subscription.deadlineMoved))
-      }
-    })
+  const expiry = Effect.fnUntraced(function*(subscription: Subscription) {
+    while (true) {
+      const left = subscription.expiresAt - (yield* Clock.currentTimeMillis)
+      if (left <= 0) return forget(subscription)
+      yield* Effect.raceFirst(Effect.sleep(Duration.millis(left)), Deferred.await(subscription.deadlineMoved))
+    }
+  })
 
   const handshake = Effect.fnUntraced(function*(subscription: Subscription) {
     const challenge = Base64Url.encode(yield* random.randomBytes(32))
@@ -575,9 +572,8 @@ export const make = Effect.fnUntraced(function*(options: Options) {
   })
 
   const subscribe: Webhooks["subscribe"] = Effect.fnUntraced(function*(request) {
-    const principal = yield* options.principal
-    const mode = request.delivery.mode
-    if (mode !== undefined && mode !== "webhook") return yield* invalid("delivery.mode must be 'webhook'")
+    const { principal } = request
+    yield* checkMode(request.delivery)
     const url = yield* parseUrl(request.delivery.url, guard)
     const secret = yield* parseSecret(request.delivery.secret)
     const id = yield* subscriptionId(principal, url, request.name, request.arguments)
@@ -653,16 +649,15 @@ export const make = Effect.fnUntraced(function*(options: Options) {
       Effect.suspend(() => {
         subscription.watermark = events.cursor
         return Deferred.succeed(accepted, { cursor: events.cursor, truncated: events.truncated })
-      }).pipe(Effect.andThen(run(subscription, request.name, events)))
-    ).pipe(
-      Effect.tapError((failure) => Deferred.fail(accepted, failure)),
-      Effect.raceFirst(expiry(subscription)),
-      Effect.ignore,
-      Effect.ensuring(Effect.suspend(() => {
-        forget(subscription)
-        return Deferred.fail(accepted, new PublicMcpSchema.InternalError({ message: "The subscription ended" }))
-      }))
-    )
+      }).pipe(Effect.andThen(run(subscription, request.name, events)))).pipe(
+        Effect.tapError((failure) => Deferred.fail(accepted, failure)),
+        Effect.raceFirst(expiry(subscription)),
+        Effect.ignore,
+        Effect.ensuring(Effect.suspend(() => {
+          forget(subscription)
+          return Deferred.fail(accepted, new PublicMcpSchema.InternalError({ message: "The subscription ended" }))
+        }))
+      )
     // Forked from the request, so the event's stream keeps the request's services.
     subscription.fiber = yield* Effect.forkIn(lifetime, scope)
     const start = yield* Deferred.await(accepted)
@@ -670,7 +665,8 @@ export const make = Effect.fnUntraced(function*(options: Options) {
   })
 
   const unsubscribe: Webhooks["unsubscribe"] = Effect.fnUntraced(function*(request) {
-    const principal = yield* options.principal
+    const { principal } = request
+    yield* checkMode(request.delivery)
     const url = yield* parseUrl(request.delivery.url, guard)
     const id = yield* subscriptionId(principal, url, request.name, request.arguments)
     const subscription = subscriptions.get(id)

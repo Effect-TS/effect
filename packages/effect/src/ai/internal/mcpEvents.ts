@@ -33,8 +33,7 @@ export const EXTENSION_ID = "io.modelcontextprotocol/events"
 export const declareExtension = <A>(
   extensions: Readonly<Record<string, A>> | undefined,
   servesEvents: boolean
-): Readonly<Record<string, A | {}>> | undefined =>
-  servesEvents ? { ...extensions, [EXTENSION_ID]: {} } : extensions
+): Readonly<Record<string, A | {}>> | undefined => servesEvents ? { ...extensions, [EXTENSION_ID]: {} } : extensions
 
 const methodNotFound = (method: string) =>
   new McpProtocol.ProtocolError({
@@ -169,7 +168,12 @@ export class UnsubscribeEvents extends Rpc.make("events/unsubscribe", {
  * @internal
  */
 export class EventsActiveNotification extends Rpc.make("notifications/events/active", {
-  payload: { ...Stateless.NotificationParams.fields, cursor: Cursor, truncated: Schema.Boolean, heartbeatMs: NonNegativeInt }
+  payload: {
+    ...Stateless.NotificationParams.fields,
+    cursor: Cursor,
+    truncated: Schema.Boolean,
+    heartbeatMs: NonNegativeInt
+  }
 }) {}
 
 /**
@@ -270,9 +274,12 @@ export const deliver = Effect.fnUntraced(function*(options: {
   // Measured from the last message sent: a Position changes the cursor but sends nothing.
   let sentAt = 0
   const send = (tag: string, payload: Readonly<Record<string, unknown>>) =>
-    options.send(tag, payload).pipe(Effect.andThen(Clock.currentTimeMillis), Effect.map((at) => {
-      sentAt = at
-    }))
+    options.send(tag, payload).pipe(
+      Effect.andThen(Clock.currentTimeMillis),
+      Effect.map((at) => {
+        sentAt = at
+      })
+    )
   const active = (truncated: boolean) => send(EventsActiveNotification._tag, { cursor, truncated, heartbeatMs })
   yield* active(subscription.truncated)
   const items = yield* Stream.toQueue(subscription.items, { capacity: PENDING_ITEMS })

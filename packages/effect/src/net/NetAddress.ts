@@ -1546,6 +1546,123 @@ export const toIpv4Mapped = (self: Ipv4Address): Ipv6Address => makeIpv6(0, 0, 0
 export const fromIpv4Mapped = (self: Ipv6Address): Option.Option<Ipv4Address> =>
   isIpv4Mapped(self) ? Option.some(makeIpv4(ipv6Words(self).w3)) : Option.none()
 
+// IPv4 special-purpose blocks whose "Globally Reachable" value is not true in
+// the IANA IPv4 Special-Purpose Address Registry, as [base, prefix length].
+const ipv4NonGlobalBlocks: ReadonlyArray<readonly [number, number]> = [
+  [0x00000000, 8], // 0.0.0.0/8 "this network"
+  [0x0a000000, 8], // 10.0.0.0/8 private-use
+  [0x64400000, 10], // 100.64.0.0/10 shared address space
+  [0x7f000000, 8], // 127.0.0.0/8 loopback
+  [0xa9fe0000, 16], // 169.254.0.0/16 link-local
+  [0xac100000, 12], // 172.16.0.0/12 private-use
+  [0xc0000000, 24], // 192.0.0.0/24 IETF protocol assignments
+  [0xc0000200, 24], // 192.0.2.0/24 documentation (TEST-NET-1)
+  [0xc0586300, 24], // 192.88.99.0/24 deprecated 6to4 relay anycast
+  [0xc0a80000, 16], // 192.168.0.0/16 private-use
+  [0xc6120000, 15], // 198.18.0.0/15 benchmarking
+  [0xc6336400, 24], // 198.51.100.0/24 documentation (TEST-NET-2)
+  [0xcb007100, 24], // 203.0.113.0/24 documentation (TEST-NET-3)
+  [0xe0000000, 4], // 224.0.0.0/4 multicast
+  [0xf0000000, 4] // 240.0.0.0/4 reserved, including 255.255.255.255
+]
+
+const ipv4InBlock = (value: number, base: number, prefix: number): boolean => ((value ^ base) >>> (32 - prefix)) === 0
+
+const isIpv4ValueGlobal = (value: number): boolean => {
+  // 192.0.0.9 (PCP anycast) and 192.0.0.10 (TURN anycast) are globally
+  // reachable exceptions inside 192.0.0.0/24.
+  if (value === 0xc0000009 || value === 0xc000000a) return true
+  for (const [base, prefix] of ipv4NonGlobalBlocks) {
+    if (ipv4InBlock(value, base, prefix)) return false
+  }
+  return true
+}
+
+// Globally reachable exceptions inside the IETF protocol assignments block
+// 2001::/23.
+const isIpv6ProtocolAssignmentGlobal = ({ w0, w1, w2, w3 }: Ipv6Words): boolean =>
+  // 2001:1::1, 2001:1::2 and 2001:1::3 anycast addresses
+  (w0 === 0x20010001 && w1 === 0 && w2 === 0 && w3 >= 1 && w3 <= 3) ||
+  // 2001:3::/32 AMT
+  w0 === 0x20010003 ||
+  // 2001:4:112::/48 AS112-v6
+  (w0 === 0x20010004 && (w1 >>> 16) === 0x0112) ||
+  // 2001:20::/28 ORCHIDv2 and 2001:30::/28 drone remote ID tags
+  (w0 >>> 4) === 0x2001002 ||
+  (w0 >>> 4) === 0x2001003
+
+const isIpv6Global = (self: Ipv6Address): boolean => {
+  const words = ipv6Words(self)
+  const { w0, w1, w2, w3 } = words
+  // ::ffff:0:0/96 IPv4-mapped and 64:ff9b::/96 NAT64 well-known prefix embed
+  // an IPv4 destination.
+  if (w0 === 0 && w1 === 0 && w2 === 0xffff) return isIpv4ValueGlobal(w3)
+  if (w0 === 0x0064ff9b && w1 === 0 && w2 === 0) return isIpv4ValueGlobal(w3)
+  // Only 2000::/3 is allocated as global unicast. This also refuses loopback,
+  // link-local, unique local, multicast, the deprecated IPv4-compatible ::/96
+  // and site-local fec0::/10, and unallocated space.
+  if ((w0 >>> 29) !== 1) return false
+  // 2001::/23 IETF protocol assignments
+  if ((w0 >>> 9) === (0x20010000 >>> 9)) return isIpv6ProtocolAssignmentGlobal(words)
+  // 2001:db8::/32 documentation
+  if (w0 === 0x20010db8) return false
+  // 2002::/16 6to4
+  if ((w0 >>> 16) === 0x2002) return false
+  // 3fff::/20 documentation
+  if ((w0 >>> 12) === 0x3fff0) return false
+  // 5f00::/16 segment routing SIDs
+  if ((w0 >>> 16) === 0x5f00) return false
+  return true
+}
+
+/**
+ * Returns `true` when an IP address is globally reachable according to the
+ * IANA IPv4 and IPv6 Special-Purpose Address Registries.
+ *
+ * **When to use**
+ *
+ * Use to refuse outbound connections to loopback, private, link-local,
+ * documentation, and other non-public destinations, such as when validating
+ * user-supplied callback URLs against server-side request forgery.
+ *
+ * **Details**
+ *
+ * Every registry block whose "Globally Reachable" value is not `True` is
+ * refused, while the globally reachable exceptions listed inside larger
+ * blocks, such as `192.0.0.9`, `192.0.0.10`, `2001:3::/32`, and
+ * `2001:20::/28`, are accepted. IPv6 addresses outside the global unicast
+ * block `2000::/3` are refused, which covers the deprecated IPv4-compatible
+ * and site-local blocks and unallocated space. All IPv4 multicast addresses
+ * and the IPv4 limited broadcast address are refused. IPv4-mapped addresses in
+ * `::ffff:0:0/96` and NAT64 addresses in `64:ff9b::/96` are judged by their
+ * embedded IPv4 address. 6to4 addresses in `2002::/16` are refused.
+ *
+ * **Gotchas**
+ *
+ * The result reflects the registries, not a particular deployment: an address
+ * outside every special-purpose block can still be unreachable, and a refused
+ * address can still be routed inside a private network.
+ *
+ * **Example** (Checking callback destinations)
+ *
+ * ```ts import.meta.vitest
+ * import { assert } from "@effect/vitest"
+ * import { NetAddress } from "effect/net"
+ *
+ * assert.isTrue(NetAddress.isGlobal(NetAddress.ipFromStringUnsafe("93.184.215.14")))
+ * assert.isFalse(NetAddress.isGlobal(NetAddress.ipFromStringUnsafe("10.0.0.1")))
+ * assert.isFalse(NetAddress.isGlobal(NetAddress.ipFromStringUnsafe("::ffff:127.0.0.1")))
+ * ```
+ *
+ * @see {@link isPrivate} for only the IPv4 private-use ranges
+ * @see {@link isLoopback} for only loopback addresses
+ * @stability unstable
+ * @category predicates
+ * @since 4.1.6
+ */
+export const isGlobal = (self: IpAddress): boolean =>
+  isIpv4Address(self) ? isIpv4ValueGlobal(ipv4Value(self)) : isIpv6Global(self)
+
 /**
  * Converts IPv4-mapped IPv6 addresses to IPv4, including the IP component of internet addresses.
  *

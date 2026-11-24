@@ -6,9 +6,10 @@ import * as Arr from "../../Array.ts"
 import * as Cause from "../../Cause.ts"
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
+import type * as Scope from "../../Scope.ts"
+import type * as Stream from "../../Stream.ts"
 import type * as McpProtocol from "../McpProtocol.ts"
 import * as McpSchema from "../McpSchema.ts"
-import type * as Stream from "../../Stream.ts"
 import type * as McpWebhooks from "./mcpWebhooks.ts"
 
 /**
@@ -414,30 +415,47 @@ export interface EventSubscription {
 }
 
 /**
+ * The requests an event type answers, each run inside its middleware.
+ *
+ * @internal
+ */
+export type EventMethod = "events/poll" | "events/stream" | "events/subscribe" | "events/unsubscribe"
+
+/**
  * @internal
  */
 export interface EventRegistration {
   readonly descriptor: McpSchema.EventDescriptor
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
   readonly visible?: Visible | undefined
-  // Set when webhook delivery is offered, which runs `stream`.
-  readonly webhooks?: McpWebhooks.Webhooks | undefined
   readonly decodeArguments: (args: unknown) => Effect.Effect<unknown, EventFailure>
-  readonly poll?:
-    | ((
-      request: EventPollRequest,
-      invocation: McpInvocation
-    ) => Effect.Effect<EventPollOutcome, EventFailure | RequestRejected>)
-    | undefined
+  // Runs a request inside the event type's middleware and services, so a
+  // hidden event answers `NotFound` before anything the request checks.
+  readonly invoke: <A, E>(
+    effect: Effect.Effect<A, E>,
+    invocation: McpInvocation,
+    request: { readonly method: EventMethod; readonly payload: unknown }
+  ) => Effect.Effect<A, E | McpSchema.NotFound | RequestRejected>
+  readonly poll?: ((request: EventPollRequest) => Effect.Effect<EventPollOutcome, EventFailure>) | undefined
   // Runs for the subscription's lifetime: `deliver` takes over once the
   // handler accepts it, so a failure before that is the request's error.
   readonly stream?:
     | ((
       request: EventStreamRequest,
-      invocation: McpInvocation,
       deliver: (subscription: EventSubscription) => Effect.Effect<void>
-    ) => Effect.Effect<void, EventFailure | RequestRejected>)
+    ) => Effect.Effect<void, EventFailure>)
     | undefined
+}
+
+/**
+ * Webhook delivery installed on a server.
+ *
+ * @internal
+ */
+export interface EventWebhooks {
+  readonly webhooks: McpWebhooks.Webhooks
+  // Read inside the event type's middleware.
+  readonly principal: Effect.Effect<string, McpSchema.Forbidden>
 }
 
 /**
@@ -447,6 +465,9 @@ export interface Events {
   readonly register: (registration: EventRegistration) => Effect.Effect<void>
   readonly list: (invocation: McpInvocation) => Effect.Effect<ReadonlyArray<McpSchema.EventDescriptor>, RequestRejected>
   readonly get: (name: string, invocation: McpInvocation) => Effect.Effect<EventRegistration, McpSchema.NotFound>
+  // Installed for the lifetime of the scope; a server takes one.
+  readonly installWebhooks: (webhooks: EventWebhooks) => Effect.Effect<void, never, Scope.Scope>
+  readonly webhooks: Effect.Effect<EventWebhooks | undefined>
 }
 
 /**
@@ -845,7 +866,23 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     })
   }
 
+  let installedWebhooks: EventWebhooks | undefined
   const events: Events = {
+    installWebhooks: (webhooks) =>
+      Effect.acquireRelease(
+        Effect.suspend(() => {
+          if (installedWebhooks !== undefined) {
+            return Effect.die(new Cause.IllegalArgumentError("Webhook delivery is already installed on this server"))
+          }
+          installedWebhooks = webhooks
+          return Effect.void
+        }),
+        () =>
+          Effect.sync(() => {
+            installedWebhooks = undefined
+          })
+      ),
+    webhooks: Effect.sync(() => installedWebhooks),
     register: (registration) =>
       Effect.sync(() => {
         eventRegistrations.set(registration.descriptor.name, registration)

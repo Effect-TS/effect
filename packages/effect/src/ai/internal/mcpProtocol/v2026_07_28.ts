@@ -398,9 +398,6 @@ export const makeHandlers = (
       presence.events
     )
     if (declared !== undefined) capabilities.extensions = declared
-    // Bridge for clients predating SEP-3415 (ChatGPT, @ai-sdk/mcp); drop per #41158.
-    // They look for a top-level `events` capability instead of the extension.
-    if (presence.events) capabilities.events = {}
     if (presence.tools) capabilities.tools = { listChanged: supportsSubscriptions }
     if (presence.resources) {
       capabilities.resources = { listChanged: supportsSubscriptions, subscribe: supportsSubscriptions }
@@ -420,17 +417,28 @@ export const makeHandlers = (
       yield* validateParameterHeaders(registration.descriptor.inputSchema, args, httpRequest.value.headers)
     }
   })
-  // Webhook delivery runs the event's push stream, so it needs both.
-  const webhookRegistration = Effect.fnUntraced(function*(method: string, name: string, args: unknown) {
+  // Runs a request for one event type inside its middleware, after the checks
+  // that do not depend on it, so a hidden event answers `NotFound` first.
+  const withEvent = Effect.fnUntraced(function*<A, E>(
+    method: McpCore.EventMethod,
+    request: { readonly name: string },
+    body: (registration: McpCore.EventRegistration) => Effect.Effect<A, E>
+  ) {
     yield* requireEvents(method)
     const invocation = yield* getInvocation
-    const registration = yield* core.events.get(name, invocation)
-    const { stream, webhooks } = registration
-    if (webhooks === undefined || stream === undefined) {
+    const registration = yield* core.events.get(request.name, invocation)
+    return yield* registration.invoke(body(registration), invocation, { method, payload: request })
+  })
+  // Webhook delivery runs the event's push stream, so it needs both.
+  const withWebhooks = Effect.fnUntraced(function*(registration: McpCore.EventRegistration, args: unknown) {
+    const installed = yield* core.events.webhooks
+    const { stream } = registration
+    if (installed === undefined || stream === undefined) {
       return yield* McpEvents.unsupportedDelivery("webhook")
     }
     yield* validateEventHeaders(registration, args)
-    return { invocation, stream, webhooks, decodeArguments: registration.decodeArguments }
+    const principal = yield* installed.principal
+    return { principal, stream, webhooks: installed.webhooks }
   })
   const requireSkills = (method: string) =>
     McpSkills.requireSkills(core, method).pipe(
@@ -771,28 +779,33 @@ export const makeHandlers = (
       yield* requireEvents("events/list")
       yield* McpProtocol.rejectCursor(request.cursor)
       const events = yield* core.events.list(yield* getInvocation)
-      // Without a notification channel nothing can be pushed.
-      const offered = supportsSubscriptions ? events : events.flatMap((event) => {
-        const delivery = event.delivery.filter((mode) => mode !== "push")
+      const webhooks = yield* core.events.webhooks
+      const offered = events.flatMap((event) => {
+        const streams = event.delivery.includes("push")
+        const delivery: Array<PublicMcpSchema.EventDelivery> = [
+          // Without a notification channel nothing can be pushed.
+          ...event.delivery.filter((mode) => mode !== "push" || supportsSubscriptions),
+          ...(streams && webhooks !== undefined ? ["webhook" as const] : [])
+        ]
         return delivery.length === 0 ? [] : [{ ...event, delivery }]
       })
       const result = yield* projectCompleteResult({ events: offered }, context.serverInfo)
       return yield* decodeListEventsResult(result)
     }, Effect.mapError(projectError)),
     "events/poll": Effect.fnUntraced(function*(request: typeof McpEvents.PollEvents.payloadSchema.Type) {
-      yield* requireEvents("events/poll")
-      const invocation = yield* getInvocation
-      const registration = yield* core.events.get(request.name, invocation)
-      if (registration.poll === undefined) {
-        return yield* McpEvents.unsupportedDelivery("poll")
-      }
-      yield* validateEventHeaders(registration, request.arguments)
-      const outcome = yield* registration.poll({
-        arguments: request.arguments ?? {},
-        cursor: request.cursor ?? null,
-        maxAgeMs: request.maxAgeMs,
-        maxEvents: request.maxEvents
-      }, invocation)
+      const outcome = yield* withEvent("events/poll", request, (registration) =>
+        Effect.gen(function*() {
+          if (registration.poll === undefined) {
+            return yield* McpEvents.unsupportedDelivery("poll")
+          }
+          yield* validateEventHeaders(registration, request.arguments)
+          return yield* registration.poll({
+            arguments: request.arguments ?? {},
+            cursor: request.cursor ?? null,
+            maxAgeMs: request.maxAgeMs,
+            maxEvents: request.maxEvents
+          })
+        }))
       const result = yield* projectCompleteResult({
         events: outcome.events.map((event) =>
           omitUndefined({
@@ -814,29 +827,31 @@ export const makeHandlers = (
       request: typeof McpEvents.StreamEvents.payloadSchema.Type,
       { client, requestId }: { readonly client: Rpc.ServerClient; readonly requestId: RpcMessage.RequestId }
     ) {
-      yield* requireEvents("events/stream")
-      const invocation = yield* getInvocation
-      const registration = yield* core.events.get(request.name, invocation)
-      if (registration.stream === undefined || sendNotification === undefined) {
-        return yield* McpEvents.unsupportedDelivery("push")
-      }
-      yield* validateEventHeaders(registration, request.arguments)
       const subscriptionMetadata = { "io.modelcontextprotocol/subscriptionId": requestId }
-      const send = (tag: string, payload: Readonly<Record<string, unknown>>) =>
-        sendNotification(McpSchema.protocolVersion, client.id, {
-          tag,
-          payload: {
-            ...payload,
-            _meta: { ...(Predicate.isReadonlyObject(payload._meta) ? payload._meta : {}), ...subscriptionMetadata }
-          }
-        })
       const heartbeatMs = McpEvents.grantHeartbeat(request.heartbeatMs)
       yield* Effect.raceFirst(
-        registration.stream(
-          { arguments: request.arguments ?? {}, cursor: request.cursor ?? null, maxAgeMs: request.maxAgeMs },
-          invocation,
-          (subscription) => McpEvents.deliver({ name: request.name, subscription, heartbeatMs, send })
-        ),
+        withEvent("events/stream", request, (registration) =>
+          Effect.gen(function*() {
+            if (registration.stream === undefined || sendNotification === undefined) {
+              return yield* McpEvents.unsupportedDelivery("push")
+            }
+            yield* validateEventHeaders(registration, request.arguments)
+            const send = (tag: string, payload: Readonly<Record<string, unknown>>) =>
+              sendNotification(McpSchema.protocolVersion, client.id, {
+                tag,
+                payload: {
+                  ...payload,
+                  _meta: {
+                    ...(Predicate.isReadonlyObject(payload._meta) ? payload._meta : {}),
+                    ...subscriptionMetadata
+                  }
+                }
+              })
+            yield* registration.stream(
+              { arguments: request.arguments ?? {}, cursor: request.cursor ?? null, maxAgeMs: request.maxAgeMs },
+              (subscription) => McpEvents.deliver({ name: request.name, subscription, heartbeatMs, send })
+            )
+          })),
         context.awaitClientEnd ?? Effect.never
       )
       const encodedServerInfo = yield* encodeImplementation(context.serverInfo)
@@ -846,39 +861,39 @@ export const makeHandlers = (
       })
     }, Effect.mapError(projectError)),
     "events/subscribe": Effect.fnUntraced(function*(request: typeof McpEvents.SubscribeEvents.payloadSchema.Type) {
-      const { decodeArguments, invocation, stream, webhooks } = yield* webhookRegistration(
-        "events/subscribe",
-        request.name,
-        request.arguments
-      )
-      const args = request.arguments ?? {}
-      const cursor = request.cursor ?? null
-      const subscribed = yield* webhooks.subscribe({
-        name: request.name,
-        arguments: args,
-        delivery: request.delivery,
-        cursor,
-        ttlMs: request.ttlMs,
-        decode: decodeArguments(args),
-        open: (decoded, deliver) =>
-          stream(
-            { arguments: args, decoded: { value: decoded }, cursor, maxAgeMs: request.maxAgeMs },
-            invocation,
-            deliver
-          )
-      })
+      const subscribed = yield* withEvent("events/subscribe", request, (registration) =>
+        Effect.gen(function*() {
+          const { principal, stream, webhooks } = yield* withWebhooks(registration, request.arguments)
+          const args = request.arguments ?? {}
+          const cursor = request.cursor ?? null
+          return yield* webhooks.subscribe({
+            principal,
+            name: request.name,
+            arguments: args,
+            delivery: request.delivery,
+            cursor,
+            ttlMs: request.ttlMs,
+            decode: registration.decodeArguments(args),
+            open: (decoded, deliver) =>
+              stream({ arguments: args, decoded: { value: decoded }, cursor, maxAgeMs: request.maxAgeMs }, deliver)
+          })
+        }))
       const result = yield* projectCompleteResult(omitUndefined({ ...subscribed }), context.serverInfo)
       return yield* decodeSubscribeEventsResult(result)
     }, Effect.mapError(projectError)),
     "events/unsubscribe": Effect.fnUntraced(function*(
       request: typeof McpEvents.UnsubscribeEvents.payloadSchema.Type
     ) {
-      const { webhooks } = yield* webhookRegistration("events/unsubscribe", request.name, request.arguments)
-      yield* webhooks.unsubscribe({
-        name: request.name,
-        arguments: request.arguments ?? {},
-        delivery: request.delivery
-      })
+      yield* withEvent("events/unsubscribe", request, (registration) =>
+        Effect.gen(function*() {
+          const { principal, webhooks } = yield* withWebhooks(registration, request.arguments)
+          yield* webhooks.unsubscribe({
+            principal,
+            name: request.name,
+            arguments: request.arguments ?? {},
+            delivery: request.delivery
+          })
+        }))
       const result = yield* projectCompleteResult({}, context.serverInfo)
       return yield* decodeUnsubscribeEventsResult(result)
     }, Effect.mapError(projectError)),

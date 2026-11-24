@@ -323,13 +323,7 @@ export const make = Effect.fnUntraced(function*(
       if (nameKey !== undefined) {
         const name = asRecord(inputRecord?.params)?.[nameKey]
         const header = headers[MCP_NAME_HEADER]
-        // Bridge for clients predating SEP-3415 (ChatGPT, @ai-sdk/mcp); drop per #41158.
-        // They send no Mcp-Name on these; one they do send must still match.
-        const optional = header === undefined && (method === "events/subscribe" || method === "events/unsubscribe")
-        if (
-          !optional &&
-          (typeof name !== "string" || header === undefined || McpProtocol.decodeRoutingHeader(header) !== name)
-        ) {
+        if (typeof name !== "string" || header === undefined || McpProtocol.decodeRoutingHeader(header) !== name) {
           return headerMismatch("Mcp-Name header does not match request parameters")
         }
       }
@@ -489,9 +483,9 @@ export const make = Effect.fnUntraced(function*(
       return {
         _tag: "Accepted",
         acknowledge: !isRequest || !hasId,
-        // A push subscription stays open until cancelled, so it is never a plain response.
-        isSubscription: Predicate.hasProperty(input, "method") &&
-          (input.method === "subscriptions/listen" || input.method === "events/stream")
+        // `events/stream` is left out: it answers an invalid subscription with a plain
+        // JSON-RPC error, and its heartbeats replace the keepalive comments.
+        isSubscription: Predicate.hasProperty(input, "method") && input.method === "subscriptions/listen"
       }
     },
     effectLogLevel: (clientId, headers, fallback) => stateful?.effectLogLevel(clientId, headers, fallback) ?? fallback,
