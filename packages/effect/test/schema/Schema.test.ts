@@ -5945,6 +5945,23 @@ Expected a value between -2147483648 and 2147483647`
     }
   })
 
+  it("IllegalArgumentError", async () => {
+    const schema = Schema.IllegalArgumentError
+    const asserts = new TestSchema.Asserts(schema)
+
+    const decoding = asserts.decoding()
+    await decoding.succeed(new Cause.IllegalArgumentError("a"))
+    await decoding.fail(new Cause.TimeoutError("a"), `Expected IllegalArgumentError`)
+
+    const encoding = asserts.encoding()
+    await encoding.succeed(new Cause.IllegalArgumentError("a"))
+    await encoding.fail(null, `Expected IllegalArgumentError`)
+
+    if (verifyGeneration) {
+      asserts.arbitrary().verifyGeneration()
+    }
+  })
+
   it("DurationFromString", async () => {
     const schema = Schema.DurationFromString
     const asserts = new TestSchema.Asserts(schema)

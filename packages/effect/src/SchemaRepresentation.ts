@@ -1777,6 +1777,24 @@ export const NoSuchElementErrorReviver: DeclarationReviver<null> = makeFixedDecl
 )
 
 /**
+ * Reviver for persisted {@link Schema.IllegalArgumentError} declarations.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain the {@link Schema.IllegalArgumentError} schema.
+ *
+ * @see {@link Schema.IllegalArgumentError} for the corresponding schema
+ *
+ * @stability stable
+ * @category schemas
+ * @since 4.2.0
+ */
+export const IllegalArgumentErrorReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/IllegalArgumentError",
+  Schema.IllegalArgumentError
+)
+
+/**
  * Reviver for persisted `Exit` declarations.
  *
  * **When to use**

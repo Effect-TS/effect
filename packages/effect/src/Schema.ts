@@ -9585,6 +9585,71 @@ export const NoSuchElementError: NoSuchElementError = declare(
   }
 )
 /**
+ * Type-level representation of {@link IllegalArgumentError}.
+ *
+ * @stability stable
+ * @category models
+ * @since 4.2.0
+ */
+export interface IllegalArgumentError extends declare<Cause_.IllegalArgumentError> {
+  readonly "Rebuild": IllegalArgumentError
+}
+/**
+ * Schema for `Cause.IllegalArgumentError` values.
+ *
+ * **When to use**
+ *
+ * Use when a schema-defined error or value needs to carry a `IllegalArgumentError`,
+ * for example as the reason of a service error.
+ *
+ * **Details**
+ *
+ * The default JSON serializer encodes a `IllegalArgumentError` as an object with
+ * `_tag` and an optional `message`, and decodes that object back into a
+ * `IllegalArgumentError`.
+ *
+ * **Example** (Encoding a IllegalArgumentError to JSON)
+ *
+ * ```ts import.meta.vitest
+ * import { Cause, Schema } from "effect"
+ *
+ * const codec = Schema.toCodecJson(Schema.IllegalArgumentError)
+ *
+ * Schema.encodeSync(codec)(new Cause.IllegalArgumentError("invalid")) // => { _tag: "IllegalArgumentError", message: "invalid" }
+ * Cause.isIllegalArgumentError(Schema.decodeSync(codec)({ _tag: "IllegalArgumentError" })) // => true
+ * ```
+ *
+ * @stability stable
+ * @category schemas
+ * @since 4.2.0
+ */
+export const IllegalArgumentError: IllegalArgumentError = declare(
+  Cause_.isIllegalArgumentError,
+  {
+    representation: {
+      id: "effect/schema/IllegalArgumentError",
+      payload: null
+    },
+    toCode: () => ({
+      runtime: `Schema.IllegalArgumentError`,
+      Type: `Cause.IllegalArgumentError`,
+      importDeclarations: [`import * as Cause from "effect/Cause"`]
+    }),
+    expected: "IllegalArgumentError",
+    toCodecJson: () =>
+      link<Cause_.IllegalArgumentError>()(
+        Struct({ _tag: Literal("IllegalArgumentError"), message: optionalKey(String) }),
+        SchemaTransformation.transform({
+          decode: (encoded) => new Cause_.IllegalArgumentError(encoded.message),
+          encode: (error) =>
+            error.message === undefined
+              ? { _tag: "IllegalArgumentError" } as const
+              : { _tag: "IllegalArgumentError", message: error.message } as const
+        })
+      )
+  }
+)
+/**
  * Type-level representation returned by {@link ReadonlyMap}.
  *
  * @stability stable

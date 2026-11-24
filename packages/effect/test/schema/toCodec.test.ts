@@ -1078,6 +1078,19 @@ describe("Serializers", () => {
         await decoding.succeed({ _tag: "NoSuchElementError" }, new Cause.NoSuchElementError())
       })
 
+      it("IllegalArgumentError", async () => {
+        const schema = Schema.IllegalArgumentError
+        const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
+
+        const encoding = asserts.encoding()
+        await encoding.succeed(new Cause.IllegalArgumentError("a"), { _tag: "IllegalArgumentError", message: "a" })
+        await encoding.succeed(new Cause.IllegalArgumentError(), { _tag: "IllegalArgumentError" })
+
+        const decoding = asserts.decoding()
+        await decoding.succeed({ _tag: "IllegalArgumentError", message: "a" }, new Cause.IllegalArgumentError("a"))
+        await decoding.succeed({ _tag: "IllegalArgumentError" }, new Cause.IllegalArgumentError())
+      })
+
       it("ErrorInstance", async () => {
         const schema = Schema.ErrorInstance()
         const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))

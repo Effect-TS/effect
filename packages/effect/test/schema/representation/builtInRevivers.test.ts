@@ -992,6 +992,15 @@ describe("SchemaRepresentation built-in declaration revivers", () => {
     })
   })
 
+  it("revives IllegalArgumentError", () => {
+    assertDeclarationReviver({
+      schema: Schema.IllegalArgumentError,
+      id: "effect/schema/IllegalArgumentError",
+      payload: null,
+      reviver: SchemaRepresentation.IllegalArgumentErrorReviver
+    })
+  })
+
   it("revives ByteSize", () => {
     assertDeclarationReviver({
       schema: Schema.ByteSize,
