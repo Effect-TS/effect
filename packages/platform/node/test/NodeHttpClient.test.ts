@@ -104,11 +104,10 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
       return HttpServerResponse.jsonUnsafe({ ...todo, id: 201 })
     })
   ),
-  HttpRouter.route("GET", "/text", Effect.succeed(HttpServerResponse.text("test"))),
   HttpRouter.route(
     "GET",
-    "/echo-url",
-    Effect.map(HttpServerRequest.HttpServerRequest, (request) => HttpServerResponse.text(request.url))
+    "/text",
+    (request) => Effect.succeed(HttpServerResponse.text("test", { headers: { "x-url": request.url } }))
   ),
   HttpRouter.route(
     "QUERY",
@@ -222,15 +221,8 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
         assert.strictEqual(url.pathname, "/text")
         assert.strictEqual(url.search, "?existing=1&value=a%23b")
         assert.strictEqual(url.hash, "")
+        assert.strictEqual(response.headers["x-url"], "/text?existing=1&value=a%23b")
         expect(yield* response.text).toBe("test")
-      }).pipe(Effect.provide(localServerTestLayer)))
-
-    it.effect("sends the query string to the server", () =>
-      Effect.gen(function*() {
-        const response = yield* HttpClient.get("/echo-url?existing=1", {
-          urlParams: { value: "a#b" }
-        })
-        expect(yield* response.text).toBe("/echo-url?existing=1&value=a%23b")
       }).pipe(Effect.provide(localServerTestLayer)))
 
     it.effect("accessing text preserves response bytes", () =>
