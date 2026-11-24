@@ -208,6 +208,80 @@ describe("Stream", () => {
         assert.deepStrictEqual(seen, [1, 2, 3])
       }))
 
+    it.effect("runDrain closes its scope before completing on early termination", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        yield* Stream.iterate(0, (n) => n + 1).pipe(
+          Stream.ensuring(Effect.sync(() => {
+            log.push("released")
+          })),
+          Stream.take(1),
+          Stream.runDrain
+        )
+        assert.deepStrictEqual(log, ["released"])
+      }))
+
+    it.effect("toPull runs ensuring before Done and leaves callback finalizers until scope close", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const scope = yield* Scope.make()
+        const pull = yield* Stream.callback<number>(Effect.fnUntraced(function*(queue) {
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              log.push("callback-released")
+            })
+          )
+          Queue.offerUnsafe(queue, 1)
+          Queue.endUnsafe(queue)
+        })).pipe(
+          Stream.ensuring(Effect.sync(() => {
+            log.push("ensuring")
+          })),
+          Stream.toPull,
+          Scope.provide(scope)
+        )
+        assert.deepStrictEqual(yield* pull, [1])
+        assert.deepStrictEqual(yield* Effect.exit(pull), Exit.fail(Cause.Done()))
+        assert.deepStrictEqual(log, ["ensuring"])
+        yield* Scope.close(scope, Exit.void)
+        assert.deepStrictEqual(log, ["ensuring", "callback-released"])
+      }))
+
+    it.effect("toPull finalizes a stream stopped by take no later than scope close", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const scope = yield* Scope.make()
+        const pull = yield* Stream.iterate(0, (n) => n + 1).pipe(
+          Stream.ensuring(Effect.sync(() => {
+            log.push("released")
+          })),
+          Stream.take(1),
+          Stream.toPull,
+          Scope.provide(scope)
+        )
+        assert.deepStrictEqual(yield* pull, [0])
+        assert.deepStrictEqual(yield* Effect.exit(pull), Exit.fail(Cause.Done()))
+        yield* Scope.close(scope, Exit.void)
+        assert.deepStrictEqual(log, ["released"])
+      }))
+
+    it.effect("toQueue finalizes the stream before the surrounding scope closes", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const queue = yield* Stream.unwrap(
+          Effect.acquireRelease(
+            Effect.succeed(Stream.make(1)),
+            () =>
+              Effect.sync(() => {
+                log.push("released")
+              })
+          )
+        ).pipe(Stream.toQueue({ capacity: "unbounded" }))
+        assert.strictEqual(yield* Queue.take(queue), 1)
+        assert.deepStrictEqual(yield* Effect.exit(Queue.take(queue)), Exit.fail(Cause.Done()))
+        assert.deepStrictEqual(log, ["released"])
+      }))
+
     it.effect.each([0, 1])(
       "toReadableStream - respects upstream demand with highWaterMark %i",
       (highWaterMark) =>
