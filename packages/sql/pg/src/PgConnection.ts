@@ -137,6 +137,11 @@ export interface Config {
    * Forwarded without parsing `-c` flags or checking for duplicate GUCs.
    */
   readonly startupOptions?: string | undefined
+  /**
+   * Custom streams must emit `close` when their transport closes. Streams
+   * created with `emitClose: false` are unsupported; without the event, a pool
+   * slot can remain occupied indefinitely.
+   */
   readonly stream?: (() => Duplex) | undefined
   readonly types?: PgTypes.Registry | undefined
   readonly multiplex?: boolean | undefined
@@ -426,7 +431,11 @@ class PgConnectionImpl implements PgConnection {
     this[internalsKey] = {
       base: this,
       deadError: () => this.deadWith,
-      retireHooks: this.retireHooks
+      retireHooks: this.retireHooks,
+      onTransportClose: (f) => {
+        if (session.socket.closed) f()
+        else session.socket.once("close", f)
+      }
     }
     session.parser.onFieldError = this.onFieldError
     session.socket.on("data", this.onData)
