@@ -169,6 +169,8 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
 
   it.effect("retains an unanswered keep-alive when disabled and immediately re-enabled", () =>
     Effect.gen(function*() {
+      // Persisted handlers are required: with volatile ones the release fiber
+      // runs before the replacement arrives and the race does not show.
       const Holder = Entity.make("KeepAliveSwap", [
         Rpc.make("Enable"),
         Rpc.make("Swap"),
@@ -183,11 +185,10 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
           Swap: () => keepAlive(false).pipe(Effect.andThen(keepAlive(true))),
           Release: () => keepAlive(false)
         })
-      })).pipe(Layer.provideMerge(CappedSharding({ refreshAssignmentsInterval: 60_000 })))
+      })).pipe(Layer.provideMerge(CappedSharding({})))
 
       yield* Effect.gen(function*() {
         yield* TestClock.adjust(1)
-        const sharding = yield* Sharding.Sharding
         const driver = yield* MessageStorage.MemoryDriver
         const client = (yield* Holder.client)("holder")
         const keepAliveReplyCounts = () =>
@@ -198,20 +199,12 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
           )
 
         yield* client.Enable()
-        yield* sharding.pollStorage
         yield* TestClock.adjust(1)
         assert.deepStrictEqual(keepAliveReplyCounts(), [0])
 
         yield* client.Swap()
-        yield* sharding.pollStorage
         yield* TestClock.adjust(1)
-        const afterSwap = keepAliveReplyCounts()
-        assert.strictEqual(afterSwap.length, 2)
-        assert.strictEqual(
-          afterSwap.filter((count) => count === 0).length,
-          1,
-          `expected one unanswered keep-alive after swap, got reply counts [${afterSwap.join(", ")}]`
-        )
+        assert.deepStrictEqual(keepAliveReplyCounts().sort(), [0, 1], "one keep-alive must stay unanswered")
 
         yield* client.Release()
         yield* TestClock.adjust(1)
