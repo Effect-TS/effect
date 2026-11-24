@@ -12005,6 +12005,7 @@ export const toAsyncIterableWith: {
       let pull: Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E, void, R> | undefined
       let currentIter: Iterator<A> | undefined
       let currentFiber: Fiber.Fiber<Arr.NonEmptyReadonlyArray<A>, E | Cause.Done<void>> | undefined
+      let pendingRead: Promise<void> | undefined
       let closePromise: Promise<IteratorResult<A>> | undefined
       const close = (exit: Exit.Exit<unknown, unknown>): Promise<IteratorResult<A>> => {
         if (closePromise) return closePromise
@@ -12025,37 +12026,59 @@ export const toAsyncIterableWith: {
           await runPromise(Effect.logError("Suppressed error while closing Stream async iterator", error))
         }
       }
+      const readNext = async (): Promise<IteratorResult<A>> => {
+        if (closePromise) return closePromise
+        if (currentIter) {
+          const next = currentIter.next()
+          if (!next.done) return next
+          currentIter = undefined
+        }
+        const fiber = runFork(
+          pull ??
+            Effect.flatMap(Channel.toPullScoped(self.channel, scope), (nextPull) => {
+              pull = nextPull
+              return nextPull
+            })
+        )
+        currentFiber = fiber
+        const exit = await runPromise(Fiber.await(fiber))
+        if (currentFiber === fiber) {
+          currentFiber = undefined
+        }
+        if (Exit.isSuccess(exit)) {
+          currentIter = exit.value[Symbol.iterator]()
+          return currentIter.next()
+        } else if (Pull.isDoneCause(exit.cause)) {
+          return close(Exit.void)
+        }
+        if (closePromise && Cause.hasInterruptsOnly(exit.cause)) {
+          return closePromise
+        }
+        await closeAndReportError(exit)
+        throw Cause.squash(exit.cause)
+      }
       return {
-        async next(): Promise<IteratorResult<A>> {
-          if (closePromise) return closePromise
-          if (currentIter) {
-            const next = currentIter.next()
-            if (!next.done) return next
+        async next() {
+          if (!pendingRead && !closePromise && currentIter) {
+            const result = currentIter.next()
+            if (!result.done) return result
             currentIter = undefined
           }
-          const fiber = runFork(
-            pull ??
-              Effect.flatMap(Channel.toPullScoped(self.channel, scope), (nextPull) => {
-                pull = nextPull
-                return nextPull
-              })
-          )
-          currentFiber = fiber
-          const exit = await runPromise(Fiber.await(fiber))
-          if (currentFiber === fiber) {
-            currentFiber = undefined
+          const previous = pendingRead
+          let finish = constVoid
+          const current = new Promise<void>((resolve) => {
+            finish = resolve
+          })
+          pendingRead = current
+          try {
+            if (previous) await previous
+            return await readNext()
+          } finally {
+            if (pendingRead === current) {
+              pendingRead = undefined
+            }
+            finish()
           }
-          if (Exit.isSuccess(exit)) {
-            currentIter = exit.value[Symbol.iterator]()
-            return currentIter.next()
-          } else if (Pull.isDoneCause(exit.cause)) {
-            return close(Exit.void)
-          }
-          if (closePromise && Cause.hasInterruptsOnly(exit.cause)) {
-            return closePromise
-          }
-          await closeAndReportError(exit)
-          throw Cause.squash(exit.cause)
         },
         return() {
           return close(Exit.void)
