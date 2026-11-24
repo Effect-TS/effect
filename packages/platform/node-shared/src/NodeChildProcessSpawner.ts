@@ -204,31 +204,6 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
     return env
   }
 
-  const isValidFd = (fd: number): boolean => Number.isInteger(fd) && fd >= 0
-
-  const findInvalidFd = (
-    stdinConfig: ChildProcess.StdinConfig,
-    stdoutConfig: ChildProcess.StdoutConfig,
-    stderrConfig: ChildProcess.StderrConfig,
-    additionalFds: ReadonlyArray<ResolvedAdditionalFd>
-  ): string | undefined => {
-    if (typeof stdinConfig.stream === "number" && !isValidFd(stdinConfig.stream)) {
-      return `Invalid stdin file descriptor: ${stdinConfig.stream}`
-    }
-    if (typeof stdoutConfig.stream === "number" && !isValidFd(stdoutConfig.stream)) {
-      return `Invalid stdout file descriptor: ${stdoutConfig.stream}`
-    }
-    if (typeof stderrConfig.stream === "number" && !isValidFd(stderrConfig.stream)) {
-      return `Invalid stderr file descriptor: ${stderrConfig.stream}`
-    }
-    for (const { config, fd } of additionalFds) {
-      if (typeof config === "number" && !isValidFd(config)) {
-        return `Invalid fd${fd} file descriptor: ${config}`
-      }
-    }
-    return undefined
-  }
-
   const inputToStdioOption = (
     input: ChildProcess.CommandInput | undefined
   ): NodeChildProcess.IOType | number | undefined => Stream.isStream(input) ? "pipe" : input
@@ -242,10 +217,7 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
     if (Predicate.isUndefined(options.stdin)) {
       return defaultConfig
     }
-    if (typeof options.stdin === "string" || typeof options.stdin === "number") {
-      return { ...defaultConfig, stream: options.stdin }
-    }
-    if (Stream.isStream(options.stdin)) {
+    if (typeof options.stdin !== "object" || Stream.isStream(options.stdin)) {
       return { ...defaultConfig, stream: options.stdin }
     }
     return {
@@ -263,10 +235,7 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
     if (Predicate.isUndefined(option)) {
       return { stream: "pipe" }
     }
-    if (typeof option === "string" || typeof option === "number") {
-      return { stream: option }
-    }
-    if (Sink.isSink(option)) {
+    if (typeof option !== "object" || Sink.isSink(option)) {
       return { stream: option }
     }
     return { stream: option.stream }
@@ -299,7 +268,7 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
     stdoutConfig: ChildProcess.StdoutConfig,
     stderrConfig: ChildProcess.StderrConfig,
     additionalFds: ReadonlyArray<ResolvedAdditionalFd>
-  ): NodeChildProcess.StdioOptions => {
+  ): Array<NodeChildProcess.IOType | number | undefined> => {
     const stdio: Array<NodeChildProcess.IOType | number | undefined> = [
       inputToStdioOption(stdinConfig.stream),
       outputToStdioOption(stdoutConfig.stream),
@@ -307,7 +276,7 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
     ]
 
     if (additionalFds.length === 0) {
-      return stdio as NodeChildProcess.StdioOptions
+      return stdio
     }
 
     // Find the maximum fd number to size the array correctly
@@ -323,7 +292,15 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
       stdio[fd] = typeof config === "number" ? config : "pipe"
     }
 
-    return stdio as NodeChildProcess.StdioOptions
+    return stdio
+  }
+
+  // Every number in the stdio array is a descriptor supplied by the caller
+  const findInvalidFd = (stdio: ReadonlyArray<NodeChildProcess.IOType | number | undefined>): string | undefined => {
+    const fd = stdio.findIndex((io) => typeof io === "number" && !(Number.isInteger(io) && io >= 0))
+    return fd === -1
+      ? undefined
+      : `Invalid ${["stdin", "stdout", "stderr"][fd] ?? ChildProcess.fdName(fd)} file descriptor: ${stdio[fd]}`
   }
 
   // Runs a user-provided input stream into its sink, recording a failure of
@@ -598,19 +575,14 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
     childProcess: SpawnedProcess,
     signal: ChildProcess.Signal
   ) =>
-    Effect.flatMap(
-      Effect.try({
-        try: () => childProcess.kill(signal as NodeJS.Signals),
-        catch: (error) => toPlatformError("kill", toError(error), command)
-      }),
-      (killed) => {
-        if (!killed) {
-          const error = new globalThis.Error("Failed to kill child process")
-          return Effect.fail(toPlatformError("kill", error, command))
+    Effect.try({
+      try: () => {
+        if (!childProcess.kill(signal as NodeJS.Signals)) {
+          throw new globalThis.Error("Failed to kill child process")
         }
-        return Effect.void
-      }
-    )
+      },
+      catch: (error) => toPlatformError("kill", toError(error), command)
+    })
 
   /**
    * Waits for the leader and its process group, bounded by native time. Stops
@@ -720,31 +692,23 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
             description: "The shell option cannot be combined with arguments; pass the whole script as the command"
           }))
         }
-        const nulCharacter = findNulCharacter(cmd)
-        if (nulCharacter !== undefined) {
-          return yield* Effect.fail(PlatformError.badArgument({
-            module: "ChildProcess",
-            method: "spawn",
-            description: nulCharacter
-          }))
-        }
         const stdinConfig = resolveStdinOption(cmd.options)
         const stdoutConfig = resolveOutputOption(cmd.options, "stdout")
         const stderrConfig = resolveOutputOption(cmd.options, "stderr")
         const resolvedAdditionalFds = resolveAdditionalFds(cmd.options)
-        const invalidFd = findInvalidFd(stdinConfig, stdoutConfig, stderrConfig, resolvedAdditionalFds)
-        if (invalidFd !== undefined) {
+        const stdio = buildStdioArray(stdinConfig, stdoutConfig, stderrConfig, resolvedAdditionalFds)
+        const invalidArgument = findNulCharacter(cmd) ?? findInvalidFd(stdio)
+        if (invalidArgument !== undefined) {
           return yield* Effect.fail(PlatformError.badArgument({
             module: "ChildProcess",
             method: "spawn",
-            description: invalidFd
+            description: invalidArgument
           }))
         }
         let isReferenced = true
 
         const cwd = yield* resolveWorkingDirectory(cmd.options)
         const env = resolveEnvironment(cmd.options)
-        const stdio = buildStdioArray(stdinConfig, stdoutConfig, stderrConfig, resolvedAdditionalFds)
 
         const releaseProcess = Effect.fnUntraced(function*(
           childProcess: SpawnedProcess,
@@ -820,7 +784,7 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
         // A failed input stream truncates the input of the child process, so
         // its failure takes precedence over the exit status and is surfaced
         // without waiting for the child process to exit
-        const exitStatus: Effect.Effect<ExitStatus, PlatformError.PlatformError> = Effect.flatMap(
+        const exitStatus = Effect.flatMap(
           Effect.raceFirst(Deferred.await(exitSignal), Deferred.await(inputFailure)),
           ([code, signal]) => {
             if (Deferred.isDoneUnsafe(inputFailure)) {

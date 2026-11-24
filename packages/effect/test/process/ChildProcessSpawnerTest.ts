@@ -1436,7 +1436,7 @@ export const exitStatusSuite = (
       it.effect("returns Exited for a normal exit", () =>
         Effect.gen(function*() {
           const handle = yield* ChildProcess.make("sh", ["-c", "exit 42"])
-          const status: ChildProcessSpawner.ExitStatus = yield* handle.exitStatus
+          const status = yield* handle.exitStatus
 
           assert.deepStrictEqual(status, {
             _tag: "Exited",
@@ -1450,7 +1450,7 @@ export const exitStatusSuite = (
 
           yield* handle.kill({ killSignal: "SIGTERM" })
 
-          const status: ChildProcessSpawner.ExitStatus = yield* handle.exitStatus
+          const status = yield* handle.exitStatus
           assert.deepStrictEqual(status, {
             _tag: "Signaled",
             signal: "SIGTERM"
@@ -1458,6 +1458,18 @@ export const exitStatusSuite = (
         }))
     })
   })
+
+// `FileSystem.File` exposes no descriptor, so the file is opened with `node:fs`
+const openTempFd = Effect.gen(function*() {
+  const fs = yield* FileSystem.FileSystem
+  const path = yield* Path.Path
+  const file = path.join(yield* fs.makeTempDirectoryScoped(), "output")
+  const fd = yield* Effect.acquireRelease(
+    Effect.sync(() => NodeFs.openSync(file, "w+")),
+    (fd) => Effect.sync(() => NodeFs.closeSync(fd))
+  )
+  return { file, fd }
+})
 
 export const inheritedFdSuite = (
   layer: Layer.Layer<ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem | Path.Path>
@@ -1467,13 +1479,7 @@ export const inheritedFdSuite = (
       it.effect("routes stdout and stderr directly to an inherited file descriptor", () =>
         Effect.gen(function*() {
           const fs = yield* FileSystem.FileSystem
-          const path = yield* Path.Path
-          const dir = yield* fs.makeTempDirectoryScoped()
-          const logPath = path.join(dir, "output.log")
-          const logFd = yield* Effect.acquireRelease(
-            Effect.sync(() => NodeFs.openSync(logPath, "w+")),
-            (fd) => Effect.sync(() => NodeFs.closeSync(fd))
-          )
+          const { fd: logFd, file: logPath } = yield* openTempFd
 
           const exitCode = yield* Effect.scoped(Effect.gen(function*() {
             const handle = yield* ChildProcess.make("sh", ["-c", "echo out; echo err >&2"], {
@@ -1495,13 +1501,7 @@ export const inheritedFdSuite = (
       it.effect("passes an existing file descriptor through additionalFds", () =>
         Effect.gen(function*() {
           const fs = yield* FileSystem.FileSystem
-          const path = yield* Path.Path
-          const dir = yield* fs.makeTempDirectoryScoped()
-          const fdPath = path.join(dir, "fd3.txt")
-          const fd = yield* Effect.acquireRelease(
-            Effect.sync(() => NodeFs.openSync(fdPath, "w+")),
-            (fd) => Effect.sync(() => NodeFs.closeSync(fd))
-          )
+          const { fd, file } = yield* openTempFd
 
           const handle = yield* ChildProcess.make("sh", ["-c", "printf 'hello fd3' >&3"], {
             stdin: "ignore",
@@ -1510,9 +1510,7 @@ export const inheritedFdSuite = (
           const exitCode = yield* handle.exitCode
 
           assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
-          const buffer = new Uint8Array(64)
-          const bytesRead = NodeFs.readSync(fd, buffer, 0, buffer.length, 0)
-          assert.strictEqual(new TextDecoder().decode(buffer.subarray(0, bytesRead)), "hello fd3")
+          assert.strictEqual(yield* fs.readFileString(file), "hello fd3")
           assert.strictEqual(yield* decodeByteStream(handle.getOutputFd(3)), "")
         }))
 

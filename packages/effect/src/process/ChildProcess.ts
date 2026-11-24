@@ -310,11 +310,9 @@ export interface StdinConfig {
    * Can be a string indicating how the operating system should configure the
    * pipe established between the child process `stdin` and the parent process.
    *
-   * Can also be a non-negative integer file descriptor owned by the caller, or
-   * a `Stream` which will pipe all elements produced into the `stdin` of the
-   * child process. The spawner never closes caller-owned descriptors; the child
-   * receives its own copy, so the caller only needs to keep the descriptor open
-   * until `spawn` returns.
+   * Can also be a `Stream`, which will pipe all elements produced into the
+   * `stdin` of the child process, or an existing file descriptor (see
+   * {@link CommandInput}).
    *
    * Defaults to "pipe".
    */
@@ -346,10 +344,7 @@ export interface StdoutConfig {
    * Can be a string indicating how the operating system should configure the
    * pipe established between the child process `stdout` and the parent process.
    *
-   * Can also be a non-negative integer file descriptor owned by the caller. The
-   * spawner never closes caller-owned descriptors; the child receives its own
-   * copy, so the caller only needs to keep the descriptor open until `spawn`
-   * returns.
+   * Can also be an existing file descriptor (see {@link CommandOutput}).
    *
    * A `Sink` can also be passed. The output is transduced through the sink as
    * `handle.stdout` is consumed, and `handle.stdout` emits the results produced by
@@ -382,10 +377,7 @@ export interface StderrConfig {
    * Can be a string indicating how the operating system should configure the
    * pipe established between the child process `stderr` and the parent process.
    *
-   * Can also be a non-negative integer file descriptor owned by the caller. The
-   * spawner never closes caller-owned descriptors; the child receives its own
-   * copy, so the caller only needs to keep the descriptor open until `spawn`
-   * returns.
+   * Can also be an existing file descriptor (see {@link CommandOutput}).
    *
    * A `Sink` can also be passed. The output is transduced through the sink as
    * `handle.stderr` is consumed, and `handle.stderr` emits the results produced by
@@ -647,8 +639,8 @@ export interface CommandOptions extends KillOptions {
    *   cmd1.options.additionalFds?.fd3,
    *   cmd2.options.additionalFds?.fd3,
    *   cmd3.options.additionalFds?.fd3
-   * ].map((fd) => typeof fd === "object" ? fd.type : fd)
-   * result // => ["output", "input", "duplex"]
+   * ]
+   * result // => [{ type: "output" }, { type: "input" }, { type: "duplex" }]
    * ```
    */
   readonly additionalFds?: Record<`fd${number}`, AdditionalFdConfig> | undefined

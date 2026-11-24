@@ -111,10 +111,7 @@ const make = Effect.gen(function*() {
     if (options.stdin === undefined) {
       return defaultConfig
     }
-    if (typeof options.stdin === "string" || typeof options.stdin === "number") {
-      return { ...defaultConfig, stream: options.stdin }
-    }
-    if (Stream.isStream(options.stdin)) {
+    if (typeof options.stdin !== "object" || Stream.isStream(options.stdin)) {
       return { ...defaultConfig, stream: options.stdin }
     }
     return {
@@ -130,7 +127,7 @@ const make = Effect.gen(function*() {
   ): ChildProcess.StdoutConfig => {
     const option = options[streamName]
     if (option === undefined) return { stream: "pipe" }
-    if (typeof option === "string" || typeof option === "number" || Sink.isSink(option)) return { stream: option }
+    if (typeof option !== "object" || Sink.isSink(option)) return { stream: option }
     return { stream: option.stream }
   }
 
@@ -367,7 +364,7 @@ const make = Effect.gen(function*() {
         // A failed input stream truncates the input of the child process, so
         // its failure takes precedence over the exit status and is surfaced
         // without waiting for the child process to exit
-        const exitStatus: Effect.Effect<ExitStatus, PlatformError.PlatformError> = Effect.flatMap(
+        const exitStatus = Effect.flatMap(
           Effect.raceFirst(Deferred.await(exitSignal), Deferred.await(inputFailure)),
           (status) => {
             if (Deferred.isDoneUnsafe(inputFailure)) {
