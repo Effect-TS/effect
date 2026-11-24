@@ -143,6 +143,8 @@ const makeNot = (
   evaluate
 })
 
+const matches = (_case: Case, input: unknown): boolean => _case.guard(input) === (_case._tag === "When")
+
 const makePredicate = (pattern: unknown): Predicate.Predicate<unknown> => {
   if (typeof pattern === "function") {
     return pattern as Predicate.Predicate<unknown>
@@ -271,7 +273,7 @@ export const valueTags: {
     input: I,
     fields: Contextual<P, ValueTagHandlers<I>>
   ): Unify<ReturnType<P[keyof P]>> => {
-    const match: any = tagsExhaustive(fields as any)(makeTypeMatcher(identity, [], false))
+    const match: any = tagsExhaustive(fields as any)(type())
     return match(input)
   }
 )
@@ -287,7 +289,7 @@ export const typeTags = <I>() =>
 >(
   fields: P
 ) => {
-  const match: any = tagsExhaustive(fields as any)(makeTypeMatcher(identity, [], false))
+  const match: any = tagsExhaustive(fields as any)(type())
   return (input: I): Unify<ReturnType<P[keyof P]>> => match(input)
 }
 
@@ -609,18 +611,11 @@ export const orElse =
       return toResult._tag === "Success" ? toResult.success as any : (f as any)(toResult.failure)
     }
 
-    if ((self as InternalTypeMatcher).forwardArgs) {
-      // @ts-expect-error
-      return (...args: Array<any>) => {
-        const a = (toResult as any)(...args)
-        return Result.isSuccess(a) ? a.success : (f as any)(a.failure, ...args)
-      }
-    }
-
+    const forwardArgs = (self as InternalTypeMatcher).forwardArgs
     // @ts-expect-error
-    return (input: I) => {
-      const a = (toResult as any)(input)
-      return Result.isSuccess(a) ? a.success : (f as any)(a.failure)
+    return (...args: Array<any>) => {
+      const a = (toResult as any)(...args)
+      return Result.isSuccess(a) ? a.success : forwardArgs ? (f as any)(a.failure, ...args) : (f as any)(a.failure)
     }
   }
 
@@ -647,53 +642,24 @@ export const result: <I, F, R, A, Pr, Ret, Args extends Array<any>>(
       return self.value
     }
 
+    const forwardArgs = (self as InternalTypeMatcher).forwardArgs
     const len = self.cases.length
-    if ((self as InternalTypeMatcher).forwardArgs) {
-      if (len === 1) {
-        const _case = self.cases[0]
-        return (...args: Array<any>): Result.Result<A, RA> => {
-          const input = self.select(...args)
-          if (_case._tag === "When" && _case.guard(input) === true) {
-            return Result.succeed(_case.evaluate(input, ...args))
-          } else if (_case._tag === "Not" && _case.guard(input) === false) {
-            return Result.succeed(_case.evaluate(input, ...args))
-          }
-          return Result.fail(input as any)
-        }
-      }
-      return (...args: Array<any>): Result.Result<A, RA> => {
-        const input = self.select(...args)
-        for (let i = 0; i < len; i++) {
-          const _case = self.cases[i]
-          if (_case._tag === "When" && _case.guard(input) === true) {
-            return Result.succeed(_case.evaluate(input, ...args))
-          } else if (_case._tag === "Not" && _case.guard(input) === false) {
-            return Result.succeed(_case.evaluate(input, ...args))
-          }
-        }
-
-        return Result.fail(input as any)
-      }
-    }
-
     if (len === 1) {
       const _case = self.cases[0]
-      return (input: I): Result.Result<A, RA> => {
-        if (_case._tag === "When" && _case.guard(input) === true) {
-          return Result.succeed(_case.evaluate(input))
-        } else if (_case._tag === "Not" && _case.guard(input) === false) {
-          return Result.succeed(_case.evaluate(input))
+      return (...args: Array<any>): Result.Result<A, RA> => {
+        const input = self.select(...args)
+        if (matches(_case, input)) {
+          return Result.succeed(forwardArgs ? _case.evaluate(input, ...args) : _case.evaluate(input))
         }
         return Result.fail(input as any)
       }
     }
-    return (input: I): Result.Result<A, RA> => {
+    return (...args: Array<any>): Result.Result<A, RA> => {
+      const input = self.select(...args)
       for (let i = 0; i < len; i++) {
         const _case = self.cases[i]
-        if (_case._tag === "When" && _case.guard(input) === true) {
-          return Result.succeed(_case.evaluate(input))
-        } else if (_case._tag === "Not" && _case.guard(input) === false) {
-          return Result.succeed(_case.evaluate(input))
+        if (matches(_case, input)) {
+          return Result.succeed(forwardArgs ? _case.evaluate(input, ...args) : _case.evaluate(input))
         }
       }
 
