@@ -1759,6 +1759,24 @@ export const TimeoutErrorReviver: DeclarationReviver<null> = makeFixedDeclaratio
 )
 
 /**
+ * Reviver for persisted {@link Schema.NoSuchElementError} declarations.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain the {@link Schema.NoSuchElementError} schema.
+ *
+ * @see {@link Schema.NoSuchElementError} for the corresponding schema
+ *
+ * @stability stable
+ * @category schemas
+ * @since 4.2.0
+ */
+export const NoSuchElementErrorReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/NoSuchElementError",
+  Schema.NoSuchElementError
+)
+
+/**
  * Reviver for persisted `Exit` declarations.
  *
  * **When to use**

@@ -983,6 +983,15 @@ describe("SchemaRepresentation built-in declaration revivers", () => {
     })
   })
 
+  it("revives NoSuchElementError", () => {
+    assertDeclarationReviver({
+      schema: Schema.NoSuchElementError,
+      id: "effect/schema/NoSuchElementError",
+      payload: null,
+      reviver: SchemaRepresentation.NoSuchElementErrorReviver
+    })
+  })
+
   it("revives ByteSize", () => {
     assertDeclarationReviver({
       schema: Schema.ByteSize,

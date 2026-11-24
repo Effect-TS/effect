@@ -9520,6 +9520,71 @@ export const TimeoutError: TimeoutError = declare(
   }
 )
 /**
+ * Type-level representation of {@link NoSuchElementError}.
+ *
+ * @stability stable
+ * @category models
+ * @since 4.2.0
+ */
+export interface NoSuchElementError extends declare<Cause_.NoSuchElementError> {
+  readonly "Rebuild": NoSuchElementError
+}
+/**
+ * Schema for `Cause.NoSuchElementError` values.
+ *
+ * **When to use**
+ *
+ * Use when a schema-defined error or value needs to carry a
+ * `NoSuchElementError`, for example as the reason of a service error.
+ *
+ * **Details**
+ *
+ * The default JSON serializer encodes a `NoSuchElementError` as an object with
+ * `_tag` and an optional `message`, and decodes that object back into a
+ * `NoSuchElementError`.
+ *
+ * **Example** (Encoding a NoSuchElementError to JSON)
+ *
+ * ```ts import.meta.vitest
+ * import { Cause, Schema } from "effect"
+ *
+ * const codec = Schema.toCodecJson(Schema.NoSuchElementError)
+ *
+ * Schema.encodeSync(codec)(new Cause.NoSuchElementError("empty")) // => { _tag: "NoSuchElementError", message: "empty" }
+ * Cause.isNoSuchElementError(Schema.decodeSync(codec)({ _tag: "NoSuchElementError" })) // => true
+ * ```
+ *
+ * @stability stable
+ * @category schemas
+ * @since 4.2.0
+ */
+export const NoSuchElementError: NoSuchElementError = declare(
+  Cause_.isNoSuchElementError,
+  {
+    representation: {
+      id: "effect/schema/NoSuchElementError",
+      payload: null
+    },
+    toCode: () => ({
+      runtime: `Schema.NoSuchElementError`,
+      Type: `Cause.NoSuchElementError`,
+      importDeclarations: [`import * as Cause from "effect/Cause"`]
+    }),
+    expected: "NoSuchElementError",
+    toCodecJson: () =>
+      link<Cause_.NoSuchElementError>()(
+        Struct({ _tag: Literal("NoSuchElementError"), message: optionalKey(String) }),
+        SchemaTransformation.transform({
+          decode: (encoded) => new Cause_.NoSuchElementError(encoded.message),
+          encode: (error) =>
+            error.message === undefined
+              ? { _tag: "NoSuchElementError" } as const
+              : { _tag: "NoSuchElementError", message: error.message } as const
+        })
+      )
+  }
+)
+/**
  * Type-level representation returned by {@link ReadonlyMap}.
  *
  * @stability stable

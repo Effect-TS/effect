@@ -1065,6 +1065,19 @@ describe("Serializers", () => {
         await decoding.succeed({ _tag: "TimeoutError" }, new Cause.TimeoutError())
       })
 
+      it("NoSuchElementError", async () => {
+        const schema = Schema.NoSuchElementError
+        const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
+
+        const encoding = asserts.encoding()
+        await encoding.succeed(new Cause.NoSuchElementError("a"), { _tag: "NoSuchElementError", message: "a" })
+        await encoding.succeed(new Cause.NoSuchElementError(), { _tag: "NoSuchElementError" })
+
+        const decoding = asserts.decoding()
+        await decoding.succeed({ _tag: "NoSuchElementError", message: "a" }, new Cause.NoSuchElementError("a"))
+        await decoding.succeed({ _tag: "NoSuchElementError" }, new Cause.NoSuchElementError())
+      })
+
       it("ErrorInstance", async () => {
         const schema = Schema.ErrorInstance()
         const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))

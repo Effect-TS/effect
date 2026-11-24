@@ -5928,6 +5928,23 @@ Expected a value between -2147483648 and 2147483647`
     }
   })
 
+  it("NoSuchElementError", async () => {
+    const schema = Schema.NoSuchElementError
+    const asserts = new TestSchema.Asserts(schema)
+
+    const decoding = asserts.decoding()
+    await decoding.succeed(new Cause.NoSuchElementError("a"))
+    await decoding.fail(new Cause.TimeoutError("a"), `Expected NoSuchElementError`)
+
+    const encoding = asserts.encoding()
+    await encoding.succeed(new Cause.NoSuchElementError("a"))
+    await encoding.fail(null, `Expected NoSuchElementError`)
+
+    if (verifyGeneration) {
+      asserts.arbitrary().verifyGeneration()
+    }
+  })
+
   it("DurationFromString", async () => {
     const schema = Schema.DurationFromString
     const asserts = new TestSchema.Asserts(schema)
