@@ -23,6 +23,7 @@ import NodeChildProcess, { spawnSync } from "node:child_process"
 import NodeFs from "node:fs"
 import { syncBuiltinESMExports } from "node:module"
 import * as Net from "node:net"
+import { constants as osConstants } from "node:os"
 import { join } from "node:path"
 import { vi } from "vitest"
 
@@ -862,3 +863,15 @@ it.live("scope release closes stdin for a child that drains it on the kill signa
 
     assert.isBelow(releaseMillis, 2_000)
   }).pipe(Effect.provide(NodeServices)))
+
+it.effect.skipIf(process.platform === "win32" || "SIGEMT" in osConstants.signals)(
+  "kill fails with a typed PlatformError for an unsupported signal",
+  () =>
+    Effect.gen(function*() {
+      const handle = yield* ChildProcess.make("sleep", ["10"], { detached: false })
+      const error = yield* Effect.flip(handle.kill({ killSignal: "SIGEMT" }))
+
+      assert.strictEqual(error._tag, "PlatformError")
+      assert.strictEqual(error.reason.method, "kill")
+    }).pipe(Effect.provide(NodeServices))
+)

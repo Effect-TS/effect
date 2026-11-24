@@ -598,14 +598,19 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
     childProcess: SpawnedProcess,
     signal: ChildProcess.Signal
   ) =>
-    Effect.suspend(() => {
-      const killed = childProcess.kill(signal as NodeJS.Signals)
-      if (!killed) {
-        const error = new globalThis.Error("Failed to kill child process")
-        return Effect.fail(toPlatformError("kill", error, command))
+    Effect.flatMap(
+      Effect.try({
+        try: () => childProcess.kill(signal as NodeJS.Signals),
+        catch: (error) => toPlatformError("kill", toError(error), command)
+      }),
+      (killed) => {
+        if (!killed) {
+          const error = new globalThis.Error("Failed to kill child process")
+          return Effect.fail(toPlatformError("kill", error, command))
+        }
+        return Effect.void
       }
-      return Effect.void
-    })
+    )
 
   /**
    * Waits for the leader and its process group, bounded by native time. Stops
