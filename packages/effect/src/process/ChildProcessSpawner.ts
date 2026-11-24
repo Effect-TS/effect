@@ -40,8 +40,8 @@ export type ExitCode = Brand.Branded<number, "ExitCode">
 export const ExitCode: Brand.Constructor<ExitCode> = Brand.nominal<ExitCode>()
 
 /**
- * The termination status of a child process, distinguishing normal exit codes
- * from termination by a signal.
+ * Structured termination status of a child process: either a normal exit code
+ * or the signal that terminated it.
  *
  * @stability unstable
  * @category models
@@ -107,8 +107,7 @@ export interface ChildProcessHandle {
    */
   readonly exitCode: Effect.Effect<ExitCode, PlatformError.PlatformError>
   /**
-   * Waits for the child process to terminate and returns its structured
-   * `ExitStatus`, distinguishing a normal exit code from signal termination.
+   * Waits for the child process to terminate and returns its `ExitStatus`.
    */
   readonly exitStatus: Effect.Effect<ExitStatus, PlatformError.PlatformError>
   /**

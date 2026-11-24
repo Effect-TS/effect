@@ -287,7 +287,6 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
       stdio[i] = "ignore"
     }
 
-    // Set up additional fds as "pipe" or pass through caller descriptors
     for (const { config, fd } of additionalFds) {
       stdio[fd] = typeof config === "number" ? config : "pipe"
     }
@@ -295,7 +294,7 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
     return stdio
   }
 
-  // Every number in the stdio array is a descriptor supplied by the caller
+  // Every number in stdio is a caller-supplied descriptor.
   const findInvalidFd = (stdio: ReadonlyArray<NodeChildProcess.IOType | number | undefined>): string | undefined => {
     const fd = stdio.findIndex((io) => typeof io === "number" && !(Number.isInteger(io) && io >= 0))
     return fd === -1

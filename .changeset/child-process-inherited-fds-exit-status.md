@@ -4,6 +4,6 @@
 "@effect/platform-deno": minor
 ---
 
-Support passing existing numeric file descriptors to `ChildProcess` (`stdin`, `stdout`, `stderr`, and `additionalFds`) and add `ChildProcessHandle.exitStatus` (`ExitStatus`) to report normal exit codes and terminating signals as structured values.
+Support passing numeric file descriptors in `ChildProcess` (`stdin`, `stdout`, `stderr`, and `additionalFds`) and add `ChildProcessHandle.exitStatus` (`ExitStatus`) for structured exit codes and terminating signals.
 
-Custom `ChildProcessSpawner.makeHandle` implementations now need to provide `exitStatus`.
+Custom `ChildProcessSpawner.makeHandle` implementations must now provide `exitStatus`.

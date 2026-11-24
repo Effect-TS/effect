@@ -158,11 +158,10 @@ export interface PipeOptions {
  *
  * **Details**
  *
- * A non-negative integer passes an existing file descriptor directly to the
- * child process. The caller owns the descriptor and the spawner never closes
- * it; the child gets its own copy, so the caller only needs to keep it open
- * until `spawn` returns. On the handle, a numeric descriptor acts like
- * `"inherit"` (`stdin` returns a draining `Sink`).
+ * A non-negative integer passes a caller-owned file descriptor directly to the
+ * child. The spawner never closes it; the child gets its own copy, so it only
+ * needs to stay open until `spawn` returns. On the handle, `stdin` returns a
+ * draining `Sink`.
  *
  * @stability unstable
  * @category models
@@ -181,12 +180,10 @@ export type CommandInput =
  *
  * **Details**
  *
- * A non-negative integer passes an existing file descriptor directly to the
- * child process. The caller owns the descriptor and the spawner never closes
- * it; the child gets its own copy, so the caller only needs to keep it open
- * until `spawn` returns. On the handle, a numeric descriptor acts like
- * `"inherit"` (`stdout`/`stderr` return an empty `Stream` and contribute
- * nothing to `all`).
+ * A non-negative integer passes a caller-owned file descriptor directly to the
+ * child. The spawner never closes it; the child gets its own copy, so it only
+ * needs to stay open until `spawn` returns. On the handle, `stdout` and
+ * `stderr` return an empty `Stream` and contribute nothing to `all`.
  *
  * @stability unstable
  * @category models
@@ -399,11 +396,11 @@ export interface StderrConfig {
  *
  * **Details**
  *
- * A non-negative integer passes an existing file descriptor directly to the
- * child at that slot. The caller owns the descriptor and the spawner never
- * closes it; the child gets its own copy, so the caller only needs to keep it
- * open until `spawn` returns. On the handle, `getInputFd` returns a draining
- * `Sink` and `getOutputFd` returns an empty `Stream`.
+ * A non-negative integer passes a caller-owned file descriptor directly to the
+ * child at that slot. The spawner never closes it; the child gets its own copy,
+ * so it only needs to stay open until `spawn` returns. On the handle,
+ * `getInputFd` returns a draining `Sink` and `getOutputFd` returns an empty
+ * `Stream`.
  *
  * @stability unstable
  * @category models
