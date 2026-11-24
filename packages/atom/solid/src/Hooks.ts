@@ -1,8 +1,8 @@
 /**
  * Solid hooks for using Effect Atoms from components and computations. The
  * hooks read and write atoms through the current `RegistryContext`, mount atoms
- * for cleanup, subscribe callbacks, seed initial values, expose `AsyncResult`
- * atoms as Solid resources, and read values from `AtomRef` references.
+ * for cleanup, subscribe callbacks, seed initial values, and read values from
+ * `AtomRef` references.
  *
  * @stability unstable
  * @since 4.0.0
@@ -10,12 +10,12 @@
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import * as AsyncResult from "effect/reactivity/AsyncResult"
+import type * as AsyncResult from "effect/reactivity/AsyncResult"
 import * as Atom from "effect/reactivity/Atom"
 import type * as AtomRef from "effect/reactivity/AtomRef"
 import * as AtomRegistry from "effect/reactivity/AtomRegistry"
-import type { Accessor, ResourceOptions, ResourceReturn } from "solid-js"
-import { createComputed, createEffect, createMemo, createResource, createSignal, onCleanup, useContext } from "solid-js"
+import type { Accessor } from "solid-js"
+import { createEffect, createMemo, createSignal, onCleanup, untrack, useContext } from "solid-js"
 import { RegistryContext } from "./RegistryContext.ts"
 
 const initialValuesSet = new WeakMap<AtomRegistry.AtomRegistry, WeakSet<Atom.Atom<any>>>()
@@ -70,17 +70,45 @@ export const useAtomValue: {
 }
 
 function createAtomAccessor<A>(registry: AtomRegistry.AtomRegistry, atom: () => Atom.Atom<A>): Accessor<A> {
-  const [value, setValue] = createSignal<A>(null as any)
-  createComputed(() => {
-    onCleanup(registry.subscribe(atom(), (next) => setValue(() => next), constImmediate))
-  })
-  return value
+  return createSubscriptionAccessor(
+    atom,
+    (atom, f) => registry.subscribe(atom, f),
+    (atom) => registry.get(atom)
+  )
 }
 
-const constImmediate = { immediate: true }
+// A memo owns the subscription, so it is released when the source changes or
+// the owner is disposed. Values are boxed because Solid treats a function
+// passed to `createSignal` as a derived signal.
+function createSubscriptionAccessor<S, A>(
+  source: () => S,
+  subscribe: (source: S, f: (value: A) => void) => () => void,
+  get: (source: S) => A
+): Accessor<A> {
+  const current = createMemo(() => {
+    const s = source()
+    const box = { set: undefined as ((value: { readonly value: A }) => void) | undefined }
+    onCleanup(subscribe(s, (value) => box.set!({ value })))
+    const [value, setValue] = createSignal({ value: get(s) }, constSignalOptions)
+    box.set = setValue
+    return value
+  })
+  // Keep the previous box when the value is unchanged, so switching to a source
+  // with an equal value does not notify readers. The memo returns the box, not
+  // the value, because Solid awaits a Promise returned from a memo.
+  const boxed = createMemo((prev: { readonly value: A } | undefined) => {
+    const next = current()()
+    return prev !== undefined && prev.value === next.value ? prev : next
+  })
+  return () => boxed().value
+}
+
+// `ownedWrite` lets Solid accept registry notifications that arrive while a
+// computation is running.
+const constSignalOptions = { equals: false, ownedWrite: true } as const
 
 function mountAtom<A>(registry: AtomRegistry.AtomRegistry, atom: () => Atom.Atom<A>): void {
-  createComputed(() => {
+  createMemo(() => {
     onCleanup(registry.mount(atom()))
   })
 }
@@ -99,7 +127,7 @@ function setAtom<R, W, Mode extends "value" | "promise" | "promiseExit" = never>
     ) :
   ((value: W | ((value: R) => W)) => void)
 {
-  const memo = createMemo(atom)
+  const memo = createCurrentAtom(atom)
   if (options?.mode === "promise" || options?.mode === "promiseExit") {
     return ((value: W) => {
       registry.set(memo(), value)
@@ -114,6 +142,13 @@ function setAtom<R, W, Mode extends "value" | "promise" | "promiseExit" = never>
   return ((value: W | ((value: R) => W)) => {
     registry.set(memo(), typeof value === "function" ? (value as any)(registry.get(memo())) : value)
   }) as any
+}
+
+// Callbacks read the current atom without subscribing their caller, so Solid
+// does not warn when they run inside an effect.
+function createCurrentAtom<A>(atom: () => A): () => A {
+  const current = createMemo(atom)
+  return () => untrack(current)
 }
 
 const flattenExit = <A, E>(exit: Exit.Exit<A, E>): A => {
@@ -194,7 +229,7 @@ export const useAtomSet = <
 export const useAtomRefresh = <A>(atom: () => Atom.Atom<A>): () => void => {
   const registry = useContext(RegistryContext)
   mountAtom(registry, atom)
-  const memo = createMemo(atom)
+  const memo = createCurrentAtom(atom)
   return () => registry.refresh(memo())
 }
 
@@ -262,36 +297,9 @@ export const useAtomSubscribe = <A>(
   options?: { readonly immediate?: boolean }
 ): void => {
   const registry = useContext(RegistryContext)
-  createEffect(() => {
-    onCleanup(registry.subscribe(atom(), f, options))
-  })
+  // The effect function returns the unsubscribe function as its cleanup.
+  createEffect(atom, (atom) => registry.subscribe(atom, f, options))
 }
-
-/**
- * Converts an `AsyncResult` atom into a Solid resource.
- *
- * @stability unstable
- * @category hooks
- * @since 4.0.0
- */
-export const useAtomResource = <A, E>(
-  atom: () => Atom.Atom<AsyncResult.AsyncResult<A, E>>,
-  options?: ResourceOptions<A> & {
-    readonly suspendOnWaiting?: boolean | undefined
-  }
-): ResourceReturn<A, void> => {
-  const result = useAtomValue(atom)
-  return createResource(result, (result) => {
-    if (AsyncResult.isInitial(result) || (options?.suspendOnWaiting && result.waiting)) {
-      return constUnresolvedPromise
-    } else if (AsyncResult.isSuccess(result)) {
-      return Promise.resolve(result.value)
-    }
-    return Promise.reject(Cause.squash(result.cause))
-  })
-}
-
-const constUnresolvedPromise = new Promise<never>(() => {})
 
 /**
  * Subscribes to an atom ref and returns its value as a Solid accessor.
@@ -315,15 +323,8 @@ const constUnresolvedPromise = new Promise<never>(() => {})
  * @category hooks
  * @since 4.0.0
  */
-export const useAtomRef = <A>(ref: () => AtomRef.ReadonlyRef<A>): Accessor<A> => {
-  const [value, setValue] = createSignal(null as A)
-  createComputed(() => {
-    const r = ref()
-    setValue(() => r.value)
-    onCleanup(r.subscribe((next) => setValue(() => next)))
-  })
-  return value
-}
+export const useAtomRef = <A>(ref: () => AtomRef.ReadonlyRef<A>): Accessor<A> =>
+  createSubscriptionAccessor(ref, (ref, f) => ref.subscribe(f), (ref) => ref.value)
 
 /**
  * Returns a Solid accessor for a property ref derived from an atom ref.
