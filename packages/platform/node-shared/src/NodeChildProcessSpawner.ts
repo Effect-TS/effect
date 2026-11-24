@@ -131,11 +131,18 @@ const ownsProcessGroup = (command: ChildProcess.StandardCommand): boolean =>
 const isUnsignallableProcessGroup = (error: unknown): boolean =>
   (error as NodeJS.ErrnoException | undefined)?.code === "EPERM"
 
-/** The leader has not exited, or a member of its process group still exists. */
+/**
+ * The leader has not exited, or a member of its process group still exists. A
+ * process whose exit status can no longer be observed is not reported alive,
+ * since it may have exited and its ID been reused.
+ */
 const isProcessAlive = (
   command: ChildProcess.StandardCommand,
   childProcess: SpawnedProcess
 ): boolean => {
+  if (childProcess.lost === true) {
+    return false
+  }
   if (!hasExited(childProcess)) {
     return true
   }
@@ -574,7 +581,7 @@ const makeWith = Effect.fnUntraced(function*(spawnProcess: SpawnProcess) {
       }
       const poll = () => {
         clearTimeout(timer)
-        if (Date.now() >= deadline || childProcess.lost === true || !isProcessAlive(command, childProcess)) {
+        if (Date.now() >= deadline || !isProcessAlive(command, childProcess)) {
           stop()
           resume(Effect.void)
           return
@@ -611,9 +618,7 @@ const makeWith = Effect.fnUntraced(function*(spawnProcess: SpawnProcess) {
       yield* awaitProcessExit(command, childProcess, processGroupGraceMillis)
     } else {
       yield* awaitProcessExit(command, childProcess, Duration.toMillis(options.forceKillAfter))
-      // A lost process may have exited and its ID been reused, so it is not
-      // escalated
-      if (childProcess.lost !== true && isProcessAlive(command, childProcess)) {
+      if (isProcessAlive(command, childProcess)) {
         yield* signalGroup("SIGKILL")
         yield* awaitProcessExit(command, childProcess, processGroupGraceMillis)
       }
@@ -692,9 +697,9 @@ const makeWith = Effect.fnUntraced(function*(spawnProcess: SpawnProcess) {
           if (childProcess.lost === true) {
             return
           }
-          const exit = Deferred.isDoneUnsafe(exitSignal) ? yield* Effect.exit(Deferred.await(exitSignal)) : undefined
-          if (exit !== undefined && Exit.isSuccess(exit)) {
-            const [code] = exit.value
+          if (Deferred.isDoneUnsafe(exitSignal)) {
+            // Only a lost child fails its exit signal
+            const [code] = yield* Effect.orDie(Deferred.await(exitSignal))
             if (code !== 0 && Predicate.isNotNull(code)) {
               yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
             } else if (isReferenced && ownsProcessGroup(cmd)) {

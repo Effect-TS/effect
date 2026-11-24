@@ -6,7 +6,7 @@ import * as Fs from "node:fs"
 import * as Net from "node:net"
 import * as Os from "node:os"
 import * as Path from "node:path"
-import type { SpawnedProcess } from "./nodeChildProcessSpawner.ts"
+import type { SpawnedProcess, SpawnProcess } from "./nodeChildProcessSpawner.ts"
 
 const tokenLength = 16
 const headerLength = tokenLength + 8
@@ -93,10 +93,9 @@ export class ProxiedProcess extends EventEmitter implements SpawnedProcess {
   exitCode: number | null = null
   signalCode: NodeJS.Signals | null = null
   readonly stdio: Array<Net.Socket | null>
-  private pendingSockets: number
   private spawned = false
   private done = false
-  referenced = true
+  private referenced = true
   private pendingExit: readonly [number | null, NodeJS.Signals | null] | undefined = undefined
   private pendingKill: NodeJS.Signals | number | undefined = undefined
 
@@ -110,7 +109,6 @@ export class ProxiedProcess extends EventEmitter implements SpawnedProcess {
     this.id = id
     this.pipes = pipes
     this.stdio = pipes.map(() => null)
-    this.pendingSockets = pipes.filter(Boolean).length
     proxy.ref()
   }
 
@@ -156,7 +154,6 @@ export class ProxiedProcess extends EventEmitter implements SpawnedProcess {
   attach(fd: number, socket: Net.Socket): boolean {
     if (this.done || this.pipes[fd] !== true || this.stdio[fd] !== null) return false
     this.stdio[fd] = socket
-    this.pendingSockets--
     this.emitSpawn()
     return true
   }
@@ -202,7 +199,8 @@ export class ProxiedProcess extends EventEmitter implements SpawnedProcess {
   }
 
   private emitSpawn(): void {
-    if (this.spawned || this.pid === undefined || this.pendingSockets > 0) return
+    if (this.spawned || this.pid === undefined) return
+    if (this.pipes.some((pipe, fd) => pipe && this.stdio[fd] === null)) return
     this.spawned = true
     this.emit("spawn")
     if (this.pendingExit !== undefined) this.onExit(...this.pendingExit)
@@ -314,7 +312,7 @@ class Proxy implements ProxiedProcessOwner {
     if (this.retired && this.commands.size === 0) this.disconnect()
   }
 
-  /** Stops taking spawns, and disconnects once the running commands have exited. */
+  /** Disconnects once the running commands have exited. */
   retire(): void {
     this.retired = true
     if (this.commands.size === 0) this.disconnect()
@@ -332,7 +330,8 @@ class Proxy implements ProxiedProcessOwner {
   readonly close: Effect.Effect<void> = Effect.callback((resume) => {
     const child = this.child
     if (this.exited || child === undefined) return resume(Effect.void)
-    const wait = [...this.commands.values()].every((command) => command.referenced)
+    // Each referenced command holds one reference
+    const wait = this.refs === this.commands.size
     if (wait) {
       child.ref()
       child.once("exit", () => resume(Effect.void))
@@ -393,9 +392,10 @@ class Proxy implements ProxiedProcessOwner {
    * credentials, in which case the directory is left behind.
    */
   private closeServer(): void {
-    this.server?.close(() => {})
-    const directory = this.directory
+    const { directory, server } = this
     this.directory = undefined
+    this.server = undefined
+    server?.close()
     if (directory !== undefined) {
       try {
         Fs.rmSync(directory, { recursive: true, force: true })
@@ -437,9 +437,9 @@ export const make = () => {
     }
     return current
   }
+  const spawn: SpawnProcess = (command, args, options) => get().spawn(command, args, options)
   return {
-    spawn: (command: string, args: ReadonlyArray<string>, options: NodeChildProcess.SpawnOptions): SpawnedProcess =>
-      get().spawn(command, args, options),
+    spawn,
     close: Effect.suspend(() =>
       Effect.forEach([current, ...retired], (proxy) => proxy.close, { concurrency: "unbounded", discard: true })
     )

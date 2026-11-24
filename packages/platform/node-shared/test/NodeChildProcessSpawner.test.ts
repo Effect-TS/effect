@@ -13,7 +13,7 @@ import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as ChildProcess from "effect/process/ChildProcess"
-import { ChildProcessSpawner } from "effect/process/ChildProcessSpawner"
+import { type ChildProcessHandle, ChildProcessSpawner } from "effect/process/ChildProcessSpawner"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import NodeChildProcess, { spawnSync } from "node:child_process"
@@ -93,42 +93,45 @@ describe.skipIf(process.platform === "win32")("layerProxyProcess", { concurrent:
       assert.notStrictEqual(nextPid, pid)
     }).pipe(Effect.provide(ProxyServices)))
 
+  // Records the signals sent with `process.kill`, which are still delivered
+  const recordSignals = Effect.gen(function*() {
+    const kill = yield* Effect.acquireRelease(
+      Effect.sync(() => vi.spyOn(process, "kill")),
+      (spy) => Effect.sync(() => spy.mockRestore())
+    )
+    return (pid: number) =>
+      kill.mock.calls.filter(([target, signal]) => Math.abs(target) === pid && signal !== 0).map(([, signal]) => signal)
+  })
+
+  // Ignores SIGTERM, so only an escalation could stop it
+  const stubbornCommand = ChildProcess.make("sh", ["-c", "trap '' TERM; echo ready; sleep 30"])
+
+  // Kills the proxy process while `kill` is waiting to escalate
+  const loseExitWhileKilling = Effect.fnUntraced(function*(
+    handle: ChildProcessHandle,
+    proxy: number,
+    signalsTo: (pid: number) => ReadonlyArray<unknown>
+  ) {
+    yield* Stream.runHead(handle.stdout)
+    const killing = yield* Effect.forkChild(Effect.flip(handle.kill({ forceKillAfter: "30 seconds" })))
+    while (signalsTo(handle.pid).length === 0) yield* Effect.sleep("5 millis")
+    process.kill(proxy, "SIGKILL")
+    const error = yield* Fiber.join(killing).pipe(Effect.timeout("5 seconds"))
+    assert.strictEqual(error._tag, "PlatformError")
+  })
+
   it.live("stops escalating and does not signal on release once the exit is lost", () =>
     Effect.gen(function*() {
-      const kill = vi.spyOn(process, "kill")
-      yield* Effect.addFinalizer(() => Effect.sync(() => kill.mockRestore()))
-      const signalsTo = (pid: number) =>
-        kill.mock.calls.filter(([target, signal]) => Math.abs(target) === pid && signal !== 0).map(([, signal]) =>
-          signal
-        )
-
+      const signalsTo = yield* recordSignals
       const pid = yield* proxyPid
       const scope = yield* Scope.make()
-      // Ignores SIGTERM, so only an escalation could stop it
-      const stubborn = yield* Scope.provide(scope)(
-        ChildProcess.make("sh", ["-c", "trap '' TERM; echo ready; sleep 30"])
-      )
+      const stubborn = yield* Scope.provide(scope)(stubbornCommand)
       const idle = yield* Scope.provide(scope)(ChildProcess.make("sleep", ["30"]))
       yield* Effect.addFinalizer(() =>
-        Effect.sync(() => {
-          kill.mockRestore()
-          for (const handle of [stubborn, idle]) {
-            try {
-              process.kill(-handle.pid, "SIGKILL")
-            } catch {
-              // already exited
-            }
-          }
-        })
+        Effect.forEach([stubborn, idle], (handle) => killDescendant(-handle.pid), { discard: true })
       )
-      yield* Stream.runDrain(Stream.take(stubborn.stdout, 1))
 
-      const killing = yield* Effect.forkChild(Effect.flip(stubborn.kill({ forceKillAfter: "30 seconds" })))
-      while (signalsTo(stubborn.pid).length === 0) yield* Effect.sleep("5 millis")
-      process.kill(pid, "SIGKILL")
-
-      const error = yield* Fiber.join(killing).pipe(Effect.timeout("5 seconds"))
-      assert.strictEqual(error._tag, "PlatformError")
+      yield* loseExitWhileKilling(stubborn, pid, signalsTo)
       yield* Scope.close(scope, Exit.void)
 
       assert.deepStrictEqual(signalsTo(stubborn.pid), ["SIGTERM"])
@@ -157,58 +160,52 @@ describe.skipIf(process.platform === "win32")("layerProxyProcess", { concurrent:
 
   it.live("reports a lost exit and restarts when the socket directory cannot be removed", () =>
     Effect.gen(function*() {
-      const kill = vi.spyOn(process, "kill")
-      yield* Effect.addFinalizer(() => Effect.sync(() => kill.mockRestore()))
+      const signalsTo = yield* recordSignals
       const pid = yield* proxyPid
-      const stubborn = yield* ChildProcess.make("sh", ["-c", "trap '' TERM; echo ready; sleep 30"])
-      yield* Effect.addFinalizer(() =>
-        Effect.sync(() => {
-          try {
-            process.kill(-stubborn.pid, "SIGKILL")
-          } catch {
-            // already exited
-          }
-        })
-      )
-      yield* Stream.runDrain(Stream.take(stubborn.stdout, 1))
+      const stubborn = yield* stubbornCommand
+      yield* Effect.addFinalizer(() => killDescendant(-stubborn.pid))
       const denied = yield* denySocketDirectoryRemoval
 
-      const killing = yield* Effect.forkChild(Effect.flip(stubborn.kill({ forceKillAfter: "30 seconds" })))
-      while (!kill.mock.calls.some(([target]) => target === -stubborn.pid)) yield* Effect.sleep("5 millis")
-      process.kill(pid, "SIGKILL")
-
-      const error = yield* Fiber.join(killing).pipe(Effect.timeout("5 seconds"))
-      assert.strictEqual(error._tag, "PlatformError")
+      yield* loseExitWhileKilling(stubborn, pid, signalsTo)
       assert.isAbove(denied.length, 0)
-      assert.deepStrictEqual(
-        kill.mock.calls.filter(([target, signal]) => Math.abs(target) === stubborn.pid && signal !== 0).map((
-          [, signal]
-        ) => signal),
-        ["SIGTERM"]
-      )
+      assert.deepStrictEqual(signalsTo(stubborn.pid), ["SIGTERM"])
       assert.notStrictEqual(yield* proxyPid, pid)
     }).pipe(Effect.provide(ProxyServices), Effect.scoped))
+
+  // Changes the credentials the application reports on each call
+  const mockCredentials = Effect.gen(function*() {
+    const uid = process.getuid!()
+    const getuid = yield* Effect.acquireRelease(
+      Effect.sync(() => vi.spyOn(process, "getuid")),
+      (spy) => Effect.sync(() => spy.mockRestore())
+    )
+    let changes = 0
+    return () => {
+      getuid.mockReturnValue(uid + ++changes)
+    }
+  })
+
+  // The retired proxy process still reports its command's exit
+  const retireBusyProxy = Effect.fnUntraced(function*(changeCredentials: () => void) {
+    const pid = yield* proxyPid
+    const running = yield* ChildProcess.make("sh", ["-c", "read line; exit 3"])
+    changeCredentials()
+    const nextPid = yield* proxyPid
+    assert.notStrictEqual(nextPid, pid)
+    yield* Stream.run(Stream.make(new TextEncoder().encode("\n")), running.stdin)
+    assert.strictEqual(yield* running.exitCode, 3)
+    return [pid, nextPid] as const
+  })
 
   it.live("retires proxy processes when the socket directory cannot be removed", () =>
     Effect.gen(function*() {
       const denied = yield* denySocketDirectoryRemoval
-      const uid = process.getuid!()
-      const getuid = vi.spyOn(process, "getuid")
-      yield* Effect.addFinalizer(() => Effect.sync(() => getuid.mockRestore()))
-
-      // A retired proxy process with a running command
-      const first = yield* proxyPid
-      const running = yield* ChildProcess.make("sh", ["-c", "read line; exit 3"])
-      getuid.mockReturnValue(uid + 1)
-      const second = yield* proxyPid
-      assert.notStrictEqual(second, first)
-      yield* Stream.run(Stream.make(new TextEncoder().encode("\n")), running.stdin)
-      assert.strictEqual(yield* running.exitCode, 3)
+      const changeCredentials = yield* mockCredentials
+      const [first, second] = yield* retireBusyProxy(changeCredentials)
 
       // An idle retired proxy process
-      getuid.mockReturnValue(uid + 2)
-      const third = yield* proxyPid
-      assert.notStrictEqual(third, second)
+      changeCredentials()
+      assert.notStrictEqual(yield* proxyPid, second)
       while (isAlive(first) || isAlive(second)) yield* Effect.sleep("10 millis")
       assert.isAbove(denied.length, 0)
     }).pipe(Effect.provide(ProxyServices), Effect.scoped, Effect.timeout("5 seconds")))
@@ -236,17 +233,7 @@ describe.skipIf(process.platform === "win32")("layerProxyProcess", { concurrent:
 
   it.live("starts a new proxy process when the application's credentials change", () =>
     Effect.gen(function*() {
-      const pid = yield* proxyPid
-      const running = yield* ChildProcess.make("sh", ["-c", "read line; exit 3"])
-
-      const getuid = vi.spyOn(process, "getuid").mockReturnValue(process.getuid!() + 1)
-      yield* Effect.addFinalizer(() => Effect.sync(() => getuid.mockRestore()))
-      const nextPid = yield* proxyPid
-      assert.notStrictEqual(nextPid, pid)
-
-      // The retired proxy process still reports its command's exit, then exits
-      yield* Stream.run(Stream.make(new TextEncoder().encode("\n")), running.stdin)
-      assert.strictEqual(yield* running.exitCode, 3)
+      const [pid] = yield* retireBusyProxy(yield* mockCredentials)
       while (isAlive(pid)) yield* Effect.sleep("10 millis")
     }).pipe(Effect.provide(ProxyServices), Effect.timeout("5 seconds")))
 })
