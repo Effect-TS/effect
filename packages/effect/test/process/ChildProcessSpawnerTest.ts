@@ -12,6 +12,7 @@ import * as Scope from "effect/Scope"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
+import * as NodeFs from "node:fs"
 import { inspect } from "node:util"
 
 export interface Options {
@@ -1420,5 +1421,113 @@ export const suite = (
           const output = yield* spawner.string(ChildProcess.make("sh", ["-c", "seq 1 100000 >&2; printf done"]))
           assert.strictEqual(output, "done")
         }), { timeout: 10_000 })
+    })
+    exitStatusSuite(layer)
+    if (options.additionalFds !== false) {
+      inheritedFdSuite(layer)
+    }
+  })
+
+export const exitStatusSuite = (
+  layer: Layer.Layer<ChildProcessSpawner.ChildProcessSpawner>
+) =>
+  describe("exitStatus", () => {
+    it.layer(layer)((it) => {
+      it.effect("returns Exited for a normal exit", () =>
+        Effect.gen(function*() {
+          const handle = yield* ChildProcess.make("sh", ["-c", "exit 42"])
+          const status: ChildProcessSpawner.ExitStatus = yield* handle.exitStatus
+
+          assert.deepStrictEqual(status, {
+            _tag: "Exited",
+            code: ChildProcessSpawner.ExitCode(42)
+          })
+        }))
+
+      it.effect("returns Signaled when terminated by SIGTERM", () =>
+        Effect.gen(function*() {
+          const handle = yield* ChildProcess.make("sleep", ["10"])
+
+          yield* handle.kill({ killSignal: "SIGTERM" })
+
+          const status: ChildProcessSpawner.ExitStatus = yield* handle.exitStatus
+          assert.deepStrictEqual(status, {
+            _tag: "Signaled",
+            signal: "SIGTERM"
+          })
+        }))
+    })
+  })
+
+export const inheritedFdSuite = (
+  layer: Layer.Layer<ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem | Path.Path>
+) =>
+  describe("inherited file descriptors", () => {
+    it.layer(layer)((it) => {
+      it.effect("routes stdout and stderr directly to an inherited file descriptor", () =>
+        Effect.gen(function*() {
+          const fs = yield* FileSystem.FileSystem
+          const path = yield* Path.Path
+          const dir = yield* fs.makeTempDirectoryScoped()
+          const logPath = path.join(dir, "output.log")
+          const logFd = yield* Effect.acquireRelease(
+            Effect.sync(() => NodeFs.openSync(logPath, "w+")),
+            (fd) => Effect.sync(() => NodeFs.closeSync(fd))
+          )
+
+          const exitCode = yield* Effect.scoped(Effect.gen(function*() {
+            const handle = yield* ChildProcess.make("sh", ["-c", "echo out; echo err >&2"], {
+              stdin: "ignore",
+              stdout: logFd,
+              stderr: logFd
+            })
+            const exitCode = yield* handle.exitCode
+
+            assert.strictEqual((yield* fs.readFileString(logPath)).trim(), "out\nerr")
+            assert.strictEqual(yield* decodeByteStream(handle.all), "")
+            return exitCode
+          }))
+
+          assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
+          assert.doesNotThrow(() => NodeFs.fstatSync(logFd))
+        }))
+
+      it.effect("passes an existing file descriptor through additionalFds", () =>
+        Effect.gen(function*() {
+          const fs = yield* FileSystem.FileSystem
+          const path = yield* Path.Path
+          const dir = yield* fs.makeTempDirectoryScoped()
+          const fdPath = path.join(dir, "fd3.txt")
+          const fd = yield* Effect.acquireRelease(
+            Effect.sync(() => NodeFs.openSync(fdPath, "w+")),
+            (fd) => Effect.sync(() => NodeFs.closeSync(fd))
+          )
+
+          const handle = yield* ChildProcess.make("sh", ["-c", "printf 'hello fd3' >&3"], {
+            stdin: "ignore",
+            additionalFds: { fd3: fd }
+          })
+          const exitCode = yield* handle.exitCode
+
+          assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
+          const buffer = new Uint8Array(64)
+          const bytesRead = NodeFs.readSync(fd, buffer, 0, buffer.length, 0)
+          assert.strictEqual(new TextDecoder().decode(buffer.subarray(0, bytesRead)), "hello fd3")
+          assert.strictEqual(yield* decodeByteStream(handle.getOutputFd(3)), "")
+        }))
+
+      it.effect("fails with BadArgument for invalid numeric file descriptors", () =>
+        Effect.gen(function*() {
+          const commands = [
+            ChildProcess.make("echo", ["test"], { stdout: -1 }),
+            ChildProcess.make("echo", ["test"], { stderr: 1.5 }),
+            ChildProcess.make("echo", ["test"], { stdin: Number.NaN }),
+            ChildProcess.make("echo", ["test"], { additionalFds: { fd3: -1 } })
+          ]
+          for (const command of commands) {
+            const error = yield* Effect.flip(Effect.scoped(command))
+            assert.strictEqual(error.reason._tag, "BadArgument")
+          }
+        }))
     })
   })
