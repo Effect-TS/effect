@@ -5911,6 +5911,23 @@ Expected a value between -2147483648 and 2147483647`
     }
   })
 
+  it("TimeoutError", async () => {
+    const schema = Schema.TimeoutError
+    const asserts = new TestSchema.Asserts(schema)
+
+    const decoding = asserts.decoding()
+    await decoding.succeed(new Cause.TimeoutError("a"))
+    await decoding.fail(new Cause.NoSuchElementError("a"), `Expected TimeoutError`)
+
+    const encoding = asserts.encoding()
+    await encoding.succeed(new Cause.TimeoutError("a"))
+    await encoding.fail(null, `Expected TimeoutError`)
+
+    if (verifyGeneration) {
+      asserts.arbitrary().verifyGeneration()
+    }
+  })
+
   it("DurationFromString", async () => {
     const schema = Schema.DurationFromString
     const asserts = new TestSchema.Asserts(schema)

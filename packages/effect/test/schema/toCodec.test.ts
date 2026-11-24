@@ -1052,6 +1052,19 @@ describe("Serializers", () => {
         )
       })
 
+      it("TimeoutError", async () => {
+        const schema = Schema.TimeoutError
+        const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
+
+        const encoding = asserts.encoding()
+        await encoding.succeed(new Cause.TimeoutError("a"), { _tag: "TimeoutError", message: "a" })
+        await encoding.succeed(new Cause.TimeoutError(), { _tag: "TimeoutError" })
+
+        const decoding = asserts.decoding()
+        await decoding.succeed({ _tag: "TimeoutError", message: "a" }, new Cause.TimeoutError("a"))
+        await decoding.succeed({ _tag: "TimeoutError" }, new Cause.TimeoutError())
+      })
+
       it("ErrorInstance", async () => {
         const schema = Schema.ErrorInstance()
         const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))

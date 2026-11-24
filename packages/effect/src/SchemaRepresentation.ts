@@ -1741,6 +1741,24 @@ export const ErrorInstanceReviver: DeclarationReviver<ErrorRepresentationPayload
 )
 
 /**
+ * Reviver for persisted {@link Schema.TimeoutError} declarations.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain the {@link Schema.TimeoutError} schema.
+ *
+ * @see {@link Schema.TimeoutError} for the corresponding schema
+ *
+ * @stability stable
+ * @category schemas
+ * @since 4.2.0
+ */
+export const TimeoutErrorReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/TimeoutError",
+  Schema.TimeoutError
+)
+
+/**
  * Reviver for persisted `Exit` declarations.
  *
  * **When to use**

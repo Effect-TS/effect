@@ -9455,6 +9455,71 @@ export function Defect(options?: ErrorOptions): Defect {
   return schema
 }
 /**
+ * Type-level representation of {@link TimeoutError}.
+ *
+ * @stability stable
+ * @category models
+ * @since 4.2.0
+ */
+export interface TimeoutError extends declare<Cause_.TimeoutError> {
+  readonly "Rebuild": TimeoutError
+}
+/**
+ * Schema for `Cause.TimeoutError` values.
+ *
+ * **When to use**
+ *
+ * Use when a schema-defined error or value needs to carry a `TimeoutError`,
+ * for example as the reason of a service error.
+ *
+ * **Details**
+ *
+ * The default JSON serializer encodes a `TimeoutError` as an object with
+ * `_tag` and an optional `message`, and decodes that object back into a
+ * `TimeoutError`.
+ *
+ * **Example** (Encoding a TimeoutError to JSON)
+ *
+ * ```ts import.meta.vitest
+ * import { Cause, Schema } from "effect"
+ *
+ * const codec = Schema.toCodecJson(Schema.TimeoutError)
+ *
+ * Schema.encodeSync(codec)(new Cause.TimeoutError("late")) // => { _tag: "TimeoutError", message: "late" }
+ * Cause.isTimeoutError(Schema.decodeSync(codec)({ _tag: "TimeoutError" })) // => true
+ * ```
+ *
+ * @stability stable
+ * @category schemas
+ * @since 4.2.0
+ */
+export const TimeoutError: TimeoutError = declare(
+  Cause_.isTimeoutError,
+  {
+    representation: {
+      id: "effect/schema/TimeoutError",
+      payload: null
+    },
+    toCode: () => ({
+      runtime: `Schema.TimeoutError`,
+      Type: `Cause.TimeoutError`,
+      importDeclarations: [`import * as Cause from "effect/Cause"`]
+    }),
+    expected: "TimeoutError",
+    toCodecJson: () =>
+      link<Cause_.TimeoutError>()(
+        Struct({ _tag: Literal("TimeoutError"), message: optionalKey(String) }),
+        SchemaTransformation.transform({
+          decode: (encoded) => new Cause_.TimeoutError(encoded.message),
+          encode: (error) =>
+            error.message === undefined
+              ? { _tag: "TimeoutError" } as const
+              : { _tag: "TimeoutError", message: error.message } as const
+        })
+      )
+  }
+)
+/**
  * Type-level representation returned by {@link ReadonlyMap}.
  *
  * @stability stable

@@ -974,6 +974,15 @@ describe("SchemaRepresentation built-in declaration revivers", () => {
     })
   })
 
+  it("revives TimeoutError", () => {
+    assertDeclarationReviver({
+      schema: Schema.TimeoutError,
+      id: "effect/schema/TimeoutError",
+      payload: null,
+      reviver: SchemaRepresentation.TimeoutErrorReviver
+    })
+  })
+
   it("revives ByteSize", () => {
     assertDeclarationReviver({
       schema: Schema.ByteSize,
