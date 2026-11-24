@@ -160,9 +160,9 @@ interface Subscription {
     { readonly cursor: string | null; readonly truncated: boolean },
     McpCore.EventFailure | McpCore.RequestRejected
   >
-  // After a gap whose envelope the endpoint never took: the cursors handed out since, any of
-  // which a refresh presents to say it saw past the gap. Until then every refresh is truncated.
-  cursorsSinceGap: Set<string | null> | undefined
+  // A gap whose envelope the endpoint never took, reported by the next refresh instead. An event
+  // delivered after it does not clear it: receiving that event says nothing about the gap.
+  gapPending: boolean
 }
 
 type Outcome =
@@ -329,15 +329,6 @@ export const make = Effect.fnUntraced(function*(options: Options) {
   const messageId = (prefix: string) =>
     Effect.map(random.randomBytes(18), (bytes) => `${prefix}_${Base64Url.encode(bytes)}`)
 
-  const MAX_CURSORS_SINCE_GAP = 1_024
-  const advance = (subscription: Subscription, cursor: string | null) => {
-    subscription.watermark = cursor
-    const since = subscription.cursorsSinceGap
-    if (since === undefined) return
-    since.add(cursor)
-    if (since.size > MAX_CURSORS_SINCE_GAP) since.delete(since.values().next().value!)
-  }
-
   const sign = (keys: ReadonlyArray<Mac.Key>, webhookId: string, timestamp: number, body: string) =>
     Effect.forEach(keys, (key) => mac.sign(key, encoder.encode(`${webhookId}.${timestamp}.${body}`))).pipe(
       Effect.orDie,
@@ -440,14 +431,19 @@ export const make = Effect.fnUntraced(function*(options: Options) {
                 ...(item._meta === undefined ? {} : { _meta: item._meta })
               })
               return deliver(subscription, body, webhookId)
-            }).pipe(Effect.andThen(Effect.sync(() => advance(subscription, item.cursor))))
+            }).pipe(Effect.andThen(Effect.sync(() => {
+              subscription.watermark = item.cursor
+            })))
           case "Position":
-            return Effect.sync(() => advance(subscription, item.cursor))
+            return Effect.sync(() => {
+              subscription.watermark = item.cursor
+            })
           case "Gap":
             return control(subscription, "gap", { cursor: item.cursor }).pipe(
               Effect.map((delivered) => {
-                if (!delivered) subscription.cursorsSinceGap = new Set()
-                advance(subscription, item.cursor)
+                // A delivered gap envelope reports every earlier gap too.
+                subscription.gapPending = !delivered
+                subscription.watermark = item.cursor
               })
             )
           case "Error":
@@ -565,10 +561,8 @@ export const make = Effect.fnUntraced(function*(options: Options) {
     subscription.deadlineMoved = Deferred.makeUnsafe()
     Deferred.doneUnsafe(moved, Effect.void)
     if (opening) return { id: subscription.id, refreshBefore: iso(expiresAt), ...start }
-    // Kept until the client shows a cursor from past the gap, so a lost response hides nothing.
-    const since = subscription.cursorsSinceGap
-    if (since !== undefined && since.has(request.cursor)) subscription.cursorsSinceGap = undefined
-    const truncated = subscription.cursorsSinceGap !== undefined
+    const truncated = subscription.gapPending
+    subscription.gapPending = false
     return {
       id: subscription.id,
       refreshBefore: iso(expiresAt),
@@ -643,7 +637,7 @@ export const make = Effect.fnUntraced(function*(options: Options) {
       fiber: undefined,
       deadlineMoved: Deferred.makeUnsafe(),
       accepted: Deferred.makeUnsafe(),
-      cursorsSinceGap: undefined
+      gapPending: false
     }
     const decoded = yield* request.decode
     yield* verify(subscription)

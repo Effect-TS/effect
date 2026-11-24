@@ -4240,12 +4240,24 @@ export interface EventSubscription<A, R> {
 }
 
 /**
+ * A schema for an event's `data`. SEP-3415 requires `data` to be a JSON
+ * object, so the schema must encode to one, as `Schema.Struct`,
+ * `Schema.Class` and `Schema.Record` do.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export type EventPayloadSchema = Schema.Codec<any, { readonly [x: string]: unknown }>
+
+/**
  * Options for {@link registerEvent} and {@link event}.
  *
  * **Details**
  *
  * `parameters` types the subscription arguments, an empty object by default,
- * and `payload` the occurrences' `data`; both are advertised as JSON Schema
+ * and `payload` the occurrences' `data`, which must encode to a JSON object
+ * (see {@link EventPayloadSchema}); both are advertised as JSON Schema
  * by `events/list`. `poll` offers poll delivery and `stream` push delivery,
  * and at least one is required. Once {@link layerEventWebhooks} is installed,
  * `stream` also backs webhook delivery; without it, `events/subscribe` and
@@ -4260,7 +4272,7 @@ export interface EventSubscription<A, R> {
  * @category events
  * @since 4.1.6
  */
-export type EventOptions<Params extends Schema.Codec<any, any>, Payload extends Schema.Codec<any, any>, R> =
+export type EventOptions<Params extends Schema.Codec<any, any>, Payload extends EventPayloadSchema, R> =
   & {
     readonly name: string
     readonly description?: string | undefined
@@ -4287,7 +4299,7 @@ export type EventOptions<Params extends Schema.Codec<any, any>, Payload extends 
  * @category events
  * @since 4.1.6
  */
-export type EventPollHandler<Params extends Schema.Codec<any, any>, Payload extends Schema.Codec<any, any>, R> = (
+export type EventPollHandler<Params extends Schema.Codec<any, any>, Payload extends EventPayloadSchema, R> = (
   args: Params["Type"],
   request: EventPollRequest
 ) => Effect.Effect<EventPollResult<Payload["Type"]>, EventError, R>
@@ -4301,7 +4313,7 @@ export type EventPollHandler<Params extends Schema.Codec<any, any>, Payload exte
  * @category events
  * @since 4.1.6
  */
-export type EventStreamHandler<Params extends Schema.Codec<any, any>, Payload extends Schema.Codec<any, any>, R> = (
+export type EventStreamHandler<Params extends Schema.Codec<any, any>, Payload extends EventPayloadSchema, R> = (
   args: Params["Type"],
   request: EventStreamRequest
 ) => Effect.Effect<EventSubscription<Payload["Type"], R>, EventError, R | Scope.Scope>
@@ -4327,10 +4339,10 @@ const DEFAULT_NEXT_POLL_MS = 30_000
  */
 export const registerEvent: <
   Params extends Schema.Codec<any, any> = Schema.Struct<{}>,
-  Payload extends Schema.Codec<any, any> = Schema.Codec<any, any>,
+  Payload extends EventPayloadSchema = EventPayloadSchema,
   R = never
 >(options: EventOptions<Params, Payload, R>) => Effect.Effect<void, never, RegistrationRequirements<never, R>> = Effect
-  .fnUntraced(function*(options: EventOptions<Schema.Codec<any, any>, Schema.Codec<any, any>, any>) {
+  .fnUntraced(function*(options: EventOptions<Schema.Codec<any, any>, EventPayloadSchema, any>) {
     const { name, poll, stream } = options
     // Typed callers cannot get here; untyped ones still might.
     if (poll === undefined && stream === undefined) {
@@ -4428,7 +4440,7 @@ export const registerEvent: <
  */
 export const event = <
   Params extends Schema.Codec<any, any> = Schema.Struct<{}>,
-  Payload extends Schema.Codec<any, any> = Schema.Codec<any, any>,
+  Payload extends EventPayloadSchema = EventPayloadSchema,
   R = never
 >(options: EventOptions<Params, Payload, R>): Layer.Layer<never, never, RegistrationRequirements<never, R>> =>
   Layer.effectDiscard(registerEvent(options))
