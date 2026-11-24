@@ -306,6 +306,7 @@ export const get: {
           scope,
           awaiters: 0
         }
+        if (Option.isSome(oentry)) MutableHashMap.remove(state.map, key)
         MutableHashMap.set(state.map, key, entry)
         return checkCapacity(fiber, state.map, self.capacity).pipe(
           Option.isSome(oentry) ? effect.flatMap(() => closeEvicted(oentry.value)) : identity,
