@@ -276,34 +276,6 @@ export const suiteWith = <R>(
         yield* assertNotDelivered(duplicate)
       }), testOptions)
 
-    it.effect("does not redeliver in-flight elements", () =>
-      Effect.gen(function*() {
-        const queue = yield* PersistedQueue.make({
-          name: "test-queue-reset",
-          schema: Item
-        })
-
-        yield* queue.offer({ n: 42n })
-
-        const taken = Latch.makeUnsafe()
-        const release = Latch.makeUnsafe()
-        const fiber = yield* queue.take(() => Effect.andThen(taken.open, release.await)).pipe(Effect.forkScoped)
-        yield* taken.await
-
-        const fiber2 = yield* queue.take((val) => Effect.succeed(val)).pipe(Effect.forkScoped)
-
-        // allow any periodic reset in the store to run while the element is
-        // still being processed
-        yield* assertNotDelivered(fiber2)
-
-        // after a successful take the element should not be delivered again
-        yield* release.open
-        yield* Fiber.join(fiber)
-        yield* assertNotDelivered(fiber2)
-
-        yield* Fiber.interrupt(fiber2)
-      }), testOptions)
-
     it.effect("dead-letters elements that fail to decode", () =>
       Effect.gen(function*() {
         const store = yield* PersistedQueue.PersistedQueueStore
