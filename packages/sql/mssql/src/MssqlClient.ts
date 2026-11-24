@@ -242,9 +242,9 @@ export interface MssqlClientConfig {
    */
   readonly cancelTimeout?: Duration.Input | undefined
   /**
-   * How long Tedious waits for a request to complete before it cancels the
-   * request and fails it. Defaults to 15 seconds. A zero or infinite duration
-   * disables the timeout.
+   * How long Tedious waits for a request to complete before cancelling and
+   * failing it. Defaults to 15 seconds. Pass a zero or infinite duration to
+   * disable the timeout.
    */
   readonly requestTimeout?: Duration.Input | undefined
   readonly connectionRetryInterval?: Duration.Input | undefined
@@ -299,9 +299,12 @@ export const make = (
 ): Effect.Effect<MssqlClient & Client.SqlClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const parameterTypes = options.parameterTypes ?? defaultParameterTypes
-    const requestTimeout = options.requestTimeout === undefined
-      ? undefined
-      : requestTimeoutMillis(options.requestTimeout)
+    let requestTimeout: number | undefined
+    if (options.requestTimeout !== undefined) {
+      const millis = Duration.toMillis(options.requestTimeout)
+      // Tedious disables the timer for 0; passing Infinity overflows setTimeout.
+      requestTimeout = Number.isFinite(millis) ? millis : 0
+    }
     const compiler = makeCompiler(options.transformQueryNames)
 
     const transformRows = options.transformResultNames ?
@@ -803,13 +806,6 @@ export const makeCompiler = (transform?: (_: string) => string) =>
 // compiler helpers
 
 const escape = (str: string) => "[" + str.replace(/\]/g, "]]").replace(/\./g, "].[") + "]"
-
-// Tedious disables the timer for zero. An infinite delay would overflow
-// `setTimeout` and expire immediately.
-const requestTimeoutMillis = (input: Duration.Input): number => {
-  const duration = Duration.fromInputUnsafe(input)
-  return Duration.isFinite(duration) ? Duration.toMillis(duration) : 0
-}
 
 function numberToParamName(n: number) {
   return `${Math.ceil(n + 1)}`
