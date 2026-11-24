@@ -14,7 +14,7 @@ import * as Context from "../Context.ts"
 import * as Deferred from "../Deferred.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
-import * as FiberSet from "../FiberSet.ts"
+import * as Fiber from "../Fiber.ts"
 import { identity } from "../Function.ts"
 import * as Headers from "../http/Headers.ts"
 import type { HttpBody } from "../http/HttpBody.ts"
@@ -156,6 +156,18 @@ export const layerFlusher: Layer.Layer<Flusher> = Layer.sync(Flusher, () => {
   }
 })
 
+const normalizePositiveInt = (value: number, fallback: number): number => {
+  if (Number.isNaN(value)) return fallback
+  if (value === Number.POSITIVE_INFINITY) return value
+  return Math.max(1, Math.floor(value))
+}
+
+const normalizeNonNegativeInt = (value: number, fallback: number): number => {
+  if (Number.isNaN(value)) return fallback
+  if (value === Number.POSITIVE_INFINITY) return value
+  return Math.max(0, Math.floor(value))
+}
+
 /**
  * Creates a scoped OTLP batch exporter.
  *
@@ -214,12 +226,15 @@ export const make: (
   const clock = Context.get(services, Clock)
   const scope = Context.get(services, Scope.Scope)
   const exportInterval = Duration.max(Duration.fromInputUnsafe(options.exportInterval), Duration.zero)
-  const maxBatchSize = options.maxBatchSize === "disabled" ? "disabled" : Math.max(1, options.maxBatchSize)
-  const maxQueueSize = options.maxQueueSize !== undefined
-    ? Math.max(0, options.maxQueueSize)
-    : maxBatchSize === "disabled"
+  const maxBatchSize = options.maxBatchSize === "disabled"
+    ? "disabled"
+    : normalizePositiveInt(options.maxBatchSize, 1)
+  const defaultMaxQueueSize = maxBatchSize === "disabled" || !Number.isFinite(maxBatchSize)
     ? 2048
     : Math.max(2048, maxBatchSize)
+  const maxQueueSize = options.maxQueueSize !== undefined
+    ? normalizeNonNegativeInt(options.maxQueueSize, defaultMaxQueueSize)
+    : defaultMaxQueueSize
 
   const client = Context.get(services, HttpClient.HttpClient).pipe(
     HttpClient.tap((response) => Effect.ignore(response.arrayBuffer)),
@@ -358,10 +373,10 @@ export const make: (
         }
         clearQueue()
         dequeuedSeq = enqueuedSeq
-        settledSeq = enqueuedSeq
-        drainTargetSeq = enqueuedSeq
-        drainSnapshotTarget = snapshotStartedSeq
-        onSettled()
+        settledSeq = Math.max(settledSeq, enqueuedSeq)
+        snapshotSettledSeq = Math.max(snapshotSettledSeq, snapshotStartedSeq)
+        drainTargetSeq = Math.max(drainTargetSeq, enqueuedSeq)
+        drainSnapshotTarget = Math.max(drainSnapshotTarget, snapshotStartedSeq)
         return Effect.logWarning("Disabling exporter for 60 seconds", cause).pipe(
           Effect.andThen(Effect.sync(notifyWaiters))
         )
@@ -393,8 +408,12 @@ export const make: (
 
     if (exportsEmpty) {
       const seq = ++snapshotStartedSeq
-      return executeExport([], () => {
-        snapshotSettledSeq = seq
+      const items = takeBatch()
+      const batchEndSeq = dequeuedSeq + items.length
+      dequeuedSeq = batchEndSeq
+      return executeExport(items, () => {
+        snapshotSettledSeq = Math.max(snapshotSettledSeq, seq)
+        settledSeq = Math.max(settledSeq, batchEndSeq)
       }).pipe(Effect.flatMap(() => workerLoop))
     }
 
@@ -402,26 +421,29 @@ export const make: (
     const batchEndSeq = dequeuedSeq + items.length
     dequeuedSeq = batchEndSeq
     return executeExport(items, () => {
-      settledSeq = batchEndSeq
+      settledSeq = Math.max(settledSeq, batchEndSeq)
     }).pipe(Effect.flatMap(() => workerLoop))
   })
 
-  const runWorkerLoop = workerLoop.pipe(
-    Effect.onInterrupt(() =>
-      Effect.sync(() => {
-        workerRunning = false
-        notifyWaiters()
-      })
-    )
-  )
-
-  const exportFibers = yield* FiberSet.make<void, never>()
-  const runExportFork = yield* FiberSet.runtime(exportFibers)<never>()
+  const runFork = Effect.runForkWith(services)
+  let workerFiber: Fiber.Fiber<void, never> | undefined = undefined
+  let timerFiber: Fiber.Fiber<void, never> | undefined = undefined
 
   const ensureWorker = () => {
     if (workerRunning || !hasImmediateWork()) return
     workerRunning = true
-    runExportFork(runWorkerLoop)
+    const fiber = runFork(workerLoop)
+    workerFiber = fiber
+    fiber.addObserver(() => {
+      if (workerFiber === fiber) {
+        workerFiber = undefined
+        if (workerRunning) {
+          workerRunning = false
+          syncTimerState()
+          notifyWaiters()
+        }
+      }
+    })
   }
 
   const drain: Effect.Effect<void> = Effect.suspend(() => {
@@ -445,59 +467,70 @@ export const make: (
     return waitFor(() => settledSeq >= target || closed || isDisabled())
   })
 
+  // Single finalizer orders timer stop -> drain -> worker interrupt regardless
+  // of whether `scope` uses sequential or parallel finalization, and bounds
+  // shutdown by `shutdownTimeout` even if the HTTP client is uninterruptible.
   yield* Scope.addFinalizer(
     scope,
-    drain.pipe(
-      Effect.ignore,
-      Effect.interruptible,
-      Effect.timeoutOption(options.shutdownTimeout),
-      Effect.andThen(
-        Effect.suspend(() => {
-          closed = true
-          clearQueue()
-          notifyWaiters()
-          return FiberSet.clear(exportFibers)
-        })
+    Effect.suspend(() => {
+      const stopTimer = timerFiber !== undefined ? Fiber.interrupt(timerFiber) : Effect.void
+      return stopTimer.pipe(
+        Effect.andThen(drain),
+        Effect.ignore,
+        Effect.interruptible,
+        Effect.timeoutOption(options.shutdownTimeout),
+        Effect.andThen(
+          Effect.suspend(() => {
+            closed = true
+            clearQueue()
+            notifyWaiters()
+            timerFiber?.interruptUnsafe()
+            if (workerFiber === undefined) return Effect.void
+            workerFiber.interruptUnsafe()
+            return Effect.yieldNow
+          })
+        )
       )
-    )
+    })
   )
 
-  // Forked after the shutdown finalizer, so the loop stops before the shutdown flush.
-  if (Duration.isFinite(exportInterval)) {
-    yield* Effect.gen(function*() {
-      while (true) {
-        wake.closeUnsafe()
-        yield* armed.await
-        const expired = yield* Effect.race(
-          Effect.as(Effect.sleep(exportInterval), true),
-          Effect.as(wake.await, false)
-        )
-        if (!expired) continue
-        if (closed || isDisabled()) {
-          syncTimerState()
-          continue
-        }
-        if (exportsEmpty) {
-          if (!workerRunning) {
-            const target = snapshotStartedSeq + 1
-            if (target > drainSnapshotTarget) {
-              drainSnapshotTarget = target
+  if (!closed && Duration.isFinite(exportInterval)) {
+    timerFiber = runFork(
+      Effect.gen(function*() {
+        while (true) {
+          wake.closeUnsafe()
+          yield* armed.await
+          const expired = yield* Effect.race(
+            Effect.as(Effect.sleep(exportInterval), true),
+            Effect.as(wake.await, false)
+          )
+          if (!expired) continue
+          if (closed || isDisabled()) {
+            syncTimerState()
+            continue
+          }
+          if (exportsEmpty) {
+            if (!workerRunning) {
+              const target = snapshotStartedSeq + 1
+              if (target > drainSnapshotTarget) {
+                drainSnapshotTarget = target
+              }
+              ensureWorker()
             }
-            ensureWorker()
-          }
-          yield* waitFor(() => !workerRunning || closed || isDisabled())
-        } else {
-          if (queueLength() > 0 && enqueuedSeq > drainTargetSeq) {
-            drainTargetSeq = enqueuedSeq
-            ensureWorker()
-          }
-          if (workerRunning) {
             yield* waitFor(() => !workerRunning || closed || isDisabled())
+          } else {
+            if (queueLength() > 0 && enqueuedSeq > drainTargetSeq) {
+              drainTargetSeq = enqueuedSeq
+              ensureWorker()
+            }
+            if (workerRunning) {
+              yield* waitFor(() => !workerRunning || closed || isDisabled())
+            }
+            syncTimerState()
           }
-          syncTimerState()
         }
-      }
-    }).pipe(Effect.forkIn(scope))
+      })
+    )
   }
 
   const flusher = yield* Flusher
