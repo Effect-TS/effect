@@ -62,6 +62,7 @@ const assertExampleFiles = Effect.fnUntraced(
         return ChildProcessSpawner.makeHandle({
           pid: ChildProcessSpawner.ProcessId(1),
           exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(0)),
+          exitStatus: Effect.succeed({ _tag: "Exited", code: ChildProcessSpawner.ExitCode(0) }),
           isRunning: Effect.succeed(false),
           kill: () => Effect.void,
           stdin: Sink.drain,

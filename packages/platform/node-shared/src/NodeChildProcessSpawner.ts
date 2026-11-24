@@ -48,7 +48,7 @@ import * as Path from "effect/Path"
 import * as PlatformError from "effect/PlatformError"
 import * as Predicate from "effect/Predicate"
 import * as ChildProcess from "effect/process/ChildProcess"
-import type { ChildProcessHandle } from "effect/process/ChildProcessSpawner"
+import type { ChildProcessHandle, ExitStatus } from "effect/process/ChildProcessSpawner"
 import {
   ChildProcessSpawner,
   ExitCode,
@@ -204,18 +204,45 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
     return env
   }
 
-  const inputToStdioOption = (input: ChildProcess.CommandInput | undefined): NodeChildProcess.IOType | undefined =>
-    Stream.isStream(input) ? "pipe" : input
+  const isValidFd = (fd: number): boolean => Number.isInteger(fd) && fd >= 0
 
-  const outputToStdioOption = (input: ChildProcess.CommandOutput | undefined): NodeChildProcess.IOType | undefined =>
-    Sink.isSink(input) ? "pipe" : input
+  const findInvalidFd = (
+    stdinConfig: ChildProcess.StdinConfig,
+    stdoutConfig: ChildProcess.StdoutConfig,
+    stderrConfig: ChildProcess.StderrConfig,
+    additionalFds: ReadonlyArray<ResolvedAdditionalFd>
+  ): string | undefined => {
+    if (typeof stdinConfig.stream === "number" && !isValidFd(stdinConfig.stream)) {
+      return `Invalid stdin file descriptor: ${stdinConfig.stream}`
+    }
+    if (typeof stdoutConfig.stream === "number" && !isValidFd(stdoutConfig.stream)) {
+      return `Invalid stdout file descriptor: ${stdoutConfig.stream}`
+    }
+    if (typeof stderrConfig.stream === "number" && !isValidFd(stderrConfig.stream)) {
+      return `Invalid stderr file descriptor: ${stderrConfig.stream}`
+    }
+    for (const { config, fd } of additionalFds) {
+      if (typeof config === "number" && !isValidFd(config)) {
+        return `Invalid fd${fd} file descriptor: ${config}`
+      }
+    }
+    return undefined
+  }
+
+  const inputToStdioOption = (
+    input: ChildProcess.CommandInput | undefined
+  ): NodeChildProcess.IOType | number | undefined => Stream.isStream(input) ? "pipe" : input
+
+  const outputToStdioOption = (
+    input: ChildProcess.CommandOutput | undefined
+  ): NodeChildProcess.IOType | number | undefined => Sink.isSink(input) ? "pipe" : input
 
   const resolveStdinOption = (options: ChildProcess.CommandOptions): ChildProcess.StdinConfig => {
     const defaultConfig: ChildProcess.StdinConfig = { stream: "pipe", encoding: "utf-8", endOnDone: true }
     if (Predicate.isUndefined(options.stdin)) {
       return defaultConfig
     }
-    if (typeof options.stdin === "string") {
+    if (typeof options.stdin === "string" || typeof options.stdin === "number") {
       return { ...defaultConfig, stream: options.stdin }
     }
     if (Stream.isStream(options.stdin)) {
@@ -236,7 +263,7 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
     if (Predicate.isUndefined(option)) {
       return { stream: "pipe" }
     }
-    if (typeof option === "string") {
+    if (typeof option === "string" || typeof option === "number") {
       return { stream: option }
     }
     if (Sink.isSink(option)) {
@@ -273,7 +300,7 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
     stderrConfig: ChildProcess.StderrConfig,
     additionalFds: ReadonlyArray<ResolvedAdditionalFd>
   ): NodeChildProcess.StdioOptions => {
-    const stdio: Array<NodeChildProcess.IOType | undefined> = [
+    const stdio: Array<NodeChildProcess.IOType | number | undefined> = [
       inputToStdioOption(stdinConfig.stream),
       outputToStdioOption(stdoutConfig.stream),
       outputToStdioOption(stderrConfig.stream)
@@ -291,9 +318,9 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
       stdio[i] = "ignore"
     }
 
-    // Set up additional fds as "pipe"
-    for (const { fd } of additionalFds) {
-      stdio[fd] = "pipe"
+    // Set up additional fds as "pipe" or pass through caller descriptors
+    for (const { config, fd } of additionalFds) {
+      stdio[fd] = typeof config === "number" ? config : "pipe"
     }
 
     return stdio as NodeChildProcess.StdioOptions
@@ -380,6 +407,9 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
     }
 
     for (const { config, fd } of additionalFds) {
+      if (typeof config === "number") {
+        continue
+      }
       const nodeStream = childProcess.stdio[fd]
 
       switch (config.type) {
@@ -689,6 +719,14 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
         const stdoutConfig = resolveOutputOption(cmd.options, "stdout")
         const stderrConfig = resolveOutputOption(cmd.options, "stderr")
         const resolvedAdditionalFds = resolveAdditionalFds(cmd.options)
+        const invalidFd = findInvalidFd(stdinConfig, stdoutConfig, stderrConfig, resolvedAdditionalFds)
+        if (invalidFd !== undefined) {
+          return yield* Effect.fail(PlatformError.badArgument({
+            module: "ChildProcess",
+            method: "spawn",
+            description: invalidFd
+          }))
+        }
         let isReferenced = true
 
         const cwd = yield* resolveWorkingDirectory(cmd.options)
@@ -769,28 +807,35 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
         // A failed input stream truncates the input of the child process, so
         // its failure takes precedence over the exit status and is surfaced
         // without waiting for the child process to exit
-        const exitCode = Effect.flatMap(
+        const exitStatus: Effect.Effect<ExitStatus, PlatformError.PlatformError> = Effect.flatMap(
           Effect.raceFirst(Deferred.await(exitSignal), Deferred.await(inputFailure)),
           ([code, signal]) => {
             if (Deferred.isDoneUnsafe(inputFailure)) {
               return Deferred.await(inputFailure)
             }
             if (Predicate.isNotNull(code)) {
-              return Effect.succeed(ExitCode(code))
+              return Effect.succeed<ExitStatus>({ _tag: "Exited", code: ExitCode(code) })
             }
             // If code is `null`, then `signal` must be defined. See the NodeJS
             // documentation for the `"exit"` event on a `child_process`.
             // https://nodejs.org/api/child_process.html#child_process_event_exit
-            const error = new globalThis.Error(`Process interrupted due to receipt of signal: '${signal}'`)
-            return Effect.fail(toPlatformError("exitCode", error, cmd))
+            return Effect.succeed<ExitStatus>({ _tag: "Signaled", signal: signal as ChildProcess.Signal })
           }
         )
+        const exitCode = Effect.flatMap(exitStatus, (status) => {
+          if (status._tag === "Exited") {
+            return Effect.succeed(status.code)
+          }
+          const error = new globalThis.Error(`Process interrupted due to receipt of signal: '${status.signal}'`)
+          return Effect.fail(toPlatformError("exitCode", error, cmd))
+        })
         const kill = (options?: ChildProcess.KillOptions | undefined) =>
           terminateProcessGroup(cmd, childProcess, exitSignal, options)
 
         return makeHandle({
           pid,
           exitCode,
+          exitStatus,
           isRunning,
           kill,
           stdin,
@@ -836,9 +881,10 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
               const fdName = ChildProcess.fdName(fd) as `fd${number}`
               const existingFds = command.options.additionalFds ?? {}
               const existingFd = existingFds[fdName]
-              const fdConfig: ChildProcess.AdditionalFdConfig = existingFd?.type === "duplex"
-                ? { ...existingFd, stream: sourceStream }
-                : { type: "input", stream: sourceStream }
+              const fdConfig: ChildProcess.AdditionalFdConfig =
+                typeof existingFd === "object" && existingFd.type === "duplex"
+                  ? { ...existingFd, stream: sourceStream }
+                  : { type: "input", stream: sourceStream }
               handles.push(
                 yield* spawnCommand(ChildProcess.make(command.command, command.args, {
                   ...command.options,
@@ -874,6 +920,7 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
         return makeHandle({
           pid: handle.pid,
           exitCode: handle.exitCode,
+          exitStatus: handle.exitStatus,
           isRunning: handle.isRunning,
           kill,
           stdin: handles[0].stdin,

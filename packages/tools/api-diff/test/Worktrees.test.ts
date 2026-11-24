@@ -39,6 +39,7 @@ const ChildProcessSpawnerTest = Layer.succeed(
       stderr: Stream.empty,
       all: Stream.empty,
       exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(0)),
+      exitStatus: Effect.succeed({ _tag: "Exited", code: ChildProcessSpawner.ExitCode(0) }),
       isRunning: Effect.succeed(false),
       kill: () => Effect.void,
       getInputFd: () => Sink.drain,
