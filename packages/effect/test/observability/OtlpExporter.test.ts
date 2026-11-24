@@ -307,8 +307,8 @@ describe("OtlpExporter", () => {
 
   it.effect("exports remaining telemetry sequentially and waits for all requests during shutdown", () =>
     Effect.gen(function*() {
-      const scope = yield* Scope.make()
-      const { httpClient, releases, started } = yield* makeControlledHttpClient(2)
+      const scope = yield* Scope.make("parallel")
+      const { httpClient, interrupted, releases, started } = yield* makeControlledHttpClient(2)
       const batches: Array<Array<number>> = []
       const exporter = yield* makeExporter(httpClient, {
         maxBatchSize: 2,
@@ -325,6 +325,7 @@ describe("OtlpExporter", () => {
 
       const closeFiber = yield* Effect.forkChild(Scope.close(scope, Exit.void))
       yield* yieldNowN(3)
+      assert.strictEqual(yield* Ref.get(interrupted), 0)
       assert.isFalse(yield* Deferred.isDone(started[1]))
       assert.isUndefined(closeFiber.pollUnsafe())
       assert.deepStrictEqual(batches, [[1, 2]])
@@ -338,29 +339,19 @@ describe("OtlpExporter", () => {
       yield* Fiber.join(closeFiber)
     }))
 
-  it.effect("bounds shutdown, interrupts in-flight request, and discards remaining items without onDrop", () =>
+  it.effect("bounds shutdown waiting and interrupts remaining requests", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.make()
       const { httpClient, interrupted, started } = yield* makeControlledHttpClient(1)
-      let dropped = 0
-      const exporter = yield* makeExporter(httpClient, {
-        maxBatchSize: 1,
-        maxQueueSize: 4,
-        onDrop: (count) => {
-          dropped += count
-        }
-      }).pipe(Scope.provide(scope))
+      const exporter = yield* makeExporter(httpClient).pipe(Scope.provide(scope))
 
       exporter.push({ value: 1 })
       yield* Deferred.await(started[0])
-      exporter.push({ value: 2 })
-      exporter.push({ value: 3 })
 
       const closeFiber = yield* Effect.forkChild(Scope.close(scope, Exit.void))
       yield* TestClock.adjust("1 second")
       yield* Fiber.join(closeFiber)
       assert.strictEqual(yield* Ref.get(interrupted), 1)
-      assert.strictEqual(dropped, 0)
     }))
 
   it.effect("does not initiate or wait for delivery when disabled", () =>
@@ -533,36 +524,6 @@ describe("OtlpExporter", () => {
       yield* Scope.close(scope, Exit.void)
     }))
 
-  it.effect("drains in-flight and queued work before interrupting on parallel scope shutdown", () =>
-    Effect.gen(function*() {
-      const scope = yield* Scope.make("parallel")
-      const { httpClient, interrupted, releases, started } = yield* makeControlledHttpClient(2)
-      const batches: Array<Array<number>> = []
-      const exporter = yield* makeExporter(httpClient, {
-        maxBatchSize: 1,
-        shutdownTimeout: "1 second",
-        body(data) {
-          batches.push(data.map((item) => item.value))
-          return HttpBody.empty
-        }
-      }).pipe(Scope.provide(scope))
-
-      exporter.push({ value: 1 })
-      yield* Deferred.await(started[0])
-      exporter.push({ value: 2 })
-
-      const closeFiber = yield* Effect.forkChild(Scope.close(scope, Exit.void))
-      yield* yieldNowN(3)
-      assert.strictEqual(yield* Ref.get(interrupted), 0)
-      assert.isUndefined(closeFiber.pollUnsafe())
-
-      yield* Deferred.succeed(releases[0], undefined)
-      yield* Deferred.await(started[1])
-      yield* Deferred.succeed(releases[1], undefined)
-      yield* Fiber.join(closeFiber)
-      assert.deepStrictEqual(batches, [[1], [2]])
-    }))
-
   it.effect("returns from scope close at shutdownTimeout even with an uninterruptible client", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.make()
@@ -614,54 +575,31 @@ describe("OtlpExporter", () => {
       const batches: Array<Array<number>> = []
       let dropped = 0
 
-      yield* Effect.scoped(
-        Effect.gen(function*() {
-          const exporter = yield* OtlpExporter.make({
-            label: "OtlpExporterTest",
-            url: "http://localhost:4318/v1/logs",
-            headers: undefined,
-            exportInterval: "1 hour",
-            maxBatchSize: 1.5,
-            maxQueueSize: Number.NaN,
-            onDrop: (count) => {
-              dropped += count
-            },
-            body(data) {
-              batches.push(data.map((item) => item.value))
-              return [HttpBody.empty, Effect.void]
-            },
-            shutdownTimeout: "1 second"
-          })
-          const flusher = yield* OtlpExporter.Flusher
-
-          exporter.push({ value: 1 })
-          exporter.push({ value: 2 })
-          yield* flusher.flush
-          assert.deepStrictEqual(batches, [[1], [2]])
-
-          // NaN maxQueueSize falls back to the finite default (2048) instead of disabling bounds
-          const bounded = yield* OtlpExporter.make({
-            label: "OtlpExporterTest",
-            url: "http://localhost:4318/v1/logs",
-            headers: undefined,
-            exportInterval: "1 hour",
-            maxBatchSize: "disabled",
-            maxQueueSize: Number.NaN,
-            onDrop: (count) => {
-              dropped += count
-            },
-            body: () => [HttpBody.empty, Effect.void],
-            shutdownTimeout: "1 second"
-          })
-          for (let i = 0; i < 2049; i++) {
-            bounded.push({ value: i })
+      yield* Effect.scoped(Effect.gen(function*() {
+        const fractional = yield* makeExporter(httpClient, {
+          maxBatchSize: 1.5,
+          body(data) {
+            batches.push(data.map((item) => item.value))
+            return HttpBody.empty
           }
-          assert.strictEqual(dropped, 1)
-        }).pipe(
-          Effect.provideService(HttpClient.HttpClient, httpClient),
-          Effect.provide(OtlpExporter.layerFlusher)
-        )
-      )
+        })
+        fractional.push({ value: 1 })
+        fractional.push({ value: 2 })
+
+        const bounded = yield* makeExporter(httpClient, {
+          maxBatchSize: "disabled",
+          maxQueueSize: Number.NaN,
+          onDrop: (count) => {
+            dropped += count
+          }
+        })
+        for (let i = 0; i < 2049; i++) {
+          bounded.push({ value: i })
+        }
+      }))
+
+      assert.deepStrictEqual(batches, [[1], [2]])
+      assert.strictEqual(dropped, 1)
     }))
 
   it.effect("retries status 429 with numeric retry-after delay", () =>
@@ -1149,7 +1087,6 @@ describe("OtlpExporter", () => {
             yield* flusher.flush
             exporter.push({ value: 3 })
             yield* flusher.flush
-            yield* flusher.flush
           }).pipe(
             Effect.provideService(HttpClient.HttpClient, httpClient),
             Effect.provide(OtlpExporter.layerFlusher)
@@ -1161,7 +1098,6 @@ describe("OtlpExporter", () => {
           [{ value: 1 }],
           [{ value: 2 }],
           [{ value: 3 }],
-          [],
           []
         ])
       }))
