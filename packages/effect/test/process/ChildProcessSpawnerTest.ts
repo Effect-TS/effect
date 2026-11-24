@@ -1476,42 +1476,31 @@ export const inheritedFdSuite = (
 ) =>
   describe("inherited file descriptors", () => {
     it.layer(layer)((it) => {
-      it.effect("routes stdout and stderr directly to an inherited file descriptor", () =>
+      it.effect("routes stdout, stderr, and additionalFds directly to inherited file descriptors", () =>
         Effect.gen(function*() {
           const fs = yield* FileSystem.FileSystem
           const { fd: logFd, file: logPath } = yield* openTempFd
+          const { fd: extraFd, file: extraPath } = yield* openTempFd
 
           const exitCode = yield* Effect.scoped(Effect.gen(function*() {
-            const handle = yield* ChildProcess.make("sh", ["-c", "echo out; echo err >&2"], {
+            const handle = yield* ChildProcess.make("sh", ["-c", "echo out; echo err >&2; printf 'hello fd3' >&3"], {
               stdin: "ignore",
               stdout: logFd,
-              stderr: logFd
+              stderr: logFd,
+              additionalFds: { fd3: extraFd }
             })
             const exitCode = yield* handle.exitCode
 
             assert.strictEqual((yield* fs.readFileString(logPath)).trim(), "out\nerr")
+            assert.strictEqual(yield* fs.readFileString(extraPath), "hello fd3")
             assert.strictEqual(yield* decodeByteStream(handle.all), "")
+            assert.strictEqual(yield* decodeByteStream(handle.getOutputFd(3)), "")
             return exitCode
           }))
 
           assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
           assert.doesNotThrow(() => NodeFs.fstatSync(logFd))
-        }))
-
-      it.effect("passes an existing file descriptor through additionalFds", () =>
-        Effect.gen(function*() {
-          const fs = yield* FileSystem.FileSystem
-          const { fd, file } = yield* openTempFd
-
-          const handle = yield* ChildProcess.make("sh", ["-c", "printf 'hello fd3' >&3"], {
-            stdin: "ignore",
-            additionalFds: { fd3: fd }
-          })
-          const exitCode = yield* handle.exitCode
-
-          assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
-          assert.strictEqual(yield* fs.readFileString(file), "hello fd3")
-          assert.strictEqual(yield* decodeByteStream(handle.getOutputFd(3)), "")
+          assert.doesNotThrow(() => NodeFs.fstatSync(extraFd))
         }))
 
       it.effect("fails with BadArgument for invalid numeric file descriptors", () =>
