@@ -1,0 +1,692 @@
+/**
+ * Webhook delivery for the Events extension (SEP-3415): `events/subscribe`
+ * validation, subscription identity, Standard Webhooks signing, the endpoint
+ * verification handshake and the delivery loop.
+ *
+ * Subscriptions live in memory. Every grant is finite, so a subscription lost
+ * in a restart comes back on the client's next refresh, from its cursor.
+ */
+import * as Clock from "../../Clock.ts"
+import * as Digest from "../../crypto/Digest.ts"
+import * as Mac from "../../crypto/Mac.ts"
+import * as SecureRandom from "../../crypto/SecureRandom.ts"
+import * as Deferred from "../../Deferred.ts"
+import * as Duration from "../../Duration.ts"
+import * as Effect from "../../Effect.ts"
+import * as Base64 from "../../encoding/Base64.ts"
+import * as Base64Url from "../../encoding/Base64Url.ts"
+import * as Fiber from "../../Fiber.ts"
+import * as FetchHttpClient from "../../http/FetchHttpClient.ts"
+import * as HttpClient from "../../http/HttpClient.ts"
+import * as HttpClientRequest from "../../http/HttpClientRequest.ts"
+import type * as HttpClientResponse from "../../http/HttpClientResponse.ts"
+import * as Option from "../../Option.ts"
+import * as Result from "../../Result.ts"
+import * as Stream from "../../Stream.ts"
+import * as PublicMcpSchema from "../McpSchema.ts"
+import type * as McpCore from "./mcpCore.ts"
+import { wireError } from "./mcpEvents.ts"
+
+const MINUTE_MS = 60_000
+/** @internal */
+export const MIN_TTL_MS = MINUTE_MS
+// Short grants because subscriptions live in memory: a restart loses them until the next refresh.
+/** @internal */
+export const MAX_TTL_MS = 60 * MINUTE_MS
+/** @internal */
+export const DEFAULT_TTL_MS = 15 * MINUTE_MS
+/** @internal */
+export const MAX_ATTEMPTS = 5
+// Retries wait 30 s, 1, 2 and 4 minutes: about 7.5 minutes in all.
+const FIRST_RETRY_MS = 30_000
+const REQUEST_TIMEOUT_MS = 10_000
+// Deliveries signed with the old secret before a rotation still verify for this long.
+const ROTATION_GRACE_MS = 5 * MINUTE_MS
+const VERIFIED_FOR_MS = MAX_TTL_MS
+// A failed challenge is answered from here, so repeated subscribes cannot flood the endpoint.
+const FAILED_FOR_MS = 5 * MINUTE_MS
+// Verification POSTs one destination host receives per minute, across all principals.
+const VERIFICATIONS_PER_HOST_PER_MINUTE = 10
+const MAX_SUBSCRIPTIONS_PER_PRINCIPAL = 100
+// A verification reads this many bytes of the response at most; a delivery reads none.
+const MAX_CHALLENGE_RESPONSE_BYTES = 8_192
+const SECRET_PREFIX = "whsec_"
+
+/**
+ * The fixed categories `deliveryStatus.lastError` and `CallbackEndpointError`
+ * report; never the endpoint's own response.
+ *
+ * @internal
+ */
+export type FailureCategory =
+  | "connection_refused"
+  | "timeout"
+  | "tls_error"
+  | "http_4xx"
+  | "http_5xx"
+  | "challenge_failed"
+
+/**
+ * @internal
+ */
+export interface Guard {
+  readonly check: (url: URL) => Effect.Effect<void, { readonly message: string }>
+  readonly allowsPlaintext?: ((url: URL) => boolean) | undefined
+}
+
+/**
+ * @internal
+ */
+export interface Options {
+  readonly principal: Effect.Effect<string, PublicMcpSchema.Forbidden>
+  readonly guard: Guard
+  readonly client: HttpClient.HttpClient
+}
+
+/**
+ * @internal
+ */
+export interface SubscribeRequest {
+  readonly name: string
+  readonly arguments: Readonly<Record<string, unknown>>
+  readonly delivery: Readonly<Record<string, unknown>>
+  readonly cursor: string | null
+  readonly ttlMs?: number | null | undefined
+  // The event's argument decoder, run before the endpoint is contacted.
+  readonly decode: Effect.Effect<unknown, McpCore.EventFailure>
+  // Runs the event's stream for the subscription's lifetime, as push delivery does.
+  readonly open: (
+    decoded: unknown,
+    deliver: (subscription: McpCore.EventSubscription) => Effect.Effect<void>
+  ) => Effect.Effect<void, McpCore.EventFailure | McpCore.RequestRejected>
+}
+
+/**
+ * @internal
+ */
+export interface SubscribeResult {
+  readonly id: string
+  readonly refreshBefore: string
+  readonly cursor: string | null
+  readonly truncated: boolean
+  readonly deliveryStatus?: {
+    readonly active: boolean
+    readonly lastDeliveryAt: string | null
+    readonly lastError: FailureCategory | null
+  } | undefined
+}
+
+/**
+ * @internal
+ */
+export interface UnsubscribeRequest {
+  readonly name: string
+  readonly arguments: Readonly<Record<string, unknown>>
+  readonly delivery: Readonly<Record<string, unknown>>
+}
+
+/**
+ * @internal
+ */
+export interface Webhooks {
+  readonly subscribe: (
+    request: SubscribeRequest
+  ) => Effect.Effect<SubscribeResult, McpCore.EventFailure | McpCore.RequestRejected>
+  readonly unsubscribe: (request: UnsubscribeRequest) => Effect.Effect<void, McpCore.EventFailure>
+  readonly size: Effect.Effect<number>
+}
+
+interface Subscription {
+  readonly id: string
+  readonly principal: string
+  readonly url: URL
+  secret: string
+  key: Mac.Key
+  previous: { readonly key: Mac.Key; readonly until: number } | undefined
+  expiresAt: number
+  // Everything at or before it was acknowledged or given up on.
+  watermark: string | null
+  lastDeliveryAt: number | undefined
+  lastError: FailureCategory | undefined
+  fiber: Fiber.Fiber<void> | undefined
+  // Completed when a refresh moves the deadline, so the expiry recomputes it.
+  deadlineMoved: Deferred.Deferred<void>
+  // Where the event's stream started, or why it could not; a same-key refresh waits for it.
+  readonly accepted: Deferred.Deferred<
+    { readonly cursor: string | null; readonly truncated: boolean },
+    McpCore.EventFailure | McpCore.RequestRejected
+  >
+  // After a gap whose envelope the endpoint never took: the cursors handed out since, any of
+  // which a refresh presents to say it saw past the gap. Until then every refresh is truncated.
+  cursorsSinceGap: Set<string | null> | undefined
+}
+
+type Outcome =
+  // `body` is read only for a verification, and is undefined when it was too long.
+  | { readonly _tag: "Delivered"; readonly body: string | undefined }
+  | { readonly _tag: "Failed"; readonly category: FailureCategory; readonly retryable: boolean }
+
+const invalid = (message: string) => new PublicMcpSchema.InvalidParams({ message })
+
+/**
+ * The TTL granted for a suggested one: the default when none is suggested, and
+ * never unbounded, since subscriptions are not kept across restarts.
+ *
+ * @internal
+ */
+export const grantTtl = (suggested: number | null | undefined): number =>
+  suggested === undefined
+    ? DEFAULT_TTL_MS
+    : suggested === null
+    ? MAX_TTL_MS
+    : Math.min(MAX_TTL_MS, Math.max(MIN_TTL_MS, suggested))
+
+/**
+ * JSON with object keys sorted, so equal arguments serialize equally.
+ *
+ * @internal
+ */
+export const canonicalJson = (value: unknown): string => {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`
+  if (typeof value === "object" && value !== null) {
+    const entries = Object.entries(value).filter(([, entry]) => entry !== undefined)
+    entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`).join(",")}}`
+  }
+  return JSON.stringify(value) ?? "null"
+}
+
+const encoder = new TextEncoder()
+
+const parseUrl = (value: unknown, guard: Guard) => {
+  if (typeof value !== "string") return Effect.fail(invalid("delivery.url is required"))
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    return Effect.fail(invalid("delivery.url is not a valid URL"))
+  }
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && guard.allowsPlaintext?.(url) === true)) {
+    return Effect.fail(invalid("delivery.url must use https"))
+  }
+  if (url.username !== "" || url.password !== "") {
+    return Effect.fail(invalid("delivery.url must not carry credentials"))
+  }
+  url.hash = ""
+  return Effect.succeed(url)
+}
+
+const parseSecret = (value: unknown) => {
+  const fail = Effect.fail(invalid("delivery.secret must be whsec_ and the base64 of 24 to 64 random bytes"))
+  if (typeof value !== "string" || !value.startsWith(SECRET_PREFIX)) return fail
+  const bytes = Base64.decode(value.slice(SECRET_PREFIX.length))
+  if (Result.isFailure(bytes) || bytes.success.length < 24 || bytes.success.length > 64) return fail
+  return Mac.key(Mac.hmacSha256, bytes.success).pipe(Effect.orDie, Effect.map((key) => ({ text: value, key })))
+}
+
+const statusCategory = (status: number): FailureCategory => (status >= 500 ? "http_5xx" : "http_4xx")
+
+// Only codes and names are read, never what the endpoint sent.
+const transportCategory = (error: unknown): FailureCategory => {
+  let current: unknown = error
+  for (let depth = 0; depth < 8 && typeof current === "object" && current !== null; depth++) {
+    const code = (current as { readonly code?: unknown }).code
+    if (typeof code === "string" && /CERT|TLS|SSL/.test(code)) return "tls_error"
+    current = (current as { readonly cause?: unknown }).cause ??
+      (current as { readonly reason?: unknown }).reason
+  }
+  return "connection_refused"
+}
+
+// Stops pulling past the cap; closing the request's scope then aborts the rest.
+const readCapped = (response: HttpClientResponse.HttpClientResponse) =>
+  Effect.suspend(() => {
+    const chunks: Array<Uint8Array> = []
+    let total = 0
+    let oversized = false
+    return response.stream.pipe(
+      Stream.takeWhile((chunk) => {
+        if (total + chunk.length > MAX_CHALLENGE_RESPONSE_BYTES) {
+          oversized = true
+          return false
+        }
+        total += chunk.length
+        chunks.push(chunk)
+        return true
+      }),
+      Stream.runDrain,
+      Effect.map(() => {
+        if (oversized) return undefined
+        const bytes = new Uint8Array(total)
+        let offset = 0
+        for (const chunk of chunks) {
+          bytes.set(chunk, offset)
+          offset += chunk.length
+        }
+        return new TextDecoder().decode(bytes)
+      })
+    )
+  })
+
+const echoedChallenge = (body: string): string | undefined => {
+  try {
+    const parsed: unknown = JSON.parse(body)
+    const challenge = typeof parsed === "object" && parsed !== null
+      ? (parsed as { readonly challenge?: unknown }).challenge
+      : undefined
+    return typeof challenge === "string" ? challenge : undefined
+  } catch {
+    return undefined
+  }
+}
+
+const callbackError = (category: FailureCategory) =>
+  new PublicMcpSchema.CallbackEndpointError({
+    message: `The callback endpoint failed verification: ${category}`,
+    data: { reason: category }
+  })
+
+const iso = (millis: number) => new Date(millis).toISOString()
+
+/**
+ * @internal
+ */
+export const make = Effect.fnUntraced(function*(options: Options) {
+  const scope = yield* Effect.scope
+  const mac = yield* Mac.Mac
+  const digest = yield* Digest.Digest
+  const random = yield* SecureRandom.SecureRandom
+  const { guard } = options
+  // Closing a request's scope aborts its body, so a delivery never downloads what the endpoint sends.
+  const client = HttpClient.withScope(options.client)
+  const subscriptions = new Map<string, Subscription>()
+  // Subscribes past the principal check that have not created their subscription yet.
+  const pending = new Map<string, number>()
+  const verified = new Map<string, number>()
+  const failedVerifications = new Map<string, { readonly until: number; readonly category: FailureCategory }>()
+  const verifying = new Map<string, Deferred.Deferred<void, PublicMcpSchema.CallbackEndpointError>>()
+  const verificationsByHost = new Map<string, Array<number>>()
+
+  const forget = (subscription: Subscription) => {
+    if (subscriptions.get(subscription.id) === subscription) subscriptions.delete(subscription.id)
+  }
+
+  const subscriptionId = (principal: string, url: URL, name: string, args: unknown) =>
+    digest.digestHex(Digest.sha256, encoder.encode(canonicalJson([principal, url.href, name, args]))).pipe(
+      Effect.map((hex) => `sub_${hex.slice(0, 32)}`)
+    )
+
+  // High entropy and unrelated to the eventId; a retry reuses it.
+  const messageId = (prefix: string) =>
+    Effect.map(random.randomBytes(18), (bytes) => `${prefix}_${Base64Url.encode(bytes)}`)
+
+  // Bridge for clients predating SEP-3415 (ChatGPT, @ai-sdk/mcp); drop per #41158.
+  // They require an event's webhook-id to equal its eventId. Both become this id, derived per
+  // subscription so two subscriptions to one URL never share it; poll and push keep the eventId.
+  const deliveryId = (subscription: Subscription, eventId: string) =>
+    Effect.map(
+      digest.digest(Digest.sha256, encoder.encode(`${subscription.id}\0${eventId}`)),
+      (hash) => `evt_${Base64Url.encode(hash).slice(0, 22)}`
+    )
+
+  const MAX_CURSORS_SINCE_GAP = 1_024
+  const advance = (subscription: Subscription, cursor: string | null) => {
+    subscription.watermark = cursor
+    const since = subscription.cursorsSinceGap
+    if (since === undefined) return
+    since.add(cursor)
+    if (since.size > MAX_CURSORS_SINCE_GAP) since.delete(since.values().next().value!)
+  }
+
+  const sign = (keys: ReadonlyArray<Mac.Key>, webhookId: string, timestamp: number, body: string) =>
+    Effect.forEach(keys, (key) => mac.sign(key, encoder.encode(`${webhookId}.${timestamp}.${body}`))).pipe(
+      Effect.orDie,
+      Effect.map((tags) => tags.map((tag) => `v1,${Base64.encode(tag)}`).join(" "))
+    )
+
+  // One POST. The timestamp and signature are fresh on every attempt.
+  const send = Effect.fnUntraced(function*(
+    subscription: Subscription,
+    body: string,
+    webhookId: string,
+    readBody: boolean
+  ) {
+    const admitted = yield* Effect.result(guard.check(subscription.url))
+    if (Result.isFailure(admitted)) {
+      return { _tag: "Failed", category: "connection_refused", retryable: true } satisfies Outcome
+    }
+    const now = yield* Clock.currentTimeMillis
+    const timestamp = Math.floor(now / 1000)
+    const previous = subscription.previous
+    const keys = previous !== undefined && now < previous.until
+      ? [subscription.key, previous.key]
+      : [subscription.key]
+    const request = HttpClientRequest.post(subscription.url).pipe(
+      HttpClientRequest.setHeaders({
+        "webhook-id": webhookId,
+        "webhook-timestamp": String(timestamp),
+        "webhook-signature": yield* sign(keys, webhookId, timestamp, body),
+        "x-mcp-subscription-id": subscription.id
+      }),
+      HttpClientRequest.bodyText(body, "application/json")
+    )
+    const outcome = yield* client.execute(request).pipe(
+      Effect.flatMap((response): Effect.Effect<Outcome, unknown> => {
+        if (response.status < 200 || response.status >= 300) {
+          return Effect.succeed({
+            _tag: "Failed",
+            category: statusCategory(response.status),
+            retryable: response.status !== 410 && response.status !== 413
+          })
+        }
+        return readBody
+          ? Effect.map(readCapped(response), (text) => ({ _tag: "Delivered", body: text }))
+          : Effect.succeed({ _tag: "Delivered", body: undefined })
+      }),
+      Effect.timeoutOption(Duration.millis(REQUEST_TIMEOUT_MS)),
+      Effect.scoped,
+      // `fetch` would follow a redirect itself; webhook delivery never does.
+      Effect.provideService(FetchHttpClient.RequestInit, { redirect: "manual" }),
+      // Trace ids stay inside: the endpoint belongs to someone else.
+      Effect.provideService(HttpClient.TracerPropagationEnabled, false),
+      Effect.catch((error) =>
+        Effect.succeed(Option.some<Outcome>({ _tag: "Failed", category: transportCategory(error), retryable: true }))
+      )
+    )
+    return Option.getOrElse(outcome, (): Outcome => ({ _tag: "Failed", category: "timeout", retryable: true }))
+  })
+
+  // Retries with backoff; gives up after a 410, a 413 or the last attempt. True once delivered.
+  const deliver = Effect.fnUntraced(function*(subscription: Subscription, body: string, webhookId: string) {
+    for (let attempt = 1;; attempt++) {
+      // A subscription that ended may have been replaced under its id; this one speaks no longer.
+      const current = subscriptions.get(subscription.id)
+      if (current !== undefined && current !== subscription) return false
+      const startedAt = yield* Clock.currentTimeMillis
+      const outcome = yield* send(subscription, body, webhookId, false)
+      if (outcome._tag === "Delivered") {
+        subscription.lastDeliveryAt = yield* Clock.currentTimeMillis
+        subscription.lastError = undefined
+        return true
+      }
+      subscription.lastError = outcome.category
+      if (!outcome.retryable || attempt >= MAX_ATTEMPTS) return false
+      // Counted from the attempt's start, so a slow endpoint does not stretch the window.
+      const wait = startedAt + FIRST_RETRY_MS * 2 ** (attempt - 1) - (yield* Clock.currentTimeMillis)
+      if (wait > 0) yield* Effect.sleep(Duration.millis(wait))
+    }
+  })
+
+  const control = (subscription: Subscription, type: string, fields: Readonly<Record<string, unknown>>) =>
+    Effect.flatMap(
+      messageId(`msg_${type}`),
+      (webhookId) => deliver(subscription, JSON.stringify({ type, ...fields }), webhookId)
+    )
+
+  // One delivery in flight per subscription, so the watermark only moves forward
+  // once everything before it is resolved.
+  const run = (subscription: Subscription, name: string, events: McpCore.EventSubscription) =>
+    events.items.pipe(
+      Stream.runForEach((item): Effect.Effect<void> => {
+        switch (item._tag) {
+          case "Event":
+            return Effect.flatMap(deliveryId(subscription, item.eventId), (webhookId) => {
+              const body = JSON.stringify({
+                eventId: webhookId,
+                name,
+                timestamp: item.timestamp,
+                data: item.data,
+                cursor: item.cursor,
+                ...(item._meta === undefined ? {} : { _meta: item._meta })
+              })
+              return deliver(subscription, body, webhookId)
+            }).pipe(Effect.andThen(Effect.sync(() => advance(subscription, item.cursor))))
+          case "Position":
+            return Effect.sync(() => advance(subscription, item.cursor))
+          case "Gap":
+            return control(subscription, "gap", { cursor: item.cursor }).pipe(
+              Effect.map((delivered) => {
+                if (!delivered) subscription.cursorsSinceGap = new Set()
+                advance(subscription, item.cursor)
+              })
+            )
+          case "Error":
+            // A webhook has no envelope for an error that leaves the subscription open.
+            return Effect.void
+        }
+      }),
+      // Ended before it says so, so a refresh meanwhile starts afresh instead of reporting it live.
+      Effect.catch((failure) =>
+        Effect.suspend(() => {
+          forget(subscription)
+          return control(subscription, "terminated", { error: wireError(failure) })
+        })
+      )
+    )
+
+  const expiry = (subscription: Subscription) =>
+    Effect.gen(function*() {
+      while (true) {
+        const left = subscription.expiresAt - (yield* Clock.currentTimeMillis)
+        if (left <= 0) return forget(subscription)
+        yield* Effect.raceFirst(Effect.sleep(Duration.millis(left)), Deferred.await(subscription.deadlineMoved))
+      }
+    })
+
+  const handshake = Effect.fnUntraced(function*(subscription: Subscription) {
+    const challenge = Base64Url.encode(yield* random.randomBytes(32))
+    const outcome = yield* send(
+      subscription,
+      JSON.stringify({ type: "verification", challenge }),
+      yield* messageId("msg_verification"),
+      true
+    )
+    if (outcome._tag === "Failed") return yield* Effect.fail(outcome.category)
+    const echoed = outcome.body === undefined ? undefined : echoedChallenge(outcome.body)
+    if (echoed === undefined || !Mac.timingSafeEqual(encoder.encode(echoed), encoder.encode(challenge))) {
+      return yield* Effect.fail<FailureCategory>("challenge_failed")
+    }
+  })
+
+  // Cached per (principal, url) either way; concurrent subscribes share one handshake.
+  const verify = Effect.fnUntraced(function*(subscription: Subscription) {
+    const key = JSON.stringify([subscription.principal, subscription.url.href])
+    const now = yield* Clock.currentTimeMillis
+    for (const [entry, until] of verified) if (until <= now) verified.delete(entry)
+    for (const [entry, failure] of failedVerifications) if (failure.until <= now) failedVerifications.delete(entry)
+    if (verified.has(key)) return
+    const failure = failedVerifications.get(key)
+    if (failure !== undefined) return yield* callbackError(failure.category)
+    const inFlight = verifying.get(key)
+    if (inFlight !== undefined) return yield* Deferred.await(inFlight)
+    const host = subscription.url.hostname
+    const recent = (verificationsByHost.get(host) ?? []).filter((at) => at > now - MINUTE_MS)
+    if (recent.length >= VERIFICATIONS_PER_HOST_PER_MINUTE) {
+      verificationsByHost.set(host, recent)
+      return yield* new PublicMcpSchema.ResourceExhausted({
+        message: "Too many callback verifications for this host",
+        data: { limit: "verifications", max: VERIFICATIONS_PER_HOST_PER_MINUTE }
+      })
+    }
+    for (const [entry, times] of verificationsByHost) {
+      if (times.every((at) => at <= now - MINUTE_MS)) verificationsByHost.delete(entry)
+    }
+    verificationsByHost.set(host, [...recent, now])
+    const done = Deferred.makeUnsafe<void, PublicMcpSchema.CallbackEndpointError>()
+    verifying.set(key, done)
+    return yield* handshake(subscription).pipe(
+      Effect.tap(() =>
+        Effect.map(Clock.currentTimeMillis, (at) => {
+          verified.set(key, at + VERIFIED_FOR_MS)
+        })
+      ),
+      Effect.tapError((category) =>
+        Effect.map(Clock.currentTimeMillis, (at) => {
+          failedVerifications.set(key, { until: at + FAILED_FOR_MS, category })
+        })
+      ),
+      Effect.mapError(callbackError),
+      Effect.onExit((exit) =>
+        Effect.sync(() => {
+          verifying.delete(key)
+          Deferred.doneUnsafe(done, exit)
+        })
+      )
+    )
+  })
+
+  // A caller that joins while the first subscribe's stream is opening waits for it and gets
+  // where it started; one whose subscription went away meanwhile subscribes afresh.
+  const refresh = Effect.fnUntraced(function*(
+    request: SubscribeRequest,
+    subscription: Subscription,
+    secret: { readonly text: string; readonly key: Mac.Key },
+    expiresAt: number,
+    now: number
+  ): Effect.fn.Return<SubscribeResult, McpCore.EventFailure | McpCore.RequestRejected> {
+    const opening = !Deferred.isDoneUnsafe(subscription.accepted)
+    const start = yield* Deferred.await(subscription.accepted)
+    if (subscriptions.get(subscription.id) !== subscription) return yield* subscribe(request)
+    if (subscription.secret !== secret.text) {
+      subscription.previous = { key: subscription.key, until: now + ROTATION_GRACE_MS }
+      subscription.secret = secret.text
+      subscription.key = secret.key
+    }
+    subscription.expiresAt = expiresAt
+    const moved = subscription.deadlineMoved
+    subscription.deadlineMoved = Deferred.makeUnsafe()
+    Deferred.doneUnsafe(moved, Effect.void)
+    if (opening) return { id: subscription.id, refreshBefore: iso(expiresAt), ...start }
+    // Kept until the client shows a cursor from past the gap, so a lost response hides nothing.
+    const since = subscription.cursorsSinceGap
+    if (since !== undefined && since.has(request.cursor)) subscription.cursorsSinceGap = undefined
+    const truncated = subscription.cursorsSinceGap !== undefined
+    return {
+      id: subscription.id,
+      refreshBefore: iso(expiresAt),
+      cursor: subscription.watermark,
+      truncated,
+      deliveryStatus: {
+        active: true,
+        lastDeliveryAt: subscription.lastDeliveryAt === undefined ? null : iso(subscription.lastDeliveryAt),
+        lastError: subscription.lastError ?? null
+      }
+    } satisfies SubscribeResult
+  })
+
+  const subscribe: Webhooks["subscribe"] = Effect.fnUntraced(function*(request) {
+    const principal = yield* options.principal
+    const mode = request.delivery.mode
+    if (mode !== undefined && mode !== "webhook") return yield* invalid("delivery.mode must be 'webhook'")
+    const url = yield* parseUrl(request.delivery.url, guard)
+    const secret = yield* parseSecret(request.delivery.secret)
+    const id = yield* subscriptionId(principal, url, request.name, request.arguments)
+    const now = yield* Clock.currentTimeMillis
+    const expiresAt = now + grantTtl(request.ttlMs)
+    const live = subscriptions.get(id)
+    if (live !== undefined) return yield* refresh(request, live, secret, expiresAt, now)
+    // The slot is taken before anything asynchronous, so concurrent subscribes cannot pass the cap.
+    let held = pending.get(principal) ?? 0
+    for (const subscription of subscriptions.values()) if (subscription.principal === principal) held++
+    if (held >= MAX_SUBSCRIPTIONS_PER_PRINCIPAL) {
+      return yield* new PublicMcpSchema.ResourceExhausted({
+        message: "Too many webhook subscriptions",
+        data: { limit: "subscriptions", max: MAX_SUBSCRIPTIONS_PER_PRINCIPAL }
+      })
+    }
+    pending.set(principal, (pending.get(principal) ?? 0) + 1)
+    let reserved = true
+    const release = () => {
+      if (!reserved) return
+      reserved = false
+      const left = (pending.get(principal) ?? 1) - 1
+      if (left === 0) pending.delete(principal)
+      else pending.set(principal, left)
+    }
+    return yield* create(request, { principal, url, secret, id, expiresAt, now, release }).pipe(
+      Effect.ensuring(Effect.sync(release))
+    )
+  })
+
+  const create = Effect.fnUntraced(function*(
+    request: SubscribeRequest,
+    { expiresAt, id, now, principal, release, secret, url }: {
+      readonly principal: string
+      readonly url: URL
+      readonly secret: { readonly text: string; readonly key: Mac.Key }
+      readonly id: string
+      readonly expiresAt: number
+      readonly now: number
+      readonly release: () => void
+    }
+  ) {
+    // One answer whether the host is private or does not resolve, so it reveals neither.
+    yield* Effect.mapError(guard.check(url), () => invalid("delivery.url is not allowed"))
+    const subscription: Subscription = {
+      id,
+      principal,
+      url,
+      secret: secret.text,
+      key: secret.key,
+      previous: undefined,
+      expiresAt,
+      watermark: request.cursor,
+      lastDeliveryAt: undefined,
+      lastError: undefined,
+      fiber: undefined,
+      deadlineMoved: Deferred.makeUnsafe(),
+      accepted: Deferred.makeUnsafe(),
+      cursorsSinceGap: undefined
+    }
+    const decoded = yield* request.decode
+    yield* verify(subscription)
+    // A concurrent subscribe for the same key may have finished while this one verified.
+    const raced = subscriptions.get(id)
+    if (raced !== undefined) {
+      release()
+      return yield* refresh(request, raced, secret, expiresAt, now)
+    }
+    release()
+    subscriptions.set(id, subscription)
+    const { accepted } = subscription
+    const lifetime = request.open(decoded, (events) =>
+      Effect.suspend(() => {
+        subscription.watermark = events.cursor
+        return Deferred.succeed(accepted, { cursor: events.cursor, truncated: events.truncated })
+      }).pipe(Effect.andThen(run(subscription, request.name, events)))
+    ).pipe(
+      Effect.tapError((failure) => Deferred.fail(accepted, failure)),
+      Effect.raceFirst(expiry(subscription)),
+      Effect.ignore,
+      Effect.ensuring(Effect.suspend(() => {
+        forget(subscription)
+        return Deferred.fail(accepted, new PublicMcpSchema.InternalError({ message: "The subscription ended" }))
+      }))
+    )
+    // Forked from the request, so the event's stream keeps the request's services.
+    subscription.fiber = yield* Effect.forkIn(lifetime, scope)
+    const start = yield* Deferred.await(accepted)
+    return { id, refreshBefore: iso(expiresAt), cursor: start.cursor, truncated: start.truncated }
+  })
+
+  const unsubscribe: Webhooks["unsubscribe"] = Effect.fnUntraced(function*(request) {
+    const principal = yield* options.principal
+    const url = yield* parseUrl(request.delivery.url, guard)
+    const id = yield* subscriptionId(principal, url, request.name, request.arguments)
+    const subscription = subscriptions.get(id)
+    if (subscription === undefined) {
+      return yield* new PublicMcpSchema.NotFound({
+        message: "No webhook subscription matches",
+        data: { kind: "subscription" }
+      })
+    }
+    subscriptions.delete(id)
+    if (subscription.fiber !== undefined) yield* Fiber.interrupt(subscription.fiber)
+  })
+
+  return {
+    subscribe,
+    unsubscribe,
+    size: Effect.sync(() => subscriptions.size)
+  } satisfies Webhooks
+})

@@ -22,6 +22,7 @@ import type * as Types from "../../../Types.ts"
 import type * as PublicMcpProtocol from "../../McpProtocol.ts"
 import * as PublicMcpSchema from "../../McpSchema.ts"
 import * as McpCore from "../mcpCore.ts"
+import * as McpEvents from "../mcpEvents.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
 import * as McpSchema from "../mcpSchema/v2026_07_28.ts"
 import * as McpSkills from "../mcpSkills.ts"
@@ -344,7 +345,11 @@ const unsupported = (
 /**
  * @internal
  */
-export const handlerRpcs = McpSchema.ClientRequestRpcs.merge(McpSchema.ClientNotificationRpcs, McpSkills.StatelessRpcs)
+export const handlerRpcs = McpSchema.ClientRequestRpcs.merge(
+  McpSchema.ClientNotificationRpcs,
+  McpSkills.StatelessRpcs,
+  McpEvents.StatelessRpcs
+)
 
 /**
  * @internal
@@ -370,6 +375,10 @@ export const makeHandlers = (
   const decodeListSkillsResult = Schema.decodeUnknownEffect(McpSkills.ListSkillsResult)
   const decodeGetSkillResult = Schema.decodeUnknownEffect(McpSkills.GetSkillResult)
   const decodeReadResourceDirectoryResult = Schema.decodeUnknownEffect(McpSkills.ReadResourceDirectoryResult)
+  const decodeListEventsResult = Schema.decodeUnknownEffect(McpEvents.ListEventsResult)
+  const decodePollEventsResult = Schema.decodeUnknownEffect(McpEvents.PollEventsResult)
+  const decodeSubscribeEventsResult = Schema.decodeUnknownEffect(McpEvents.SubscribeEvents.successSchema)
+  const decodeUnsubscribeEventsResult = Schema.decodeUnknownEffect(McpEvents.UnsubscribeEvents.successSchema)
   const sendNotification = context.sendNotification
   const supportsSubscriptions = sendNotification !== undefined
   // Older adapters accept arbitrary JSON; this binding requires extension settings objects.
@@ -384,14 +393,44 @@ export const makeHandlers = (
   }
   const getDiscovery = Effect.map(context.registrationPresence, (presence) => {
     const capabilities: Types.Mutable<typeof McpSchema.ServerCapabilities.Type> = { completions: {}, logging: {} }
-    const declared = McpSkills.declareExtension(extensions, presence.skills)
+    const declared = McpEvents.declareExtension(
+      McpSkills.declareExtension(extensions, presence.skills),
+      presence.events
+    )
     if (declared !== undefined) capabilities.extensions = declared
+    // Bridge for clients predating SEP-3415 (ChatGPT, @ai-sdk/mcp); drop per #41158.
+    // They look for a top-level `events` capability instead of the extension.
+    if (presence.events) capabilities.events = {}
     if (presence.tools) capabilities.tools = { listChanged: supportsSubscriptions }
     if (presence.resources) {
       capabilities.resources = { listChanged: supportsSubscriptions, subscribe: supportsSubscriptions }
     }
     if (presence.prompts) capabilities.prompts = { listChanged: supportsSubscriptions }
     return { supportedVersions: context.supportedVersions, capabilities, serverInfo: context.serverInfo }
+  })
+  const requireEvents = (method: string) =>
+    McpEvents.requireEvents(core, method).pipe(Effect.catch((error) => failWithHttpStatus(404, error)))
+  // The event type's `x-mcp-header` arguments must match their headers, as a tool's do.
+  const validateEventHeaders = Effect.fnUntraced(function*(
+    registration: McpCore.EventRegistration,
+    args: unknown
+  ) {
+    const httpRequest = yield* Effect.serviceOption(HttpServerRequest.HttpServerRequest)
+    if (Option.isSome(httpRequest)) {
+      yield* validateParameterHeaders(registration.descriptor.inputSchema, args, httpRequest.value.headers)
+    }
+  })
+  // Webhook delivery runs the event's push stream, so it needs both.
+  const webhookRegistration = Effect.fnUntraced(function*(method: string, name: string, args: unknown) {
+    yield* requireEvents(method)
+    const invocation = yield* getInvocation
+    const registration = yield* core.events.get(name, invocation)
+    const { stream, webhooks } = registration
+    if (webhooks === undefined || stream === undefined) {
+      return yield* McpEvents.unsupportedDelivery("webhook")
+    }
+    yield* validateEventHeaders(registration, args)
+    return { invocation, stream, webhooks, decodeArguments: registration.decodeArguments }
   })
   const requireSkills = (method: string) =>
     McpSkills.requireSkills(core, method).pipe(
@@ -728,6 +767,121 @@ export const makeHandlers = (
       const result = yield* projectCompleteResult({ ...cacheHint("skills"), resources }, context.serverInfo)
       return yield* decodeReadResourceDirectoryResult(result)
     }, Effect.mapError(projectError)),
+    "events/list": Effect.fnUntraced(function*(request: typeof McpEvents.ListEvents.payloadSchema.Type) {
+      yield* requireEvents("events/list")
+      yield* McpProtocol.rejectCursor(request.cursor)
+      const events = yield* core.events.list(yield* getInvocation)
+      // Without a notification channel nothing can be pushed.
+      const offered = supportsSubscriptions ? events : events.flatMap((event) => {
+        const delivery = event.delivery.filter((mode) => mode !== "push")
+        return delivery.length === 0 ? [] : [{ ...event, delivery }]
+      })
+      const result = yield* projectCompleteResult({ events: offered }, context.serverInfo)
+      return yield* decodeListEventsResult(result)
+    }, Effect.mapError(projectError)),
+    "events/poll": Effect.fnUntraced(function*(request: typeof McpEvents.PollEvents.payloadSchema.Type) {
+      yield* requireEvents("events/poll")
+      const invocation = yield* getInvocation
+      const registration = yield* core.events.get(request.name, invocation)
+      if (registration.poll === undefined) {
+        return yield* McpEvents.unsupportedDelivery("poll")
+      }
+      yield* validateEventHeaders(registration, request.arguments)
+      const outcome = yield* registration.poll({
+        arguments: request.arguments ?? {},
+        cursor: request.cursor ?? null,
+        maxAgeMs: request.maxAgeMs,
+        maxEvents: request.maxEvents
+      }, invocation)
+      const result = yield* projectCompleteResult({
+        events: outcome.events.map((event) =>
+          omitUndefined({
+            eventId: event.eventId,
+            name: request.name,
+            timestamp: event.timestamp,
+            data: event.data,
+            _meta: event._meta
+          })
+        ),
+        cursor: outcome.cursor,
+        truncated: outcome.truncated,
+        hasMore: outcome.hasMore,
+        nextPollMs: outcome.nextPollMs
+      }, context.serverInfo)
+      return yield* decodePollEventsResult(result)
+    }, Effect.mapError(projectError)),
+    "events/stream": Effect.fnUntraced(function*(
+      request: typeof McpEvents.StreamEvents.payloadSchema.Type,
+      { client, requestId }: { readonly client: Rpc.ServerClient; readonly requestId: RpcMessage.RequestId }
+    ) {
+      yield* requireEvents("events/stream")
+      const invocation = yield* getInvocation
+      const registration = yield* core.events.get(request.name, invocation)
+      if (registration.stream === undefined || sendNotification === undefined) {
+        return yield* McpEvents.unsupportedDelivery("push")
+      }
+      yield* validateEventHeaders(registration, request.arguments)
+      const subscriptionMetadata = { "io.modelcontextprotocol/subscriptionId": requestId }
+      const send = (tag: string, payload: Readonly<Record<string, unknown>>) =>
+        sendNotification(McpSchema.protocolVersion, client.id, {
+          tag,
+          payload: {
+            ...payload,
+            _meta: { ...(Predicate.isReadonlyObject(payload._meta) ? payload._meta : {}), ...subscriptionMetadata }
+          }
+        })
+      const heartbeatMs = McpEvents.grantHeartbeat(request.heartbeatMs)
+      yield* Effect.raceFirst(
+        registration.stream(
+          { arguments: request.arguments ?? {}, cursor: request.cursor ?? null, maxAgeMs: request.maxAgeMs },
+          invocation,
+          (subscription) => McpEvents.deliver({ name: request.name, subscription, heartbeatMs, send })
+        ),
+        context.awaitClientEnd ?? Effect.never
+      )
+      const encodedServerInfo = yield* encodeImplementation(context.serverInfo)
+      return McpSchema.SubscriptionsListenResult.make({
+        _meta: { ...subscriptionMetadata, "io.modelcontextprotocol/serverInfo": encodedServerInfo },
+        resultType: "complete"
+      })
+    }, Effect.mapError(projectError)),
+    "events/subscribe": Effect.fnUntraced(function*(request: typeof McpEvents.SubscribeEvents.payloadSchema.Type) {
+      const { decodeArguments, invocation, stream, webhooks } = yield* webhookRegistration(
+        "events/subscribe",
+        request.name,
+        request.arguments
+      )
+      const args = request.arguments ?? {}
+      const cursor = request.cursor ?? null
+      const subscribed = yield* webhooks.subscribe({
+        name: request.name,
+        arguments: args,
+        delivery: request.delivery,
+        cursor,
+        ttlMs: request.ttlMs,
+        decode: decodeArguments(args),
+        open: (decoded, deliver) =>
+          stream(
+            { arguments: args, decoded: { value: decoded }, cursor, maxAgeMs: request.maxAgeMs },
+            invocation,
+            deliver
+          )
+      })
+      const result = yield* projectCompleteResult(omitUndefined({ ...subscribed }), context.serverInfo)
+      return yield* decodeSubscribeEventsResult(result)
+    }, Effect.mapError(projectError)),
+    "events/unsubscribe": Effect.fnUntraced(function*(
+      request: typeof McpEvents.UnsubscribeEvents.payloadSchema.Type
+    ) {
+      const { webhooks } = yield* webhookRegistration("events/unsubscribe", request.name, request.arguments)
+      yield* webhooks.unsubscribe({
+        name: request.name,
+        arguments: request.arguments ?? {},
+        delivery: request.delivery
+      })
+      const result = yield* projectCompleteResult({}, context.serverInfo)
+      return yield* decodeUnsubscribeEventsResult(result)
+    }, Effect.mapError(projectError)),
     "notifications/cancelled": Effect.fnUntraced(function*(
       _request: typeof McpSchema.CancelledNotification.payloadSchema.Type
     ) {
@@ -751,10 +905,10 @@ const runtime = {
 export const protocol = McpProtocol.make({
   protocolVersion: McpSchema.protocolVersion,
   runtime,
-  clientRpcs: McpSchema.ClientRpcs.merge(McpSkills.StatelessRpcs),
+  clientRpcs: McpSchema.ClientRpcs.merge(McpSkills.StatelessRpcs, McpEvents.StatelessRpcs),
   clientNotificationRpcs: McpSchema.ClientNotificationRpcs,
   serverRequestRpcs: McpSchema.ServerRequestRpcs,
-  serverNotificationRpcs: McpSchema.ServerNotificationRpcs,
+  serverNotificationRpcs: McpSchema.ServerNotificationRpcs.merge(McpEvents.ServerNotificationRpcs),
   handlerRpcs,
   makeHandlers,
   toReverseClient: () => ({

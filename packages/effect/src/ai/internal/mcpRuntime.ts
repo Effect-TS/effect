@@ -53,6 +53,10 @@ const routingNameKey = (method: string): "name" | "uri" | undefined => {
   switch (method) {
     case "tools/call":
     case "prompts/get":
+    case "events/poll":
+    case "events/stream":
+    case "events/subscribe":
+    case "events/unsubscribe":
       return "name"
     case "resources/read":
       return "uri"
@@ -319,7 +323,13 @@ export const make = Effect.fnUntraced(function*(
       if (nameKey !== undefined) {
         const name = asRecord(inputRecord?.params)?.[nameKey]
         const header = headers[MCP_NAME_HEADER]
-        if (typeof name !== "string" || header === undefined || McpProtocol.decodeRoutingHeader(header) !== name) {
+        // Bridge for clients predating SEP-3415 (ChatGPT, @ai-sdk/mcp); drop per #41158.
+        // They send no Mcp-Name on these; one they do send must still match.
+        const optional = header === undefined && (method === "events/subscribe" || method === "events/unsubscribe")
+        if (
+          !optional &&
+          (typeof name !== "string" || header === undefined || McpProtocol.decodeRoutingHeader(header) !== name)
+        ) {
           return headerMismatch("Mcp-Name header does not match request parameters")
         }
       }
@@ -479,7 +489,9 @@ export const make = Effect.fnUntraced(function*(
       return {
         _tag: "Accepted",
         acknowledge: !isRequest || !hasId,
-        isSubscription: Predicate.hasProperty(input, "method") && input.method === "subscriptions/listen"
+        // A push subscription stays open until cancelled, so it is never a plain response.
+        isSubscription: Predicate.hasProperty(input, "method") &&
+          (input.method === "subscriptions/listen" || input.method === "events/stream")
       }
     },
     effectLogLevel: (clientId, headers, fallback) => stateful?.effectLogLevel(clientId, headers, fallback) ?? fallback,

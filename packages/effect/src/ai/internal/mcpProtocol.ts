@@ -484,6 +484,7 @@ export interface HandlerInstallationContext {
     readonly resources: boolean
     readonly prompts: boolean
     readonly skills: boolean
+    readonly events: boolean
   }>
 }
 
