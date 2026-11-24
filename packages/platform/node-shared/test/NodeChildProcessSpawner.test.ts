@@ -17,6 +17,7 @@ import { ChildProcessSpawner } from "effect/process/ChildProcessSpawner"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import NodeChildProcess, { spawnSync } from "node:child_process"
+import NodeFs from "node:fs"
 import { syncBuiltinESMExports } from "node:module"
 import * as Net from "node:net"
 import { join } from "node:path"
@@ -133,6 +134,84 @@ describe.skipIf(process.platform === "win32")("layerProxyProcess", { concurrent:
       assert.deepStrictEqual(signalsTo(stubborn.pid), ["SIGTERM"])
       assert.deepStrictEqual(signalsTo(idle.pid), [])
     }).pipe(Effect.provide(ProxyServices)))
+
+  // Simulates an application that can no longer remove the socket directory,
+  // such as after dropping privileges
+  const denySocketDirectoryRemoval = Effect.gen(function*() {
+    const rmSync = NodeFs.rmSync
+    const denied: Array<string> = []
+    const spy = vi.spyOn(NodeFs, "rmSync").mockImplementation((path) => {
+      denied.push(String(path))
+      throw Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" })
+    })
+    syncBuiltinESMExports()
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        spy.mockRestore()
+        syncBuiltinESMExports()
+        for (const path of denied) rmSync(path, { recursive: true, force: true })
+      })
+    )
+    return denied
+  })
+
+  it.live("reports a lost exit and restarts when the socket directory cannot be removed", () =>
+    Effect.gen(function*() {
+      const kill = vi.spyOn(process, "kill")
+      yield* Effect.addFinalizer(() => Effect.sync(() => kill.mockRestore()))
+      const pid = yield* proxyPid
+      const stubborn = yield* ChildProcess.make("sh", ["-c", "trap '' TERM; echo ready; sleep 30"])
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          try {
+            process.kill(-stubborn.pid, "SIGKILL")
+          } catch {
+            // already exited
+          }
+        })
+      )
+      yield* Stream.runDrain(Stream.take(stubborn.stdout, 1))
+      const denied = yield* denySocketDirectoryRemoval
+
+      const killing = yield* Effect.forkChild(Effect.flip(stubborn.kill({ forceKillAfter: "30 seconds" })))
+      while (!kill.mock.calls.some(([target]) => target === -stubborn.pid)) yield* Effect.sleep("5 millis")
+      process.kill(pid, "SIGKILL")
+
+      const error = yield* Fiber.join(killing).pipe(Effect.timeout("5 seconds"))
+      assert.strictEqual(error._tag, "PlatformError")
+      assert.isAbove(denied.length, 0)
+      assert.deepStrictEqual(
+        kill.mock.calls.filter(([target, signal]) => Math.abs(target) === stubborn.pid && signal !== 0).map((
+          [, signal]
+        ) => signal),
+        ["SIGTERM"]
+      )
+      assert.notStrictEqual(yield* proxyPid, pid)
+    }).pipe(Effect.provide(ProxyServices), Effect.scoped))
+
+  it.live("retires proxy processes when the socket directory cannot be removed", () =>
+    Effect.gen(function*() {
+      const denied = yield* denySocketDirectoryRemoval
+      const uid = process.getuid!()
+      const getuid = vi.spyOn(process, "getuid")
+      yield* Effect.addFinalizer(() => Effect.sync(() => getuid.mockRestore()))
+
+      // A retired proxy process with a running command
+      const first = yield* proxyPid
+      const running = yield* ChildProcess.make("sh", ["-c", "read line; exit 3"])
+      getuid.mockReturnValue(uid + 1)
+      const second = yield* proxyPid
+      assert.notStrictEqual(second, first)
+      yield* Stream.run(Stream.make(new TextEncoder().encode("\n")), running.stdin)
+      assert.strictEqual(yield* running.exitCode, 3)
+
+      // An idle retired proxy process
+      getuid.mockReturnValue(uid + 2)
+      const third = yield* proxyPid
+      assert.notStrictEqual(third, second)
+      while (isAlive(first) || isAlive(second)) yield* Effect.sleep("10 millis")
+      assert.isAbove(denied.length, 0)
+    }).pipe(Effect.provide(ProxyServices), Effect.scoped, Effect.timeout("5 seconds")))
 
   it("fails a spawn whose exit is lost while its stdio sockets are pending", () => {
     const released: Array<number> = []

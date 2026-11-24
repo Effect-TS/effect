@@ -387,20 +387,31 @@ class Proxy implements ProxiedProcessOwner {
     socket.on("readable", onReadable)
   }
 
+  /**
+   * Best effort, and never throws, since it runs while exits and losses are
+   * being reported. Removal fails if the application has since changed its
+   * credentials, in which case the directory is left behind.
+   */
   private closeServer(): void {
-    this.server?.close()
-    if (this.directory !== undefined) {
-      Fs.rmSync(this.directory, { recursive: true, force: true })
-      this.directory = undefined
+    this.server?.close(() => {})
+    const directory = this.directory
+    this.directory = undefined
+    if (directory !== undefined) {
+      try {
+        Fs.rmSync(directory, { recursive: true, force: true })
+      } catch {
+        // ignored
+      }
     }
   }
 
   private end(cause: Error): void {
     if (this.exited) return
     this.exited = true
-    this.disconnect()
     const error = new Error("The proxy process exited before the command's exit status was received", { cause })
+    // Every command is marked lost before anything else can run
     const reports = Array.from(this.commands.values(), (command) => command.onLost(error))
+    this.disconnect()
     for (const report of reports) report()
   }
 }
@@ -416,9 +427,10 @@ export const make = () => {
     } else if (current.credentials !== credentials()) {
       // The application changed its credentials, so its commands must not
       // run with the old ones
-      current.retire()
-      retired.add(current)
+      const previous = current
       current = new Proxy()
+      retired.add(previous)
+      previous.retire()
     }
     for (const proxy of retired) {
       if (proxy.exited) retired.delete(proxy)

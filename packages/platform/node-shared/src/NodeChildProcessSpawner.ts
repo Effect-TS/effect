@@ -921,12 +921,14 @@ export const layer: Layer.Layer<
  *   process stalls once. If the credentials change later, the next spawn
  *   starts a new proxy process.
  * - If the proxy process exits early, the next spawn starts a new one.
- *   Commands it launched keep their stdio, but `exitCode`, `isRunning` and
- *   `kill` fail with a `PlatformError` because their exit can no longer be
- *   observed. `kill` still sends its first signal, without escalating, and
- *   that signal can reach an unrelated process if the command has already
- *   exited and its ID has been reused. Scope release does not signal these
- *   commands, so they keep running.
+ *   Commands it launched keep their stdio, but `exitCode` and `isRunning`
+ *   fail with a `PlatformError` because their exit can no longer be observed.
+ *   `kill` still sends its first signal, without escalating, and that signal
+ *   can reach an unrelated process if the command has already exited and its
+ *   ID has been reused. On a single-command handle `kill` then fails with a
+ *   `PlatformError`. A pipeline handle's `kill` ignores the failures of its
+ *   commands, so it succeeds. Scope release does not signal these commands, so
+ *   they keep running.
  * - The socket path under `os.tmpdir()` must fit the platform limit of about
  *   100 bytes. Spawns fail with a `PlatformError` otherwise.
  *
