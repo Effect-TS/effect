@@ -237,9 +237,10 @@ export const suiteWith = (
             const duplicate = yield* queue.take((value, metadata) => Effect.succeed({ value, ...metadata })).pipe(
               Effect.forkScoped
             )
-            // Longer than lockExpiration: stale settlement must neither release
-            // the replacement nor unregister its lock refresh.
-            yield* Effect.sleep("1500 millis").pipe(TestClock.withLive)
+            // Longer than lockExpiration, including dialects with whole-second
+            // timestamps: stale settlement must neither release the replacement
+            // nor unregister its lock refresh.
+            yield* Effect.sleep("2500 millis").pipe(TestClock.withLive)
             assert.isUndefined(duplicate.pollUnsafe())
 
             yield* Fiber.interrupt(replacement)

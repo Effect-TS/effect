@@ -22,7 +22,8 @@ PersistedCacheTest.suite(
 
 PersistedQueueTest.suite(
   "sql-pg",
-  PersistedQueue.layerStoreSql().pipe(Layer.provide(PgContainer.layerClient))
+  PersistedQueue.layerStoreSql().pipe(Layer.provide(PgContainer.layerClient)),
+  { nonDeliveryWait: "250 millis" }
 )
 
 it.layer(PgContainer.layerClient, { timeout: "30 seconds" })((it) => PersistedQueueSqlTest.suiteWith(it))

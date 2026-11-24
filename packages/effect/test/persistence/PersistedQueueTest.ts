@@ -24,10 +24,16 @@ export const suiteWith = <R>(
     readonly cleanupUsesClock?: boolean | undefined
     /** Set when the store fails `cleanup` as unsupported instead of running it. */
     readonly cleanup?: "supported" | "unsupported" | undefined
+    /**
+     * Wall-clock wait for state-only non-delivery assertions (default 1 second).
+     * Lower only for backends validated against claim/completion mutations.
+     */
+    readonly nonDeliveryWait?: Duration.Input | undefined
   }
 ) => {
   const timeout = options?.timeout ?? "30 seconds"
   const hookTimeout = options?.hookTimeout ?? timeout
+  const nonDeliveryWait = Duration.toMillis(options?.nonDeliveryWait ?? "1 second")
   // Tests share and advance the same TestClock.
   const testOptions = { timeout: Duration.toMillis(timeout) }
 
@@ -36,12 +42,12 @@ export const suiteWith = <R>(
     options?.virtualTime ? Effect.yieldNow : Effect.sleep(millis).pipe(TestClock.withLive)
 
   // advance the virtual clock one poll cycle, give real-time stores a moment,
-  // then check the forked take is still waiting. State-only checks only need
-  // to outlast one poll round trip (250ms); offer-delay checks wait 1s so the
-  // assertion stays tied to the store's clock.
+  // then check the forked take is still waiting. State-only checks use
+  // `nonDeliveryWait`; offer-delay checks wait 1s so the assertion stays tied
+  // to the store's clock.
   const assertNotDelivered = Effect.fnUntraced(function*<A, E>(
     fiber: Fiber.Fiber<A, E>,
-    waitMillis = 250
+    waitMillis = nonDeliveryWait
   ) {
     yield* TestClock.adjust(1000)
     yield* liveSleep(waitMillis)
@@ -614,5 +620,6 @@ export const suite = (
     readonly virtualTime?: boolean | undefined
     readonly cleanupUsesClock?: boolean | undefined
     readonly cleanup?: "supported" | "unsupported" | undefined
+    readonly nonDeliveryWait?: Duration.Input | undefined
   }
 ) => suiteWith(name, layer, it, options)
