@@ -11,18 +11,19 @@
  */
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
-import * as Deferred from "../Deferred.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
-import * as Fiber from "../Fiber.ts"
+import type * as Fiber from "../Fiber.ts"
 import { identity } from "../Function.ts"
 import * as Headers from "../http/Headers.ts"
 import type { HttpBody } from "../http/HttpBody.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
+import * as Count from "../internal/count.ts"
 import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
+import * as MutableList from "../MutableList.ts"
 import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Scope from "../Scope.ts"
@@ -156,18 +157,6 @@ export const layerFlusher: Layer.Layer<Flusher> = Layer.sync(Flusher, () => {
   }
 })
 
-const normalizePositiveInt = (value: number, fallback: number): number => {
-  if (Number.isNaN(value)) return fallback
-  if (value === Number.POSITIVE_INFINITY) return value
-  return Math.max(1, Math.floor(value))
-}
-
-const normalizeNonNegativeInt = (value: number, fallback: number): number => {
-  if (Number.isNaN(value)) return fallback
-  if (value === Number.POSITIVE_INFINITY) return value
-  return Math.max(0, Math.floor(value))
-}
-
 /**
  * Creates a scoped OTLP batch exporter.
  *
@@ -226,15 +215,10 @@ export const make: (
   const clock = Context.get(services, Clock)
   const scope = Context.get(services, Scope.Scope)
   const exportInterval = Duration.max(Duration.fromInputUnsafe(options.exportInterval), Duration.zero)
-  const maxBatchSize = options.maxBatchSize === "disabled"
-    ? "disabled"
-    : normalizePositiveInt(options.maxBatchSize, 1)
-  const defaultMaxQueueSize = maxBatchSize === "disabled" || !Number.isFinite(maxBatchSize)
-    ? 2048
-    : Math.max(2048, maxBatchSize)
-  const maxQueueSize = options.maxQueueSize !== undefined
-    ? normalizeNonNegativeInt(options.maxQueueSize, defaultMaxQueueSize)
-    : defaultMaxQueueSize
+  const batchLimit = options.maxBatchSize === "disabled" ? Infinity : Count.normalizeNonEmpty(options.maxBatchSize)
+  const maxQueueSize = options.maxQueueSize === undefined || Number.isNaN(options.maxQueueSize)
+    ? Number.isFinite(batchLimit) ? Math.max(2048, batchLimit) : 2048
+    : Count.normalize(options.maxQueueSize)
 
   const client = Context.get(services, HttpClient.HttpClient).pipe(
     HttpClient.tap((response) => Effect.ignore(response.arrayBuffer)),
@@ -254,101 +238,55 @@ export const make: (
   )
 
   const request = HttpClientRequest.post(options.url, { headers })
-  const exportsEmpty = maxBatchSize === "disabled" && options.exportEmpty === true
-
-  let queue: Array<any> = []
-  let queueHead = 0
-  const queueLength = () => queue.length - queueHead
-  const clearQueue = () => {
-    queue = []
-    queueHead = 0
-  }
-  const takeBatch = (): Array<any> => {
-    const len = queue.length - queueHead
-    if (len === 0) return []
-    const count = maxBatchSize === "disabled" ? len : Math.min(len, maxBatchSize)
-    if (count === len) {
-      const items = queueHead === 0 ? queue : queue.slice(queueHead)
-      queue = []
-      queueHead = 0
-      return items
-    }
-    const items = new Array<any>(count)
-    for (let i = 0; i < count; i++) {
-      items[i] = queue[queueHead + i]
-      queue[queueHead + i] = undefined
-    }
-    queueHead += count
-    if (queueHead * 2 >= queue.length) {
-      queue = queue.slice(queueHead)
-      queueHead = 0
-    }
-    return items
-  }
-
+  const exportsEmpty = options.maxBatchSize === "disabled" && options.exportEmpty === true
+  const queue = MutableList.make<any>()
   let disabledUntil: number | undefined = undefined
   let closed = false
-  let enqueuedSeq = 0
-  let dequeuedSeq = 0
-  let settledSeq = 0
-  let drainTargetSeq = 0
-  let snapshotStartedSeq = 0
-  let snapshotSettledSeq = 0
-  let drainSnapshotTarget = 0
-  let workerRunning = false
-
-  interface Waiter {
-    readonly isReady: () => boolean
-    readonly deferred: Deferred.Deferred<void>
-  }
-  const waiters = new Set<Waiter>()
-
-  const isDisabled = () => {
+  const isStopped = () => {
+    if (closed) return true
     if (disabledUntil === undefined) return false
     if (clock.currentTimeMillisUnsafe() < disabledUntil) return true
     disabledUntil = undefined
     return false
   }
 
+  // Progress is counted in items, or in snapshots when `exportsEmpty` is set:
+  // how far the worker was asked to export, how far the exports it started
+  // reach, and how far the ones that finished reach.
+  let requested = 0
+  let started = 0
+  let settled = 0
+
+  interface Waiter {
+    readonly target: number
+    readonly resume: (effect: Effect.Effect<void>) => void
+  }
+  const waiters = new Set<Waiter>()
   const notifyWaiters = () => {
-    if (waiters.size === 0) return
+    const stopped = isStopped()
     for (const waiter of waiters) {
-      if (waiter.isReady()) {
+      if (stopped || settled >= waiter.target) {
         waiters.delete(waiter)
-        Deferred.doneUnsafe(waiter.deferred, Effect.void)
+        waiter.resume(Effect.void)
       }
     }
   }
-
-  const waitFor = (isReady: () => boolean): Effect.Effect<void> =>
-    Effect.suspend(() => {
-      if (isReady()) return Effect.void
-      const deferred = Deferred.makeUnsafe<void>()
-      const waiter: Waiter = { isReady, deferred }
+  const awaitSettled = (target: number): Effect.Effect<void> =>
+    Effect.callback((resume) => {
+      if (isStopped() || settled >= target) return resume(Effect.void)
+      const waiter: Waiter = { target, resume }
       waiters.add(waiter)
-      return Deferred.await(deferred).pipe(
-        Effect.onInterrupt(() =>
-          Effect.sync(() => {
-            waiters.delete(waiter)
-          })
-        )
-      )
+      return Effect.sync(() => {
+        waiters.delete(waiter)
+      })
     })
 
   // `armed` is open while there is something to export. It changes in the
   // same synchronous step as the queue check, so a push is never stranded.
   const armed = yield* Latch.make(exportsEmpty)
   const wake = yield* Latch.make()
-  const syncTimerState = () => {
-    if (exportsEmpty) return
-    if (queueLength() > 0 && !closed && !isDisabled()) {
-      armed.openUnsafe()
-    } else if (armed.closeUnsafe()) {
-      wake.openUnsafe()
-    }
-  }
 
-  const executeExport = (items: Array<any>, onSettled: () => void): Effect.Effect<void> =>
+  const exportBatch = (items: Array<any>): Effect.Effect<void> =>
     Effect.suspend(() => {
       const [body, onSuccess] = options.body(items)
       const batchRequest = HttpClientRequest.setBody(request, body)
@@ -358,28 +296,14 @@ export const make: (
         : client.execute(batchRequest)
       return response.pipe(
         Effect.andThen(onSuccess),
-        Effect.andThen(
-          Effect.sync(() => {
-            onSettled()
-            notifyWaiters()
-          })
-        ),
         Effect.withTracerEnabled(false)
       )
     }).pipe(
       Effect.catchCause((cause) => {
-        if (disabledUntil === undefined) {
-          disabledUntil = clock.currentTimeMillisUnsafe() + 60_000
-        }
-        clearQueue()
-        dequeuedSeq = enqueuedSeq
-        settledSeq = Math.max(settledSeq, enqueuedSeq)
-        snapshotSettledSeq = Math.max(snapshotSettledSeq, snapshotStartedSeq)
-        drainTargetSeq = Math.max(drainTargetSeq, enqueuedSeq)
-        drainSnapshotTarget = Math.max(drainSnapshotTarget, snapshotStartedSeq)
-        return Effect.logWarning("Disabling exporter for 60 seconds", cause).pipe(
-          Effect.andThen(Effect.sync(notifyWaiters))
-        )
+        disabledUntil = clock.currentTimeMillisUnsafe() + 60_000
+        MutableList.clear(queue)
+        requested = started
+        return Effect.logWarning("Disabling exporter for 60 seconds", cause)
       }),
       Effect.annotateLogs({
         package: "@effect/opentelemetry",
@@ -387,151 +311,79 @@ export const make: (
       })
     )
 
-  const hasImmediateWork = (): boolean => {
-    if (closed || isDisabled()) return false
-    if (exportsEmpty) {
-      return drainSnapshotTarget > snapshotStartedSeq
-    }
-    const len = queueLength()
-    if (len === 0) return false
-    return (maxBatchSize !== "disabled" && len >= maxBatchSize)
-      || drainTargetSeq > dequeuedSeq
-  }
-
+  // The worker sends one batch at a time and only runs while there is work.
+  // The exporter owns it, so interrupting a flush never cancels a request.
+  const hasWork = () => !isStopped() && (requested > started || queue.length >= batchLimit)
   const workerLoop: Effect.Effect<void> = Effect.suspend(() => {
-    if (!hasImmediateWork()) {
-      workerRunning = false
-      syncTimerState()
-      notifyWaiters()
+    if (!hasWork()) {
+      working = false
+      if (!exportsEmpty && queue.length === 0 && armed.closeUnsafe()) {
+        wake.openUnsafe()
+      }
       return Effect.void
     }
-
-    if (exportsEmpty) {
-      const seq = ++snapshotStartedSeq
-      const items = takeBatch()
-      const batchEndSeq = dequeuedSeq + items.length
-      dequeuedSeq = batchEndSeq
-      return executeExport(items, () => {
-        snapshotSettledSeq = Math.max(snapshotSettledSeq, seq)
-        settledSeq = Math.max(settledSeq, batchEndSeq)
-      }).pipe(Effect.flatMap(() => workerLoop))
-    }
-
-    const items = takeBatch()
-    const batchEndSeq = dequeuedSeq + items.length
-    dequeuedSeq = batchEndSeq
-    return executeExport(items, () => {
-      settledSeq = Math.max(settledSeq, batchEndSeq)
-    }).pipe(Effect.flatMap(() => workerLoop))
-  })
-
-  const runFork = Effect.runForkWith(services)
-  let workerFiber: Fiber.Fiber<void, never> | undefined = undefined
-  let timerFiber: Fiber.Fiber<void, never> | undefined = undefined
-
-  const ensureWorker = () => {
-    if (workerRunning || !hasImmediateWork()) return
-    workerRunning = true
-    const fiber = runFork(workerLoop)
-    workerFiber = fiber
-    fiber.addObserver(() => {
-      if (workerFiber === fiber) {
-        workerFiber = undefined
-        if (workerRunning) {
-          workerRunning = false
-          syncTimerState()
-          notifyWaiters()
-        }
-      }
+    const items = MutableList.takeN(queue, batchLimit)
+    started += exportsEmpty ? 1 : items.length
+    // `exit` keeps the worker alive if the failure handler itself dies, for
+    // example when a logger throws.
+    return Effect.flatMap(Effect.exit(exportBatch(items)), () => {
+      settled = started
+      notifyWaiters()
+      return workerLoop
     })
+  })
+  const runFork = Effect.runForkWith(services)
+  let working = false
+  let worker: Fiber.Fiber<void> | undefined = undefined
+  const startWorker = () => {
+    if (working || !hasWork()) return
+    working = true
+    worker = runFork(workerLoop)
   }
 
+  // Exports everything accepted so far, or one fresh snapshot, and waits for
+  // it to settle together with any export already in flight.
   const drain: Effect.Effect<void> = Effect.suspend(() => {
-    if (closed || isDisabled()) return Effect.void
-    if (exportsEmpty) {
-      const target = snapshotStartedSeq + 1
-      if (target > drainSnapshotTarget) {
-        drainSnapshotTarget = target
-      }
-      ensureWorker()
-      return waitFor(() => snapshotSettledSeq >= target || closed || isDisabled())
-    }
-    const target = enqueuedSeq
-    if (settledSeq >= target) {
-      return Effect.void
-    }
-    if (target > drainTargetSeq) {
-      drainTargetSeq = target
-    }
-    ensureWorker()
-    return waitFor(() => settledSeq >= target || closed || isDisabled())
+    const target = started + (exportsEmpty ? 1 : queue.length)
+    requested = Math.max(requested, target)
+    startWorker()
+    return awaitSettled(target)
   })
 
-  // Single finalizer orders timer stop -> drain -> worker interrupt regardless
-  // of whether `scope` uses sequential or parallel finalization, and bounds
-  // shutdown by `shutdownTimeout` even if the HTTP client is uninterruptible.
+  const timer = Duration.isFinite(exportInterval)
+    ? runFork(Effect.gen(function*() {
+      while (true) {
+        wake.closeUnsafe()
+        yield* armed.await
+        const expired = yield* Effect.race(
+          Effect.as(Effect.sleep(exportInterval), true),
+          Effect.as(wake.await, false)
+        )
+        if (expired) yield* drain
+      }
+    }))
+    : undefined
+
+  // A single finalizer stops the timer, drains, then stops the worker in that
+  // order even in a parallel scope. The worker is interrupted without waiting
+  // for it, so shutdown ends at `shutdownTimeout` even if the HTTP client is
+  // uninterruptible.
   yield* Scope.addFinalizer(
     scope,
     Effect.suspend(() => {
-      const stopTimer = timerFiber !== undefined ? Fiber.interrupt(timerFiber) : Effect.void
-      return stopTimer.pipe(
-        Effect.andThen(drain),
-        Effect.ignore,
+      timer?.interruptUnsafe()
+      return drain.pipe(
         Effect.interruptible,
         Effect.timeoutOption(options.shutdownTimeout),
-        Effect.andThen(
-          Effect.suspend(() => {
-            closed = true
-            clearQueue()
-            notifyWaiters()
-            timerFiber?.interruptUnsafe()
-            if (workerFiber === undefined) return Effect.void
-            workerFiber.interruptUnsafe()
-            return Effect.yieldNow
-          })
-        )
+        Effect.andThen(Effect.sync(() => {
+          closed = true
+          MutableList.clear(queue)
+          notifyWaiters()
+          worker?.interruptUnsafe()
+        }))
       )
     })
   )
-
-  if (!closed && Duration.isFinite(exportInterval)) {
-    timerFiber = runFork(
-      Effect.gen(function*() {
-        while (true) {
-          wake.closeUnsafe()
-          yield* armed.await
-          const expired = yield* Effect.race(
-            Effect.as(Effect.sleep(exportInterval), true),
-            Effect.as(wake.await, false)
-          )
-          if (!expired) continue
-          if (closed || isDisabled()) {
-            syncTimerState()
-            continue
-          }
-          if (exportsEmpty) {
-            if (!workerRunning) {
-              const target = snapshotStartedSeq + 1
-              if (target > drainSnapshotTarget) {
-                drainSnapshotTarget = target
-              }
-              ensureWorker()
-            }
-            yield* waitFor(() => !workerRunning || closed || isDisabled())
-          } else {
-            if (queueLength() > 0 && enqueuedSeq > drainTargetSeq) {
-              drainTargetSeq = enqueuedSeq
-              ensureWorker()
-            }
-            if (workerRunning) {
-              yield* waitFor(() => !workerRunning || closed || isDisabled())
-            }
-            syncTimerState()
-          }
-        }
-      })
-    )
-  }
 
   const flusher = yield* Flusher
   yield* flusher.register(drain)
@@ -539,15 +391,14 @@ export const make: (
   return {
     push(data) {
       // With no idle timer, the next push ends the disabled window.
-      if (closed || isDisabled()) return
-      if (queueLength() >= maxQueueSize) {
+      if (isStopped()) return
+      if (queue.length >= maxQueueSize) {
         options.onDrop?.(1)
         return
       }
-      queue.push(data)
-      enqueuedSeq++
-      if (maxBatchSize !== "disabled" && queueLength() >= maxBatchSize) {
-        ensureWorker()
+      MutableList.append(queue, data)
+      if (queue.length >= batchLimit) {
+        startWorker()
       } else {
         armed.openUnsafe()
       }
