@@ -1565,7 +1565,6 @@ const makeResponse = Effect.fnUntraced(
             type: "tool-result",
             id: part.id,
             name: toolName,
-            providerExecuted: true,
             isFailure: status !== "completed",
             result: status === "completed"
               ? { result: part.result }
