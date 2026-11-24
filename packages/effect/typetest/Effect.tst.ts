@@ -591,6 +591,25 @@ describe("Effect.catchTag", () => {
     expect(result).type.toBe<Effect.Effect<string, OtherError>>()
   })
 
+  it("preserves tagged errors for an inline Effect.map in data-first usage", () => {
+    const result = Effect.catchTag(
+      Effect.map(mixedEffect, (s) => s.length),
+      "AiError",
+      (error) => {
+        expect(error).type.toBe<AiError>()
+        return Effect.succeed(0)
+      }
+    )
+    expect(result).type.toBe<Effect.Effect<number, OtherError>>()
+  })
+
+  it("rejects unknown tags in data-first usage", () => {
+    // @ts-expect-error No overload matches this call
+    Effect.catchTag(mixedEffect, "UnknownError", () => Effect.succeed("ok"))
+    // @ts-expect-error No overload matches this call
+    Effect.catchTag(Effect.map(mixedEffect, (s) => s.length), "UnknownError", () => Effect.succeed(0))
+  })
+
   it("handles an array of tags", () => {
     const result = pipe(
       mixedEffect,
