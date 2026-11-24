@@ -1529,5 +1529,14 @@ export const inheritedFdSuite = (
             assert.strictEqual(error.reason._tag, "BadArgument")
           }
         }))
+
+      it.effect("fails with a typed PlatformError for an unopened file descriptor", () =>
+        Effect.gen(function*() {
+          const error = yield* Effect.flip(
+            Effect.scoped(ChildProcess.make("echo", ["test"], { stdout: 99999 }))
+          )
+          assert.strictEqual(error._tag, "PlatformError")
+          assert.strictEqual(error.reason.method, "spawn")
+        }))
     })
   })

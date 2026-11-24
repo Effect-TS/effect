@@ -213,6 +213,7 @@ export type Signal =
   | "SIGBUS"
   | "SIGCHLD"
   | "SIGCONT"
+  | "SIGEMT"
   | "SIGFPE"
   | "SIGHUP"
   | "SIGILL"

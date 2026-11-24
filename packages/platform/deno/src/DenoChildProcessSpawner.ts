@@ -376,7 +376,7 @@ const make = Effect.gen(function*() {
             if (Predicate.isNull(status.signal)) {
               return Effect.succeed<ExitStatus>({ _tag: "Exited", code: ExitCode(status.code) })
             }
-            return Effect.succeed<ExitStatus>({ _tag: "Signaled", signal: status.signal as ChildProcess.Signal })
+            return Effect.succeed<ExitStatus>({ _tag: "Signaled", signal: status.signal })
           }
         )
         const exitCode = Effect.flatMap(exitStatus, (status) => {

@@ -522,20 +522,28 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
       PlatformError.PlatformError
     >((resume) => {
       const deferred = Deferred.makeUnsafe<ExitCodeWithSignal, PlatformError.PlatformError>()
-      const handle = spawnProcess(
-        command.command,
-        command.args.map(unwrap),
-        spawnOptions
-      )
-      handle.on("error", (error) => {
+      const onError = (error: unknown) => {
+        const err = toError(error)
         // Node copies the arguments into `spawnargs`.
         if (command.args.some(Redacted.isRedacted)) {
-          Object.assign(error, {
+          Object.assign(err, {
             spawnargs: [command.command, ...command.args.map((arg) => Redacted.isRedacted(arg) ? "<redacted>" : arg)]
           })
         }
-        resume(Effect.fail(toPlatformError("spawn", error, command)))
-      })
+        resume(Effect.fail(toPlatformError("spawn", err, command)))
+      }
+      let handle: SpawnedProcess
+      try {
+        handle = spawnProcess(
+          command.command,
+          command.args.map(unwrap),
+          spawnOptions
+        )
+      } catch (error) {
+        onError(error)
+        return
+      }
+      handle.on("error", onError)
       handle.on("exit", (...args: ExitCodeWithSignal) => {
         Deferred.doneUnsafe(deferred, Exit.succeed(args))
       })
@@ -553,7 +561,7 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
   const killProcessGroup = (
     command: ChildProcess.StandardCommand,
     childProcess: SpawnedProcess,
-    signal: NodeJS.Signals
+    signal: ChildProcess.Signal
   ) => {
     if (globalThis.process.platform === "win32") {
       return Effect.callback<void, PlatformError.PlatformError>((resume) => {
@@ -568,7 +576,7 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
     }
     return Effect.try({
       try: () => {
-        globalThis.process.kill(-childProcess.pid!, signal)
+        globalThis.process.kill(-childProcess.pid!, signal as NodeJS.Signals)
       },
       catch: (error) => toPlatformError("kill", toError(error), command)
     })
@@ -576,10 +584,10 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
 
   const killProcessGroupOnExit = (
     childProcess: SpawnedProcess,
-    signal: NodeJS.Signals
+    signal: ChildProcess.Signal
   ): void => {
     try {
-      globalThis.process.kill(-childProcess.pid!, signal)
+      globalThis.process.kill(-childProcess.pid!, signal as NodeJS.Signals)
     } catch {
       // ignore errors during best-effort cleanup
     }
@@ -588,10 +596,10 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
   const killProcess = (
     command: ChildProcess.StandardCommand,
     childProcess: SpawnedProcess,
-    signal: NodeJS.Signals
+    signal: ChildProcess.Signal
   ) =>
     Effect.suspend(() => {
-      const killed = childProcess.kill(signal)
+      const killed = childProcess.kill(signal as NodeJS.Signals)
       if (!killed) {
         const error = new globalThis.Error("Failed to kill child process")
         return Effect.fail(toPlatformError("kill", error, command))
@@ -638,7 +646,7 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
     options: ChildProcess.KillOptions | undefined
   ) {
     // `taskkill /T` stops the whole process tree on Windows, detached or not.
-    const signalGroup = (signal: NodeJS.Signals) =>
+    const signalGroup = (signal: ChildProcess.Signal) =>
       globalThis.process.platform === "win32" || ownsProcessGroup(command) ?
         killProcessGroup(command, childProcess, signal).pipe(
           Effect.catch((error) =>
@@ -819,7 +827,7 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
             // If code is `null`, then `signal` must be defined. See the NodeJS
             // documentation for the `"exit"` event on a `child_process`.
             // https://nodejs.org/api/child_process.html#child_process_event_exit
-            return Effect.succeed<ExitStatus>({ _tag: "Signaled", signal: signal as ChildProcess.Signal })
+            return Effect.succeed<ExitStatus>({ _tag: "Signaled", signal: signal! })
           }
         )
         const exitCode = Effect.flatMap(exitStatus, (status) => {
