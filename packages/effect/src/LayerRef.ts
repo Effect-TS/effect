@@ -157,11 +157,10 @@ export const make = Effect.fnUntraced(
     Scope.Scope | R | SR
   > {
     const context = yield* Effect.context<never>()
-    const memoMap = Layer.CurrentMemoMap.forkOrCreate(context)
 
     const rcRef = yield* RcRef.make({
       acquire: Effect.contextWith((_: Context.Context<Scope.Scope>) =>
-        Layer.buildWithMemoMap(layer, memoMap, Context.get(_, Scope.Scope))
+        Layer.buildWithMemoMap(layer, Layer.CurrentMemoMap.forkOrCreate(context), Context.get(_, Scope.Scope))
       ),
       idleTimeToLive: options?.idleTimeToLive
     })

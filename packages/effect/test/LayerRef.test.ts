@@ -46,6 +46,28 @@ describe("LayerRef", () => {
       assert.deepStrictEqual(released, [1, 2])
     }))
 
+  it.effect("invalidate rebuilds the layer while an old borrower holds its context", () =>
+    Effect.gen(function*() {
+      const acquired: Array<number> = []
+      const released: Array<number> = []
+      const refScope = yield* Scope.make()
+      const ref = yield* LayerRef.make(makeLayer(acquired, released)).pipe(Scope.provide(refScope))
+
+      const borrowerScope = yield* Scope.make()
+      const borrowed = yield* ref.contextEffect.pipe(Scope.provide(borrowerScope))
+      assert.strictEqual(Context.get(borrowed, Resource).id, 1)
+
+      yield* ref.invalidate
+      const fresh = yield* Effect.scoped(ref.contextEffect)
+      assert.strictEqual(Context.get(fresh, Resource).id, 2)
+      assert.deepStrictEqual(acquired, [1, 2])
+      assert.deepStrictEqual(released, [2])
+
+      yield* Scope.close(borrowerScope, Exit.void)
+      assert.deepStrictEqual(released, [2, 1])
+      yield* Scope.close(refScope, Exit.void)
+    }))
+
   it.effect("invalidate releases an idle resource and acquires a fresh one", () =>
     Effect.gen(function*() {
       const acquired: Array<number> = []
