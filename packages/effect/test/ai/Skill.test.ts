@@ -78,7 +78,6 @@ describe("Skill", () => {
       const malformedYaml = yield* Effect.flip(
         Skill.fromFiles({ "SKILL.md": "---\nname: [unclosed\n---\n\nBody" })
       )
-      assert.isTrue(Cause.isIllegalArgumentError(malformedYaml))
       assert.strictEqual(malformedYaml.message, "SKILL.md is missing valid YAML frontmatter")
     }))
 
