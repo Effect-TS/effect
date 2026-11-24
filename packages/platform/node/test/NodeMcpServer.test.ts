@@ -17,8 +17,8 @@ import { vi } from "vitest"
 
 // Override OS DNS only when a test installs a fake resolver for a hostname.
 const dnsOverrides = vi.hoisted((): {
-  guard?: (hostname: string) => ReadonlyArray<Dns.LookupAddress> | undefined
-  connect?: (hostname: string) => ReadonlyArray<Dns.LookupAddress> | undefined
+  guard?: ((hostname: string) => ReadonlyArray<Dns.LookupAddress> | undefined) | undefined
+  connect?: ((hostname: string) => ReadonlyArray<Dns.LookupAddress> | undefined) | undefined
 } => ({}))
 
 vi.mock("node:dns", async (importOriginal) => {
