@@ -381,6 +381,38 @@ describe("DateTime", () => {
   })
 
   describe("setParts", () => {
+    it("preserves the offset when setting parts in a repeated DST hour", () => {
+      for (const hour of [5, 6]) {
+        const date = DateTime.makeZonedUnsafe(`2025-11-02T0${hour}:30:15.250Z`, {
+          timeZone: "America/New_York"
+        })
+        strictEqual(
+          DateTime.formatIso(DateTime.setParts(date, { second: 0, millisecond: 0 })),
+          `2025-11-02T0${hour}:30:00.000Z`
+        )
+        strictEqual(DateTime.formatIso(DateTime.setParts(date, { minute: 45 })), `2025-11-02T0${hour}:45:15.250Z`)
+      }
+    })
+
+    it("preserves the instant when setting unchanged parts in a repeated DST hour", () => {
+      const date = DateTime.makeZonedUnsafe("2025-11-02T06:30:15.250Z", {
+        timeZone: "America/New_York"
+      })
+      strictEqual(DateTime.formatIso(DateTime.setParts(date, {})), "2025-11-02T06:30:15.250Z")
+      strictEqual(DateTime.formatIso(DateTime.setParts(date, { minute: 30 })), "2025-11-02T06:30:15.250Z")
+    })
+
+    it("uses compatible disambiguation when the input offset is no longer valid", () => {
+      const date = DateTime.makeZonedUnsafe("2025-11-02T06:30:15.250Z", {
+        timeZone: "America/New_York"
+      })
+      strictEqual(DateTime.formatIso(DateTime.setParts(date, { day: 1 })), "2025-11-01T05:30:15.250Z")
+      const beforeGap = DateTime.makeZonedUnsafe("2025-03-08T07:30:15.250Z", {
+        timeZone: "America/New_York"
+      })
+      strictEqual(DateTime.formatIso(DateTime.setParts(beforeGap, { day: 9 })), "2025-03-09T07:30:15.250Z")
+    })
+
     it("partial", () => {
       const date = DateTime.makeUnsafe({
         year: 2024,

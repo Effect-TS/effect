@@ -778,7 +778,7 @@ export const setParts: {
 } = dual(
   2,
   (self: DateTime.DateTime, parts: Partial<DateTime.DateTime.PartsWithWeekday>): DateTime.DateTime =>
-    mutate(self, (date) => setPartsDate(date, parts))
+    mutateWithOffset(self, (date) => setPartsDate(date, parts))
 )
 
 /** @internal */
@@ -1085,19 +1085,14 @@ export const subtract: {
   return add(self, newParts)
 })
 
-const mutateRounding = (
+const mutateWithOffset = (
   self: DateTime.DateTime,
-  part: DateTime.DateTime.UnitSingular,
   f: (date: Date) => void,
   disambiguation: DateTime.Disambiguation = "compatible"
 ): DateTime.DateTime => {
-  if (
-    self._tag === "Utc" || self.zone._tag === "Offset" ||
-    part === "day" || part === "week" || part === "month" || part === "year"
-  ) {
+  if (self._tag === "Utc" || self.zone._tag === "Offset") {
     return mutate(self, f, { disambiguation })
   }
-  // keep the input's offset so rounding stays in the same occurrence of a repeated hour
   const date = toDate(self)
   const offset = date.getTime() - Math.trunc(self.epochMilliseconds)
   f(date)
@@ -1106,6 +1101,18 @@ const mutateRounding = (
   return zonedOffset(result) === offset
     ? result
     : makeZonedFromAdjusted(adjustedMillis, self.zone, disambiguation)
+}
+
+const mutateRounding = (
+  self: DateTime.DateTime,
+  part: DateTime.DateTime.UnitSingular,
+  f: (date: Date) => void,
+  disambiguation: DateTime.Disambiguation = "compatible"
+): DateTime.DateTime => {
+  if (part === "day" || part === "week" || part === "month" || part === "year") {
+    return mutate(self, f, { disambiguation })
+  }
+  return mutateWithOffset(self, f, disambiguation)
 }
 
 const startOfDate = (date: Date, part: DateTime.DateTime.UnitSingular, options?: {
