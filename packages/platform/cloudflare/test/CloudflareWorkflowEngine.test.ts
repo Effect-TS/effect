@@ -422,6 +422,32 @@ describe("CloudflareWorkflowEngine", () => {
       }).pipe(Effect.provide(layer))
     }))
 
+  it.effect("targets the durable sleep deadline after suspension instead of the earlier resume guard", () =>
+    Effect.gen(function*() {
+      const namespace = new FakeWorkflowNamespace()
+      const started = yield* Latch.make()
+      const release = yield* Latch.make()
+      const Sleeping = Workflow.make("SleepAfterWork", { payload: {}, idempotencyKey: () => "sleep" })
+      const layer = Sleeping.toLayer(Effect.fnUntraced(function*() {
+        yield* Activity.make({ name: "work", execute: started.open.pipe(Effect.andThen(release.await)) })
+        yield* DurableClock.sleep({ name: "nap", duration: "60 seconds" })
+      })).pipe(Layer.provideMerge(namespace.layer))
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* Sleeping.execute({}, { discard: true })
+        const name = encodeName(Sleeping._tag, executionId)
+        yield* started.await
+        assert.strictEqual(namespace.store(name).alarm.current, 60_000)
+
+        yield* TestClock.adjust("2 seconds")
+        namespace.now = 2_000
+        yield* release.open
+        yield* pollUntil(Sleeping, executionId, "Suspended")
+        yield* namespace.settle()
+        assert.strictEqual(namespace.store(name).alarm.current, 62_000)
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("stores a discarded child's defect and wakes its parent once", () => {
     const namespace = new FakeWorkflowNamespace()
     let parentRuns = 0
