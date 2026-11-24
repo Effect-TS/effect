@@ -1428,6 +1428,11 @@ export const suite = (
     }
   })
 
+const exitCommand = (code: number) =>
+  "deno" in process.versions
+    ? ChildProcess.make(process.execPath, ["eval", `Deno.exit(${code})`])
+    : ChildProcess.make(process.execPath, ["-e", `process.exit(${code})`])
+
 export const exitStatusSuite = (
   layer: Layer.Layer<ChildProcessSpawner.ChildProcessSpawner>
 ) =>
@@ -1435,7 +1440,7 @@ export const exitStatusSuite = (
     it.layer(layer)((it) => {
       it.effect("returns Exited for a normal exit", () =>
         Effect.gen(function*() {
-          const handle = yield* ChildProcess.make("sh", ["-c", "exit 42"])
+          const handle = yield* exitCommand(42)
           const status = yield* handle.exitStatus
 
           assert.deepStrictEqual(status, {
@@ -1444,7 +1449,7 @@ export const exitStatusSuite = (
           })
         }))
 
-      it.effect("returns Signaled when terminated by SIGTERM", () =>
+      it.effect.skipIf(process.platform === "win32")("returns Signaled when terminated by SIGTERM", () =>
         Effect.gen(function*() {
           const handle = yield* ChildProcess.make("sleep", ["10"])
 

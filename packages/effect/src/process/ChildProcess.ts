@@ -161,7 +161,8 @@ export interface PipeOptions {
  * A non-negative integer passes a caller-owned file descriptor directly to the
  * child. The spawner never closes it; the child gets its own copy, so it only
  * needs to stay open until `spawn` returns. On the handle, `stdin` returns a
- * draining `Sink`.
+ * draining `Sink`. Native `DenoChildProcessSpawner` rejects numeric descriptors
+ * with `BadArgument`.
  *
  * @stability unstable
  * @category models
@@ -183,7 +184,8 @@ export type CommandInput =
  * A non-negative integer passes a caller-owned file descriptor directly to the
  * child. The spawner never closes it; the child gets its own copy, so it only
  * needs to stay open until `spawn` returns. On the handle, `stdout` and
- * `stderr` return an empty `Stream` and contribute nothing to `all`.
+ * `stderr` return an empty `Stream` and contribute nothing to `all`. Native
+ * `DenoChildProcessSpawner` rejects numeric descriptors with `BadArgument`.
  *
  * @stability unstable
  * @category models
