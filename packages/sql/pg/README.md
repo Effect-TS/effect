@@ -173,11 +173,10 @@ import { Effect } from "effect"
 
 const program = Effect.gen(function*() {
   const sql = yield* PgClient.PgClient
-  const result = yield* sql.queryText("SELECT now() AS at, '[1,2,3]'::vector AS embedding")
-  // result.fields: [{ name: "at", dataTypeId: 1184 }, { name: "embedding", dataTypeId: 16385 }]
-  // result.rows: [["2026-11-24 22:31:05.123456+00", "[1,2,3]"]]
+  const result = yield* sql.queryText("SELECT now() AS at, 'infinity'::timestamptz AS until")
+  // result.fields: [{ name: "at", dataTypeId: 1184 }, { name: "until", dataTypeId: 1184 }]
+  // result.rows: [["2026-11-24 22:31:05.123456+00", "infinity"]]
 })
 ```
 
-Inside `withTransaction` it runs on the transaction's connection. Other queries
-decode as before.
+Inside `withTransaction` it runs on the transaction's connection.

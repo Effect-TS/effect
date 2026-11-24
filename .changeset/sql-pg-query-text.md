@@ -2,4 +2,4 @@
 "@effect/sql-pg": patch
 ---
 
-Add `queryText` to `PgClient` and `PgConnection`, which returns positional rows with each value as the server's text, and read text-format columns in `PgTypes.makeFieldReader`.
+Add `queryText` to `PgClient` and `PgConnection`, which returns positional rows with each value as the server's text.

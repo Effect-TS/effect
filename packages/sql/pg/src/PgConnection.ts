@@ -281,9 +281,9 @@ export interface PgConnection {
   ) => Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError>
   /**
    * Runs a query and returns positional rows with each value as the server's
-   * text, for a caller that decodes values itself. No codec runs, the client's
-   * `types` included. Pass `false` to skip the prepared statement cache.
-   * Interruption behaves as for `query`.
+   * text, for a caller that decodes values itself. No codec runs, including
+   * those of `Config.types`. Pass `false` to skip the prepared statement
+   * cache. Interruption behaves as for `query`.
    */
   readonly queryText: (
     sql: string,
@@ -1477,6 +1477,7 @@ class QueryMachine implements Consumer {
   /** Object rows, or `undefined` when the caller asked for positional ones. */
   private readonly rows: Array<Row> | undefined
   private readonly values: Array<ReadonlyArray<unknown>> | undefined
+  private readonly textResults: boolean
 
   private closes: number
   private phase: QueryPhase
@@ -1502,6 +1503,7 @@ class QueryMachine implements Consumer {
     this.finish = finish
     this.rows = output === "rows" ? [] : undefined
     this.values = output === "rows" ? undefined : []
+    this.textResults = output === "text"
     this.closes = plan.closes
     this.phase = plan.closes > 0 ? "close" : plan.parses ? "parse" : "bind"
     const description = plan.description
@@ -1592,7 +1594,7 @@ class QueryMachine implements Consumer {
         return
       case "RowDescription": {
         if (this.phase !== "describe") return this.failDesync(`Unexpected RowDescription during ${this.phase}`)
-        const description = describe(message.fields, this.conn.registry)
+        const description = describe(message.fields, this.conn.registry, this.textResults)
         if (EffectResult.isFailure(description)) {
           return this.conn.fatal(queryError(description.failure, "PgConnection: Failed to decode row"))
         }
@@ -1753,6 +1755,12 @@ const runQuery = (
     })
   })
 
+const textDecoder = new TextDecoder("utf-8", { fatal: true })
+
+/** Reads a text-format value as the server sent it: under UTF8 client encoding, always valid UTF-8. */
+const readText: PgProtocol.FieldReader<string | null> = (bytes, offset, size) =>
+  size < 0 ? null : textDecoder.decode(bytes.subarray(offset, offset + size))
+
 /** Turns one decoded row into an object keyed by column name. */
 type RowBuilder = (rowValues: ReadonlyArray<unknown>) => Row
 
@@ -1768,9 +1776,10 @@ const emptyFields: ReadonlyArray<Field> = []
 /** Derives the per-column readers and the row constructor for a description. */
 const describe = (
   fields: ReadonlyArray<PgProtocol.FieldDescription>,
-  registry: PgTypes.Registry | undefined
+  registry: PgTypes.Registry | undefined,
+  textResults = false
 ): EffectResult.Result<Description, PgTypes.CodecError> => {
-  const reader = PgTypes.makeFieldReader(fields, registry)
+  const reader = textResults ? EffectResult.succeed(readText) : PgTypes.makeFieldReader(fields, registry)
   if (EffectResult.isFailure(reader)) return EffectResult.fail(reader.failure)
   const resultFields: Array<Field> = new Array(fields.length)
   for (let index = 0; index < fields.length; index++) {

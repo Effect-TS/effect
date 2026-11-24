@@ -22,6 +22,7 @@ import { SqlError, UnknownError } from "effect/sql/SqlError"
 import type { Custom, Fragment } from "effect/sql/Statement"
 import * as Statement from "effect/sql/Statement"
 import * as Stream from "effect/Stream"
+import * as Tracer from "effect/Tracer"
 import type { Duplex } from "node:stream"
 import type { ConnectionOptions } from "node:tls"
 import { resolveConfig } from "./internal/config.ts"
@@ -80,8 +81,9 @@ export interface PgClient extends Client.Base {
   readonly poolStats: Effect.Effect<Pool.Stats>
   /**
    * Runs a query and returns positional rows with each value as the server's
-   * text, for a caller that decodes values itself. No codec runs, the
-   * client's `types` included, and column names are not transformed.
+   * text, for a caller that decodes values itself. No codec runs, including
+   * those of the client's `types`, and neither column names nor
+   * `Statement.CurrentTransformer` are applied.
    *
    * **Details**
    *
@@ -104,8 +106,6 @@ export interface PgClient extends Client.Base {
    *   // result.rows: [["2026-11-24 12:00:00.123456+00", "1.50"]]
    * })
    * ```
-   *
-   * @since 4.1.6
    */
   readonly queryText: (
     sql: string,
@@ -396,19 +396,20 @@ const makeImpl = Effect.fnUntraced(function*<R>(
     )
   }
 
+  // Traced as a statement is, without the connection wait time.
   const queryText = (sql: string, params?: ReadonlyArray<unknown>) =>
-    Effect.withSpan(
-      withConnection((connection) => connection.queryText(sql, params)),
-      Statement.spanName(spanAttributes),
-      {
-        kind: "client",
-        attributes: {
-          ...Object.fromEntries(spanAttributes),
-          [ATTR_SQL_METHOD]: "queryText",
-          [ATTR_DB_QUERY_TEXT]: sql
-        }
+    Effect.useSpan(Statement.spanName(spanAttributes), { kind: "client" }, (span) => {
+      for (const [key, value] of spanAttributes) {
+        span.attribute(key, value)
       }
-    )
+      span.attribute(ATTR_SQL_METHOD, "executeText")
+      span.attribute(ATTR_DB_QUERY_TEXT, sql)
+      const run = withConnection((connection) => connection.queryText(sql, params))
+      return Effect.gen(function*() {
+        const propagate = yield* Statement.SpanPropagationEnabled
+        return yield* (propagate ? Effect.provideService(run, Tracer.ParentSpan, span) : run)
+      })
+    })
 
   return Object.assign(
     client,
