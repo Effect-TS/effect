@@ -6,6 +6,8 @@
  * commands in Node-compatible runtimes: commands get scoped process handles
  * with stdin sinks, stdout and stderr streams, exit-code waiting,
  * interruption-time cleanup, process killing, and custom file-descriptor pipes.
+ * Provide {@link layerProxyProcess} instead to launch commands from a separate
+ * proxy process, which keeps spawning from stalling a large Node.js process.
  *
  * The implementation sits below the command-building API. It validates and
  * resolves `cwd` through the Effect `FileSystem` and `Path` services,
@@ -57,7 +59,8 @@ import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as NodeChildProcess from "node:child_process"
 import { PassThrough, type Writable } from "node:stream"
-import { buildSpawnOptions } from "./internal/nodeChildProcessSpawner.ts"
+import { buildSpawnOptions, type SpawnedProcess, type SpawnProcess } from "./internal/nodeChildProcessSpawner.ts"
+import * as ProxyProcess from "./internal/proxyProcess.ts"
 import { handleErrnoException } from "./internal/utils.ts"
 import * as NodeSink from "./NodeSink.ts"
 import * as NodeStream from "./NodeStream.ts"
@@ -96,7 +99,9 @@ const findNulCharacter = (command: ChildProcess.StandardCommand): string | undef
 }
 
 type ExitCodeWithSignal = readonly [code: number | null, signal: NodeJS.Signals | null]
-type ExitSignal = Deferred.Deferred<ExitCodeWithSignal>
+// Fails when the exit status can no longer be observed, such as when the proxy
+// process that launched the child exits first
+type ExitSignal = Deferred.Deferred<ExitCodeWithSignal, PlatformError.PlatformError>
 
 const processGroupGraceMillis = 1_000
 const processGroupPollIntervalMillis = 10
@@ -111,7 +116,7 @@ const handleInputErrors = (writable: Writable): void => {
 }
 
 /** Node has recorded the leader's exit, after which its PID may be reused by an unrelated process. */
-const hasExited = (childProcess: NodeChildProcess.ChildProcess): boolean =>
+const hasExited = (childProcess: SpawnedProcess): boolean =>
   childProcess.exitCode !== null || childProcess.signalCode !== null
 
 /** Only a detached POSIX child leads its own process group. */
@@ -128,7 +133,7 @@ const isUnsignallableProcessGroup = (error: unknown): boolean =>
 /** The leader has not exited, or a member of its process group still exists. */
 const isProcessAlive = (
   command: ChildProcess.StandardCommand,
-  childProcess: NodeChildProcess.ChildProcess
+  childProcess: SpawnedProcess
 ): boolean => {
   if (!hasExited(childProcess)) {
     return true
@@ -145,7 +150,7 @@ const isProcessAlive = (
 }
 
 const taskkill = (
-  childProcess: NodeChildProcess.ChildProcess,
+  childProcess: SpawnedProcess,
   onExit: (error: NodeChildProcess.ExecException | null) => void = () => {}
 ) => {
   if (hasExited(childProcess)) {
@@ -160,7 +165,9 @@ const taskkill = (
   )
 }
 
-const make = Effect.gen(function*() {
+const spawnDirect: SpawnProcess = (command, args, options) => NodeChildProcess.spawn(command, args, options)
+
+const makeWith = Effect.fnUntraced(function*(spawnProcess: SpawnProcess) {
   const fs = yield* FileSystem.FileSystem
   const path = yield* Path.Path
 
@@ -288,7 +295,7 @@ const make = Effect.gen(function*() {
 
   const setupAdditionalFds = Effect.fnUntraced(function*(
     command: ChildProcess.StandardCommand,
-    childProcess: NodeChildProcess.ChildProcess,
+    childProcess: SpawnedProcess,
     additionalFds: ReadonlyArray<ResolvedAdditionalFd>,
     inputFailure: Deferred.Deferred<never, PlatformError.PlatformError>
   ) {
@@ -304,7 +311,7 @@ const make = Effect.gen(function*() {
 
     const setupInput = (
       fd: number,
-      nodeStream: NodeChildProcess.ChildProcess["stdio"][number],
+      nodeStream: SpawnedProcess["stdio"][number],
       stream: Stream.Stream<Uint8Array, PlatformError.PlatformError> | undefined
     ) =>
       Effect.suspend(() => {
@@ -329,7 +336,7 @@ const make = Effect.gen(function*() {
 
     const setupOutput = (
       fd: number,
-      nodeStream: NodeChildProcess.ChildProcess["stdio"][number],
+      nodeStream: SpawnedProcess["stdio"][number],
       sink: Sink.Sink<Uint8Array, Uint8Array, never, PlatformError.PlatformError> | undefined
     ) => {
       let stream: Stream.Stream<Uint8Array, PlatformError.PlatformError> = Stream.empty
@@ -390,7 +397,7 @@ const make = Effect.gen(function*() {
 
   const setupChildStdin = (
     command: ChildProcess.StandardCommand,
-    childProcess: NodeChildProcess.ChildProcess,
+    childProcess: SpawnedProcess,
     config: ChildProcess.StdinConfig,
     inputFailure: Deferred.Deferred<never, PlatformError.PlatformError>
   ) =>
@@ -418,7 +425,7 @@ const make = Effect.gen(function*() {
 
   const setupChildOutputStreams = (
     command: ChildProcess.StandardCommand,
-    childProcess: NodeChildProcess.ChildProcess,
+    childProcess: SpawnedProcess,
     stdoutConfig: ChildProcess.StdoutConfig,
     stderrConfig: ChildProcess.StderrConfig
   ): {
@@ -466,11 +473,11 @@ const make = Effect.gen(function*() {
     spawnOptions: NodeChildProcess.SpawnOptions
   ) =>
     Effect.callback<
-      readonly [NodeChildProcess.ChildProcess, ExitSignal],
+      readonly [SpawnedProcess, ExitSignal],
       PlatformError.PlatformError
     >((resume) => {
-      const deferred = Deferred.makeUnsafe<ExitCodeWithSignal>()
-      const handle = NodeChildProcess.spawn(
+      const deferred = Deferred.makeUnsafe<ExitCodeWithSignal, PlatformError.PlatformError>()
+      const handle = spawnProcess(
         command.command,
         command.args.map(unwrap),
         spawnOptions
@@ -484,8 +491,11 @@ const make = Effect.gen(function*() {
         }
         resume(Effect.fail(toPlatformError("spawn", error, command)))
       })
-      handle.on("exit", (...args) => {
+      handle.on("exit", (...args: ExitCodeWithSignal) => {
         Deferred.doneUnsafe(deferred, Exit.succeed(args))
+      })
+      handle.on("lost", (error: Error) => {
+        Deferred.doneUnsafe(deferred, Exit.fail(toPlatformError("exitCode", error, command)))
       })
       handle.on("spawn", () => {
         resume(Effect.succeed([handle, deferred]))
@@ -497,7 +507,7 @@ const make = Effect.gen(function*() {
 
   const killProcessGroup = (
     command: ChildProcess.StandardCommand,
-    childProcess: NodeChildProcess.ChildProcess,
+    childProcess: SpawnedProcess,
     signal: NodeJS.Signals
   ) => {
     if (globalThis.process.platform === "win32") {
@@ -520,7 +530,7 @@ const make = Effect.gen(function*() {
   }
 
   const killProcessGroupOnExit = (
-    childProcess: NodeChildProcess.ChildProcess,
+    childProcess: SpawnedProcess,
     signal: NodeJS.Signals
   ): void => {
     try {
@@ -532,7 +542,7 @@ const make = Effect.gen(function*() {
 
   const killProcess = (
     command: ChildProcess.StandardCommand,
-    childProcess: NodeChildProcess.ChildProcess,
+    childProcess: SpawnedProcess,
     signal: NodeJS.Signals
   ) =>
     Effect.suspend(() => {
@@ -547,7 +557,7 @@ const make = Effect.gen(function*() {
   /** Waits for the leader and its process group, bounded by native time. */
   const awaitProcessExit = (
     command: ChildProcess.StandardCommand,
-    childProcess: NodeChildProcess.ChildProcess,
+    childProcess: SpawnedProcess,
     timeoutMillis: number
   ): Effect.Effect<void> =>
     Effect.callback<void>((resume) => {
@@ -573,7 +583,7 @@ const make = Effect.gen(function*() {
 
   const terminateProcessGroup = Effect.fnUntraced(function*(
     command: ChildProcess.StandardCommand,
-    childProcess: NodeChildProcess.ChildProcess,
+    childProcess: SpawnedProcess,
     exitSignal: ExitSignal,
     options: ChildProcess.KillOptions | undefined
   ) {
@@ -666,12 +676,13 @@ const make = Effect.gen(function*() {
         const stdio = buildStdioArray(stdinConfig, stdoutConfig, stderrConfig, resolvedAdditionalFds)
 
         const releaseProcess = Effect.fnUntraced(function*(
-          childProcess: NodeChildProcess.ChildProcess,
-          exitSignal: Deferred.Deferred<readonly [code: number | null, signal: NodeJS.Signals | null]>
+          childProcess: SpawnedProcess,
+          exitSignal: ExitSignal
         ) {
-          const exited = yield* Deferred.isDone(exitSignal)
-          if (exited) {
-            const [code] = yield* Deferred.await(exitSignal)
+          const exit = Deferred.isDoneUnsafe(exitSignal) ? yield* Effect.exit(Deferred.await(exitSignal)) : undefined
+          // A child whose exit status can no longer be observed is treated as running
+          if (exit !== undefined && Exit.isSuccess(exit)) {
+            const [code] = exit.value
             if (code !== 0 && Predicate.isNotNull(code)) {
               yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
             } else if (isReferenced && ownsProcessGroup(cmd)) {
@@ -726,7 +737,10 @@ const make = Effect.gen(function*() {
         const { getInputFd, getOutputFd } = yield* Scope.provide(inputScope)(
           setupAdditionalFds(cmd, childProcess, resolvedAdditionalFds, inputFailure)
         )
-        const isRunning = Effect.map(Deferred.isDone(exitSignal), (done) => !done)
+        // Fails once the exit status can no longer be observed
+        const isRunning = Effect.suspend(() =>
+          Deferred.isDoneUnsafe(exitSignal) ? Effect.as(Deferred.await(exitSignal), false) : Effect.succeed(true)
+        )
         // A failed input stream truncates the input of the child process, so
         // its failure takes precedence over the exit status and is surfaced
         // without waiting for the child process to exit
@@ -863,7 +877,61 @@ export const layer: Layer.Layer<
   ChildProcessSpawner,
   never,
   FileSystem.FileSystem | Path.Path
-> = Layer.effect(ChildProcessSpawner, make)
+> = Layer.effect(ChildProcessSpawner, makeWith(spawnDirect))
+
+/**
+ * Layer that provides a `ChildProcessSpawner` which launches commands from a
+ * small, long-lived proxy process instead of the current process.
+ *
+ * **When to use**
+ *
+ * Use when spawning stalls the event loop of a large Node.js application on
+ * Linux. Each spawn copies the page tables of the spawning process, so the
+ * stall grows with memory held outside the JavaScript heap, such as large
+ * `Buffer`s. The proxy process stays small, so launching from it does not
+ * block the application.
+ *
+ * **Details**
+ *
+ * Only the spawn request goes through the proxy process. Piped stdio is
+ * connected to the application over Unix domain sockets, and signals are sent
+ * to the command directly, so output does not pass through the proxy process.
+ *
+ * The proxy process runs `process.execPath` and starts when the layer is
+ * built. It stops when the layer's scope closes, once its remaining referenced
+ * commands have exited. Commands keep running if the application exits, as
+ * with {@link layer}. On Windows, this layer behaves like {@link layer}.
+ *
+ * **Gotchas**
+ *
+ * - Build the layer early: starting the proxy process from an already large
+ *   process stalls once.
+ * - If the proxy process exits early, the next spawn starts a new one.
+ *   Commands it launched keep their stdio, and `kill` still sends the signal,
+ *   but `exitCode`, `isRunning` and `kill` fail with a `PlatformError`
+ *   because their exit can no longer be observed.
+ * - The socket path under `os.tmpdir()` must fit the platform limit of about
+ *   100 bytes. Spawns fail with a `PlatformError` otherwise.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.1.6
+ */
+export const layerProxyProcess: Layer.Layer<
+  ChildProcessSpawner,
+  never,
+  FileSystem.FileSystem | Path.Path
+> = Layer.effect(
+  ChildProcessSpawner,
+  Effect.suspend(() => {
+    if (globalThis.process.platform === "win32") {
+      return makeWith(spawnDirect)
+    }
+    return Effect.acquireRelease(Effect.sync(ProxyProcess.make), (proxy) => proxy.close).pipe(
+      Effect.flatMap((proxy) => makeWith(proxy.spawn))
+    )
+  })
+)
 
 // =============================================================================
 // Internal Helpers

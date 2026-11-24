@@ -11,6 +11,7 @@ import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as ChildProcess from "effect/process/ChildProcess"
+import { ChildProcessSpawner } from "effect/process/ChildProcessSpawner"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import NodeChildProcess, { spawnSync } from "node:child_process"
@@ -25,8 +26,67 @@ const NodeServices = NodeChildProcessSpawner.layer.pipe(
   ))
 )
 
-ChildProcessSpawnerTest.suite("NodeChildProcessSpawner", NodeServices, {
-  processGroups: true
+const ProxyServices = NodeChildProcessSpawner.layerProxyProcess.pipe(
+  Layer.provideMerge(Layer.mergeAll(NodeFileSystem.layer, NodePath.layer))
+)
+
+// The process supervision tests count processes by name, so the suites must
+// not run at the same time
+describe("shared suite", { concurrent: false }, () => {
+  ChildProcessSpawnerTest.suite("NodeChildProcessSpawner", NodeServices, {
+    processGroups: true
+  })
+
+  ChildProcessSpawnerTest.suite("NodeChildProcessSpawner.layerProxyProcess", ProxyServices, {
+    processGroups: true
+  })
+})
+
+describe.skipIf(process.platform === "win32")("layerProxyProcess", () => {
+  // Commands are launched by the proxy process, so their parent is the proxy
+  const proxyPid = Effect.gen(function*() {
+    const spawner = yield* ChildProcessSpawner
+    return Number((yield* spawner.string(ChildProcess.make("sh", ["-c", "echo $PPID"]))).trim())
+  })
+
+  const isAlive = (pid: number) => {
+    try {
+      process.kill(pid, 0)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  it.live("stops the proxy process when the layer scope closes", () =>
+    Effect.gen(function*() {
+      const pid = yield* proxyPid.pipe(Effect.provide(ProxyServices))
+      assert.notStrictEqual(pid, process.pid)
+      assert.isFalse(isAlive(pid))
+    }))
+
+  it.live("keeps stdio and kill working, fails exitCode, and restarts when the proxy process exits", () =>
+    Effect.gen(function*() {
+      const pid = yield* proxyPid
+      const echo = yield* ChildProcess.make("sh", ["-c", "read line; echo \"got $line\""])
+      const sleep = yield* ChildProcess.make("sleep", ["30"])
+      process.kill(pid, "SIGKILL")
+
+      const exitCodeError = yield* Effect.flip(echo.exitCode)
+      assert.strictEqual(exitCodeError._tag, "PlatformError")
+      assert.strictEqual((yield* Effect.flip(echo.isRunning))._tag, "PlatformError")
+
+      yield* Stream.run(Stream.make(new TextEncoder().encode("hello\n")), echo.stdin)
+      const output = yield* Stream.mkString(Stream.decodeText(echo.stdout))
+      assert.strictEqual(output, "got hello\n")
+
+      yield* Effect.ignore(sleep.kill())
+      // stdout closes once the signalled command has exited
+      yield* Stream.runDrain(sleep.stdout).pipe(Effect.timeout("2 seconds"))
+
+      const nextPid = yield* proxyPid
+      assert.notStrictEqual(nextPid, pid)
+    }).pipe(Effect.provide(ProxyServices)))
 })
 
 describe.skipIf(process.platform === "win32")("error descriptions", () => {
