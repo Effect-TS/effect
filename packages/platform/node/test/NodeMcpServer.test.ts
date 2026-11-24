@@ -10,8 +10,43 @@ import * as Queue from "effect/Queue"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { createHmac, randomBytes } from "node:crypto"
+import type * as Dns from "node:dns"
 import * as Http from "node:http"
-import type * as Net from "node:net"
+import * as Net from "node:net"
+import { vi } from "vitest"
+
+// Override OS DNS only when a test installs a fake resolver for a hostname.
+const dnsOverrides = vi.hoisted((): {
+  guard?: (hostname: string) => ReadonlyArray<Dns.LookupAddress> | undefined
+  connect?: (hostname: string) => ReadonlyArray<Dns.LookupAddress> | undefined
+} => ({}))
+
+vi.mock("node:dns", async (importOriginal) => {
+  const original = await importOriginal<typeof Dns>()
+  return {
+    ...original,
+    lookup: ((hostname: string, options: any, callback?: any) => {
+      const cb = typeof options === "function" ? options : callback
+      const opts = typeof options === "function" ? {} : (options ?? {})
+      const override = dnsOverrides.connect?.(hostname)
+      if (override !== undefined) {
+        if (opts.all) return cb(null, [...override])
+        return cb(null, override[0].address, override[0].family)
+      }
+      return (original.lookup as any)(hostname, options, callback)
+    }) as typeof original.lookup,
+    promises: {
+      ...original.promises,
+      lookup: (async (hostname: string, options?: any) => {
+        const override = dnsOverrides.guard?.(hostname)
+        if (override !== undefined) {
+          return options?.all ? [...override] : override[0]
+        }
+        return (original.promises.lookup as any)(hostname, options)
+      }) as typeof original.promises.lookup
+    }
+  }
+})
 
 interface Delivery {
   readonly headers: Http.IncomingHttpHeaders
@@ -55,6 +90,31 @@ const webhookReceiver = Effect.gen(function*() {
       })
   )
   return { deliveries, paths, port: (server.address() as Net.AddressInfo).port }
+})
+
+// A raw TCP listener on loopback that counts any socket connection attempt,
+// independent of TLS or HTTP framing.
+const tcpListener = Effect.gen(function*() {
+  let connections = 0
+  const server = yield* Effect.acquireRelease(
+    Effect.callback<Net.Server>((resume) => {
+      const server = Net.createServer((socket) => {
+        connections++
+        socket.destroy()
+      })
+      server.listen(0, "127.0.0.1", () => resume(Effect.succeed(server)))
+    }),
+    (server) =>
+      Effect.callback<void>((resume) => {
+        server.close(() => resume(Effect.void))
+      })
+  )
+  return {
+    get connections() {
+      return connections
+    },
+    port: (server.address() as Net.AddressInfo).port
+  }
 })
 
 class CurrentUser extends Context.Service<CurrentUser, string>()("test/CurrentUser") {}
@@ -185,5 +245,33 @@ describe("NodeMcpServer.layerEventWebhooks", () => {
       })
       assert.strictEqual(redirected.error.code, -32027)
       assert.deepStrictEqual(paths, ["/redirect"])
+    }))
+
+  it.live("rejects a host that rebinds to a non-global address at connection time without connecting", () =>
+    Effect.gen(function*() {
+      const listener = yield* tcpListener
+      let connectLookups = 0
+      dnsOverrides.guard = (host) => host === "rebind.example" ? [{ address: "93.184.215.14", family: 4 }] : undefined
+      dnsOverrides.connect = (host) => {
+        if (host !== "rebind.example") return undefined
+        connectLookups++
+        return [{ address: "127.0.0.1", family: 4 }]
+      }
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          dnsOverrides.guard = undefined
+          dnsOverrides.connect = undefined
+        })
+      )
+
+      const call = yield* makeMcpServer(yield* Queue.unbounded<string>())
+      const subscribed = yield* call("events/subscribe", {
+        name: "incident.created",
+        delivery: { mode: "webhook", url: `https://rebind.example:${listener.port}/hook`, secret }
+      })
+      assert.strictEqual(subscribed.error.code, -32027)
+      assert.deepStrictEqual(subscribed.error.data, { reason: "challenge_failed" })
+      assert.isAbove(connectLookups, 0)
+      assert.strictEqual(listener.connections, 0)
     }))
 })
