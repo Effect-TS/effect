@@ -317,6 +317,21 @@ export const rejectCursor = (cursor: string | undefined) =>
   cursor === undefined ? Effect.void : Effect.fail(unknownCursor)
 
 /**
+ * Fails with `Method not found` while nothing is registered for an extension,
+ * as a server that does not declare it.
+ *
+ * @internal
+ */
+export const requireExtension = (core: McpCore.McpCore, extension: "skills" | "events", method: string) =>
+  Effect.flatMap(core.registrationPresence, (presence) =>
+    presence[extension] ? Effect.void : Effect.fail(
+      new ProtocolError({
+        code: PublicMcpSchema.METHOD_NOT_FOUND_ERROR_CODE,
+        message: `Method not found: ${method}`
+      })
+    ))
+
+/**
  * @internal
  */
 export const reverseError = (

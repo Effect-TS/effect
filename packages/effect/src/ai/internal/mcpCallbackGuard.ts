@@ -21,29 +21,27 @@ export interface Guard {
 // host is an address, failed to resolve, or resolved to a refused address.
 const refused = Effect.fail("callback host is not allowed")
 
-// The host of a URL without the brackets around an IPv6 literal.
-const urlHost = (url: URL): string => {
-  const host = url.hostname.toLowerCase()
-  return host.startsWith("[") && host.endsWith("]") ? host.slice(1, -1) : host
+// Lower case, without the brackets around an IPv6 literal.
+const normalizeHost = (host: string): string => {
+  const lower = host.toLowerCase()
+  return lower.startsWith("[") && lower.endsWith("]") ? lower.slice(1, -1) : lower
 }
 
-// Matches hosts against host names and IP literals case-insensitively. An IP
-// literal matches any spelling of the same address.
+// Matches normalized hosts against host names and IP literals. An IP literal
+// matches any spelling of the same address.
 const makeHostMatcher = (allowedHosts: ReadonlyArray<string>): (host: string) => boolean => {
   const names = new Set<string>()
   const addresses: Array<NetAddress.IpAddress> = []
   for (const entry of allowedHosts) {
-    let host = entry.toLowerCase()
-    if (host.startsWith("[") && host.endsWith("]")) host = host.slice(1, -1)
+    const host = normalizeHost(entry)
     names.add(host)
     const address = NetAddress.ipFromString(host)
     if (Result.isSuccess(address)) addresses.push(address.success)
   }
   return (host) => {
-    const normalized = host.toLowerCase()
-    if (names.has(normalized)) return true
+    if (names.has(host)) return true
     if (addresses.length === 0) return false
-    const address = NetAddress.ipFromString(normalized)
+    const address = NetAddress.ipFromString(host)
     return Result.isSuccess(address) && addresses.some((allowed) => Equal.equals(allowed, address.success))
   }
 }
@@ -59,7 +57,7 @@ export const make = (options: {
     const isAllowed = makeHostMatcher(options.allowedHosts ?? [])
     return {
       check: (url) => {
-        const host = urlHost(url)
+        const host = normalizeHost(url.hostname)
         if (host === "") return refused
         if (isAllowed(host)) return Effect.void
         const literal = NetAddress.ipFromString(host)
@@ -74,6 +72,6 @@ export const make = (options: {
           })
         )
       },
-      allowsPlaintext: (url) => isAllowed(urlHost(url))
+      allowsPlaintext: (url) => isAllowed(normalizeHost(url.hostname))
     } satisfies Guard
   })

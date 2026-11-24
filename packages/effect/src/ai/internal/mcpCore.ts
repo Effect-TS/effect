@@ -349,7 +349,6 @@ export interface EventFailure {
  * @internal
  */
 export interface EventPollRequest {
-  readonly arguments: Readonly<Record<string, unknown>>
   readonly cursor: string | null
   readonly maxAgeMs?: number | undefined
   readonly maxEvents?: number | undefined
@@ -382,9 +381,6 @@ export interface EventPollOutcome {
  * @internal
  */
 export interface EventStreamRequest {
-  readonly arguments: Readonly<Record<string, unknown>>
-  // Set when the arguments were already decoded, as a webhook subscribe does first.
-  readonly decoded?: { readonly value: unknown } | undefined
   readonly cursor: string | null
   readonly maxAgeMs?: number | undefined
 }
@@ -436,11 +432,15 @@ export interface EventRegistration {
     invocation: McpInvocation,
     request: { readonly method: EventMethod; readonly payload: unknown }
   ) => Effect.Effect<A, E | McpSchema.NotFound | RequestRejected>
-  readonly poll?: ((request: EventPollRequest) => Effect.Effect<EventPollOutcome, EventFailure>) | undefined
+  // `poll` and `stream` take what `decodeArguments` returned.
+  readonly poll?:
+    | ((args: unknown, request: EventPollRequest) => Effect.Effect<EventPollOutcome, EventFailure>)
+    | undefined
   // Runs for the subscription's lifetime: `deliver` takes over once the
   // handler accepts it, so a failure before that is the request's error.
   readonly stream?:
     | ((
+      args: unknown,
       request: EventStreamRequest,
       deliver: (subscription: EventSubscription) => Effect.Effect<void>
     ) => Effect.Effect<void, EventFailure>)

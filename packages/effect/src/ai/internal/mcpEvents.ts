@@ -15,13 +15,9 @@ import * as Schema from "../../Schema.ts"
 import * as Stream from "../../Stream.ts"
 import * as PublicMcpSchema from "../McpSchema.ts"
 import type * as McpCore from "./mcpCore.ts"
-import * as McpProtocol from "./mcpProtocol.ts"
 import * as Stateless from "./mcpSchema/v2026_07_28.ts"
 
-/**
- * @internal
- */
-export const EXTENSION_ID = "io.modelcontextprotocol/events"
+const EXTENSION_ID = "io.modelcontextprotocol/events"
 
 /**
  * Adds the extension declaration while any event type is registered. The
@@ -34,24 +30,6 @@ export const declareExtension = <A>(
   extensions: Readonly<Record<string, A>> | undefined,
   servesEvents: boolean
 ): Readonly<Record<string, A | {}>> | undefined => servesEvents ? { ...extensions, [EXTENSION_ID]: {} } : extensions
-
-const methodNotFound = (method: string) =>
-  new McpProtocol.ProtocolError({
-    code: PublicMcpSchema.METHOD_NOT_FOUND_ERROR_CODE,
-    message: `Method not found: ${method}`
-  })
-
-/**
- * Fails with `Method not found` while no event type is registered, as a
- * server that does not declare the extension.
- *
- * @internal
- */
-export const requireEvents = (core: McpCore.McpCore, method: string) =>
-  Effect.flatMap(
-    core.registrationPresence,
-    (presence) => presence.events ? Effect.void : Effect.fail(methodNotFound(method))
-  )
 
 /**
  * @internal
@@ -300,8 +278,8 @@ export const deliver = Effect.fnUntraced(function*(options: {
     switch (item._tag) {
       case "Event": {
         cursor = item.cursor
-        const { _meta, _tag, ...occurrence } = item
-        yield* send(EventsEventNotification._tag, { ...occurrence, name, ...(_meta === undefined ? {} : { _meta }) })
+        const { _tag, ...occurrence } = item
+        yield* send(EventsEventNotification._tag, { ...occurrence, name })
         break
       }
       case "Position": {

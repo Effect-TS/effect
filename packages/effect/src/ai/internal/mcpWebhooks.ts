@@ -6,6 +6,7 @@
  * Subscriptions live in memory. Every grant is finite, so a subscription lost
  * in a restart comes back on the client's next refresh, from its cursor.
  */
+import * as Bytes from "../../Bytes.ts"
 import * as Cause from "../../Cause.ts"
 import * as Clock from "../../Clock.ts"
 import * as Digest from "../../crypto/Digest.ts"
@@ -22,6 +23,7 @@ import * as FetchHttpClient from "../../http/FetchHttpClient.ts"
 import * as HttpClient from "../../http/HttpClient.ts"
 import * as HttpClientRequest from "../../http/HttpClientRequest.ts"
 import type * as HttpClientResponse from "../../http/HttpClientResponse.ts"
+import * as Url from "../../http/Url.ts"
 import * as Option from "../../Option.ts"
 import * as Result from "../../Result.ts"
 import * as Stream from "../../Stream.ts"
@@ -30,15 +32,11 @@ import type * as McpCore from "./mcpCore.ts"
 import { wireError } from "./mcpEvents.ts"
 
 const MINUTE_MS = 60_000
-/** @internal */
-export const MIN_TTL_MS = MINUTE_MS
+const MIN_TTL_MS = MINUTE_MS
 // Short grants because subscriptions live in memory: a restart loses them until the next refresh.
-/** @internal */
-export const MAX_TTL_MS = 60 * MINUTE_MS
-/** @internal */
-export const DEFAULT_TTL_MS = 15 * MINUTE_MS
-/** @internal */
-export const MAX_ATTEMPTS = 5
+const MAX_TTL_MS = 60 * MINUTE_MS
+const DEFAULT_TTL_MS = 15 * MINUTE_MS
+const MAX_ATTEMPTS = 5
 // Retries wait 30 s, 1, 2 and 4 minutes: about 7.5 minutes in all.
 const FIRST_RETRY_MS = 30_000
 const REQUEST_TIMEOUT_MS = 10_000
@@ -137,15 +135,18 @@ export interface Webhooks {
     request: SubscribeRequest
   ) => Effect.Effect<SubscribeResult, McpCore.EventFailure | McpCore.RequestRejected>
   readonly unsubscribe: (request: UnsubscribeRequest) => Effect.Effect<void, McpCore.EventFailure>
-  readonly size: Effect.Effect<number>
+}
+
+interface Secret {
+  readonly text: string
+  readonly key: Mac.Key
 }
 
 interface Subscription {
   readonly id: string
   readonly principal: string
   readonly url: URL
-  secret: string
-  key: Mac.Key
+  secret: Secret
   previous: { readonly key: Mac.Key; readonly until: number } | undefined
   expiresAt: number
   // Everything at or before it was acknowledged or given up on.
@@ -177,25 +178,17 @@ const checkMode = (delivery: Readonly<Record<string, unknown>>) =>
     ? Effect.void
     : Effect.fail(invalid("delivery.mode must be 'webhook'"))
 
-/**
- * The TTL granted for a suggested one: the default when none is suggested, and
- * never unbounded, since subscriptions are not kept across restarts.
- *
- * @internal
- */
-export const grantTtl = (suggested: number | null | undefined): number =>
+// The TTL granted for a suggested one: the default when none is suggested, and
+// never unbounded, since subscriptions are not kept across restarts.
+const grantTtl = (suggested: number | null | undefined): number =>
   suggested === undefined
     ? DEFAULT_TTL_MS
     : suggested === null
     ? MAX_TTL_MS
     : Math.min(MAX_TTL_MS, Math.max(MIN_TTL_MS, suggested))
 
-/**
- * JSON with object keys sorted, so equal arguments serialize equally.
- *
- * @internal
- */
-export const canonicalJson = (value: unknown): string => {
+// JSON with object keys sorted, so equal arguments serialize equally.
+const canonicalJson = (value: unknown): string => {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`
   if (typeof value === "object" && value !== null) {
     const entries = Object.entries(value).filter(([, entry]) => entry !== undefined)
@@ -206,15 +199,13 @@ export const canonicalJson = (value: unknown): string => {
 }
 
 const encoder = new TextEncoder()
+const decoder = new TextDecoder()
 
 const parseUrl = (value: unknown, guard: Guard) => {
   if (typeof value !== "string") return Effect.fail(invalid("delivery.url is required"))
-  let url: URL
-  try {
-    url = new URL(value)
-  } catch {
-    return Effect.fail(invalid("delivery.url is not a valid URL"))
-  }
+  const parsed = Url.fromString(value)
+  if (Result.isFailure(parsed)) return Effect.fail(invalid("delivery.url is not a valid URL"))
+  const url = parsed.success
   if (url.protocol !== "https:" && !(url.protocol === "http:" && guard.allowsPlaintext?.(url) === true)) {
     return Effect.fail(invalid("delivery.url must use https"))
   }
@@ -225,7 +216,7 @@ const parseUrl = (value: unknown, guard: Guard) => {
   return Effect.succeed(url)
 }
 
-const parseSecret = (value: unknown) => {
+const parseSecret = (value: unknown): Effect.Effect<Secret, PublicMcpSchema.InvalidParams> => {
   const fail = Effect.fail(invalid("delivery.secret must be whsec_ and the base64 of 24 to 64 random bytes"))
   if (typeof value !== "string" || !value.startsWith(SECRET_PREFIX)) return fail
   const bytes = Base64.decode(value.slice(SECRET_PREFIX.length))
@@ -264,16 +255,7 @@ const readCapped = (response: HttpClientResponse.HttpClientResponse) =>
         return true
       }),
       Stream.runDrain,
-      Effect.map(() => {
-        if (oversized) return undefined
-        const bytes = new Uint8Array(total)
-        let offset = 0
-        for (const chunk of chunks) {
-          bytes.set(chunk, offset)
-          offset += chunk.length
-        }
-        return new TextDecoder().decode(bytes)
-      })
+      Effect.map(() => oversized ? undefined : decoder.decode(Bytes.concat(chunks)))
     )
   })
 
@@ -311,8 +293,8 @@ export const make = Effect.fnUntraced(function*(options: Options) {
   const subscriptions = new Map<string, Subscription>()
   // Subscribes past the principal check that have not created their subscription yet.
   const pending = new Map<string, number>()
-  const verified = new Map<string, number>()
-  const failedVerifications = new Map<string, { readonly until: number; readonly category: FailureCategory }>()
+  // A failed challenge is cached too, with the category it is answered with.
+  const verifications = new Map<string, { readonly until: number; readonly failure?: FailureCategory }>()
   const verifying = new Map<string, Deferred.Deferred<void, PublicMcpSchema.CallbackEndpointError>>()
   const verificationsByHost = new Map<string, Array<number>>()
 
@@ -329,11 +311,13 @@ export const make = Effect.fnUntraced(function*(options: Options) {
   const messageId = (prefix: string) =>
     Effect.map(random.randomBytes(18), (bytes) => `${prefix}_${Base64Url.encode(bytes)}`)
 
-  const sign = (keys: ReadonlyArray<Mac.Key>, webhookId: string, timestamp: number, body: string) =>
-    Effect.forEach(keys, (key) => mac.sign(key, encoder.encode(`${webhookId}.${timestamp}.${body}`))).pipe(
+  const sign = (keys: ReadonlyArray<Mac.Key>, webhookId: string, timestamp: number, body: string) => {
+    const signed = encoder.encode(`${webhookId}.${timestamp}.${body}`)
+    return Effect.forEach(keys, (key) => mac.sign(key, signed)).pipe(
       Effect.orDie,
       Effect.map((tags) => tags.map((tag) => `v1,${Base64.encode(tag)}`).join(" "))
     )
+  }
 
   // One POST. The timestamp and signature are fresh on every attempt.
   const send = Effect.fnUntraced(function*(
@@ -350,8 +334,8 @@ export const make = Effect.fnUntraced(function*(options: Options) {
     const timestamp = Math.floor(now / 1000)
     const previous = subscription.previous
     const keys = previous !== undefined && now < previous.until
-      ? [subscription.key, previous.key]
-      : [subscription.key]
+      ? [subscription.secret.key, previous.key]
+      : [subscription.secret.key]
     const request = HttpClientRequest.post(subscription.url).pipe(
       HttpClientRequest.setHeaders({
         "webhook-id": webhookId,
@@ -422,13 +406,14 @@ export const make = Effect.fnUntraced(function*(options: Options) {
         switch (item._tag) {
           case "Event":
             return Effect.flatMap(messageId("msg"), (webhookId) => {
+              // `JSON.stringify` leaves out an absent `_meta`.
               const body = JSON.stringify({
                 eventId: item.eventId,
                 name,
                 timestamp: item.timestamp,
                 data: item.data,
                 cursor: item.cursor,
-                ...(item._meta === undefined ? {} : { _meta: item._meta })
+                _meta: item._meta
               })
               return deliver(subscription, body, webhookId)
             }).pipe(Effect.andThen(Effect.sync(() => {
@@ -491,11 +476,12 @@ export const make = Effect.fnUntraced(function*(options: Options) {
     .fnUntraced(function*(subscription: Subscription) {
       const key = JSON.stringify([subscription.principal, subscription.url.href])
       const now = yield* Clock.currentTimeMillis
-      for (const [entry, until] of verified) if (until <= now) verified.delete(entry)
-      for (const [entry, failure] of failedVerifications) if (failure.until <= now) failedVerifications.delete(entry)
-      if (verified.has(key)) return
-      const failure = failedVerifications.get(key)
-      if (failure !== undefined) return yield* callbackError(failure.category)
+      for (const [entry, { until }] of verifications) if (until <= now) verifications.delete(entry)
+      const cached = verifications.get(key)
+      if (cached !== undefined) {
+        if (cached.failure === undefined) return
+        return yield* callbackError(cached.failure)
+      }
       const inFlight = verifying.get(key)
       if (inFlight !== undefined) {
         const exit = yield* Effect.exit(Deferred.await(inFlight))
@@ -521,12 +507,12 @@ export const make = Effect.fnUntraced(function*(options: Options) {
       return yield* handshake(subscription).pipe(
         Effect.tap(() =>
           Effect.map(Clock.currentTimeMillis, (at) => {
-            verified.set(key, at + VERIFIED_FOR_MS)
+            verifications.set(key, { until: at + VERIFIED_FOR_MS })
           })
         ),
-        Effect.tapError((category) =>
+        Effect.tapError((failure) =>
           Effect.map(Clock.currentTimeMillis, (at) => {
-            failedVerifications.set(key, { until: at + FAILED_FOR_MS, category })
+            verifications.set(key, { until: at + FAILED_FOR_MS, failure })
           })
         ),
         Effect.mapError(callbackError),
@@ -544,17 +530,16 @@ export const make = Effect.fnUntraced(function*(options: Options) {
   const refresh = Effect.fnUntraced(function*(
     request: SubscribeRequest,
     subscription: Subscription,
-    secret: { readonly text: string; readonly key: Mac.Key },
+    secret: Secret,
     expiresAt: number,
     now: number
   ): Effect.fn.Return<SubscribeResult, McpCore.EventFailure | McpCore.RequestRejected> {
     const opening = !Deferred.isDoneUnsafe(subscription.accepted)
     const start = yield* Deferred.await(subscription.accepted)
     if (subscriptions.get(subscription.id) !== subscription) return yield* subscribe(request)
-    if (subscription.secret !== secret.text) {
-      subscription.previous = { key: subscription.key, until: now + ROTATION_GRACE_MS }
-      subscription.secret = secret.text
-      subscription.key = secret.key
+    if (subscription.secret.text !== secret.text) {
+      subscription.previous = { key: subscription.secret.key, until: now + ROTATION_GRACE_MS }
+      subscription.secret = secret
     }
     subscription.expiresAt = expiresAt
     const moved = subscription.deadlineMoved
@@ -587,7 +572,8 @@ export const make = Effect.fnUntraced(function*(options: Options) {
     const live = subscriptions.get(id)
     if (live !== undefined) return yield* refresh(request, live, secret, expiresAt, now)
     // The slot is taken before anything asynchronous, so concurrent subscribes cannot pass the cap.
-    let held = pending.get(principal) ?? 0
+    const waiting = pending.get(principal) ?? 0
+    let held = waiting
     for (const subscription of subscriptions.values()) if (subscription.principal === principal) held++
     if (held >= MAX_SUBSCRIPTIONS_PER_PRINCIPAL) {
       return yield* new PublicMcpSchema.ResourceExhausted({
@@ -595,7 +581,7 @@ export const make = Effect.fnUntraced(function*(options: Options) {
         data: { limit: "subscriptions", max: MAX_SUBSCRIPTIONS_PER_PRINCIPAL }
       })
     }
-    pending.set(principal, (pending.get(principal) ?? 0) + 1)
+    pending.set(principal, waiting + 1)
     let reserved = true
     const release = () => {
       if (!reserved) return
@@ -614,7 +600,7 @@ export const make = Effect.fnUntraced(function*(options: Options) {
     { expiresAt, id, now, principal, release, secret, url }: {
       readonly principal: string
       readonly url: URL
-      readonly secret: { readonly text: string; readonly key: Mac.Key }
+      readonly secret: Secret
       readonly id: string
       readonly expiresAt: number
       readonly now: number
@@ -627,8 +613,7 @@ export const make = Effect.fnUntraced(function*(options: Options) {
       id,
       principal,
       url,
-      secret: secret.text,
-      key: secret.key,
+      secret,
       previous: undefined,
       expiresAt,
       watermark: request.cursor,
@@ -641,13 +626,11 @@ export const make = Effect.fnUntraced(function*(options: Options) {
     }
     const decoded = yield* request.decode
     yield* verify(subscription)
+    // From here the subscription counts itself, or a concurrent one already does.
+    release()
     // A concurrent subscribe for the same key may have finished while this one verified.
     const raced = subscriptions.get(id)
-    if (raced !== undefined) {
-      release()
-      return yield* refresh(request, raced, secret, expiresAt, now)
-    }
-    release()
+    if (raced !== undefined) return yield* refresh(request, raced, secret, expiresAt, now)
     subscriptions.set(id, subscription)
     const { accepted } = subscription
     const lifetime = request.open(decoded, (events) =>
@@ -685,9 +668,5 @@ export const make = Effect.fnUntraced(function*(options: Options) {
     if (subscription.fiber !== undefined) yield* Fiber.interrupt(subscription.fiber)
   })
 
-  return {
-    subscribe,
-    unsubscribe,
-    size: Effect.sync(() => subscriptions.size)
-  } satisfies Webhooks
+  return { subscribe, unsubscribe } satisfies Webhooks
 })

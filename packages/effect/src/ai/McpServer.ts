@@ -837,23 +837,16 @@ type CallMethod =
   | "prompts/get"
   | "completion/complete"
   | "skills/get"
-  | "events/poll"
-  | "events/stream"
-  | "events/subscribe"
-  | "events/unsubscribe"
+  | McpCore.EventMethod
 
 type ListMethod = Exclude<MiddlewareMethod, CallMethod>
 
-interface NotFoundErrors {
+interface NotFoundErrors extends Record<McpCore.EventMethod, McpSchema.NotFound> {
   readonly "tools/call": McpCore.ToolNotFound
   readonly "resources/read": McpCore.ResourceNotFound
   readonly "prompts/get": McpCore.PromptNotFound
   readonly "completion/complete": InvalidParams
   readonly "skills/get": McpCore.SkillNotFound
-  readonly "events/poll": McpSchema.NotFound
-  readonly "events/stream": McpSchema.NotFound
-  readonly "events/subscribe": McpSchema.NotFound
-  readonly "events/unsubscribe": McpSchema.NotFound
 }
 
 const notFound = (method: CallMethod, target: string): NotFoundErrors[CallMethod] => {
@@ -4387,12 +4380,11 @@ export const registerEvent: <
       invoke: (effect, invocation, request) =>
         invoke(effect, invocation, { method: request.method, target: name, payload: request.payload }),
       // Request services come from the middleware `invoke` runs them in.
-      poll: poll === undefined ? undefined : Effect.fnUntraced(function*(request: McpCore.EventPollRequest) {
-        const result = yield* poll(yield* argumentsOf(request.arguments), {
-          cursor: request.cursor,
-          maxAgeMs: request.maxAgeMs,
-          maxEvents: request.maxEvents
-        })
+      poll: poll === undefined ? undefined : Effect.fnUntraced(function*(
+        args: unknown,
+        request: McpCore.EventPollRequest
+      ) {
+        const result = yield* poll(args, request)
         return {
           events: yield* Effect.forEach(result.events, encodeEvent),
           cursor: result.cursor,
@@ -4401,15 +4393,9 @@ export const registerEvent: <
           nextPollMs: result.nextPollMs ?? DEFAULT_NEXT_POLL_MS
         }
       }) as unknown as McpCore.EventRegistration["poll"],
-      stream: stream === undefined ? undefined : (request, deliver) =>
+      stream: stream === undefined ? undefined : (args, request, deliver) =>
         Effect.scoped(Effect.gen(function*() {
-          const args = request.decoded !== undefined
-            ? request.decoded.value
-            : yield* argumentsOf(request.arguments)
-          const subscription = yield* stream(args, {
-            cursor: request.cursor,
-            maxAgeMs: request.maxAgeMs
-          })
+          const subscription = yield* stream(args, request)
           // The items run on the delivery fiber, so they keep this request's services.
           const context = yield* Effect.context<any>()
           const items = subscription.items.pipe(

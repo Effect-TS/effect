@@ -406,7 +406,7 @@ export const makeHandlers = (
     return { supportedVersions: context.supportedVersions, capabilities, serverInfo: context.serverInfo }
   })
   const requireEvents = (method: string) =>
-    McpEvents.requireEvents(core, method).pipe(Effect.catch((error) => failWithHttpStatus(404, error)))
+    McpProtocol.requireExtension(core, "events", method).pipe(Effect.catch((error) => failWithHttpStatus(404, error)))
   // The event type's `x-mcp-header` arguments must match their headers, as a tool's do.
   const validateEventHeaders = Effect.fnUntraced(function*(
     registration: McpCore.EventRegistration,
@@ -799,27 +799,15 @@ export const makeHandlers = (
             return yield* McpEvents.unsupportedDelivery("poll")
           }
           yield* validateEventHeaders(registration, request.arguments)
-          return yield* registration.poll({
-            arguments: request.arguments ?? {},
+          return yield* registration.poll(yield* registration.decodeArguments(request.arguments ?? {}), {
             cursor: request.cursor ?? null,
             maxAgeMs: request.maxAgeMs,
             maxEvents: request.maxEvents
           })
         }))
       const result = yield* projectCompleteResult({
-        events: outcome.events.map((event) =>
-          omitUndefined({
-            eventId: event.eventId,
-            name: request.name,
-            timestamp: event.timestamp,
-            data: event.data,
-            _meta: event._meta
-          })
-        ),
-        cursor: outcome.cursor,
-        truncated: outcome.truncated,
-        hasMore: outcome.hasMore,
-        nextPollMs: outcome.nextPollMs
+        ...outcome,
+        events: outcome.events.map((event) => ({ ...event, name: request.name }))
       }, context.serverInfo)
       return yield* decodePollEventsResult(result)
     }, Effect.mapError(projectError)),
@@ -848,7 +836,8 @@ export const makeHandlers = (
                 }
               })
             yield* registration.stream(
-              { arguments: request.arguments ?? {}, cursor: request.cursor ?? null, maxAgeMs: request.maxAgeMs },
+              yield* registration.decodeArguments(request.arguments ?? {}),
+              { cursor: request.cursor ?? null, maxAgeMs: request.maxAgeMs },
               (subscription) => McpEvents.deliver({ name: request.name, subscription, heartbeatMs, send })
             )
           })),
@@ -874,8 +863,7 @@ export const makeHandlers = (
             cursor,
             ttlMs: request.ttlMs,
             decode: registration.decodeArguments(args),
-            open: (decoded, deliver) =>
-              stream({ arguments: args, decoded: { value: decoded }, cursor, maxAgeMs: request.maxAgeMs }, deliver)
+            open: (decoded, deliver) => stream(decoded, { cursor, maxAgeMs: request.maxAgeMs }, deliver)
           })
         }))
       const result = yield* projectCompleteResult(omitUndefined({ ...subscribed }), context.serverInfo)
