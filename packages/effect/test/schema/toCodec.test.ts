@@ -1091,6 +1091,19 @@ describe("Serializers", () => {
         await decoding.succeed({ _tag: "IllegalArgumentError" }, new Cause.IllegalArgumentError())
       })
 
+      it("ExceededCapacityError", async () => {
+        const schema = Schema.ExceededCapacityError
+        const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
+
+        const encoding = asserts.encoding()
+        await encoding.succeed(new Cause.ExceededCapacityError("a"), { _tag: "ExceededCapacityError", message: "a" })
+        await encoding.succeed(new Cause.ExceededCapacityError(), { _tag: "ExceededCapacityError" })
+
+        const decoding = asserts.decoding()
+        await decoding.succeed({ _tag: "ExceededCapacityError", message: "a" }, new Cause.ExceededCapacityError("a"))
+        await decoding.succeed({ _tag: "ExceededCapacityError" }, new Cause.ExceededCapacityError())
+      })
+
       it("ErrorInstance", async () => {
         const schema = Schema.ErrorInstance()
         const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))

@@ -1001,6 +1001,15 @@ describe("SchemaRepresentation built-in declaration revivers", () => {
     })
   })
 
+  it("revives ExceededCapacityError", () => {
+    assertDeclarationReviver({
+      schema: Schema.ExceededCapacityError,
+      id: "effect/schema/ExceededCapacityError",
+      payload: null,
+      reviver: SchemaRepresentation.ExceededCapacityErrorReviver
+    })
+  })
+
   it("revives ByteSize", () => {
     assertDeclarationReviver({
       schema: Schema.ByteSize,

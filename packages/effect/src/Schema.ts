@@ -9650,6 +9650,71 @@ export const IllegalArgumentError: IllegalArgumentError = declare(
   }
 )
 /**
+ * Type-level representation of {@link ExceededCapacityError}.
+ *
+ * @stability stable
+ * @category models
+ * @since 4.2.0
+ */
+export interface ExceededCapacityError extends declare<Cause_.ExceededCapacityError> {
+  readonly "Rebuild": ExceededCapacityError
+}
+/**
+ * Schema for `Cause.ExceededCapacityError` values.
+ *
+ * **When to use**
+ *
+ * Use when a schema-defined error or value needs to carry a `ExceededCapacityError`,
+ * for example as the reason of a service error.
+ *
+ * **Details**
+ *
+ * The default JSON serializer encodes a `ExceededCapacityError` as an object with
+ * `_tag` and an optional `message`, and decodes that object back into a
+ * `ExceededCapacityError`.
+ *
+ * **Example** (Encoding a ExceededCapacityError to JSON)
+ *
+ * ```ts import.meta.vitest
+ * import { Cause, Schema } from "effect"
+ *
+ * const codec = Schema.toCodecJson(Schema.ExceededCapacityError)
+ *
+ * Schema.encodeSync(codec)(new Cause.ExceededCapacityError("full")) // => { _tag: "ExceededCapacityError", message: "full" }
+ * Cause.isExceededCapacityError(Schema.decodeSync(codec)({ _tag: "ExceededCapacityError" })) // => true
+ * ```
+ *
+ * @stability stable
+ * @category schemas
+ * @since 4.2.0
+ */
+export const ExceededCapacityError: ExceededCapacityError = declare(
+  Cause_.isExceededCapacityError,
+  {
+    representation: {
+      id: "effect/schema/ExceededCapacityError",
+      payload: null
+    },
+    toCode: () => ({
+      runtime: `Schema.ExceededCapacityError`,
+      Type: `Cause.ExceededCapacityError`,
+      importDeclarations: [`import * as Cause from "effect/Cause"`]
+    }),
+    expected: "ExceededCapacityError",
+    toCodecJson: () =>
+      link<Cause_.ExceededCapacityError>()(
+        Struct({ _tag: Literal("ExceededCapacityError"), message: optionalKey(String) }),
+        SchemaTransformation.transform({
+          decode: (encoded) => new Cause_.ExceededCapacityError(encoded.message),
+          encode: (error) =>
+            error.message === undefined
+              ? { _tag: "ExceededCapacityError" } as const
+              : { _tag: "ExceededCapacityError", message: error.message } as const
+        })
+      )
+  }
+)
+/**
  * Type-level representation returned by {@link ReadonlyMap}.
  *
  * @stability stable

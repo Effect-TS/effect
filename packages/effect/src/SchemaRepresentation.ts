@@ -1795,6 +1795,24 @@ export const IllegalArgumentErrorReviver: DeclarationReviver<null> = makeFixedDe
 )
 
 /**
+ * Reviver for persisted {@link Schema.ExceededCapacityError} declarations.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain the {@link Schema.ExceededCapacityError} schema.
+ *
+ * @see {@link Schema.ExceededCapacityError} for the corresponding schema
+ *
+ * @stability stable
+ * @category schemas
+ * @since 4.2.0
+ */
+export const ExceededCapacityErrorReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/ExceededCapacityError",
+  Schema.ExceededCapacityError
+)
+
+/**
  * Reviver for persisted `Exit` declarations.
  *
  * **When to use**
