@@ -2,7 +2,7 @@ import { type Generated, OpenAiClient, OpenAiLanguageModel, OpenAiSchema, OpenAi
 import { assert, describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Array, Context, Effect, Layer, Redacted, Ref, Schema, SchemaGetter, Stream } from "effect"
-import { AiError, LanguageModel, Prompt, Response as AiResponse, Tool, Toolkit } from "effect/ai"
+import { AiError, Chat, LanguageModel, Prompt, Response as AiResponse, Tool, Toolkit } from "effect/ai"
 import { HttpClient, type HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 
 const webSearchFailures = [
@@ -39,6 +39,47 @@ describe("OpenAiLanguageModel", () => {
         const metadata = result.content.find((part) => part.type === "response-metadata")
         strictEqual(metadata?.modelId, "ft:gpt-4o-mini:custom")
       }).pipe(Effect.provide(makeTestLayer({ body: { model: "ft:gpt-4o-mini:custom" as any } }))))
+  })
+
+  describe("image generation", () => {
+    it.effect.each([false, true])(
+      "continues Chat after image generation with store=%s",
+      (store) =>
+        Effect.gen(function*() {
+          const chat = yield* Chat.empty
+          const toolkit = Toolkit.make(OpenAiTool.ImageGeneration({}))
+
+          yield* chat.generateText({ prompt: "Draw a cat", toolkit })
+          yield* chat.generateText({ prompt: "Thanks", toolkit })
+
+          const requests = yield* MockHttpClient.requests
+          strictEqual(requests.length, 2)
+          const body = yield* getRequestBody(requests[1])
+          deepStrictEqual(body.input, [
+            { role: "user", content: [{ type: "input_text", text: "Draw a cat" }] },
+            ...(store
+              ? [{ type: "item_reference", id: "ig_123" }, { type: "item_reference", id: "msg_123" }]
+              : [{
+                id: "msg_123",
+                type: "message",
+                role: "assistant",
+                status: "completed",
+                content: [{ type: "output_text", text: "Here is the image.", annotations: [], logprobs: [] }]
+              }]),
+            { role: "user", content: [{ type: "input_text", text: "Thanks" }] }
+          ])
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", { store })),
+          Effect.provide(makeTestLayer({
+            body: {
+              output: [
+                { type: "image_generation_call", id: "ig_123", status: "completed", result: "aW1hZ2U=" },
+                makeTextOutput("Here is the image.")
+              ]
+            }
+          }))
+        )
+    )
   })
 
   describe("web search sources", () => {
