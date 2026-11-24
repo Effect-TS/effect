@@ -347,22 +347,6 @@ describe("mssql", () => {
       Effect.provide(Reactivity.layer)
     ))
 
-  for (
-    const [name, requestTimeout, expected] of [
-      ["uses the Tedious default when omitted", undefined, undefined],
-      ["converts durations to milliseconds", "30 seconds", 30_000],
-      ["disables the timeout with zero", 0, 0],
-      ["disables the timeout with an infinite duration", "Infinity", 0]
-    ] as const
-  ) {
-    it.effect(`requestTimeout ${name}`, () =>
-      Effect.gen(function*() {
-        const before = state.connections.length
-        yield* MssqlClient.make({ server: "localhost", requestTimeout })
-        assert.strictEqual(state.connections[before].config.options?.requestTimeout, expected)
-      }).pipe(Effect.provide(Reactivity.layer)))
-  }
-
   it.effect("cancels an in-flight Tedious request when interrupted", () =>
     Effect.gen(function*() {
       state.cancelCalls = 0
@@ -401,6 +385,23 @@ const makeClient = MssqlClient.make({
 const bounded = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect.pipe(Effect.timeout("2 seconds"))
 
 describe("MssqlClient connection lifecycle", { concurrent: false }, () => {
+  it.effect("passes requestTimeout to Tedious", () =>
+    Effect.gen(function*() {
+      reset()
+      for (
+        const [config, expected] of [
+          [{}, undefined],
+          [{ requestTimeout: "30 seconds" }, 30_000],
+          [{ requestTimeout: 0 }, 0],
+          [{ requestTimeout: "Infinity" }, 0]
+        ] as const
+      ) {
+        const before = state.connections.length
+        yield* MssqlClient.make({ server: "localhost", ...config })
+        assert.strictEqual(state.connections[before].config.options?.requestTimeout, expected)
+      }
+    }).pipe(Effect.scoped, Effect.provide(Reactivity.layer)))
+
   for (const operation of ["withoutTransforms", "call"] as const) {
     it.live(`${operation} reuses the transaction connection with a single-connection pool`, () =>
       Effect.gen(function*() {
