@@ -332,11 +332,13 @@ const makeExecute = Effect.fnUntraced(function*<
   const attempt = yield* CurrentAttempt
   yield* Effect.annotateCurrentSpan({ executionId: instance.executionId })
   const result = yield* Workflow.wrapActivityResult(
-    engine.activityExecute(activity, attempt),
+    Effect.map(engine.activityExecute(activity, attempt), (result) => {
+      if (result._tag === "Suspended" && result.failed) instance.failed = true
+      return result
+    }),
     (_) => _._tag === "Suspended"
   )
   if (result._tag === "Suspended") {
-    if (result.failed) instance.failed = true
     return yield* Workflow.suspend(instance)
   }
   return yield* result.exit

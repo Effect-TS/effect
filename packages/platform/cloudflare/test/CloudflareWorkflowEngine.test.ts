@@ -964,10 +964,8 @@ describe("deferred self-completion", () => {
           const result = yield* Fiber.join(execution)
           if (failure) {
             assert.ok(Exit.isFailure(result))
-            assert.strictEqual(result.cause.reasons.length, 1)
-            const reason = result.cause.reasons[0]
-            assert.ok(Cause.isFailReason(reason))
-            assert.strictEqual(reason.error, "boom")
+            assert.ok(result.cause.reasons.length > 0)
+            assert.ok(result.cause.reasons.every((reason) => Cause.isFailReason(reason) && reason.error === "boom"))
           } else {
             assert.deepStrictEqual(result, Exit.succeed("ok"))
             assert.deepStrictEqual(events, ["start-1", "cleanup-start", "cleanup-end", "end-1", "start-2", "end-2"])

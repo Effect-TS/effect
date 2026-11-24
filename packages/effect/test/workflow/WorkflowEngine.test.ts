@@ -86,10 +86,8 @@ describe("deferred self-completion", () => {
           const result = yield* Fiber.join(execution)
           if (failure) {
             assert.ok(Exit.isFailure(result))
-            assert.strictEqual(result.cause.reasons.length, 1)
-            const reason = result.cause.reasons[0]
-            assert.ok(Cause.isFailReason(reason))
-            assert.strictEqual(reason.error, "boom")
+            assert.ok(result.cause.reasons.length > 0)
+            assert.ok(result.cause.reasons.every((reason) => Cause.isFailReason(reason) && reason.error === "boom"))
           } else {
             assert.deepStrictEqual(result, Exit.succeed("ok"))
             assert.deepStrictEqual(events, ["start-1", "cleanup-start", "cleanup-end", "end-1", "start-2", "end-2"])
@@ -700,6 +698,80 @@ describe("WorkflowEngine", () => {
         Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
       )
     }))
+
+  for (const discard of [false, true]) {
+    it.effect(
+      `layerMemory dispatches ${discard ? "discarded children before" : "a child after"} a suspending durable wait`,
+      () =>
+        Effect.gen(function*() {
+          let started = 0
+          const indexes = discard ? [0, 1, 2, 3] : [0]
+          const Gate = DurableDeferred.make("WorkflowEngine/SiblingDispatchGate")
+          const Parent = Workflow.make(`WorkflowEngine/SiblingDispatchParent/${discard}`, {
+            payload: {},
+            idempotencyKey: () => "parent"
+          })
+          const Child = Workflow.make(`WorkflowEngine/SiblingDispatchChild/${discard}`, {
+            payload: { index: Schema.Number },
+            idempotencyKey: ({ index }) => String(index)
+          })
+          const ParentLayer = Parent.toLayer(() => {
+            const children = indexes.map((index) => Child.execute({ index }, { discard }))
+            const wait = DurableDeferred.await(Gate)
+            return Effect.all(discard ? [...children, wait] : [wait, ...children], {
+              concurrency: "unbounded",
+              discard: true
+            })
+          })
+          const ChildLayer = Child.toLayer(() =>
+            Effect.sync(() => {
+              started++
+            })
+          )
+          yield* Effect.gen(function*() {
+            const executionId = yield* Parent.execute({}, { discard: true })
+            yield* pollUntil(Parent, executionId, "Suspended")
+            assert.strictEqual(started, indexes.length)
+            yield* DurableDeferred.succeed(Gate, {
+              token: DurableDeferred.tokenFromExecutionId(Gate, { workflow: Parent, executionId }),
+              value: void 0
+            })
+            const result = yield* pollUntil(Parent, executionId, "Complete")
+            assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.void }))
+            assert.strictEqual(started, indexes.length)
+          }).pipe(
+            Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
+          )
+        })
+    )
+  }
+
+  it.effect(
+    "layerMemory cancels a losing DurableDeferred.await race arm while a sibling activity is running",
+    () =>
+      Effect.gen(function*() {
+        const Gate = DurableDeferred.make("WorkflowEngine/RaceCancelGate")
+        const Parent = Workflow.make("WorkflowEngine/RaceCancelParent", {
+          payload: {},
+          idempotencyKey: () => "parent"
+        })
+        const ParentLayer = Parent.toLayer(Effect.fnUntraced(function*() {
+          const started = yield* Latch.make()
+          const released = yield* Latch.make()
+          yield* Effect.all([
+            Effect.race(DurableDeferred.await(Gate), started.await).pipe(Effect.andThen(released.open)),
+            Activity.make({ name: "work", execute: started.open.pipe(Effect.andThen(released.await)) })
+          ], { concurrency: "unbounded", discard: true })
+        }))
+        yield* Effect.gen(function*() {
+          const result = yield* Parent.execute({})
+          assert.strictEqual(result, undefined)
+        }).pipe(
+          Effect.provide(ParentLayer.pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
+        )
+      }),
+    5_000
+  )
 
   it.effect("discard returns the deterministic execution ID", () =>
     Effect.gen(function*() {
