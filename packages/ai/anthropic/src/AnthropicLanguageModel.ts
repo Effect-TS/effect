@@ -1345,6 +1345,28 @@ const prepareToolResultContent = Effect.fnUntraced(function*(
 const getBase64Data = (data: string | Uint8Array): string =>
   typeof data === "string" ? data.replace(/^data:[^;]+;base64,/, "") : Base64.encode(data)
 
+const getTextData = Effect.fnUntraced(function*(data: string | Uint8Array) {
+  if (typeof data !== "string") {
+    return new TextDecoder().decode(data)
+  }
+  const dataUrl = /^data:[^,]*;base64,/i.exec(data)
+  if (dataUrl === null) {
+    return data
+  }
+  return yield* Effect.fromResult(Base64.decode(data.slice(dataUrl[0].length))).pipe(
+    Effect.map((bytes) => new TextDecoder().decode(bytes)),
+    Effect.mapError((error) =>
+      AiError.make({
+        module: "AnthropicLanguageModel",
+        method: "prepareMessages",
+        reason: new AiError.InvalidUserInputError({
+          description: `Failed to decode text file data URL: ${error.message}`
+        })
+      })
+    )
+  )
+})
+
 const prepareFilePart = Effect.fnUntraced(function*(
   part: Prompt.FilePart,
   cacheControl: typeof Generated.CacheControlEphemeral.Encoded | null,
@@ -1380,7 +1402,7 @@ const prepareFilePart = Effect.fnUntraced(function*(
       : {
         type: "text",
         media_type: "text/plain",
-        data: typeof part.data === "string" ? part.data : new TextDecoder().decode(part.data)
+        data: yield* getTextData(part.data)
       } as const
 
     return {
