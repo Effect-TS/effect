@@ -5,6 +5,7 @@ import {
   Context,
   Deferred,
   Effect,
+  Fiber,
   Hash,
   Latch,
   Layer,
@@ -2006,6 +2007,43 @@ describe("Atom", { concurrent: false }, () => {
     await Effect.runPromise(Effect.yieldNow)
     assert.strictEqual(finalized, true)
   })
+
+  it.effect("SubscriptionRef queues contended writes", () =>
+    Effect.gen(function*() {
+      const ref = yield* SubscriptionRef.make(0)
+      const plain = Atom.subscriptionRef(ref)
+      const runtime = counterRuntime.subscriptionRef(Effect.succeed(ref))
+      const r = AtomRegistry.make()
+      const release = yield* Latch.make()
+      try {
+        r.mount(plain)
+        r.mount(runtime)
+        const changes = yield* SubscriptionRef.changes(ref).pipe(
+          Stream.take(5),
+          Stream.runCollect,
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        r.set(plain, 1)
+        assert.strictEqual(r.get(plain), 1)
+        assert.strictEqual(AsyncResult.getOrThrow(r.get(runtime)), 1)
+
+        yield* SubscriptionRef.updateEffect(ref, (value) => release.await.pipe(Effect.as(value + 10))).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        r.set(plain, 5)
+        r.set(runtime, 6)
+        assert.strictEqual(r.get(plain), 1)
+
+        yield* release.open
+        assert.deepStrictEqual(yield* Fiber.join(changes), [0, 1, 11, 5, 6])
+        assert.strictEqual(r.get(plain), 6)
+        assert.strictEqual(AsyncResult.getOrThrow(r.get(runtime)), 6)
+      } finally {
+        r.dispose()
+      }
+    }))
 
   it("setLazy(true)", async () => {
     const count = Atom.make(0).pipe(Atom.keepAlive)
