@@ -801,7 +801,7 @@ export const make = Effect.fnUntraced(function*<
                 if (server.keepAliveRequestId === message.envelope.requestId) return Effect.void
                 if (server.keepAliveRequestId !== undefined) return reply
                 server.keepAliveRequestId = message.envelope.requestId
-                // The latch can be closed again before this fiber resumes, so keep holding.
+                // Re-check: the latch may close again before this fiber runs.
                 const release: Effect.Effect<void> = server.keepAliveLatch.whenOpen(Effect.suspend(() => {
                   if (!server.keepAliveLatch.isOpen()) return release
                   server.keepAliveRequestId = undefined

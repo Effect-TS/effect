@@ -169,8 +169,7 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
 
   it.effect("retains an unanswered keep-alive when disabled and immediately re-enabled", () =>
     Effect.gen(function*() {
-      // Persisted handlers are required: with volatile ones the release fiber
-      // runs before the replacement arrives and the race does not show.
+      // Persisted handlers are required to trigger the race before the release fiber runs.
       const Holder = Entity.make("KeepAliveSwap", [
         Rpc.make("Enable"),
         Rpc.make("Swap"),
