@@ -39,7 +39,7 @@ import type { Sharding } from "../Sharding.ts"
 import { ShardingConfig } from "../ShardingConfig.ts"
 import * as Snowflake from "../Snowflake.ts"
 import * as ClusterAbandon from "./clusterAbandon.ts"
-import { CurrentActivationScope } from "./entityActivation.ts"
+import { CurrentActivationScope, CurrentRetirementLatch } from "./entityActivation.ts"
 import { EntityReaper } from "./entityReaper.ts"
 import { acquireEntity, releaseEntity } from "./interruptors.ts"
 import { ResourceMap } from "./resourceMap.ts"
@@ -343,6 +343,7 @@ export const make = Effect.fnUntraced(function*<
           Context.add(CurrentRunnerAddress, options.runnerAddress),
           Context.add(KeepAliveLatch, keepAliveLatch),
           Context.add(CurrentActivationScope, scope),
+          Context.add(CurrentRetirementLatch, retired),
           Context.add(Scope.Scope, handlerScope),
           Context.add(CurrentLogAnnotations, {})
         )
@@ -643,9 +644,9 @@ export const make = Effect.fnUntraced(function*<
       scope,
       Effect.suspend(() => {
         activeServers.delete(address.entityId)
-        retired.openUnsafe()
         closeLatches.closing = true
         acquireEntity(address)
+        retired.openUnsafe()
         drainingServers.set(address.entityId, state)
         return Effect.raceFirst(
           Effect.gen(function*() {
