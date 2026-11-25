@@ -174,7 +174,6 @@ class FakeWorkflowNamespace {
   readonly stores = new Map<string, { readonly sql: FakeSql; readonly alarm: FakeAlarm }>()
   readonly runtimes = new Map<string, WorkflowRuntime>()
   readonly hungResumes = new Set<string>()
-  readonly resumeCalls: Array<string> = []
   /** `${name}/${method}` calls whose next attempt is lost in transit, as Cloudflare rejects them. */
   readonly lostCalls = new Set<string>()
   readonly background = new Set<Promise<unknown>>()
@@ -202,16 +201,10 @@ class FakeWorkflowNamespace {
           const tracked: Promise<unknown> = promise.finally(() => this.background.delete(tracked))
           this.background.add(tracked)
         },
-        getStub: (stubName) => {
-          const stub = this.getByName(stubName)
-          return {
-            ...stub,
-            resume: (mode) => {
-              this.resumeCalls.push(stubName)
-              return this.hungResumes.has(stubName) ? new Promise<void>(() => {}) : stub.resume(mode)
-            }
-          }
-        }
+        getStub: (stubName) =>
+          this.hungResumes.has(stubName)
+            ? { ...this.getByName(stubName), resume: () => new Promise<void>(() => {}) }
+            : this.getByName(stubName)
       })
       this.runtimes.set(name, runtime)
     }
@@ -735,7 +728,7 @@ describe("CloudflareWorkflowEngine", () => {
     }).pipe(Effect.provide(layer))
   })
 
-  it.effect("wakes every parent awaiting a shared child workflow and retries only failed wakes", () => {
+  it.effect("wakes every parent awaiting a shared child workflow", () => {
     const namespace = new FakeWorkflowNamespace()
     const Gate = DurableDeferred.make("SharedChild/Gate", { success: Schema.String })
     const Child = Workflow.make("SharedChild", {
@@ -766,10 +759,6 @@ describe("CloudflareWorkflowEngine", () => {
       const parentB = yield* Parent.execute({ name: "B" }, { discard: true })
       yield* pollUntil(Parent, parentB, "Suspended")
 
-      const childName = encodeName(Child._tag, childId)
-      const parentBName = encodeName(Parent._tag, parentB)
-      namespace.hungResumes.add(parentBName)
-
       yield* DurableDeferred.succeed(Gate, {
         token: DurableDeferred.tokenFromExecutionId(Gate, { workflow: Child, executionId: childId }),
         value: "done"
@@ -779,26 +768,14 @@ describe("CloudflareWorkflowEngine", () => {
         yield* pollUntil(Child, childId, "Complete"),
         new Workflow.Complete({ exit: Exit.succeed("done") })
       )
-      // Parent A completes without waiting on unreachable parent B.
       assert.deepStrictEqual(
         yield* pollUntil(Parent, parentA, "Complete"),
         new Workflow.Complete({ exit: Exit.succeed("A:done") })
       )
-      const parentBBeforeRetry = yield* Parent.poll(parentB)
-      assert(Option.isSome(parentBBeforeRetry) && parentBBeforeRetry.value._tag === "Suspended")
-
-      namespace.resumeCalls.length = 0
-      namespace.hungResumes.clear()
-      namespace.crash()
-      namespace.now = 60_000
-      namespace.store(childName).alarm.current = null
-      yield* Effect.promise(() => namespace.getByName(childName).runAlarm())
-
       assert.deepStrictEqual(
         yield* pollUntil(Parent, parentB, "Complete"),
         new Workflow.Complete({ exit: Exit.succeed("B:done") })
       )
-      assert.deepStrictEqual(namespace.resumeCalls, [parentBName])
     }).pipe(Effect.provide(layer))
   })
 

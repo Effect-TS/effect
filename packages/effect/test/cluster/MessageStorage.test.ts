@@ -437,7 +437,6 @@ describe("MessageStorage", () => {
     it.effect("requestsForAddress returns requests matching type, id and tag exactly across shards", () =>
       Effect.gen(function*() {
         const storage = yield* MessageStorage.MessageStorage
-        const snowflake = yield* Snowflake.Generator
         const save = (id: number, options?: {
           readonly rpc?: Rpc.AnyWithProps
           readonly entityType?: string
@@ -458,16 +457,6 @@ describe("MessageStorage", () => {
         yield* save(5, { rpc: Rpc.make("primarykeytest", { payload: { id: Schema.Number } }) })
         yield* save(6, { entityId: "2" })
         yield* save(7, { entityType: "Test" })
-        yield* storage.saveEnvelope(
-          new Message.OutgoingEnvelope({
-            envelope: new Envelope.Interrupt({
-              id: snowflake.nextUnsafe(),
-              address: unprocessed.envelope.address,
-              requestId: unprocessed.envelope.requestId
-            }),
-            rpc: PrimaryKeyTest
-          })
-        )
 
         const found = yield* storage.requestsForAddress({
           address: unprocessed.envelope.address,

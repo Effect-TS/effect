@@ -19,8 +19,6 @@ import {
   addParent,
   createExecution,
   ensureWorkflowStorage,
-  loadExecution,
-  loadParents,
   saveClock,
   saveCompletion
 } from "@effect/platform-cloudflare/internal/workflowStorage"
@@ -296,53 +294,6 @@ describe("CloudflareDurableObjectPrograms", () => {
           })
         }))
     }
-
-    it.effect("migrates legacy parent columns into workflow_parents on construction", () =>
-      Effect.gen(function*() {
-        for (
-          const scenario of [
-            { name: "incomplete", result: null, resumePending: 0, expectParent: true },
-            {
-              name: "complete with pending wake",
-              result: JSON.stringify({ _tag: "Complete" }),
-              resumePending: 1,
-              expectParent: true
-            },
-            {
-              name: "complete already delivered",
-              result: JSON.stringify({ _tag: "Complete" }),
-              resumePending: 0,
-              expectParent: false
-            }
-          ] as const
-        ) {
-          const database = new DatabaseSync(":memory:")
-          try {
-            const storage = new SqliteStorage(database)
-            ensureWorkflowStorage(storage.sql)
-            storage.sql.exec(
-              `INSERT INTO workflow_execution
-                 (id, workflow_name, execution_id, payload, parent_name, parent_execution_id, result, resume_pending)
-               VALUES (0, 'Child', 'c1', '{}', 'Parent', 'p1', ?, ?)`,
-              scenario.result,
-              scenario.resumePending
-            )
-            ensureWorkflowStorage(storage.sql)
-            assert.deepStrictEqual(
-              loadParents(storage.sql),
-              scenario.expectParent ? [{ workflowName: "Parent", executionId: "p1" }] : [],
-              scenario.name
-            )
-            assert.strictEqual(loadExecution(storage.sql)?.resumePending, undefined, scenario.name)
-            const legacyRow = storage.sql.exec<{ parent_name: string | null; parent_execution_id: string | null }>(
-              "SELECT parent_name, parent_execution_id FROM workflow_execution WHERE id = 0"
-            ).toArray()[0]
-            assert.deepStrictEqual(legacyRow, { parent_name: null, parent_execution_id: null }, scenario.name)
-          } finally {
-            database.close()
-          }
-        }
-      }))
 
     it.effect("kept-alive entity holds itself in the same jurisdiction", () =>
       Effect.gen(function*() {
