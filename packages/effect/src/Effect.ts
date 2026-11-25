@@ -2935,7 +2935,9 @@ export const catchTag: {
     A,
     E,
     R,
-    const K extends Tags<E> | Arr.NonEmptyReadonlyArray<Tags<E>>,
+    const K extends unknown extends E
+      ? string | Arr.NonEmptyReadonlyArray<string>
+      : Tags<E> | Arr.NonEmptyReadonlyArray<Tags<E>>,
     R1,
     E1,
     A1,

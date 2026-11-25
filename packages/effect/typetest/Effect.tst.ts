@@ -603,11 +603,39 @@ describe("Effect.catchTag", () => {
     expect(result).type.toBe<Effect.Effect<number, OtherError>>()
   })
 
+  it("supports tag arrays and orElse for an inline Effect.map in data-first usage", () => {
+    const arrayResult = Effect.catchTag(
+      Effect.map(mixedEffect, (s) => s.length),
+      ["AiError", "OtherError"],
+      (error) => {
+        expect(error).type.toBe<AiError | OtherError>()
+        return Effect.succeed(0)
+      }
+    )
+    expect(arrayResult).type.toBe<Effect.Effect<number>>()
+
+    const orElseResult = Effect.catchTag(
+      Effect.map(mixedEffect, (s) => s.length),
+      "AiError",
+      (error) => {
+        expect(error).type.toBe<AiError>()
+        return Effect.succeed(0)
+      },
+      (error) => {
+        expect(error).type.toBe<OtherError>()
+        return Effect.fail(new SimpleError({ code: 1 }))
+      }
+    )
+    expect(orElseResult).type.toBe<Effect.Effect<number, SimpleError>>()
+  })
+
   it("rejects unknown tags in data-first usage", () => {
     // @ts-expect-error No overload matches this call
     Effect.catchTag(mixedEffect, "UnknownError", () => Effect.succeed("ok"))
     // @ts-expect-error No overload matches this call
     Effect.catchTag(Effect.map(mixedEffect, (s) => s.length), "UnknownError", () => Effect.succeed(0))
+    // @ts-expect-error No overload matches this call
+    Effect.catchTag(Effect.map(mixedEffect, (s) => s.length), ["AiError", "UnknownError"], () => Effect.succeed(0))
   })
 
   it("handles an array of tags", () => {
