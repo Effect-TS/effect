@@ -4,7 +4,6 @@ import type { WorkflowInstance } from "../WorkflowEngine.ts"
 interface ParentState {
   nextOrder: number
   maxOrder: number
-  stampedSize: number
   abandoned: boolean
 }
 
@@ -14,7 +13,7 @@ const entryOrders = new WeakMap<object, number>()
 const getParentState = (parent: Scope.Scope): ParentState => {
   let state = parentStates.get(parent)
   if (state === undefined) {
-    state = { nextOrder: 0, maxOrder: -1, stampedSize: 0, abandoned: false }
+    state = { nextOrder: 0, maxOrder: -1, abandoned: false }
     parentStates.set(parent, state)
   }
   return state
@@ -28,11 +27,10 @@ const stampExisting = (parent: Scope.Scope, parentState: ParentState): void => {
       entryOrders.set(parent.state.finalizerKey, order)
       if (order > parentState.maxOrder) parentState.maxOrder = order
     }
-    parentState.stampedSize = 1
     return
   }
   const finalizers = parent.state.finalizers
-  if (finalizers === undefined || finalizers.size === parentState.stampedSize) return
+  if (finalizers === undefined) return
   for (const key of finalizers.keys()) {
     if (!entryOrders.has(key)) {
       const order = parentState.nextOrder++
@@ -40,7 +38,6 @@ const stampExisting = (parent: Scope.Scope, parentState: ParentState): void => {
       if (order > parentState.maxOrder) parentState.maxOrder = order
     }
   }
-  parentState.stampedSize = finalizers.size
 }
 
 /**
@@ -75,9 +72,6 @@ export const withLazyScope = (
         stampExisting(parent, parentState)
         scope = Scope.forkUnsafe(parent)
         entryOrders.set(scope, order)
-        if (parent.state._tag === "Open") {
-          parentState.stampedSize = parent.state.finalizers !== undefined ? parent.state.finalizers.size : 1
-        }
         if (order < parentState.maxOrder && parent.state._tag === "Open" && parent.state.finalizers !== undefined) {
           const finalizer = parent.state.finalizers.get(scope)!
           parent.state.finalizers.delete(scope)
