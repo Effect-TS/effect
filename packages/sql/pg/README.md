@@ -164,8 +164,8 @@ OIDs of user-defined types are assigned per database, so look them up in
 
 ## Values as text
 
-A library that decodes values itself can read them as the server's text with
-`queryTextValues`. No codec runs, the client's `types` included, so every type reads:
+Read raw PostgreSQL text values without running any codecs (including custom
+`types`) with `queryTextValues`:
 
 ```ts
 import { PgClient } from "@effect/sql-pg"

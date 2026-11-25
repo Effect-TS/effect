@@ -280,9 +280,9 @@ export interface PgConnection {
     prepare?: boolean
   ) => Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError>
   /**
-   * Runs a query and returns positional rows with each value as the server's
-   * text, for a caller that decodes values itself. No codec runs, including
-   * those of `Config.types`. Pass `false` to skip the prepared statement
+   * Runs a query and returns field metadata alongside positional rows of raw
+   * PostgreSQL text values (`string | null`), bypassing result codecs
+   * (including `Config.types`). Pass `false` to skip the prepared statement
    * cache. Interruption behaves as for `query`.
    */
   readonly queryTextValues: (
@@ -1264,10 +1264,9 @@ const encodeQuery = (
 }
 
 /**
- * The statements one connection has prepared, keyed by SQL text and the
- * parameter OIDs inferred for it: the same text with differently typed
- * parameters is a different statement to the backend. Text-format results
- * are keyed apart, since the cached columns are read by their format.
+ * Prepared statements for one connection, keyed by result format, parameter
+ * OIDs, and SQL text. Text-format runs are keyed separately because cached
+ * descriptions hold format-specific column readers.
  *
  * The cache is bounded and evicts least-recently-used. An evicted statement is
  * closed on the backend, but its `Close` waits for the next statement to go
@@ -1754,9 +1753,9 @@ const runQuery = (
     })
   })
 
+// Preserve leading U+FEFF as data rather than stripping it as a BOM.
 const textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
 
-/** Reads a text-format value as the server sent it: under UTF8 client encoding, always valid UTF-8. */
 const readText: PgProtocol.FieldReader<string | null> = (bytes, offset, size) =>
   size < 0 ? null : textDecoder.decode(bytes.subarray(offset, offset + size))
 

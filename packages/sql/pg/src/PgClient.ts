@@ -79,16 +79,14 @@ export interface PgClient extends Client.Base {
    */
   readonly poolStats: Effect.Effect<Pool.Stats>
   /**
-   * Runs a query and returns positional rows with each value as the server's
-   * text, for a caller that decodes values itself. No codec runs, including
-   * those of the client's `types`, and neither column names nor
-   * `Statement.CurrentTransformer` are applied.
+   * Runs a query and returns field metadata alongside positional rows of raw
+   * PostgreSQL text values (`string | null`), bypassing result codecs
+   * (including `types`), `transformResultNames`, and `Statement.CurrentTransformer`.
    *
    * **Details**
    *
-   * Inside `withTransaction` it runs on the transaction's connection;
-   * otherwise it takes a connection as any other statement does. Other
-   * statements decode as before.
+   * Runs on the active transaction's connection inside `withTransaction`;
+   * otherwise borrows a connection like any statement.
    *
    * **Example** (Reading values as text)
    *

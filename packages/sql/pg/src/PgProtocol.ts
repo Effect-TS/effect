@@ -890,8 +890,8 @@ const valueWriterUnsafe = Symbol.for("@effect/sql-pg/PgProtocol/ValueWriter/unsa
  * **Details**
  *
  * `textFormat` identifies parameters encoded as text. All other parameters
- * use the binary format. Result columns use the binary format unless
- * `textResults` is set, which asks for every column in the text format.
+ * use the binary format. Result columns use binary format unless
+ * `textResults` is `true`, which requests text format for all columns.
  *
  * **Example** (Encoding a `Bind` message)
  *
