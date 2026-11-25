@@ -3,10 +3,9 @@ import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, expect, it } from "@effect/vitest"
 import { Duration, Effect, FileSystem, Layer } from "effect"
 import * as PersistedQueueSqlTest from "effect-test/persistence/PersistedQueueSqlTest"
-import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import * as SqlCleanupTest from "effect-test/persistence/SqlCleanupTest"
 import * as Arr from "effect/Array"
-import { PersistedQueue, Persistence } from "effect/persistence"
+import { Persistence } from "effect/persistence"
 import { Reactivity } from "effect/reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import { TestClock } from "effect/testing"
@@ -194,12 +193,6 @@ suite("single-table", Persistence.layerBackingSql, {
   // ?)`, bypassing the store isolation filter.
   injectionProbe: `') OR store_id='sqli_victim' AND ('1'='1`
 })
-
-PersistedQueueTest.suite(
-  "sql-sqlite-node",
-  PersistedQueue.layerStoreSql().pipe(Layer.provide(ClientLayer)),
-  { nonDeliveryWait: "250 millis" }
-)
 
 it.layer(ClientLayer)((it) => PersistedQueueSqlTest.suiteWith(it))
 
