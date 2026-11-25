@@ -18,11 +18,16 @@ export const source = `/**
  */
 import * as ChildProcess from "node:child_process"
 import * as Net from "node:net"
+import * as Util from "node:util"
 
 /** @internal */
 export const tokenLength = 16
 /** @internal */
 export const headerLength = tokenLength + 8
+
+                                      
+                                                                      
+ 
 
                 
                      
@@ -70,6 +75,18 @@ export const run = ()       => {
     try {
       const failure = stdio.find((result) => result.status === "rejected")
       if (failure) throw failure.reason
+      // The command shares the file status flags of each socket, and libuv only
+      // makes fds 0 to 2 blocking
+      for (const socket of sockets) {
+        const errno = (socket                    )._handle?.setBlocking(true)
+        if (errno !== 0) {
+          const code = typeof errno === "number" && errno < 0 ? Util.getSystemErrorName(errno) : undefined
+          throw Object.assign(
+            new Error(code !== undefined ? \`setBlocking failed: \${code}\` : "Failed to set stdio socket to blocking"),
+            { code, errno, syscall: "setBlocking" }
+          )
+        }
+      }
       const child = ChildProcess.spawn(command, args, { ...options, stdio: values                                  })
       child.on("error", (error) => send({ _tag: "Error", id, error: serializeError(error) }))
       child.on("spawn", () => send({ _tag: "Spawned", id, pid: child.pid }))

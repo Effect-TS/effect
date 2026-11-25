@@ -948,6 +948,26 @@ export const suite = (
             assert.strictEqual(stdout, inputData)
           }))
 
+        it.effect("should wait for delayed data on an input fd (fd3)", () =>
+          Effect.gen(function*() {
+            const handle = yield* ChildProcess.make("sh", ["-c", "cat <&3"], {
+              additionalFds: {
+                fd3: {
+                  type: "input",
+                  stream: Stream.fromEffect(
+                    Effect.as(TestClock.withLive(Effect.sleep("100 millis")), new TextEncoder().encode("late"))
+                  )
+                }
+              }
+            })
+
+            const stdout = yield* decodeByteStream(handle.stdout)
+            const exitCode = yield* handle.exitCode
+
+            assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
+            assert.strictEqual(stdout, "late")
+          }))
+
         it.effect("fails the command when an input fd stream fails", () =>
           Effect.gen(function*() {
             const handle = yield* ChildProcess.make("sh", ["-c", "cat <&3"], {
