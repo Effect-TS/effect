@@ -37,7 +37,7 @@ import { getSingletonRegistration } from "./internal/singletonRegistry.ts"
 import { makeSingletonRuntime } from "./internal/singletonRuntime.ts"
 import { ensureSingletonStorage, loadSingletonState, rememberSingletonName } from "./internal/singletonStorage.ts"
 import type { WorkflowStub } from "./internal/workflowRegistry.ts"
-import { makeWorkflowRuntime } from "./internal/workflowRuntime.ts"
+import { isCompleteResult, makeWorkflowRuntime } from "./internal/workflowRuntime.ts"
 import { earliestClockWakeUp, ensureWorkflowStorage, loadExecution } from "./internal/workflowStorage.ts"
 
 /**
@@ -292,6 +292,7 @@ export const makeClusterWorkflowProgram = Effect.fnUntraced(function*(state: Dur
   const clock = yield* Clock.Clock
   const sql = state.storage.sql
   ensureWorkflowStorage(sql)
+  let stored: ReturnType<typeof loadExecution>
   let name: string | undefined
   if (state.id.name !== undefined) {
     if (decodeName(state.id.name) === undefined) {
@@ -301,7 +302,7 @@ export const makeClusterWorkflowProgram = Effect.fnUntraced(function*(state: Dur
   } else {
     // An alarm wake carries no `id.name`; recover it from the stored
     // execution so due clocks still fire after eviction.
-    const stored = loadExecution(sql)
+    stored = loadExecution(sql)
     name = stored === undefined ? undefined : encodeName(stored.workflowName, stored.executionId)
   }
   let runtime: ReturnType<typeof makeWorkflowRuntime> | undefined
@@ -327,7 +328,7 @@ export const makeClusterWorkflowProgram = Effect.fnUntraced(function*(state: Dur
     return runtime
   }
   const wakeUp = earliestClockWakeUp(sql)
-  if (wakeUp !== undefined) {
+  if (wakeUp !== undefined && !isCompleteResult((stored ?? loadExecution(sql))?.result)) {
     yield* armAlarm(state.storage, wakeUp)
   }
   const program: ClusterWorkflowProgram = {
