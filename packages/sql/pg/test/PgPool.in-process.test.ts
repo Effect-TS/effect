@@ -533,7 +533,8 @@ describe("PgClient failed transaction cleanup", () => {
       yield* Effect.scoped(Effect.gen(function*() {
         const conn = yield* pool.get
         yield* conn.query("BEGIN")
-        yield* Effect.scoped(Effect.flatMap(conn.pin, (pinned) => pinned.query("SELECT 1")))
+        yield* Effect.scoped(conn.pin)
+        yield* conn.query("SELECT 1")
         assert.isTrue(lastSelectInTx)
         yield* conn.query("COMMIT")
       }))
