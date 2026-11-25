@@ -515,11 +515,9 @@ export const make = Effect.gen(function*() {
               )
             return {
               run: (request: Entity.Request<any>) => {
-                // Superseded instances retained by finalizers no longer need their wait sets.
+                // A superseded instance retained by a finalizer no longer needs its wait sets.
                 currentRun?.instance.awaitedDeferreds.clear()
                 currentRun?.instance.completedDeferreds.clear()
-                // Reuse the previous run's scope when empty so unused replays do not
-                // grow `pending.scope`; otherwise fork so superseded compensations stay isolated.
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
                   scope: reuseOrForkScope(currentRun?.instance.scope, pending.scope)
                 })
@@ -1017,8 +1015,8 @@ interface ActivationState {
   readonly workflowName: string
   readonly executionId: string
   readonly results: Map<string, Exit.Exit<unknown, unknown>>
-  // Every run forks its scope from here, so runs that suspended keep their
-  // resources and durable finalizers until the execution finishes.
+  // Parent of every run's scope, so runs that suspended keep their resources
+  // and durable finalizers until the execution finishes.
   scope: Scope.Closeable
   // Opens when this activation retires; paired with `idle` so in-flight
   // activities finish before any waiting run hands off to the next owner.

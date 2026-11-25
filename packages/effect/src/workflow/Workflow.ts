@@ -750,6 +750,8 @@ export const intoResult = <A, E, R>(
           const abandoned = instance.abandoned && !instance.interrupted && hasInterruptsOnly
           instance.abandoned = abandoned
           if (abandoned) {
+            // Superseded instances can share this scope, which closes before
+            // the engine marks its parent.
             markScopeAbandoned(instance.scope)
           }
           if (instance.suspended && hasInterruptsOnly && !abandoned) {

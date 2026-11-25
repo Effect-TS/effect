@@ -481,6 +481,27 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       )
 
       const cleanup: Array<string> = []
+      const registerCleanup = (instance: WorkflowInstance["Service"], prefix: string) =>
+        Effect.gen(function*() {
+          yield* Scope.addFinalizer(
+            instance.scope,
+            Effect.sync(() => {
+              cleanup.push(`${prefix}local`)
+            })
+          )
+          yield* Workflow.addFinalizer(() =>
+            Effect.sync(() => {
+              cleanup.push(`${prefix}durable`)
+            })
+          )
+          yield* Workflow.withCompensation(Effect.void, () =>
+            Effect.sync(() => {
+              cleanup.push(`${prefix}comp`)
+            }))
+        }).pipe(
+          Effect.provideService(WorkflowInstance, instance),
+          Scope.provide(instance.scope)
+        )
       yield* Effect.gen(function*() {
         const sharding = yield* Sharding.Sharding
         const shardId = ShardId.make("default", 1)
@@ -496,24 +517,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         })
         yield* advanceUntil(() => started.isOpen(), "run 2 slow activity must start", 10, 500)
 
-        yield* Scope.addFinalizer(
-          savedInstance.scope,
-          Effect.sync(() => {
-            cleanup.push("local")
-          })
-        )
-        yield* Workflow.addFinalizer(() =>
-          Effect.sync(() => {
-            cleanup.push("durable")
-          })
-        ).pipe(Effect.provideService(WorkflowInstance, savedInstance))
-        yield* Workflow.withCompensation(Effect.void, () =>
-          Effect.sync(() => {
-            cleanup.push("comp")
-          })).pipe(
-            Effect.provideService(WorkflowInstance, savedInstance),
-            Scope.provide(savedInstance.scope)
-          )
+        yield* registerCleanup(savedInstance, "")
 
         assignSelf = false
         yield* advanceUntil(() => !sharding.hasShardId(shardId), "runner must drop the moved shard", 10, 500)
@@ -524,24 +528,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.provide(layer))
 
       assert.isDefined(savedInstance)
-      yield* Scope.addFinalizer(
-        savedInstance.scope,
-        Effect.sync(() => {
-          cleanup.push("late-local")
-        })
-      )
-      yield* Workflow.addFinalizer(() =>
-        Effect.sync(() => {
-          cleanup.push("late-durable")
-        })
-      ).pipe(Effect.provideService(WorkflowInstance, savedInstance))
-      yield* Workflow.withCompensation(Effect.void, () =>
-        Effect.sync(() => {
-          cleanup.push("late-comp")
-        })).pipe(
-          Effect.provideService(WorkflowInstance, savedInstance),
-          Scope.provide(savedInstance.scope)
-        )
+      yield* registerCleanup(savedInstance, "late-")
       assert.deepStrictEqual(cleanup, ["local", "late-local"])
     }))
 

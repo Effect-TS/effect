@@ -820,8 +820,6 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       const executionScope = state.scope
       // A superseded instance retained by a finalizer no longer needs its wait set.
       state.instance.awaitedDeferreds.clear()
-      // Reuse the previous run's scope when empty so unused replays do not grow
-      // `executionScope`; otherwise fork so superseded compensations stay isolated.
       const instance = WorkflowInstance.initial(state.instance.workflow, state.instance.executionId, {
         scope: reuseOrForkScope(state.instance.scope, executionScope)
       })
