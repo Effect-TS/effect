@@ -7,6 +7,7 @@ import * as NodePath from "@effect/platform-node-shared/NodePath"
 import { assert, describe, it } from "@effect/vitest"
 import * as ChildProcessSpawnerTest from "effect-test/process/ChildProcessSpawnerTest"
 import * as ByteSize from "effect/ByteSize"
+import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -46,9 +47,12 @@ describe("shared suite", { concurrent: false }, () => {
     processGroups: true
   })
 
-  ChildProcessSpawnerTest.suite("NodeChildProcessSpawner.layerProxyProcess", Layer.orDie(ProxyServices), {
-    processGroups: true
-  })
+  // The proxy process layer fails to build on Windows
+  if (process.platform !== "win32") {
+    ChildProcessSpawnerTest.suite("NodeChildProcessSpawner.layerProxyProcess", Layer.orDie(ProxyServices), {
+      processGroups: true
+    })
+  }
 })
 
 describe.skipIf(process.platform === "win32")("layerProxyProcess", { concurrent: false }, () => {
@@ -69,17 +73,97 @@ describe.skipIf(process.platform === "win32")("layerProxyProcess", { concurrent:
 
   const currentPid = Effect.flatMap(NodeChildProcessSpawner.ProxyProcess, (proxy) => proxy.currentPid)
 
+  // Holds back the `Ready` reply of proxy processes started while `hold`
+  // exists, and records the tag (last argument) of each spawn request
+  const heldProxyProgram = (hold: string, requests: string) =>
+    `const fs = process.getBuiltinModule("node:fs")
+process.on("message", (message) => {
+  if (message.command !== undefined) fs.appendFileSync(${JSON.stringify(requests)}, message.args.at(-1) + "\\n")
+})
+const sendMessage = process.send.bind(process)
+process.send = (message, ...rest) => {
+  if (message._tag !== "Ready") return sendMessage(message, ...rest)
+  const release = () => fs.existsSync(${JSON.stringify(hold)}) ? setTimeout(release, 10) : sendMessage(message, ...rest)
+  release()
+  return true
+}
+${proxyProcessSource}`
+
+  const tagged = (tag: string) =>
+    Effect.flatMap(ChildProcessSpawner, (spawner) => spawner.string(ChildProcess.make("sh", ["-c", "echo $PPID", tag])))
+      .pipe(Effect.map((output) => Number(output.trim())))
+
   it.live("stops the proxy process when the layer scope closes", () =>
     Effect.gen(function*() {
-      const [pid, proxy] = yield* Effect.gen(function*() {
+      const [pid, proxy, spawner] = yield* Effect.gen(function*() {
         const pid = yield* proxyPid
         assert.deepStrictEqual(yield* currentPid, Option.some(pid))
-        return [pid, yield* NodeChildProcessSpawner.ProxyProcess] as const
+        return [pid, yield* NodeChildProcessSpawner.ProxyProcess, yield* ChildProcessSpawner] as const
       }).pipe(Effect.provide(ProxyServices))
       assert.notStrictEqual(pid, process.pid)
       assert.isFalse(isAlive(pid))
       assert.deepStrictEqual(yield* proxy.currentPid, Option.none())
+      // A retained spawner does not start a proxy process the layer no longer owns
+      const error = yield* Effect.flip(spawner.string(ChildProcess.make("true")))
+      assert.strictEqual(error.reason._tag, "BadResource")
     }))
+
+  it.live("never sends a spawn that is interrupted while a replacement proxy process starts", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const directory = yield* fs.makeTempDirectoryScoped()
+      const hold = join(directory, "hold")
+      const requests = join(directory, "requests")
+      yield* Effect.gen(function*() {
+        const first = Option.getOrThrow(yield* currentPid)
+        yield* fs.writeFileString(hold, "")
+        process.kill(first, "SIGKILL")
+        while (Option.isSome(yield* currentPid)) yield* Effect.sleep("10 millis")
+
+        const interrupted = yield* Effect.forkChild(tagged("interrupted"))
+        const survivor = yield* Effect.forkChild(tagged("survivor"))
+        yield* Effect.sleep("100 millis")
+        // The replacement is starting
+        assert.deepStrictEqual(yield* currentPid, Option.none())
+        yield* Fiber.interrupt(interrupted)
+        yield* fs.remove(hold)
+
+        const pid = yield* Fiber.join(survivor)
+        assert.notStrictEqual(pid, first)
+        assert.deepStrictEqual(yield* currentPid, Option.some(pid))
+        assert.strictEqual(yield* fs.readFileString(requests), "survivor\n")
+      }).pipe(Effect.provide(proxyServices({ args: ["-e", heldProxyProgram(hold, requests)] })))
+    }).pipe(Effect.provide(NodeFileSystem.layer), Effect.scoped))
+
+  it.live("sends spawns waiting on a proxy process retired while starting to its replacement", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const directory = yield* fs.makeTempDirectoryScoped()
+      const hold = join(directory, "hold")
+      const requests = join(directory, "requests")
+      const uid = process.getuid!()
+      const getuid = yield* Effect.acquireRelease(
+        Effect.sync(() => vi.spyOn(process, "getuid")),
+        (spy) => Effect.sync(() => spy.mockRestore())
+      )
+      yield* Effect.gen(function*() {
+        yield* fs.writeFileString(hold, "")
+        // Retires the ready proxy process, and starts one that is held
+        getuid.mockReturnValue(uid + 1)
+        const waiting = yield* Effect.forkChild(tagged("waiting"))
+        yield* Effect.sleep("100 millis")
+        // Retires the held one while it starts, and starts another
+        getuid.mockReturnValue(uid + 2)
+        const latest = yield* Effect.forkChild(tagged("latest"))
+        yield* Effect.sleep("100 millis")
+        yield* fs.remove(hold)
+
+        const pid = yield* Fiber.join(latest)
+        assert.strictEqual(yield* Fiber.join(waiting), pid)
+        assert.deepStrictEqual(yield* currentPid, Option.some(pid))
+        assert.deepStrictEqual((yield* fs.readFileString(requests)).split("\n").sort(), ["", "latest", "waiting"])
+      }).pipe(Effect.provide(proxyServices({ args: ["-e", heldProxyProgram(hold, requests)] })))
+    }).pipe(Effect.provide(NodeFileSystem.layer), Effect.scoped))
 
   it.live("fails to build when the proxy process cannot start or does not answer", () =>
     Effect.gen(function*() {
@@ -106,7 +190,10 @@ describe.skipIf(process.platform === "win32")("layerProxyProcess", { concurrent:
   it.live("runs the proxy process from a packaged application's subcommand", () =>
     Effect.gen(function*() {
       const fixture = join(__dirname, "fixtures", "proxy-cli.ts")
-      const pid = yield* proxyPid.pipe(Effect.provide(proxyServices({ args: [fixture, "__proxy-process"] })))
+      // Packaged applications may forbid compiling code from strings
+      const pid = yield* proxyPid.pipe(
+        Effect.provide(proxyServices({ args: ["--disallow-code-generation-from-strings", fixture, "__proxy-process"] }))
+      )
       assert.notStrictEqual(pid, process.pid)
 
       const { NODE_OPTIONS: _, ...env } = process.env
@@ -301,6 +388,23 @@ describe.skipIf(process.platform === "win32")("error descriptions", () => {
 })
 
 describe("Windows cleanup", { concurrent: false }, () => {
+  // Simulated on other platforms
+  it.live("fails to build the proxy process layer on Windows, and Layer.catch falls back to layer", () =>
+    Effect.gen(function*() {
+      const platform = Object.getOwnPropertyDescriptor(process, "platform")!
+      yield* Effect.acquireRelease(
+        Effect.sync(() => Object.defineProperty(process, "platform", { value: "win32" })),
+        () => Effect.sync(() => Object.defineProperty(process, "platform", platform))
+      )
+      const error = yield* Effect.flip(Layer.build(NodeChildProcessSpawner.layerProxyProcess()))
+      assert.include(error.message, "not supported on Windows")
+      const context = yield* Layer.build(
+        NodeChildProcessSpawner.layerProxyProcess().pipe(Layer.catch(() => NodeChildProcessSpawner.layer))
+      )
+      assert.isTrue(Option.isSome(Context.getOption(context, ChildProcessSpawner)))
+      assert.isTrue(Option.isNone(Context.getOption(context, NodeChildProcessSpawner.ProxyProcess)))
+    }).pipe(Effect.provide(Layer.mergeAll(NodeFileSystem.layer, NodePath.layer)), Effect.scoped))
+
   for (const signal of [false, true]) {
     it.skipIf(signal && process.platform === "win32")(
       `does not taskkill a ${signal ? "signal-terminated" : "failed"} child during exit, kill or scope release`,

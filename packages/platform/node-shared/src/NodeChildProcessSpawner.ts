@@ -178,7 +178,10 @@ const taskkill = (
 
 const spawnDirect: SpawnProcess = (command, args, options) => NodeChildProcess.spawn(command, args, options)
 
-const makeWith = Effect.fnUntraced(function*(spawnProcess: SpawnProcess) {
+// Returns the function that launches a command. The proxy process layer waits
+// here, interruptibly, for a proxy process that is ready, since the launch
+// itself cannot be interrupted.
+const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnProcess, PlatformError.PlatformError>) {
   const fs = yield* FileSystem.FileSystem
   const path = yield* Path.Path
 
@@ -480,6 +483,7 @@ const makeWith = Effect.fnUntraced(function*(spawnProcess: SpawnProcess) {
   }
 
   const spawn = (
+    spawnProcess: SpawnProcess,
     command: ChildProcess.StandardCommand,
     spawnOptions: NodeChildProcess.SpawnOptions
   ) =>
@@ -720,9 +724,10 @@ const makeWith = Effect.fnUntraced(function*(spawnProcess: SpawnProcess) {
         // process termination, since either may wait on the other: Bun does not
         // settle a destroyed, backpressured stdin while the child is alive, and
         // a child may wait for stdin EOF before exiting.
+        const spawnProcess = yield* prepareSpawn
         const inputScope = Scope.makeUnsafe()
         const [childProcess, exitSignal] = yield* Effect.acquireRelease(
-          spawn(cmd, buildSpawnOptions(cmd.options, { cwd, env, stdio }, process.platform)),
+          spawn(spawnProcess, cmd, buildSpawnOptions(cmd.options, { cwd, env, stdio }, process.platform)),
           ([childProcess, exitSignal], exit) =>
             Effect.all([Scope.close(inputScope, exit), releaseProcess(childProcess, exitSignal)], {
               concurrency: "unbounded",
@@ -897,7 +902,7 @@ export const layer: Layer.Layer<
   ChildProcessSpawner,
   never,
   FileSystem.FileSystem | Path.Path
-> = Layer.effect(ChildProcessSpawner, makeWith(spawnDirect))
+> = Layer.effect(ChildProcessSpawner, makeWith(Effect.succeed(spawnDirect)))
 
 /**
  * Service that reports the proxy process started by {@link layerProxyProcess}.
@@ -960,8 +965,11 @@ export class ProxyProcess extends Context.Service<ProxyProcess, {
  *
  * If the proxy process exits, or the application changes its user or group
  * IDs, the next spawn starts a new proxy process and waits until it is ready.
- * A spawn whose proxy process fails to start fails with a `PlatformError`.
- * Its command was not sent, so retrying is safe.
+ * Spawns are not queued: each one waits, interruptibly, and its request is
+ * created only when it is sent, so a spawn interrupted while waiting never
+ * starts its command. A spawn whose proxy process fails to start fails with a
+ * `PlatformError`. Its command was not sent, so retrying is safe. After the
+ * layer's scope closes, spawns fail without starting a proxy process.
  *
  * A spawn request is sent at most once. If the proxy process exits, or sends
  * nothing within `responseTimeout`, after a request was sent but before it
@@ -1050,7 +1058,7 @@ export const layerProxyProcess = (options?: {
       (proxy) => proxy.close
     )
     yield* proxy.ready
-    const spawner = yield* makeWith(proxy.spawn)
+    const spawner = yield* makeWith(proxy.prepareSpawn)
     return Context.make(ChildProcessSpawner, spawner).pipe(
       Context.add(ProxyProcess, ProxyProcess.of({ currentPid: proxy.currentPid }))
     )

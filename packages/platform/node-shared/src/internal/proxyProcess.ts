@@ -16,13 +16,6 @@ import { handleErrnoException } from "./utils.ts"
 // macOS limits Unix socket paths to 104 bytes including the terminator, Linux to 108
 const maxSocketPathLength = 103
 
-type Request = {
-  readonly id: number
-  readonly command: string
-  readonly args: ReadonlyArray<string>
-  readonly options: NodeChildProcess.SpawnOptions
-}
-
 type Message =
   | { readonly _tag: "Ready" }
   | { readonly _tag: "Spawned"; readonly id: number; readonly pid: number }
@@ -199,8 +192,8 @@ class Proxy implements ProxiedProcessOwner {
   pid: number | undefined = undefined
   ready = false
   exited = false
+  retired = false
   private failure: Error | undefined = undefined
-  private retired = false
   private readonly options: Options
   private readonly token = Crypto.randomBytes(tokenLength)
   private nextId = 0
@@ -209,11 +202,9 @@ class Proxy implements ProxiedProcessOwner {
   private directory: string | undefined
   private server: Net.Server | undefined
   private child: NodeChildProcess.ChildProcess | undefined
-  // Requests waiting for the proxy process to be ready
-  private readonly unsent: Array<Request> = []
   // Bounds the wait for `Ready`, and for the reply to each sent request
   private readonly timers = new Map<number | "ready", ReturnType<typeof setTimeout>>()
-  private readonly readyCallbacks: Array<(error: Error | undefined) => void> = []
+  private readonly readyCallbacks = new Set<(error: Error | undefined) => void>()
 
   constructor(options: Options) {
     this.options = options
@@ -258,6 +249,12 @@ class Proxy implements ProxiedProcessOwner {
     }
   }
 
+  /**
+   * Sends a spawn request at once. Requests are never queued, so a spawn that
+   * is interrupted while it waits for a proxy process to be ready has nothing
+   * to withdraw. A proxy process that is no longer ready to take spawns, or
+   * whose credentials are out of date, fails the spawn without sending it.
+   */
   spawn(command: string, args: ReadonlyArray<string>, options: NodeChildProcess.SpawnOptions): ProxiedProcess {
     const id = this.nextId
     this.nextId = (this.nextId + 1) % 0x1_0000_0000
@@ -266,7 +263,14 @@ class Proxy implements ProxiedProcessOwner {
     )
     const child = new ProxiedProcess(this, id, stdio.map((mode) => mode === "pipe"))
     this.commands.set(id, child)
-    const request: Request = {
+    if (!this.ready || this.exited || this.retired || this.credentials !== credentials()) {
+      const error = new Error("The proxy process stopped taking spawns before the command was sent to it")
+      globalThis.process.nextTick(() => child.onError(error))
+      return child
+    }
+    child.dispatched = true
+    this.startTimer(id)
+    this.send({
       id,
       command,
       args,
@@ -278,19 +282,21 @@ class Proxy implements ProxiedProcessOwner {
         windowsHide: options.windowsHide,
         stdio
       }
-    }
-    if (this.ready) {
-      this.dispatch(request)
-    } else {
-      this.unsent.push(request)
-    }
+    })
     return child
   }
 
-  /** Calls back once the proxy process is ready, or with the error that stopped it. */
-  whenReady(callback: (error: Error | undefined) => void): void {
-    if (this.ready || this.exited) return callback(this.ready ? undefined : this.failure)
-    this.readyCallbacks.push(callback)
+  /**
+   * Calls back once the proxy process is ready, or with the error that stopped
+   * it. Returns a function that removes the callback.
+   */
+  whenReady(callback: (error: Error | undefined) => void): () => void {
+    if (this.ready || this.exited) {
+      callback(this.ready ? undefined : this.failure)
+      return () => {}
+    }
+    this.readyCallbacks.add(callback)
+    return () => this.readyCallbacks.delete(callback)
   }
 
   ref(): void {
@@ -303,9 +309,14 @@ class Proxy implements ProxiedProcessOwner {
     if (this.retired && this.commands.size === 0) this.disconnect()
   }
 
-  /** Disconnects once the running commands have exited. */
+  /**
+   * Stops taking spawns, and disconnects once the running commands have
+   * exited. A proxy process that is not ready yet has no commands and is
+   * stopped.
+   */
   retire(): void {
     this.retired = true
+    if (!this.ready) return this.stop(new Error("The proxy process was retired before it was ready"))
     if (this.commands.size === 0) this.disconnect()
   }
 
@@ -322,9 +333,7 @@ class Proxy implements ProxiedProcessOwner {
     const child = this.child
     if (this.exited || child === undefined) return resume(Effect.void)
     if (!this.ready) {
-      // It has not been sent any command, and may never answer
-      child.kill("SIGKILL")
-      this.end(new Error("The proxy process was stopped before it was ready"))
+      this.stop(new Error("The proxy process was stopped before it was ready"))
       return resume(Effect.void)
     }
     // Each referenced command holds one reference
@@ -337,17 +346,11 @@ class Proxy implements ProxiedProcessOwner {
     if (!wait) resume(Effect.void)
   })
 
-  /**
-   * Sends a request. Once it is sent the command may have started, so it is
-   * never sent again, and only a reply or the loss of the proxy process
-   * settles it.
-   */
-  private dispatch(request: Request): void {
-    const command = this.commands.get(request.id)
-    if (command === undefined) return
-    command.dispatched = true
-    this.startTimer(request.id)
-    this.send(request)
+  /** Stops a proxy process that has not been sent any command, or has stopped answering. */
+  private stop(cause: Error): void {
+    // Its exit has not been seen, so its ID has not been reused
+    this.child?.kill("SIGKILL")
+    this.end(cause)
   }
 
   private send(message: unknown): void {
@@ -360,9 +363,9 @@ class Proxy implements ProxiedProcessOwner {
   private startTimer(key: number | "ready"): void {
     const millis = this.options.responseTimeoutMillis
     const timer = setTimeout(() => {
-      // Its exit has not been seen, so its ID has not been reused
-      this.child?.kill("SIGKILL")
-      this.end(Object.assign(new Error(`The proxy process did not respond within ${millis} ms`), { code: "ETIMEDOUT" }))
+      this.stop(
+        Object.assign(new Error(`The proxy process did not respond within ${millis} ms`), { code: "ETIMEDOUT" })
+      )
     }, millis)
     // Whatever waits for the reply keeps the application running
     timer.unref()
@@ -410,8 +413,7 @@ class Proxy implements ProxiedProcessOwner {
     this.ready = true
     this.stopTimer("ready")
     this.unref()
-    for (const request of this.unsent.splice(0)) this.dispatch(request)
-    for (const callback of this.readyCallbacks.splice(0)) callback(undefined)
+    this.notifyReady(undefined)
   }
   private accept(socket: Net.Socket): void {
     // Errors are reported to the readers and writers of the stdio streams
@@ -456,7 +458,6 @@ class Proxy implements ProxiedProcessOwner {
     this.failure = cause
     for (const timer of this.timers.values()) clearTimeout(timer)
     this.timers.clear()
-    this.unsent.length = 0
     if (!this.ready) this.unref()
     const notSent = new Error("The proxy process stopped before the command was sent to it, so it was not started", {
       cause
@@ -473,7 +474,13 @@ class Proxy implements ProxiedProcessOwner {
     )
     this.disconnect()
     for (const report of reports) report()
-    for (const callback of this.readyCallbacks.splice(0)) callback(cause)
+    if (!this.ready) this.notifyReady(cause)
+  }
+
+  private notifyReady(error: Error | undefined): void {
+    const callbacks = [...this.readyCallbacks]
+    this.readyCallbacks.clear()
+    for (const callback of callbacks) callback(error)
   }
 }
 
@@ -529,14 +536,37 @@ export const make = (options: Options) => {
     }
     return current
   }
-  const spawn: SpawnProcess = (command, args, options) => get().spawn(command, args, options)
+  const toError = toStartError(options)
+  // Waits, interruptibly, for a proxy process that is ready to take spawns.
+  // Nothing has been sent while waiting, so interruption has nothing to undo.
+  const ready: Effect.Effect<Proxy, PlatformError.PlatformError> = Effect.suspend(() => {
+    if (closed) {
+      return Effect.fail(PlatformError.systemError({
+        _tag: "BadResource",
+        module: "ChildProcess",
+        method: "spawn",
+        description: "The layerProxyProcess layer has been released"
+      }))
+    }
+    const proxy = get()
+    if (proxy.ready) return Effect.succeed(proxy)
+    return Effect.callback<Proxy, PlatformError.PlatformError>((resume) => {
+      const remove = proxy.whenReady((error) => {
+        if (error === undefined) return resume(Effect.succeed(proxy))
+        // Retired by a credential change while starting, so wait for its replacement
+        resume(proxy.retired ? ready : Effect.fail(toError(error)))
+      })
+      return Effect.sync(remove)
+    })
+  })
   return {
-    spawn,
+    prepareSpawn: Effect.map(
+      ready,
+      (proxy): SpawnProcess => (command, args, options) => proxy.spawn(command, args, options)
+    ),
     /** Waits for the first proxy process to be ready. */
     ready: Effect.callback<void, PlatformError.PlatformError>((resume) => {
-      current.whenReady((error) =>
-        resume(error === undefined ? Effect.void : Effect.fail(toStartError(options)(error)))
-      )
+      current.whenReady((error) => resume(error === undefined ? Effect.void : Effect.fail(toError(error))))
     }),
     currentPid: Effect.sync(() =>
       !closed && current.ready && !current.exited && current.pid !== undefined

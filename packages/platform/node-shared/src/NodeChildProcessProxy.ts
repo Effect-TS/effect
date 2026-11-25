@@ -15,6 +15,7 @@
  * @stability unstable
  * @since 4.1.6
  */
+import * as Vm from "node:vm"
 import { source } from "./internal/proxyProcessSource.ts"
 
 /**
@@ -37,6 +38,8 @@ import { source } from "./internal/proxyProcessSource.ts"
  *
  * - Run without an IPC channel, such as from a terminal, it writes one line to
  *   stderr and sets `process.exitCode` to 1.
+ * - It runs under `--disallow-code-generation-from-strings`, which does not
+ *   restrict the `node:vm` module it compiles the program with.
  * - The proxy process holds whatever the entry point loaded before calling
  *   `run`. Dispatch the subcommand before importing the application, so the
  *   proxy process stays small.
@@ -58,5 +61,7 @@ import { source } from "./internal/proxyProcessSource.ts"
  * @since 4.1.6
  */
 export const run = (): void => {
-  new Function(source)()
+  // Compiled with `vm`, which `--disallow-code-generation-from-strings` does
+  // not restrict, so the program has one copy for this and the `-e` default
+  Vm.runInThisContext(source, { filename: "effect-proxy-process.js" })
 }
