@@ -37,8 +37,8 @@ import { getSingletonRegistration } from "./internal/singletonRegistry.ts"
 import { makeSingletonRuntime } from "./internal/singletonRuntime.ts"
 import { ensureSingletonStorage, loadSingletonState, rememberSingletonName } from "./internal/singletonStorage.ts"
 import type { WorkflowStub } from "./internal/workflowRegistry.ts"
-import { isCompleteResult, makeWorkflowRuntime } from "./internal/workflowRuntime.ts"
-import { earliestClockWakeUp, ensureWorkflowStorage, loadExecution } from "./internal/workflowStorage.ts"
+import { makeWorkflowRuntime } from "./internal/workflowRuntime.ts"
+import { earliestClockWakeUp, ensureWorkflowStorage, isComplete, loadExecution } from "./internal/workflowStorage.ts"
 
 /**
  * The native Durable Object capabilities a cluster program is built from.
@@ -328,7 +328,7 @@ export const makeClusterWorkflowProgram = Effect.fnUntraced(function*(state: Dur
     return runtime
   }
   const wakeUp = earliestClockWakeUp(sql)
-  if (wakeUp !== undefined && !isCompleteResult((stored ?? loadExecution(sql))?.result)) {
+  if (wakeUp !== undefined && !isComplete((stored ?? loadExecution(sql))?.result)) {
     yield* armAlarm(state.storage, wakeUp)
   }
   const program: ClusterWorkflowProgram = {

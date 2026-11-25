@@ -557,7 +557,10 @@ describe("WorkflowEngine", () => {
       yield* Effect.yieldNow
       result = yield* workflow.poll(executionId)
     }
-    assert(Option.isSome(result) && result.value._tag === tag, `workflow must reach ${tag}`)
+    assert(
+      Option.isSome(result) && result.value._tag === tag,
+      `workflow must reach ${tag}, got ${Option.isSome(result) ? result.value._tag : "None"}`
+    )
     return result.value
   })
 
@@ -1140,7 +1143,7 @@ describe("WorkflowEngine", () => {
       }).pipe(Effect.provide(layer))
     }))
 
-  it.effect("layerMemory closes every suspended run scope when a finalizer dies", () =>
+  it.effect("layerMemory closes every suspended run scope and wakes its parent when a finalizer dies", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("WorkflowEngine/SuspendedScopeDefect/Gate")
       const finalized: Array<number> = []
@@ -1149,17 +1152,24 @@ describe("WorkflowEngine", () => {
         payload: {},
         idempotencyKey: () => "one"
       })
-      const layer = Suspends.toLayer(() =>
-        Effect.gen(function*() {
-          const run = ++runs
-          yield* Workflow.addFinalizer(() =>
-            Effect.gen(function*() {
-              finalized.push(run)
-              if (run === 2) return yield* Effect.die("finalizer defect")
-            })
-          )
-          yield* DurableDeferred.await(gate)
-        })
+      const Parent = Workflow.make("WorkflowEngine/SuspendedScopeDefect/Parent", {
+        payload: {},
+        idempotencyKey: () => "parent"
+      })
+      const layer = Layer.mergeAll(
+        Suspends.toLayer(() =>
+          Effect.gen(function*() {
+            const run = ++runs
+            yield* Workflow.addFinalizer(() =>
+              Effect.gen(function*() {
+                finalized.push(run)
+                if (run === 2) return yield* Effect.die("finalizer defect")
+              })
+            )
+            yield* DurableDeferred.await(gate)
+          })
+        ),
+        Parent.toLayer(() => Suspends.execute({}))
       ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
 
       yield* Effect.gen(function*() {
@@ -1168,6 +1178,12 @@ describe("WorkflowEngine", () => {
         while (Option.isNone(result) || result.value._tag !== "Suspended") {
           yield* Effect.yieldNow
           result = yield* Suspends.poll(executionId)
+        }
+        const parentId = yield* Parent.execute({}, { discard: true })
+        let parent = yield* Parent.poll(parentId)
+        while (Option.isNone(parent) || parent.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          parent = yield* Parent.poll(parentId)
         }
 
         yield* Suspends.resume(executionId)
@@ -1189,6 +1205,15 @@ describe("WorkflowEngine", () => {
         assert.strictEqual(runs, 3)
         assert(Exit.hasDies(exit))
         assert.deepStrictEqual(finalized, [3, 2, 1])
+
+        // The parent is woken despite the dying finalizer and observes the defect.
+        parent = yield* Parent.poll(parentId)
+        for (let i = 0; i < 100 && (Option.isNone(parent) || parent.value._tag !== "Complete"); i++) {
+          yield* Effect.yieldNow
+          parent = yield* Parent.poll(parentId)
+        }
+        assert(Option.isSome(parent) && parent.value._tag === "Complete", "the parent must be woken")
+        assert(Exit.hasDies(parent.value.exit))
       }).pipe(Effect.provide(layer))
     }))
 
@@ -1665,4 +1690,55 @@ describe("WorkflowEngine", () => {
       }),
     20_000
   )
+
+  it.effect("layerMemory wakes every parent awaiting a shared child workflow", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("WorkflowEngine/SharedChildGate", { success: Schema.String })
+      const Child = Workflow.make("WorkflowEngine/SharedChild", {
+        payload: { key: Schema.String },
+        success: Schema.String,
+        idempotencyKey: ({ key }) => key
+      })
+      const Parent = Workflow.make("WorkflowEngine/SharedChildParent", {
+        payload: { name: Schema.String },
+        success: Schema.String,
+        idempotencyKey: ({ name }) => name
+      })
+      const layer = Layer.merge(
+        Child.toLayer(() => DurableDeferred.await(gate)),
+        Parent.toLayer(Effect.fnUntraced(function*({ name }) {
+          const value = yield* Child.execute({ key: "shared" })
+          return `${name}:${value}`
+        }))
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+      yield* Effect.gen(function*() {
+        const childId = yield* Child.execute({ key: "shared" }, { discard: true })
+        yield* pollUntil(Child, childId, "Suspended")
+
+        const parentA = yield* Parent.execute({ name: "A" }, { discard: true })
+        yield* pollUntil(Parent, parentA, "Suspended")
+
+        const parentB = yield* Parent.execute({ name: "B" }, { discard: true })
+        yield* pollUntil(Parent, parentB, "Suspended")
+
+        yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow: Child, executionId: childId }),
+          value: "done"
+        })
+
+        assert.deepStrictEqual(
+          yield* pollUntil(Child, childId, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed("done") })
+        )
+        assert.deepStrictEqual(
+          yield* pollUntil(Parent, parentA, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed("A:done") })
+        )
+        assert.deepStrictEqual(
+          yield* pollUntil(Parent, parentB, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed("B:done") })
+        )
+      }).pipe(Effect.provide(layer))
+    }))
 })

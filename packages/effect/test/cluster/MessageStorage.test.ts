@@ -433,6 +433,43 @@ describe("MessageStorage", () => {
         const stored = yield* storage.repliesForUnfiltered([request.envelope.requestId])
         expect(JSON.stringify(stored)).toContain("MalformedMessage")
       }).pipe(Effect.provide(MemoryLayer)))
+
+    it.effect("requestsForAddress returns requests matching type, id and tag exactly across shards", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const save = (id: number, options?: {
+          readonly rpc?: Rpc.AnyWithProps
+          readonly entityType?: string
+          readonly entityId?: string
+          readonly shardId?: ShardId.ShardId
+        }) =>
+          makeRequest({
+            ...options,
+            rpc: options?.rpc ?? PrimaryKeyTest,
+            payload: options?.rpc ? { id } : PrimaryKeyTest.payloadSchema.make({ id })
+          }).pipe(Effect.tap((request) => storage.saveRequest(request)))
+
+        const unprocessed = yield* save(1)
+        const processed = yield* save(2)
+        yield* storage.saveReply(yield* makeReply(processed))
+        yield* save(3, { rpc: GetUserRpc })
+        yield* save(4, { shardId: ShardId.make("default", 2) })
+        yield* save(5, { rpc: Rpc.make("primarykeytest", { payload: { id: Schema.Number } }) })
+        yield* save(6, { entityId: "2" })
+        yield* save(7, { entityType: "Test" })
+
+        const found = yield* storage.requestsForAddress({
+          address: unprocessed.envelope.address,
+          tag: PrimaryKeyTest._tag
+        })
+        expect(found.map((r) => (r.payload as { readonly id: number }).id).sort()).toEqual([1, 2, 4])
+        expect(
+          yield* MessageStorage.noop.requestsForAddress({
+            address: unprocessed.envelope.address,
+            tag: PrimaryKeyTest._tag
+          })
+        ).toEqual([])
+      }).pipe(Effect.provide(MemoryLayer)))
   })
 })
 

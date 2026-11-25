@@ -119,6 +119,23 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   ) => Effect.Effect<Option.Option<Snowflake.Snowflake>, PersistenceError>
 
   /**
+   * Retrieves every request saved for the address under the RPC tag, whether
+   * or not it has been processed, in no particular order.
+   *
+   * **Details**
+   *
+   * The entity type, entity id and tag must match exactly, including case. The
+   * shard id is ignored, as in `clearAddress`, so requests saved before a shard
+   * reassignment are still returned.
+   */
+  readonly requestsForAddress: (
+    options: {
+      readonly address: EntityAddress
+      readonly tag: string
+    }
+  ) => Effect.Effect<Array<Envelope.PartialRequestEncoded>, PersistenceError>
+
+  /**
    * For locally sent messages, register a handler to process the replies.
    *
    * **Details**
@@ -417,6 +434,23 @@ export type Encoded = {
   readonly requestIdForPrimaryKey: (
     primaryKey: string
   ) => Effect.Effect<Option.Option<Snowflake.Snowflake>, PersistenceError>
+
+  /**
+   * Retrieves every request saved for the address under the RPC tag, whether
+   * or not it has been processed, in no particular order.
+   *
+   * **Details**
+   *
+   * The entity type, entity id and tag must match exactly, including case. The
+   * shard id is ignored, as in `clearAddress`, so requests saved before a shard
+   * reassignment are still returned.
+   */
+  readonly requestsForAddress: (
+    options: {
+      readonly address: EntityAddress
+      readonly tag: string
+    }
+  ) => Effect.Effect<Array<Envelope.PartialRequestEncoded>, PersistenceError>
 
   /**
    * Retrieves the replies for the specified requests.
@@ -817,6 +851,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
       const primaryKey = Envelope.primaryKeyByAddress(options)
       return encoded.requestIdForPrimaryKey(primaryKey)
     },
+    requestsForAddress: encoded.requestsForAddress,
     unprocessedMessages(shardIds, options) {
       const storage = this as unknown as MessageStorage["Service"]
       const shards = Array.from(shardIds, (id) => id.toString())
@@ -967,6 +1002,7 @@ export const noop: MessageStorage["Service"] = Effect.runSync(make({
   repliesFor: () => Effect.succeed([]),
   repliesForUnfiltered: () => Effect.succeed([]),
   requestIdForPrimaryKey: () => Effect.succeedNone,
+  requestsForAddress: () => Effect.succeed([]),
   unprocessedMessages: () => Effect.succeed([]),
   unprocessedMessagesById: () => Effect.succeed([]),
   resetAddress: () => Effect.void,
@@ -1180,6 +1216,17 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
         Effect.sync(() => {
           const entry = requestsByPrimaryKey.get(primaryKey)
           return Option.map(Option.fromNullishOr(entry?.envelope.requestId), Snowflake.Snowflake)
+        }),
+      requestsForAddress: ({ address, tag }) =>
+        Effect.sync(() => {
+          const out: Array<Envelope.PartialRequestEncoded> = []
+          for (const { envelope } of requests.values()) {
+            if (
+              envelope._tag === "Request" && envelope.tag === tag &&
+              envelope.address.entityType === address.entityType && envelope.address.entityId === address.entityId
+            ) out.push(envelope)
+          }
+          return out
         }),
       repliesFor: (requestIds) => Effect.sync(() => repliesFor(requestIds)),
       repliesForUnfiltered: (requestIds) =>

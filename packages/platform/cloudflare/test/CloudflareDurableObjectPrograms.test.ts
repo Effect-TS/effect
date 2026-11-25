@@ -16,6 +16,7 @@ import {
 } from "@effect/platform-cloudflare/internal/entityStorage"
 import { registerSingleton } from "@effect/platform-cloudflare/internal/singletonRegistry"
 import {
+  addParent,
   createExecution,
   ensureWorkflowStorage,
   saveClock,
@@ -198,9 +199,10 @@ describe("CloudflareDurableObjectPrograms", () => {
       Effect.gen(function*() {
         const { called, state, storage } = yield* makeExportedState(encodeName("Child", "c1"))
         ensureWorkflowStorage(storage.sql)
-        createExecution(storage.sql, "Child", "c1", "{}", { workflowName: "Parent", executionId: "p1" })
+        createExecution(storage.sql, "Child", "c1", "{}")
+        addParent(storage.sql, { workflowName: "Parent", executionId: "p1" })
         saveClock(storage.sql, "long", "long/deferred", 180_000)
-        saveCompletion(storage.sql, JSON.stringify({ _tag: "Complete" }), true)
+        saveCompletion(storage.sql, JSON.stringify({ _tag: "Complete" }))
         storage.alarm = 60_000
 
         const program = yield* makeClusterWorkflowProgram(state)
@@ -278,8 +280,9 @@ describe("CloudflareDurableObjectPrograms", () => {
         Effect.gen(function*() {
           const { called, state, storage } = yield* makeExportedState(encodeName("Child", "c1"), jurisdiction)
           ensureWorkflowStorage(storage.sql)
-          createExecution(storage.sql, "Child", "c1", "{}", { workflowName: "Parent", executionId: "p1" })
-          saveCompletion(storage.sql, JSON.stringify({ _tag: "Complete" }), true)
+          createExecution(storage.sql, "Child", "c1", "{}")
+          addParent(storage.sql, { workflowName: "Parent", executionId: "p1" })
+          saveCompletion(storage.sql, JSON.stringify({ _tag: "Complete" }))
 
           const program = yield* makeClusterWorkflowProgram(state)
           yield* program.alarm()

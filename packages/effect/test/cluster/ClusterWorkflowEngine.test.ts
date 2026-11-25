@@ -1127,7 +1127,10 @@ describe.concurrent("ClusterWorkflowEngine", () => {
             const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
               ...storage,
               saveRequest: (envelope) => {
-                if (envelope.envelope.address.entityType !== `Workflow/${Child._tag}`) {
+                if (
+                  envelope.envelope.address.entityType !== `Workflow/${Child._tag}` ||
+                  envelope.envelope.tag !== "run"
+                ) {
                   return storage.saveRequest(envelope)
                 }
                 const save = Effect.tap(storage.saveRequest(envelope), (result) =>
@@ -1167,6 +1170,57 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       )
     }
   }
+
+  it.effect("wakes every parent awaiting a shared child workflow", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("SharedChild/Gate", { success: Schema.String })
+      const Child = Workflow.make("SharedChild/Child", {
+        payload: { key: Schema.String },
+        success: Schema.String,
+        idempotencyKey: ({ key }) => key
+      })
+      const Parent = Workflow.make("SharedChild/Parent", {
+        payload: { name: Schema.String },
+        success: Schema.String,
+        idempotencyKey: ({ name }) => name
+      })
+      const layer = Layer.merge(
+        Child.toLayer(() => DurableDeferred.await(gate)),
+        Parent.toLayer(Effect.fnUntraced(function*({ name }) {
+          const value = yield* Child.execute({ key: "shared" })
+          return `${name}:${value}`
+        }))
+      ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+
+      yield* Effect.gen(function*() {
+        const childId = yield* Child.execute({ key: "shared" }, { discard: true })
+        yield* pollUntil(Child, childId, "Suspended")
+
+        const parentA = yield* Parent.execute({ name: "A" }, { discard: true })
+        yield* pollUntil(Parent, parentA, "Suspended")
+
+        const parentB = yield* Parent.execute({ name: "B" }, { discard: true })
+        yield* pollUntil(Parent, parentB, "Suspended")
+
+        yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow: Child, executionId: childId }),
+          value: "done"
+        })
+
+        assert.deepStrictEqual(
+          yield* pollUntil(Child, childId, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed("done") })
+        )
+        assert.deepStrictEqual(
+          yield* pollUntil(Parent, parentA, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed("A:done") })
+        )
+        assert.deepStrictEqual(
+          yield* pollUntil(Parent, parentB, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed("B:done") })
+        )
+      }).pipe(Effect.provide(layer))
+    }))
 
   it.effect("recovers an awaited deferred after a read outage exceeds the old retry budget", () =>
     Effect.gen(function*() {
@@ -4043,7 +4097,10 @@ const pollUntil = Effect.fnUntraced(function*<A extends Schema.Top, E extends Sc
     yield* sharding.pollStorage
     result = yield* workflow.poll(executionId)
   }
-  assert(Option.isSome(result) && result.value._tag === tag, `workflow must reach ${tag}`)
+  assert(
+    Option.isSome(result) && result.value._tag === tag,
+    `workflow must reach ${tag}, got ${Option.isSome(result) ? result.value._tag : "None"}`
+  )
   return result.value
 })
 

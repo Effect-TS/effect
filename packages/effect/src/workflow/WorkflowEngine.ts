@@ -758,7 +758,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         payload: object,
         executionId: string
       ) => Effect.Effect<unknown, unknown, WorkflowInstance | WorkflowEngine>
-      readonly parent: string | undefined
+      readonly parents: Set<string>
       instance: WorkflowInstance["Service"]
       interrupted: boolean
       interruptedUnsafe: boolean
@@ -849,21 +849,29 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         Effect.provideService(RetryingExecution, undefined),
         Effect.provideService(WorkflowInstance, instance),
         Effect.provideService(WorkflowEngine, engine),
-        Effect.tap((result) => {
-          if (!state.parent || result._tag !== "Complete") {
-            return Effect.void
-          }
-          return Effect.forkIn(resume(state.parent, "automatic"), scope)
-        }),
         Effect.onExit((exit) => {
           if (Exit.isSuccess(exit) && exit.value._tag === "Suspended") return Effect.void
           // The final run's scope closes with the real exit. Closing the parent
           // then closes earlier scopes in reverse order with `Exit.void`, so their
           // superseded compensations are skipped, which means their finalizers
           // also observe success rather than the outcome.
-          return Effect.andThen(
-            Scope.close(executionScope, Exit.void),
-            Exit.isSuccess(exit) && exit.value._tag === "Complete" ? Deferred.succeed(state.done, void 0) : Effect.void
+          const close = Scope.close(executionScope, Exit.void)
+          if (Exit.isFailure(exit)) return close
+          // Wake parents only after the fiber exits so `poll` already observes
+          // `Complete` and joins during finalization are included.
+          const wakeParents = (fiber: Fiber.Fiber<unknown, unknown>) =>
+            Fiber.await(fiber).pipe(
+              Effect.flatMap(() =>
+                Effect.forEach(state.parents, (parent) => Effect.forkIn(resume(parent, "automatic"), scope), {
+                  discard: true
+                })
+              ),
+              Effect.forkIn(scope)
+            )
+          return close.pipe(
+            Effect.andThen(Deferred.succeed(state.done, void 0)),
+            // A dying finalizer must not strand parents; they observe the defect.
+            Effect.ensuring(Effect.withFiber(wakeParents))
           )
         }),
         Effect.forkIn(entry.scope)
@@ -888,6 +896,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           return yield* Effect.orDie(Effect.fail(`Workflow ${workflow._tag} is not registered`))
         }
 
+        const parentId = options.detached ? undefined : options.parent?.executionId
         let state = executions.get(options.executionId)
         if (!state) {
           state = {
@@ -900,10 +909,12 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
             fiber: undefined,
             done: Deferred.makeUnsafe(),
             scope: Scope.makeUnsafe(),
-            parent: options.detached ? undefined : options.parent?.executionId
+            parents: new Set(parentId === undefined ? [] : [parentId])
           }
           executions.set(options.executionId, state)
           yield* resume(options.executionId, "explicit")
+        } else if (parentId !== undefined) {
+          state.parents.add(parentId)
         }
         if (options.discard) return
         // Capture together so a wake that swaps in a replay cannot desync them.
