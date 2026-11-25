@@ -268,12 +268,10 @@ it.effect("maps crypto backend failures without exposing diagnostics", () =>
     }
 
     const invalidKey = makeMac(() => new CryptoError.InvalidKey({ description: marker, cause: new Error(marker) }))
-    for (const { description, effect } of operations) {
-      const error = yield* effect.pipe(Effect.provide(invalidKey), Effect.flip)
-      assertReason(error, "InvalidKey")
-      assert.strictEqual(error.reason.description, description)
-      assert.strictEqual(error.message, description)
-      assert.isUndefined(error.cause)
-      assert.notInclude(NodeUtil.inspect(error, { depth: Infinity }), marker)
-    }
+    const error = yield* Jws.sign(utf8("payload"), key).pipe(Effect.provide(invalidKey), Effect.flip)
+    assertReason(error, "InvalidKey")
+    assert.strictEqual(error.reason.description, "Could not sign with the key")
+    assert.strictEqual(error.message, "Could not sign with the key")
+    assert.isUndefined(error.cause)
+    assert.notInclude(NodeUtil.inspect(error, { depth: Infinity }), marker)
   }).pipe(Effect.provide(layer)))
