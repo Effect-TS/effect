@@ -1285,10 +1285,7 @@ class PreparedCache {
   }
 
   get(sql: string, parameterTypes: ReadonlyArray<number>, textResults: boolean): Prepared {
-    const prefix = textResults ? "T" : "B"
-    const key = parameterTypes.length === 0
-      ? `${prefix}\u0000\u0000${sql}`
-      : `${prefix}\u0000${parameterTypes.join(",")}\u0000${sql}`
+    const key = `${textResults ? "T" : "B"}\u0000${parameterTypes.join(",")}\u0000${sql}`
     const found = this.statements.get(key)
     if (found !== undefined) {
       // Re-insert to move it to the end: `Map` iterates in insertion order, so
@@ -1781,8 +1778,6 @@ const makeTextReader = (
 /** Turns one decoded row into an object keyed by column name. */
 type RowBuilder = (rowValues: ReadonlyArray<unknown>) => Row
 
-const emptyRowBuilder: RowBuilder = () => ({})
-
 /** Everything a query needs from one `RowDescription`. */
 interface Description {
   readonly readField: PgProtocol.FieldReader<unknown>
@@ -1806,7 +1801,7 @@ const describe = (
   }
   return EffectResult.succeed({
     readField: reader.success,
-    rowBuilder: textResults ? emptyRowBuilder : makeRowBuilder(fields),
+    rowBuilder: makeRowBuilder(fields),
     resultFields
   })
 }

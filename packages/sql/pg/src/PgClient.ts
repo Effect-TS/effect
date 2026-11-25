@@ -10,7 +10,6 @@ import * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import type * as Pool from "effect/Pool"
 import type * as Queue from "effect/Queue"
 import * as Reactivity from "effect/reactivity/Reactivity"
@@ -382,33 +381,26 @@ const makeImpl = Effect.fnUntraced(function*<R>(
     transformRows
   })
 
-  // Routed as a statement is: on the transaction's connection inside one.
-  const withConnection = <A>(
-    f: (connection: PgConnection.PgConnection) => Effect.Effect<A, SqlError>
-  ): Effect.Effect<A, SqlError> => {
-    const run = (connection: Connection) => f((connection as ConnectionImpl).connection)
-    return Effect.flatMap(
-      Effect.serviceOption(client.transactionService),
-      Option.match({
-        onNone: () => borrower === undefined ? Effect.scoped(Effect.flatMap(acquirer, run)) : borrower(run),
-        onSome: (transaction) => Effect.flatMap(Client.activeTransactionConnection(transaction), run)
-      })
-    )
-  }
-
-  // Traced as a statement is, without the connection wait time.
+  // Routed and traced as a statement is, without the connection wait time.
   const queryTextValues = (sql: string, params?: ReadonlyArray<unknown>) =>
-    Effect.useSpan(Statement.spanName(spanAttributes), { kind: "client" }, (span) => {
-      for (const [key, value] of spanAttributes) {
-        span.attribute(key, value)
-      }
-      span.attribute(ATTR_SQL_METHOD, "executeTextValues")
-      span.attribute(ATTR_DB_QUERY_TEXT, sql)
-      const run = withConnection((connection) => connection.queryTextValues(sql, params))
-      return Effect.withFiber((fiber) =>
-        fiber.getRef(Statement.SpanPropagationEnabled) ? Effect.provideService(run, Tracer.ParentSpan, span) : run
-      )
-    })
+    Effect.useSpan(Statement.spanName(spanAttributes), { kind: "client" }, (span) =>
+      Effect.withFiber((fiber) => {
+        for (const [key, value] of spanAttributes) {
+          span.attribute(key, value)
+        }
+        span.attribute(ATTR_SQL_METHOD, "executeTextValues")
+        span.attribute(ATTR_DB_QUERY_TEXT, sql)
+        const run = (connection: Connection) => (connection as ConnectionImpl).connection.queryTextValues(sql, params)
+        const transaction = Context.getOrUndefined(fiber.context, client.transactionService)
+        const execute = transaction !== undefined
+          ? Effect.flatMap(Client.activeTransactionConnection(transaction), run)
+          : borrower !== undefined
+          ? borrower(run)
+          : Effect.scoped(Effect.flatMap(acquirer, run))
+        return fiber.cache.tracerEnabled && fiber.getRef(Statement.SpanPropagationEnabled)
+          ? Effect.provideService(execute, Tracer.ParentSpan, span)
+          : execute
+      }))
 
   return Object.assign(
     client,
