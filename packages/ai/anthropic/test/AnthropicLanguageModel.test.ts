@@ -2020,6 +2020,7 @@ describe("AnthropicLanguageModel", () => {
                   }
                 }
               }),
+              Prompt.filePart({ mediaType: "text/plain", data: new URL(`data:text/plain;base64,${plaintextBase64}`) }),
               Prompt.filePart({ mediaType: "text/plain", data: "plain text" })
             ]
           }])
@@ -2055,6 +2056,11 @@ describe("AnthropicLanguageModel", () => {
           cache_control: { type: "ephemeral" }
         })
         assert.deepStrictEqual(body.messages[0].content[1].source, {
+          type: "text",
+          media_type: "text/plain",
+          data: plaintext
+        })
+        assert.deepStrictEqual(body.messages[0].content[2].source, {
           type: "text",
           media_type: "text/plain",
           data: "plain text"
