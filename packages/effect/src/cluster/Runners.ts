@@ -232,11 +232,13 @@ export const make: (
     const afterPersistWith = (outgoing: Message.OutgoingRequest<any>, duplicate: boolean) => {
       if (wait !== undefined) {
         wait.persistedId = outgoing.envelope.requestId
-        if (wait.abandoned) {
+        const onPersisted = wait.onPersisted
+        wait.onPersisted = undefined
+        if (onPersisted?.(wait.persistedId)) {
+          wait.abandoned = true
           if (duplicate) requestIdRewrites.delete(message.envelope.requestId)
           return ClusterAbandon.interrupt
         }
-        wait.waiting = true
       }
       const effect = afterPersist(outgoing, duplicate)
       return duplicate && wait !== undefined

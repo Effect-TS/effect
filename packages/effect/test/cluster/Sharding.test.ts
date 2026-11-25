@@ -36,6 +36,7 @@ import {
   MachineId,
   Message,
   MessageStorage,
+  Reply,
   Runner,
   RunnerAddress,
   RunnerHealth,
@@ -3073,6 +3074,188 @@ describe.concurrent("Sharding active teardowns", () => {
         assert.strictEqual(journalInterrupts(driver), 1)
       }).pipe(Effect.provide(layer), Effect.scoped)
     }), { concurrent: false })
+
+  for (const mode of ["duplicate", "fresh"] as const) {
+    it.effect(`handles delayed saveRequest ack during shard release (${mode})`, () =>
+      Effect.gen(function*() {
+        const WorkRpc = Rpc.make("Work", {
+          payload: { id: Schema.String },
+          primaryKey: ({ id }) => id,
+          success: Schema.String
+        }).annotate(ClusterSchema.Persisted, true)
+        const CallRpc = Rpc.make("Call", {
+          payload: { id: Schema.String },
+          success: Schema.String
+        }).annotate(ClusterSchema.Persisted, false)
+        const Peer = Entity.make(`DelayedAckPeer/${mode}`, [WorkRpc, CallRpc])
+
+        let assignSelf = true
+        const releases: Array<ShardId.ShardId> = []
+        const runnerStorage = Layer.effect(
+          RunnerStorage.RunnerStorage,
+          Effect.map(RunnerStorage.makeMemory, (storage) =>
+            RunnerStorage.RunnerStorage.of({
+              ...storage,
+              getRunners: Effect.map(
+                storage.getRunners,
+                (runners) =>
+                  assignSelf ? runners : [...runners.map(([runner]) => [runner, false] as const), [otherRunner, true]]
+              ),
+              release: (_address, shardId) =>
+                Effect.sync(() => {
+                  releases.push(shardId)
+                })
+            }))
+        )
+
+        const targetStarted = yield* Latch.make()
+        const releaseTarget = yield* Latch.make()
+        const saveHeld = yield* Latch.make()
+        const releaseSaveAck = yield* Latch.make()
+        let workSaves = 0
+        let heldMessage: Message.OutgoingRequest<any> | undefined
+
+        const baseStorage = yield* makeSharedMemoryStorage
+        const hideWork = (messages: Array<Message.Incoming<any>>) =>
+          mode === "fresh"
+            ? messages.filter((m) => !(m.envelope._tag === "Request" && m.envelope.tag === "Work"))
+            : messages
+        const messageStorage = Layer.succeed(
+          MessageStorage.MessageStorage,
+          MessageStorage.MessageStorage.of({
+            ...baseStorage,
+            saveRequest: (message) =>
+              baseStorage.saveRequest(message).pipe(
+                Effect.tap(() => {
+                  if (message.envelope.tag !== "Work") return Effect.void
+                  workSaves++
+                  const shouldHold = mode === "duplicate" ? workSaves === 2 : workSaves === 1
+                  if (!shouldHold) return Effect.void
+                  heldMessage = message
+                  return saveHeld.open.pipe(Effect.andThen(releaseSaveAck.await))
+                })
+              ),
+            unprocessedMessages: (shardIds, options) =>
+              Effect.map(baseStorage.unprocessedMessages(shardIds, options), hideWork),
+            unprocessedMessagesById: (ids) => Effect.map(baseStorage.unprocessedMessagesById(ids), hideWork)
+          })
+        )
+
+        const PeerLayer = Peer.toLayer(Effect.gen(function*() {
+          const self = yield* Peer.client
+          return Peer.of({
+            Work: Effect.fnUntraced(function*() {
+              yield* targetStarted.open
+              yield* releaseTarget.await
+              return "done"
+            }),
+            Call: Effect.fnUntraced(function*({ payload: { id } }) {
+              return yield* self("1").Work({ id })
+            })
+          })
+        }), { concurrency: "unbounded" })
+
+        const layer = PeerLayer.pipe(
+          Layer.provideMerge(Sharding.layer),
+          Layer.provide(runnerStorage),
+          Layer.provide(RunnerHealth.layerNoop),
+          Layer.provide(Runners.layerNoop),
+          Layer.provide(messageStorage),
+          Layer.provide(ShardingConfig.layer({
+            runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+            shardsPerGroup: 1,
+            entityTerminationTimeout: "90 seconds",
+            entityMessagePollInterval: 10,
+            entityReplyPollInterval: 10,
+            refreshAssignmentsInterval: 10,
+            sendRetryInterval: 10
+          }))
+        )
+
+        yield* Effect.gen(function*() {
+          const sharding = yield* Sharding.Sharding
+          const shardId = ShardId.make("default", 1)
+          for (let i = 0; i < 500 && !sharding.hasShardId(shardId); i++) {
+            yield* TestClock.adjust(10)
+          }
+          assert.isTrue(sharding.hasShardId(shardId))
+
+          const client = (yield* Peer.client)("1")
+
+          if (mode === "duplicate") {
+            const original = yield* client.Work({ id: "dup" }).pipe(Effect.forkScoped({ startImmediately: true }))
+            for (let i = 0; i < 500 && !targetStarted.isOpen(); i++) yield* TestClock.adjust(10)
+            assert.isTrue(targetStarted.isOpen())
+
+            const joiner = yield* client.Call({ id: "dup" }).pipe(Effect.forkScoped({ startImmediately: true }))
+            for (let i = 0; i < 500 && !saveHeld.isOpen(); i++) yield* TestClock.adjust(10)
+            assert.isTrue(saveHeld.isOpen())
+
+            // Reassign the shard so abandonUndelivered runs while the duplicate save ack is pending.
+            assignSelf = false
+            for (let i = 0; i < 500 && sharding.hasShardId(shardId); i++) yield* TestClock.adjust(10)
+            assert.isFalse(sharding.hasShardId(shardId))
+            yield* TestClock.adjust(1000)
+
+            yield* releaseSaveAck.open
+            yield* releaseTarget.open
+            for (
+              let i = 0;
+              i < 500 && (original.pollUnsafe() === undefined || joiner.pollUnsafe() === undefined);
+              i++
+            ) {
+              yield* TestClock.adjust(10)
+            }
+            assert.deepStrictEqual(original.pollUnsafe(), Exit.succeed("done"))
+            assert.deepStrictEqual(joiner.pollUnsafe(), Exit.succeed("done"))
+          } else {
+            const caller = yield* client.Call({ id: "fresh" }).pipe(Effect.forkScoped({ startImmediately: true }))
+            for (let i = 0; i < 500 && !saveHeld.isOpen(); i++) yield* TestClock.adjust(10)
+            assert.isTrue(saveHeld.isOpen())
+            assert.isDefined(heldMessage)
+
+            // Another non-draining waiter registers on the committed request ID before the save ack returns.
+            let otherReplied = false
+            const otherWaiter = yield* baseStorage.registerReplyHandler(
+              new Message.OutgoingRequest({
+                ...heldMessage,
+                respond: () =>
+                  Effect.sync(() => {
+                    otherReplied = true
+                  })
+              })
+            ).pipe(Effect.forkScoped({ startImmediately: true }))
+
+            assignSelf = false
+            for (let i = 0; i < 500 && sharding.hasShardId(shardId); i++) yield* TestClock.adjust(10)
+            assert.isFalse(sharding.hasShardId(shardId))
+            yield* TestClock.adjust(1000)
+
+            yield* baseStorage.saveReply(
+              new Reply.ReplyWithContext({
+                reply: new Reply.WithExit({
+                  id: yield* sharding.getSnowflake,
+                  requestId: heldMessage.envelope.requestId,
+                  exit: Exit.succeed("done")
+                }),
+                rpc: WorkRpc as any,
+                context: Context.empty()
+              })
+            )
+            yield* TestClock.adjust(1)
+
+            yield* releaseSaveAck.open
+            yield* TestClock.adjust(1000)
+            const released = releases.length > 0
+            if (!released) yield* TestClock.adjust("90 seconds")
+            assert.isTrue(otherReplied, "drain must not unregister another waiter on the pending save")
+            assert.deepStrictEqual(otherWaiter.pollUnsafe(), Exit.void)
+            assert.isTrue(released, "shard must release promptly once the delayed save ack returns")
+            assert.isDefined(caller.pollUnsafe())
+          }
+        }).pipe(Effect.provide(layer), Effect.scoped)
+      }), { concurrent: false })
+  }
 
   it.effect("treats node shutdown interrupts as transient via isShutdown", () =>
     Effect.gen(function*() {

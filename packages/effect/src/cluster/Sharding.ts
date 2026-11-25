@@ -1655,28 +1655,31 @@ const make = Effect.gen(function*() {
     address: EntityAddress,
     isDelivered: (requestId: Snowflake.Snowflake) => boolean
   ): Effect.Effect<void> =>
-    Effect.suspend(() => {
+    Effect.sync(() => {
       const shutdown = MutableRef.get(isShutdown)
-      if (!shutdown && !MutableHashSet.has(releasingShards, address.shardId)) return Effect.void
-      const abandon: Array<Effect.Effect<void>> = []
+      if (!shutdown && !MutableHashSet.has(releasingShards, address.shardId)) return
       for (const [requestId, entry] of clientRequests) {
-        const persistedId = entry.wait?.persistedId ?? requestId
+        const wait = entry.wait
         if (
-          !Context.get(entry.message.annotations, Persisted) ||
+          wait === undefined ||
           !Equal.equals(entry.message.envelope.address, address) ||
-          isDelivered(persistedId) ||
           (!shutdown && !isHandoffCaller(entry.context, address))
         ) continue
-        // Drop the entry so abandoning the caller does not cancel the request.
-        clientRequests.delete(requestId)
-        if (entry.wait !== undefined) {
-          ClusterAbandon.abandonWait(entry.wait)
-          if (!entry.wait.waiting) {
-            abandon.push(storage.unregisterReplyHandler(requestId, { interrupt: true }))
+        const abandonIfUndelivered = (persistedId: Snowflake.Snowflake): boolean => {
+          if (isDelivered(persistedId)) return false
+          // Drop the entry so abandoning the caller does not cancel the request.
+          clientRequests.delete(requestId)
+          return true
+        }
+        if (wait.persistedId !== undefined) {
+          if (abandonIfUndelivered(wait.persistedId)) {
+            ClusterAbandon.abandonWait(wait)
           }
+        } else {
+          // Defer the delivery check until saveRequest resolves the persisted ID.
+          wait.onPersisted = abandonIfUndelivered
         }
       }
-      return Effect.all(abandon, { discard: true })
     })
 
   const clients: ResourceMap<
@@ -1743,7 +1746,7 @@ const make = Effect.gen(function*() {
                 )
               }
               const wait: ClusterAbandon.ReplyWait | undefined = Context.get(message.annotations, Persisted)
-                ? { persistedId: undefined, waiting: false, abandoned: false, fiber }
+                ? { persistedId: undefined, abandoned: false, onPersisted: undefined, fiber }
                 : undefined
               if (wait !== undefined) {
                 ClusterAbandon.replyWaits.set(message, wait)

@@ -658,12 +658,16 @@ export const make = Effect.fnUntraced(function*<
               request.terminating = true
               yield* state.write(0, { _tag: "Interrupt", requestId: requestId as any, interruptors: [] })
             }
+            const delivered = new Set<Snowflake.Snowflake>()
+            for (const [requestId, request] of activeRequests) {
+              if (request.delivered) delivered.add(requestId)
+            }
             // A handler this drain waits for may be parked on a request the
             // retired entity will never start, such as its own queued request.
             // Release callers before `Eof`, which waits for handler acquisition.
             yield* options.abandonUndelivered(
               address,
-              (requestId) => activeRequests.get(requestId)?.delivered === true
+              (requestId) => delivered.has(requestId)
             )
             yield* state.write(0, { _tag: "Eof" })
           }).pipe(

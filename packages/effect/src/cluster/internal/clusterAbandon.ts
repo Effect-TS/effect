@@ -7,8 +7,8 @@ import type * as Snowflake from "../Snowflake.ts"
 
 export interface ReplyWait {
   persistedId: Snowflake.Snowflake | undefined
-  waiting: boolean
   abandoned: boolean
+  onPersisted: ((persistedId: Snowflake.Snowflake) => boolean) | undefined
   readonly fiber: Fiber.Fiber<any, any>
 }
 
@@ -24,9 +24,7 @@ export const interrupt: Effect.Effect<never> = Effect.withFiber((fiber) => {
 
 export const abandonWait = (wait: ReplyWait): void => {
   wait.abandoned = true
-  if (wait.waiting) {
-    wait.fiber.interruptUnsafe(wait.fiber.id, Abandon.annotation)
-  }
+  wait.fiber.interruptUnsafe(wait.fiber.id, Abandon.annotation)
 }
 
 export const isCause = (cause: Cause.Cause<unknown>): boolean =>
