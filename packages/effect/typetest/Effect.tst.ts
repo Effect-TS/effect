@@ -638,6 +638,14 @@ describe("Effect.catchTag", () => {
     Effect.catchTag(Effect.map(mixedEffect, (s) => s.length), ["AiError", "UnknownError"], () => Effect.succeed(0))
   })
 
+  it("rejects an unknown error channel in data-first usage", () => {
+    const source = Effect.fail<unknown>({ _tag: "Oops" })
+    // @ts-expect-error No overload matches this call
+    Effect.catchTag(source, "Oops", () => Effect.succeed(0))
+    // @ts-expect-error No overload matches this call
+    Effect.catchTag(Effect.map(source, (x) => x), "Oops", () => Effect.succeed(0))
+  })
+
   it("handles an array of tags", () => {
     const result = pipe(
       mixedEffect,

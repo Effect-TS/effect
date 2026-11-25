@@ -2935,9 +2935,7 @@ export const catchTag: {
     A,
     E,
     R,
-    const K extends unknown extends E
-      ? string | Arr.NonEmptyReadonlyArray<string>
-      : Tags<E> | Arr.NonEmptyReadonlyArray<Tags<E>>,
+    const K extends Tags<E> | Arr.NonEmptyReadonlyArray<Tags<E>>,
     R1,
     E1,
     A1,
@@ -2957,6 +2955,33 @@ export const catchTag: {
     | E2
     | (A2 extends unassigned ? ExcludeTag<E, K extends Arr.NonEmptyReadonlyArray<string> ? K[number] : K> : never),
     R | R1 | R2
+  >
+  <
+    Self extends Effect<any, any, any>,
+    const K extends Tags<Error<Self>> | Arr.NonEmptyReadonlyArray<Tags<Error<Self>>>,
+    R1,
+    E1,
+    A1,
+    A2 = unassigned,
+    E2 = never,
+    R2 = never
+  >(
+    self: Self,
+    k: K,
+    f: (e: ExtractTag<Error<Self>, K extends Arr.NonEmptyReadonlyArray<string> ? K[number] : K>) => Effect<A1, E1, R1>,
+    orElse?:
+      | ((
+        e: ExcludeTag<Error<Self>, K extends Arr.NonEmptyReadonlyArray<string> ? K[number] : K>
+      ) => Effect<A2, E2, R2>)
+      | undefined
+  ): Effect<
+    Success<Self> | A1 | Exclude<A2, unassigned>,
+    | E1
+    | E2
+    | (A2 extends unassigned
+      ? ExcludeTag<Error<Self>, K extends Arr.NonEmptyReadonlyArray<string> ? K[number] : K>
+      : never),
+    Services<Self> | R1 | R2
   >
 } = internal.catchTag
 
