@@ -930,10 +930,11 @@ export const suite = (
 
         it.effect("should write data to an input fd (fd3)", () =>
           Effect.gen(function*() {
-            // Use a shell script that reads from fd3 and echoes it to stdout
-            // The script reads from file descriptor 3 and outputs to stdout
+            // Delay the write so `cat` reads before data arrives and fails if fd3 is non-blocking
             const inputData = "data from parent"
-            const inputStream = Stream.make(new TextEncoder().encode(inputData))
+            const inputStream = Stream.fromEffect(
+              Effect.as(TestClock.withLive(Effect.sleep("100 millis")), new TextEncoder().encode(inputData))
+            )
 
             const handle = yield* ChildProcess.make("sh", ["-c", "cat <&3"], {
               additionalFds: {

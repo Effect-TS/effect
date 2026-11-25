@@ -18,18 +18,12 @@ export const source = `/**
  */
 import * as ChildProcess from "node:child_process"
 import * as Net from "node:net"
+import * as Util from "node:util"
 
 /** @internal */
 export const tokenLength = 16
 /** @internal */
 export const headerLength = tokenLength + 8
-
-                
-                     
-                          
-                                      
-                                                                                         
- 
 
 /** @internal */
 export const run = ()       => {
@@ -70,6 +64,13 @@ export const run = ()       => {
     try {
       const failure = stdio.find((result) => result.status === "rejected")
       if (failure) throw failure.reason
+      // The command shares the file status flags of each socket, and libuv only
+      // makes fds 0 to 2 blocking
+      for (const socket of sockets) {
+        // A socket that has lost its handle is rejected by \`spawn\`
+        const errno = (socket                    )._handle?.setBlocking(true)
+        if (errno) throw new Error(\`setBlocking failed: \${Util.getSystemErrorName(errno)}\`)
+      }
       const child = ChildProcess.spawn(command, args, { ...options, stdio: values                                  })
       child.on("error", (error) => send({ _tag: "Error", id, error: serializeError(error) }))
       child.on("spawn", () => send({ _tag: "Spawned", id, pid: child.pid }))
