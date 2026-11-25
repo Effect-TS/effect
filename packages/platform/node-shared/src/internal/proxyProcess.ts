@@ -10,7 +10,8 @@ import * as Net from "node:net"
 import * as Os from "node:os"
 import * as Path from "node:path"
 import type { SpawnedProcess, SpawnProcess } from "./nodeChildProcessSpawner.ts"
-import { headerLength, source, tokenLength } from "./proxyProcessSource.ts"
+import { source } from "./proxyProcessSource.ts"
+import { headerLength, tokenLength } from "./proxyProcessWorker.ts"
 import { handleErrnoException } from "./utils.ts"
 
 // macOS limits Unix socket paths to 104 bytes including the terminator, Linux to 108
@@ -228,7 +229,7 @@ class Proxy implements ProxiedProcessOwner {
       }
       this.child = NodeChildProcess.spawn(
         options.executable ?? globalThis.process.execPath,
-        options.args ?? ["-e", source],
+        options.args ?? ["--input-type=module", "-e", source],
         { env, stdio: ["inherit", "inherit", "inherit", "ipc"], windowsHide: true }
       )
       this.pid = this.child.pid

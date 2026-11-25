@@ -132,7 +132,7 @@ ${proxyProcessSource}`
         assert.notStrictEqual(pid, first)
         assert.deepStrictEqual(yield* currentPid, Option.some(pid))
         assert.strictEqual(yield* fs.readFileString(requests), "survivor\n")
-      }).pipe(Effect.provide(proxyServices({ args: ["-e", heldProxyProgram(hold, requests)] })))
+      }).pipe(Effect.provide(proxyServices({ args: ["--input-type=module", "-e", heldProxyProgram(hold, requests)] })))
     }).pipe(Effect.provide(NodeFileSystem.layer), Effect.scoped))
 
   it.live("sends spawns waiting on a proxy process retired while starting to its replacement", () =>
@@ -162,7 +162,7 @@ ${proxyProcessSource}`
         assert.strictEqual(yield* Fiber.join(waiting), pid)
         assert.deepStrictEqual(yield* currentPid, Option.some(pid))
         assert.deepStrictEqual((yield* fs.readFileString(requests)).split("\n").sort(), ["", "latest", "waiting"])
-      }).pipe(Effect.provide(proxyServices({ args: ["-e", heldProxyProgram(hold, requests)] })))
+      }).pipe(Effect.provide(proxyServices({ args: ["--input-type=module", "-e", heldProxyProgram(hold, requests)] })))
     }).pipe(Effect.provide(NodeFileSystem.layer), Effect.scoped))
 
   it.live("fails to build when the proxy process cannot start or does not answer", () =>
@@ -186,6 +186,13 @@ ${proxyProcessSource}`
       const pid = Number(NodeFs.readFileSync(pidFile, "utf8"))
       while (isAlive(pid)) yield* Effect.sleep("10 millis")
     }).pipe(Effect.provide(NodeFileSystem.layer), Effect.scoped))
+
+  it("generates the default launcher's program from the worker that run calls", () => {
+    const script = join(__dirname, "..", "scripts", "generateProxyProcessSource.ts")
+    const result = spawnSync(process.execPath, [script, "--check"], { encoding: "utf8" })
+    // Run `pnpm codegen` after changing the worker
+    assert.strictEqual(result.status, 0, result.stderr)
+  })
 
   it.live("runs the proxy process from a packaged application's subcommand", () =>
     Effect.gen(function*() {
@@ -235,7 +242,9 @@ ${proxyProcessSource}`
         assert.deepStrictEqual(yield* currentPid, Option.some(next))
         assert.strictEqual(yield* fs.readFileString(runs), "run\n")
         while (isAlive(first)) yield* Effect.sleep("10 millis")
-      }).pipe(Effect.provide(proxyServices({ args: ["-e", program], responseTimeout: "1 second" })))
+      }).pipe(
+        Effect.provide(proxyServices({ args: ["--input-type=module", "-e", program], responseTimeout: "1 second" }))
+      )
     }).pipe(Effect.provide(NodeFileSystem.layer), Effect.scoped))
 
   it.live("keeps stdio and kill working, fails exitCode, and restarts when the proxy process exits", () =>

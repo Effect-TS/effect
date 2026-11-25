@@ -60,7 +60,7 @@
   "scripts": {
     "benchmark:datagram": "node benchmark/DatagramSocket.ts",
     "benchmark:socket": "node benchmark/Socket.ts",
-    "codegen": "effect-utils codegen",
+    "codegen": "effect-utils codegen && node scripts/generateProxyProcessSource.ts",
     "build": "tsc -b tsconfig.json && pnpm babel",
     "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
     "check": "tsc -b tsconfig.json"

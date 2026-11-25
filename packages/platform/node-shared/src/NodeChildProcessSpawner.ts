@@ -958,7 +958,8 @@ export class ProxyProcess extends Context.Service<ProxyProcess, {
  * commands have exited. Commands keep running if the application exits, as
  * with {@link layer}.
  *
- * By default the proxy process runs `process.execPath -e <program>` with the
+ * By default the proxy process runs
+ * `process.execPath --input-type=module -e <program>` with the
  * application's environment minus `NODE_OPTIONS`. `executable`, `args` and
  * `env` replace these. A custom entry point must call
  * `NodeChildProcessProxy.run`. Commands always receive their own environment.
