@@ -164,7 +164,7 @@ OIDs of user-defined types are assigned per database, so look them up in
 
 ## Values as text
 
-Read raw PostgreSQL text values without running any codecs (including custom
+Read raw PostgreSQL text values without running result codecs (including custom
 `types`) with `queryTextValues`:
 
 ```ts
