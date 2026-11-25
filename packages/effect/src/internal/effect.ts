@@ -4172,7 +4172,17 @@ export const scopedWith = <A, E, R>(
 const provideFinalizerContext = <A, E, R>(
   self: Effect.Effect<A, E, R>,
   context: Context.Context<R>
-): Effect.Effect<A, E> => effectIsExit(self) ? self : provideContext(scoped(self), context) as any
+): Effect.Effect<A, E> =>
+  effectIsExit(self) ? self : withFiber((fiber) => {
+    const prev = fiber.context
+    const scope = scopeMakeUnsafe()
+    fiber.setContext(Context.add(Context.merge(prev, context), scopeTag, scope))
+    onExitUnsafe<A, E>(fiber, (exit) => {
+      fiber.setContext(prev)
+      return scopeCloseUnsafe(scope, exit)
+    })
+    return self
+  }) as any
 
 /** @internal */
 export const acquireRelease = <A, E, R, R2>(
