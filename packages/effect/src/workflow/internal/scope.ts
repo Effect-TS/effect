@@ -9,6 +9,8 @@ interface ParentState {
 
 const parentStates = new WeakMap<Scope.Scope, ParentState>()
 const entryOrders = new WeakMap<object, number>()
+const wrappedMaps = new WeakSet<Map<object, unknown>>()
+let forking = false
 
 const getParentState = (parent: Scope.Scope): ParentState => {
   let state = parentStates.get(parent)
@@ -19,24 +21,29 @@ const getParentState = (parent: Scope.Scope): ParentState => {
   return state
 }
 
-const stampExisting = (parent: Scope.Scope, parentState: ParentState): void => {
+const stampKey = (key: object, parentState: ParentState): void => {
+  if (!entryOrders.has(key)) {
+    const order = parentState.nextOrder++
+    entryOrders.set(key, order)
+    if (order > parentState.maxOrder) parentState.maxOrder = order
+  }
+}
+
+const ensureTracked = (parent: Scope.Scope, parentState: ParentState): void => {
   if (parent.state._tag !== "Open") return
   if (parent.state.finalizerKey !== undefined) {
-    if (!entryOrders.has(parent.state.finalizerKey)) {
-      const order = parentState.nextOrder++
-      entryOrders.set(parent.state.finalizerKey, order)
-      if (order > parentState.maxOrder) parentState.maxOrder = order
-    }
+    stampKey(parent.state.finalizerKey, parentState)
     return
   }
   const finalizers = parent.state.finalizers
-  if (finalizers === undefined) return
+  if (finalizers === undefined || wrappedMaps.has(finalizers)) return
   for (const key of finalizers.keys()) {
-    if (!entryOrders.has(key)) {
-      const order = parentState.nextOrder++
-      entryOrders.set(key, order)
-      if (order > parentState.maxOrder) parentState.maxOrder = order
-    }
+    stampKey(key, parentState)
+  }
+  wrappedMaps.add(finalizers)
+  finalizers.set = function(key, value) {
+    if (!forking) stampKey(key, parentState)
+    return Map.prototype.set.call(this, key, value)
   }
 }
 
@@ -61,7 +68,7 @@ export const withLazyScope = (
   parent: Scope.Scope
 ): WorkflowInstance["Service"] => {
   const parentState = getParentState(parent)
-  stampExisting(parent, parentState)
+  ensureTracked(parent, parentState)
   const order = parentState.nextOrder++
   let scope: Scope.Closeable | undefined
   let abandoned = instance.abandoned
@@ -69,9 +76,15 @@ export const withLazyScope = (
     ...instance,
     get scope() {
       if (scope === undefined) {
-        stampExisting(parent, parentState)
-        scope = Scope.forkUnsafe(parent)
+        ensureTracked(parent, parentState)
+        forking = true
+        try {
+          scope = Scope.forkUnsafe(parent)
+        } finally {
+          forking = false
+        }
         entryOrders.set(scope, order)
+        ensureTracked(parent, parentState)
         if (order < parentState.maxOrder && parent.state._tag === "Open" && parent.state.finalizers !== undefined) {
           const finalizer = parent.state.finalizers.get(scope)!
           parent.state.finalizers.delete(scope)
@@ -80,13 +93,13 @@ export const withLazyScope = (
           let inserted = false
           for (const [key, fn] of entries) {
             if (!inserted && (entryOrders.get(key) ?? -1) > order) {
-              parent.state.finalizers.set(scope, finalizer)
+              Map.prototype.set.call(parent.state.finalizers, scope, finalizer)
               inserted = true
             }
-            parent.state.finalizers.set(key, fn)
+            Map.prototype.set.call(parent.state.finalizers, key, fn)
           }
           if (!inserted) {
-            parent.state.finalizers.set(scope, finalizer)
+            Map.prototype.set.call(parent.state.finalizers, scope, finalizer)
           }
         } else if (order > parentState.maxOrder) {
           parentState.maxOrder = order
