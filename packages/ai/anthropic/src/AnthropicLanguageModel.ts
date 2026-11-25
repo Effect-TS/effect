@@ -1342,25 +1342,20 @@ const prepareToolResultContent = Effect.fnUntraced(function*(
   return content
 })
 
-const base64DataUrlPattern = /^data:[^,]*;base64,/i
-const textDecoder = new TextDecoder()
-
 const getBase64Data = (data: string | Uint8Array): string =>
   typeof data === "string" ? data.replace(/^data:[^;]+;base64,/, "") : Base64.encode(data)
 
-const getTextDataUrlPayload = (data: typeof Prompt.FilePart.Type["data"]): string | undefined => {
+// Decodes a base64 data URL to bytes, leaving any other file data untouched.
+const decodeBase64DataUrl = (
+  data: typeof Prompt.FilePart.Type["data"]
+): Effect.Effect<typeof Prompt.FilePart.Type["data"], AiError.AiError> => {
   const value = data instanceof URL ? data.href : data
-  if (typeof value !== "string") {
-    return undefined
+  if (typeof value !== "string" || !/^data:[^,]*;base64,/i.test(value)) {
+    return Effect.succeed(data)
   }
-  const match = base64DataUrlPattern.exec(value)
-  return match === null ? undefined : value.slice(match[0].length)
-}
-
-const decodeTextBase64 = Effect.fnUntraced(function*(payload: string) {
-  return yield* Effect.fromResult(Base64.decode(payload)).pipe(
-    Effect.map((bytes) => textDecoder.decode(bytes)),
-    Effect.mapError((error) =>
+  return Effect.mapError(
+    Effect.fromResult(Base64.decode(value.slice(value.indexOf(",") + 1))),
+    (error) =>
       AiError.make({
         module: "AnthropicLanguageModel",
         method: "prepareMessages",
@@ -1368,9 +1363,8 @@ const decodeTextBase64 = Effect.fnUntraced(function*(payload: string) {
           description: `Failed to decode text file data URL: ${error.message}`
         })
       })
-    )
   )
-})
+}
 
 const prepareFilePart = Effect.fnUntraced(function*(
   part: Prompt.FilePart,
@@ -1397,27 +1391,19 @@ const prepareFilePart = Effect.fnUntraced(function*(
     const enableCitations = areCitationsEnabled(part)
     const documentOptions = getDocumentMetadata(part)
 
-    const textDataUrlPayload = part.mediaType === "text/plain"
-      ? getTextDataUrlPayload(part.data)
-      : undefined
+    const data = part.mediaType === "text/plain" ? yield* decodeBase64DataUrl(part.data) : part.data
 
-    const source = textDataUrlPayload !== undefined
-      ? {
-        type: "text",
-        media_type: "text/plain",
-        data: yield* decodeTextBase64(textDataUrlPayload)
-      } as const
-      : isUrlData(part.data)
+    const source = isUrlData(data)
       ? {
         type: "url",
-        url: getUrlString(part.data)
+        url: getUrlString(data)
       } as const
       : part.mediaType === "application/pdf"
-      ? { type: "base64", media_type: "application/pdf", data: getBase64Data(part.data) } as const
+      ? { type: "base64", media_type: "application/pdf", data: getBase64Data(data) } as const
       : {
         type: "text",
         media_type: "text/plain",
-        data: typeof part.data === "string" ? part.data : textDecoder.decode(part.data)
+        data: typeof data === "string" ? data : new TextDecoder().decode(data)
       } as const
 
     return {
