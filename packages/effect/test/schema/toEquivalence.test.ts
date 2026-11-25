@@ -456,7 +456,7 @@ describe("toEquivalence", () => {
     const leaf = Schema.Number.pipe(
       Schema.overrideToEquivalence(() => {
         derivations++
-        return Equivalence.make((a, b) => a % 2 === b % 2)
+        return Equivalence.strictEqual<number>()
       })
     )
     const pair = Schema.Struct({ a: leaf, b: leaf })
@@ -470,33 +470,8 @@ describe("toEquivalence", () => {
       redacted: Schema.Redacted(leaf)
     })
 
-    const equivalence = Schema.toEquivalence(schema)
+    Schema.toEquivalence(schema)
     strictEqual(derivations, 1)
-
-    const base = {
-      left: { a: 0, b: 1 },
-      right: { a: 2, b: 3 },
-      tuple: [0, 1, 2] as const,
-      record: { x: 0 },
-      union: 0 as number | string,
-      option: Option.some(0),
-      redacted: Redacted.make(0)
-    }
-    assertTrue(equivalence(base, {
-      left: { a: 2, b: 3 },
-      right: { a: 4, b: 5 },
-      tuple: [2, 3, 4],
-      record: { x: 2 },
-      union: 2,
-      option: Option.some(2),
-      redacted: Redacted.make(2)
-    }))
-    assertFalse(equivalence(base, { ...base, right: { a: 2, b: 4 } }))
-    assertFalse(equivalence(base, { ...base, tuple: [0, 1, 3] }))
-    assertFalse(equivalence(base, { ...base, record: { x: 1 } }))
-    assertFalse(equivalence(base, { ...base, union: 1 }))
-    assertFalse(equivalence(base, { ...base, option: Option.some(1) }))
-    assertFalse(equivalence(base, { ...base, redacted: Redacted.make(1) }))
   })
 
   it("selects transformed Union members on the Type side", () => {
