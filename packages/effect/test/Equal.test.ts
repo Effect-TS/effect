@@ -83,13 +83,10 @@ describe("Equal.equals", () => {
     })
 
     it("keeps differently unrolled plain cycles consistent with Hash and HashMap", () => {
-      const makeObjectPair = () => {
-        const a: { self?: unknown } = {}
-        a.self = a
-        const b1: { self?: unknown } = {}
-        const b2: { self?: unknown } = { self: b1 }
-        b1.self = b2
-        return [a, b1] as const
+      const makeRing = (size: number) => {
+        const nodes: Array<{ next?: unknown }> = Array.from({ length: size }, () => ({}))
+        for (let i = 0; i < size; i++) nodes[i].next = nodes[(i + 1) % size]
+        return nodes[0]
       }
       const makeArrayPair = () => {
         const a: Array<unknown> = []
@@ -99,8 +96,26 @@ describe("Equal.equals", () => {
         b1.push(b2)
         return [a, b1] as const
       }
+      const makeSharedDirect = () => {
+        const a: { next?: unknown } = {}
+        a.next = a
+        return [a, { next: a }] as const
+      }
+      const makeSharedIndirect = () => {
+        const shared: { next?: unknown } = {}
+        const a = { next: shared }
+        shared.next = a
+        return [a, { next: shared }] as const
+      }
 
-      for (const make of [makeObjectPair, makeArrayPair]) {
+      const pairs = [
+        () => [makeRing(1), makeRing(2)] as const,
+        () => [makeRing(37), makeRing(41)] as const,
+        makeArrayPair,
+        makeSharedDirect,
+        makeSharedIndirect
+      ]
+      for (const make of pairs) {
         for (const prehash of ["none", "left", "right", "both"] as const) {
           const [a, b] = make()
           if (prehash === "left" || prehash === "both") Hash.hash(a)
@@ -491,6 +506,18 @@ describe("Equal.equals", () => {
 
     it("should compare invalid dates without throwing", () => {
       expect(Equal.equals(new Date(NaN), new Date(NaN))).toBe(true)
+    })
+
+    it("keeps dates with custom methods consistent with Hash", () => {
+      const customIso = Object.assign(new Date(0), { toISOString: () => "custom" })
+      const plain = new Date(0)
+      assert.isFalse(Equal.equals(customIso, plain))
+      assert.isFalse(Equal.equals(plain, customIso))
+
+      const customTime = Object.assign(new Date(0), { getTime: () => 1000 })
+      const later = new Date(1000)
+      assert.isFalse(Equal.equals(customTime, later))
+      assert.isFalse(Equal.equals(later, customTime))
     })
   })
 

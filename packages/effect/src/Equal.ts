@@ -185,7 +185,24 @@ export function equals(): any {
 }
 
 function compareBoth(self: unknown, that: unknown): boolean {
-  if (self === that) return true
+  if (self === that) {
+    // A shared child can still reach an ancestor on one side; check whether it is cyclic.
+    if (
+      pathLeft.length > 0 &&
+      self !== null &&
+      (typeof self === "object" || typeof self === "function") &&
+      !hashCache.has(self) &&
+      !(self instanceof Date) &&
+      !(self instanceof RegExp) &&
+      !byReferenceInstances.has(self)
+    ) {
+      Hash.hash(self)
+      if (!hashCache.has(self)) {
+        cycles++
+      }
+    }
+    return true
+  }
   if (self == null || that == null) return false
   const selfType = typeof self
   if (selfType !== typeof that) {
@@ -208,12 +225,21 @@ function compareBoth(self: unknown, that: unknown): boolean {
 
 function compareObjects(self: object, that: object): boolean {
   const depth = pathLeft.length
+  let sideRevisit = false
   // A repeated pair closes a cycle under coinductive equality.
   for (let i = depth; i-- > 0;) {
-    if (pathLeft[i] === self && pathRight[i] === that) {
+    const sameLeft = pathLeft[i] === self
+    const sameRight = pathRight[i] === that
+    if (sameLeft && sameRight) {
       cycles++
       return true
     }
+    if (sameLeft || sameRight) sideRevisit = true
+  }
+  // Reject mismatched cycle lengths on the first single-side revisit instead of unrolling their product.
+  if (sideRevisit) {
+    cycles++
+    if (Hash.hash(self) !== Hash.hash(that)) return false
   }
   if (depth) return compareOnPath(self, that)
   // Only outermost results are independent of path assumptions.
@@ -250,6 +276,15 @@ const results = new WeakMap<object, WeakMap<object, boolean>>()
 function compareStructure(self: object, that: object): boolean {
   if (self instanceof Date) {
     if (!(that instanceof Date)) return false
+    if (
+      (self.toISOString !== Date.prototype.toISOString ||
+        that.toISOString !== Date.prototype.toISOString ||
+        self.getTime !== Date.prototype.getTime ||
+        that.getTime !== Date.prototype.getTime) &&
+      Hash.hash(self) !== Hash.hash(that)
+    ) {
+      return false
+    }
     const selfTime = self.getTime()
     const thatTime = that.getTime()
     return selfTime === thatTime || (Number.isNaN(selfTime) && Number.isNaN(thatTime))
