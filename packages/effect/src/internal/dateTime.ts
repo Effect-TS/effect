@@ -334,14 +334,22 @@ export const makeZonedUnsafe = (input: DateTime.DateTime.Input, options?: {
 }
 
 /** @internal */
-export const makeZoned: (
+export const makeZoned = (
   input: DateTime.DateTime.Input,
   options?: {
     readonly timeZone?: number | string | DateTime.TimeZone | undefined
     readonly adjustForTimeZone?: boolean | undefined
     readonly disambiguation?: DateTime.Disambiguation | undefined
   }
-) => Option.Option<DateTime.Zoned> = Option.liftThrowable(makeZonedUnsafe)
+): Option.Option<DateTime.Zoned> => {
+  // Do not pass `makeZonedUnsafe` to a top-level call such as `Option.liftThrowable`,
+  // or AOT compilers that prune per function treat `Intl` as reachable whenever this module loads.
+  try {
+    return Option.some(makeZonedUnsafe(input, options))
+  } catch {
+    return Option.none()
+  }
+}
 
 /** @internal */
 export const make: <A extends DateTime.DateTime.Input>(input: A) => Option.Option<DateTime.DateTime.PreserveZone<A>> =
@@ -475,9 +483,15 @@ export const zoneMakeOffset = (offset: number): DateTime.TimeZone.Offset => {
 }
 
 /** @internal */
-export const zoneMakeNamed: (zoneId: string) => Option.Option<DateTime.TimeZone.Named> = Option.liftThrowable(
-  zoneMakeNamedUnsafe
-)
+export const zoneMakeNamed = (zoneId: string): Option.Option<DateTime.TimeZone.Named> => {
+  // Do not pass `zoneMakeNamedUnsafe` to a top-level call such as `Option.liftThrowable`,
+  // or AOT compilers that prune per function treat `Intl` as reachable whenever this module loads.
+  try {
+    return Option.some(zoneMakeNamedUnsafe(zoneId))
+  } catch {
+    return Option.none()
+  }
+}
 
 /** @internal */
 export const zoneMakeNamedEffect = (zoneId: string): Effect.Effect<DateTime.TimeZone.Named, IllegalArgumentError> =>
