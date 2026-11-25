@@ -31,7 +31,7 @@ import * as Semaphore from "../Semaphore.ts"
 import * as Activity from "../workflow/Activity.ts"
 import * as DurableClock from "../workflow/DurableClock.ts"
 import * as DurableDeferred from "../workflow/DurableDeferred.ts"
-import { canReleaseSuspendedScope } from "../workflow/internal/scope.ts"
+import { attachLazyScope } from "../workflow/internal/scope.ts"
 import * as Workflow from "../workflow/Workflow.ts"
 import * as WorkflowEngine from "../workflow/WorkflowEngine.ts"
 import * as ClusterSchema from "./ClusterSchema.ts"
@@ -525,12 +525,15 @@ export const make = Effect.gen(function*() {
                   currentRun.instance.completedDeferreds.clear()
                   currentRun.activityAwaits.clear()
                 }
-                // Each run gets a fresh scope under the activation's parent, so
-                // replays rebuild compensations while suspended runs keep theirs.
-                const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
-                  scope: Scope.forkUnsafe(pending.scope)
-                })
-                pending.instances.add(instance)
+                // Each run gets a fresh lazy scope under the activation's parent, so
+                // replays rebuild compensations without retaining unused scopes or instances.
+                const instance = attachLazyScope(
+                  WorkflowEngine.WorkflowInstance.initial(workflow, executionId),
+                  pending.scope,
+                  () => {
+                    pending.instances.add(instance)
+                  }
+                )
                 currentRun = { request, instance, activityAwaits: new Map() }
                 const parent = (request.payload as any)[payloadParentKey] as
                   | { workflowName: string; executionId: string; detached?: boolean }
@@ -594,16 +597,11 @@ export const make = Effect.gen(function*() {
                   // Deferred wakes interrupt only the body, so `intoResult` still reports `Suspended`.
                   (effect) => deferredState.trackRun(instance, effect),
                   Workflow.intoResult,
-                  Effect.onExit((exit) => {
-                    if (Exit.isSuccess(exit) && exit.value._tag === "Suspended") {
-                      if (canReleaseSuspendedScope(instance.scope)) {
-                        pending.instances.delete(instance)
-                        return Scope.close(instance.scope, Exit.void)
-                      }
-                      return Effect.void
-                    }
-                    return closeRuns(pending, instance.abandoned)
-                  }),
+                  Effect.onExit((exit) =>
+                    Exit.isSuccess(exit) && exit.value._tag === "Suspended"
+                      ? Effect.void
+                      : closeRuns(pending, instance.abandoned)
+                  ),
                   Effect.provideService(WorkflowEngine.WorkflowInstance, instance),
                   // Request middleware and local callers may carry another entity's context.
                   Effect.provideService(CurrentActivationScope, activation)

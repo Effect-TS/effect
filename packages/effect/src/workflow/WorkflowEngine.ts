@@ -27,7 +27,7 @@ import * as Semaphore from "../Semaphore.ts"
 import type * as Activity from "./Activity.ts"
 import type { DurableClock } from "./DurableClock.ts"
 import type * as DurableDeferred from "./DurableDeferred.ts"
-import { canReleaseSuspendedScope } from "./internal/scope.ts"
+import { attachLazyScope } from "./internal/scope.ts"
 import * as Workflow from "./Workflow.ts"
 
 /**
@@ -820,11 +820,13 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       const executionScope = state.scope
       state.instance.awaitedDeferreds.clear()
       state.instance.completedDeferreds.clear()
-      // Like the cluster engine, each run gets a fresh scope, so replays rebuild
-      // compensations instead of registering them again.
-      const instance = WorkflowInstance.initial(state.instance.workflow, state.instance.executionId, {
-        scope: Scope.forkUnsafe(executionScope)
-      })
+      // Like the cluster engine, each run gets a fresh lazy scope under the
+      // execution scope, so replays rebuild compensations without retaining
+      // unused child scopes.
+      const instance = attachLazyScope(
+        WorkflowInstance.initial(state.instance.workflow, state.instance.executionId),
+        executionScope
+      )
       state.instance = instance
       state.fiber = yield* state.execute(state.payload, state.instance.executionId).pipe(
         Effect.onExit((exit) => {
@@ -855,11 +857,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           return Effect.forkIn(resume(state.parent, "automatic"), scope)
         }),
         Effect.onExit((exit) => {
-          if (Exit.isSuccess(exit) && exit.value._tag === "Suspended") {
-            return canReleaseSuspendedScope(instance.scope)
-              ? Scope.close(instance.scope, Exit.void)
-              : Effect.void
-          }
+          if (Exit.isSuccess(exit) && exit.value._tag === "Suspended") return Effect.void
           // The final run's scope closes with the real exit. Closing the parent
           // then closes earlier scopes in reverse order with `Exit.void`, so their
           // superseded compensations are skipped, which means their finalizers

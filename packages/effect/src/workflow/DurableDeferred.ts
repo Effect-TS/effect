@@ -317,8 +317,18 @@ const recordHeld = Effect.fnUntraced(function*<A, E, R>(
       // starts unsuspended: a parked arm of an enclosing race leaves that
       // copy marked suspended while only interrupting its own fiber.
       const local: WorkflowInstance["Service"] = {
-        ...instance,
+        executionId: instance.executionId,
+        workflow: instance.workflow,
+        get scope() {
+          return instance.scope
+        },
         suspended: false,
+        interrupted: instance.interrupted,
+        abandoned: instance.abandoned,
+        cause: instance.cause,
+        failed: instance.failed,
+        awaitedDeferreds: instance.awaitedDeferreds,
+        completedDeferreds: instance.completedDeferreds,
         activityState: { count: 0, latch: Latch.makeUnsafe() }
       }
       // A losing branch parked on a durable wait has already exited when the
