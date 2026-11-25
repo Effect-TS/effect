@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix cluster shard rebalancing stalling handlers and workflows until `entityTerminationTimeout` when waiting on persisted requests addressed to the releasing shard.
+Fix cluster shard rebalancing stalling workflow activity waits until `entityTerminationTimeout` once in-flight activities complete.

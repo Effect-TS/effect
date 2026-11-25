@@ -1328,15 +1328,6 @@ const make = Effect.gen(function*() {
       return runnersService.notifyLocal({ message, notify, discard, storageOnly: !isLocal }) as any
     })
 
-  // A handler on a releasing shard cannot wait for a durable request to that
-  // same shard: the next owner cannot serve it until this handler finishes.
-  const isHandoffCaller = (caller: Context.Context<never>, target: EntityAddress): boolean => {
-    const address = Context.getOption(caller, CurrentAddress).valueOrUndefined
-    return address !== undefined &&
-      Equal.equals(address.shardId, target.shardId) &&
-      MutableHashSet.has(releasingShards, target.shardId)
-  }
-
   function sendOutgoing(
     message: Message.Outgoing<any>,
     discard: boolean,
@@ -1366,28 +1357,24 @@ const make = Effect.gen(function*() {
       return Effect.catchTag(persist, "MalformedMessage", Effect.die).pipe(
         Effect.andThen(
           shouldFail
-            // The request is durable and will be served by the next owner;
-            // abandon this wait without cancelling the persisted request.
+            // The message is durable, so a transient routing state is never an
+            // error for the caller. The runner is tearing down and can no
+            // longer observe the reply, so interrupt the caller instead: the
+            // request will be served under the next owner.
             ? message._tag === "OutgoingRequest"
-              ? Effect.suspend(() => {
-                clientRequests.delete(message.envelope.requestId)
-                return ClusterAbandon.interrupt
-              })
+              ? ClusterAbandon.interrupt
               : Effect.fail(error)
             : Effect.logWarning("Persisting outgoing message abandoned during shutdown", message.envelope.address)
         )
       )
     }
-    const isHandoff = () =>
-      shouldFail && isPersisted && message._tag === "OutgoingRequest" &&
-      isHandoffCaller(message.context, message.envelope.address)
     return Effect.catchFilter(
       Effect.suspend(() => {
         const address = message.envelope.address
         if (isPersisted && !storageEnabled) {
           return Effect.die("Sharding.sendOutgoing: Persisted messages require MessageStorage")
         }
-        if (shouldFail && (MutableRef.get(isShutdown) || isHandoff())) {
+        if (shouldFail && MutableRef.get(isShutdown)) {
           return Effect.fail(new EntityNotAssignedToRunner({ address }))
         }
         const maybeRunner = runner !== undefined
@@ -1419,8 +1406,7 @@ const make = Effect.gen(function*() {
         if (error._tag === "EntityNotAssignedToRunner") {
           const targetManager = entityManagers.get(message.envelope.address.entityType)
           const cannotRecover = MutableRef.get(isShutdown) ||
-            (targetManager !== undefined && targetManager.status !== "alive") ||
-            isHandoff()
+            (targetManager !== undefined && targetManager.status !== "alive")
           if (cannotRecover) {
             return abandon(error)
           }
@@ -1641,47 +1627,31 @@ const make = Effect.gen(function*() {
     readonly rpc: Rpc.AnyWithProps
     readonly context: Context.Context<never>
     readonly message: Message.OutgoingRequest<any>
-    readonly wait?: ClusterAbandon.ReplyWait | undefined
     lastChunkId?: Snowflake.Snowflake
     // the runner a volatile request was last sent to
     runner?: RunnerAddress
   }
   const clientRequests = new Map<Snowflake.Snowflake, ClientRequestEntry>()
 
-  // Abandon local callers parked on persisted requests a retiring entity never
-  // started so the next owner can serve them. Outside shutdown, only abandon
-  // callers draining on the same shard that block its release.
+  // During shutdown, abandon local callers parked on persisted requests that a
+  // retiring entity never started. They are served by the next owner. Callers
+  // on a runner that keeps running are left waiting, so they stay durable.
   const abandonUndelivered = (
     address: EntityAddress,
     isDelivered: (requestId: Snowflake.Snowflake) => boolean
   ): Effect.Effect<void> =>
-    Effect.sync(() => {
-      const shutdown = MutableRef.get(isShutdown)
-      if (!shutdown && !MutableHashSet.has(releasingShards, address.shardId)) return
+    Effect.suspend(() => {
+      if (!MutableRef.get(isShutdown)) return Effect.void
+      const abandon: Array<Effect.Effect<void>> = []
       for (const [requestId, entry] of clientRequests) {
-        const wait = entry.wait
         if (
-          wait === undefined ||
+          !Context.get(entry.message.annotations, Persisted) ||
           !Equal.equals(entry.message.envelope.address, address) ||
-          (!shutdown && !isHandoffCaller(entry.context, address))
+          isDelivered(requestId)
         ) continue
-        const checkUndelivered = (persistedId: Snowflake.Snowflake): (() => void) | undefined =>
-          isDelivered(persistedId)
-            ? undefined
-            : () => {
-              // Drop the entry so abandoning the caller does not cancel the request.
-              clientRequests.delete(requestId)
-            }
-        if (wait.persistedId !== undefined) {
-          const commit = checkUndelivered(wait.persistedId)
-          if (commit !== undefined) {
-            ClusterAbandon.requestAbandon(wait, commit)
-          }
-        } else {
-          // Defer the delivery check until saveRequest resolves the persisted ID.
-          wait.onPersisted = checkUndelivered
-        }
+        abandon.push(storage.unregisterReplyHandler(requestId, { interrupt: true }))
       }
+      return Effect.all(abandon, { discard: true })
     })
 
   const clients: ResourceMap<
@@ -1747,25 +1717,10 @@ const make = Effect.gen(function*() {
                   () => client.write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.void as any })
                 )
               }
-              const wait: ClusterAbandon.ReplyWait | undefined = Context.get(message.annotations, Persisted)
-                ? {
-                  persistedId: undefined,
-                  abandoned: false,
-                  commitAbandon: undefined,
-                  abandonAfterGen: 0,
-                  onPersisted: undefined,
-                  onAbandon: undefined,
-                  fiber
-                }
-                : undefined
-              if (wait !== undefined) {
-                ClusterAbandon.replyWaits.set(message, wait)
-              }
               const entry: ClientRequestEntry = {
                 rpc: rpc as any,
                 context: fiber.context,
-                message,
-                wait
+                message
               }
               clientRequests.set(id, entry)
               respond = makeClientRespond(entry, client.write)

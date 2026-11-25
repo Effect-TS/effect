@@ -16,6 +16,7 @@ import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import * as Headers from "../http/Headers.ts"
+import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as PrimaryKey from "../PrimaryKey.ts"
@@ -40,7 +41,7 @@ import * as EntityId from "./EntityId.ts"
 import * as EntityType from "./EntityType.ts"
 import * as Envelope from "./Envelope.ts"
 import * as ClusterAbandon from "./internal/clusterAbandon.ts"
-import { CurrentActivationScope } from "./internal/entityActivation.ts"
+import { CurrentActivationScope, CurrentRetirementLatch } from "./internal/entityActivation.ts"
 import * as Message from "./Message.ts"
 import { MessageStorage } from "./MessageStorage.ts"
 import type { WithExitEncoded } from "./Reply.ts"
@@ -471,12 +472,16 @@ export const make = Effect.gen(function*() {
                   (decoded.exit._tag === "Success" ? decoded.exit.value : decoded.exit) as Exit.Exit<unknown, unknown>
                 )
               }
+              const retired = Option.getOrUndefined(yield* Effect.serviceOption(CurrentRetirementLatch))
               pending = {
                 workflowName: workflow._tag,
                 executionId,
                 results,
                 instances: new Set(),
-                scope: Scope.makeUnsafe()
+                scope: Scope.makeUnsafe(),
+                retired,
+                idle: Latch.makeUnsafe(true),
+                executing: 0
               }
               yield* Scope.addFinalizer(activation, closeRuns(pending, true))
               pendingByActivation.set(activation, pending)
@@ -613,6 +618,8 @@ export const make = Effect.gen(function*() {
                   Context.add(CurrentActivationScope, activation),
                   Context.add(Activity.CurrentAttempt, payload.attempt)
                 )
+                pending.executing++
+                pending.idle.closeUnsafe()
                 return entry.activity.executeEncoded.pipe(
                   Effect.provideContext(context),
                   Workflow.intoResult,
@@ -629,6 +636,9 @@ export const make = Effect.gen(function*() {
                     )
                     return suspend ? Effect.succeed(new Workflow.Suspended({})) : Effect.failCause(cause)
                   }),
+                  Effect.ensuring(Effect.sync(() => {
+                    if (--pending.executing === 0) pending.idle.openUnsafe()
+                  })),
                   Effect.provideService(WorkflowEngine.WorkflowInstance, instance),
                   Effect.provideService(Activity.CurrentAttempt, payload.attempt),
                   Rpc.wrap({ fork: true, uninterruptible: true })
@@ -791,14 +801,25 @@ export const make = Effect.gen(function*() {
               if (activities.get(activityId) === entry) activities.delete(activityId)
             })
         )
+        const activation = yield* Effect.serviceOption(CurrentActivationScope)
+        const pending = Option.isSome(activation) ? pendingByActivation.get(activation.value) : undefined
+        const handoff = pending?.retired &&
+            pending.workflowName === instance.workflow._tag &&
+            pending.executionId === instance.executionId
+          ? Effect.andThen(pending.retired.await, Effect.as(pending.idle.await, Option.none()))
+          : Effect.never
         while (true) {
-          const result = yield* retryPersistence(
+          const maybeResult = yield* retryPersistence(
             client.activity({
               name: activity.name,
               attempt,
               withTransaction: Context.get(activity.annotations, ClusterSchema.WithTransaction)
             })
-          )
+          ).pipe(Effect.asSome, Effect.raceFirst(handoff))
+          // The retired entity will not run this activity. Leave the run for
+          // the next owner, which replays it and reads the saved results.
+          if (Option.isNone(maybeResult)) return yield* ClusterAbandon.interrupt
+          const result = maybeResult.value
           // If the activity has suspended and did not execute, we need to resume
           // it by resetting the attempt and re-executing.
           if (
@@ -999,6 +1020,11 @@ interface ActivationState {
   // resources and durable finalizers until the execution finishes.
   scope: Scope.Closeable
   readonly instances: Set<WorkflowEngine.WorkflowInstance["Service"]>
+  // Opens when this activation retires; paired with `idle` so in-flight
+  // activities finish before any waiting run hands off to the next owner.
+  readonly retired: Latch.Latch | undefined
+  readonly idle: Latch.Latch
+  executing: number
 }
 
 const isSuspendedReply = (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>) =>

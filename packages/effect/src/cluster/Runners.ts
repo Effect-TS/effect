@@ -11,7 +11,6 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
@@ -33,7 +32,6 @@ import type { MalformedMessage, PersistenceError } from "./ClusterError.ts"
 import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, RunnerUnavailable } from "./ClusterError.ts"
 import { Persisted } from "./ClusterSchema.ts"
 import * as Envelope from "./Envelope.ts"
-import * as ClusterAbandon from "./internal/clusterAbandon.ts"
 import { TransactionNotifications } from "./internal/transactionNotifications.ts"
 import * as Message from "./Message.ts"
 import * as MessageStorage from "./MessageStorage.ts"
@@ -229,34 +227,10 @@ export const make: (
     // received reply.
     //
     // Otherwise, we notify the remote entity and then reply from storage.
-    const wait = ClusterAbandon.replyWaits.get(message)
-    const afterPersistWith = (outgoing: Message.OutgoingRequest<any>, duplicate: boolean) => {
-      if (wait !== undefined) {
-        if (outgoing !== message) {
-          ClusterAbandon.replyWaits.set(outgoing, wait)
-        }
-        wait.persistedId = outgoing.envelope.requestId
-        const onPersisted = wait.onPersisted
-        wait.onPersisted = undefined
-        const commit = onPersisted?.(wait.persistedId)
-        if (commit !== undefined) {
-          wait.commitAbandon = commit
-        }
-      }
-      const effect = afterPersist(outgoing, duplicate)
-      return duplicate && wait !== undefined
-        ? Effect.onInterrupt(effect, () =>
-          wait.abandoned
-            ? Effect.sync(() => {
-              requestIdRewrites.delete(message.envelope.requestId)
-            })
-            : Effect.void)
-        : effect
-    }
     return Effect.flatMap(
       Effect.catchTag(storage.saveRequest(message), "MalformedMessage", Effect.die),
       MessageStorage.SaveResult.$match({
-        Success: () => afterPersistWith(message, false),
+        Success: () => afterPersist(message, false),
         Duplicate: ({ lastReceivedReply, originalId }) => {
           // If the last received reply is an exit, we can just return it
           // as the response.
@@ -264,7 +238,7 @@ export const make: (
             return message.respond(lastReceivedReply.value.withRequestId(message.envelope.requestId))
           }
           requestIdRewrites.set(message.envelope.requestId, originalId)
-          return afterPersistWith(
+          return afterPersist(
             new Message.OutgoingRequest({
               ...message,
               lastReceivedReply,
@@ -348,13 +322,10 @@ export const make: (
     }
   })
 
-  let pollGeneration = 0
-
   const replyFromStorage = (message: Message.OutgoingRequest<any>) =>
     Effect.uninterruptibleMask((restore) =>
       Effect.gen(function*() {
         const requestId = message.envelope.requestId
-        const wait = ClusterAbandon.replyWaits.get(message)
         let entry = storageRequests.get(requestId)
         if (!entry) {
           const state = {
@@ -368,23 +339,12 @@ export const make: (
         }
         const current = entry
         current.messages.add(message)
-        if (wait !== undefined) {
-          const wake = () => {
-            wait.abandonAfterGen = pollGeneration
-            storageLatch.openUnsafe()
-          }
-          wait.onAbandon = wake
-          if (wait.commitAbandon !== undefined) {
-            wake()
-          }
-        }
         // A waiter that joins an existing entry, such as a duplicate, reads
         // now. A reply committed without a notification would otherwise wait
         // for the next poll.
         storageLatch.openUnsafe()
         return yield* restore(Fiber.join(current.pump)).pipe(
           Effect.ensuring(Effect.suspend(() => {
-            if (wait !== undefined) wait.onAbandon = undefined
             current.messages.delete(message)
             if (current.messages.size === 0) {
               removeStorageRequest(requestId, current)
@@ -427,19 +387,7 @@ export const make: (
     message: Message.OutgoingRequest<any>,
     notifyEntity: (message: Message.Outgoing<any>) => Effect.Effect<void>
   ) {
-    const wait = ClusterAbandon.replyWaits.get(message)
-    let replied = false
-    const respondOnce = (reply: Reply.Reply<any>) => {
-      if (reply._tag === "WithExit") {
-        if (replied) return Effect.void
-        replied = true
-      }
-      return message.respond(reply)
-    }
-    const handlerMessage = wait === undefined
-      ? message
-      : new Message.OutgoingRequest({ ...message, respond: respondOnce })
-    const handler = yield* Effect.forkScoped(storage.registerReplyHandler(handlerMessage), { startImmediately: true })
+    const handler = yield* Effect.forkScoped(storage.registerReplyHandler(message), { startImmediately: true })
     return yield* notifyWith(message, (message, duplicate) => {
       const outgoing = message as Message.OutgoingRequest<any>
       // A duplicate is answered under its original request id.
@@ -449,46 +397,11 @@ export const make: (
           Effect.andThen(replyFromStorageWithWake(outgoing))
         )
       }
-      const fallback = () => {
-        if (replied) return Effect.void
-        const storageMessage = wait === undefined
-          ? outgoing
-          : new Message.OutgoingRequest({ ...outgoing, respond: respondOnce })
-        if (wait !== undefined && storageMessage !== outgoing) {
-          ClusterAbandon.replyWaits.set(storageMessage, wait)
-        }
-        return replyFromStorage(storageMessage)
-      }
-      if (wait !== undefined) {
-        if (wait.commitAbandon !== undefined) {
-          return Fiber.interrupt(handler).pipe(
-            Effect.andThen(Fiber.await(handler)),
-            Effect.flatMap((exit) => Exit.isSuccess(exit) ? Effect.void : fallback())
-          )
-        }
-        wait.onAbandon = () => {
-          if (handler.pollUnsafe() === undefined) {
-            handler.interruptUnsafe(handler.id)
-          }
-        }
-      }
       // The handler can be dropped, for example when its shard moves or a
       // commit error hides the notification. The reply is then in storage.
       return notifyEntity(message).pipe(
-        Effect.andThen(
-          Fiber.await(handler).pipe(
-            Effect.ensuring(Effect.sync(() => {
-              if (wait !== undefined) wait.onAbandon = undefined
-            }))
-          )
-        ),
-        Effect.flatMap((exit) => {
-          if (Exit.isSuccess(exit)) return Effect.void
-          if (wait?.commitAbandon !== undefined && Cause.hasInterruptsOnly(exit.cause)) {
-            return fallback()
-          }
-          return Effect.catchTag(Effect.failCause(exit.cause), "EntityNotAssignedToRunner", fallback)
-        })
+        Effect.andThen(Fiber.join(handler)),
+        Effect.catchTag("EntityNotAssignedToRunner", () => replyFromStorage(outgoing))
       )
     })
   }, Effect.scoped)
@@ -502,9 +415,7 @@ export const make: (
         yield* storageLatch.await
         storageLatch.closeUnsafe()
 
-        const gen = ++pollGeneration
-        const polled = Array.from(waitingStorageRequests.entries())
-        const replies = yield* storage.repliesFor(polled.map(([, message]) => message)).pipe(
+        const replies = yield* storage.repliesFor(waitingStorageRequests.values()).pipe(
           Effect.catchCause((cause) =>
             Effect.as(
               Effect.annotateLogs(Effect.logDebug(cause), {
@@ -512,37 +423,19 @@ export const make: (
                 module: "Runners",
                 fiber: "Read replies loop"
               }),
-              undefined
+              []
             )
           )
         )
 
-        if (replies !== undefined) {
-          // put the replies into the storage requests and then open the latches
-          for (let i = 0; i < replies.length; i++) {
-            const reply = replies[i]
-            const entry = storageRequests.get(reply.requestId)
-            if (!entry) continue
-            entry.replies.push(reply)
-            waitingStorageRequests.delete(reply.requestId)
-            foundRequests.add(entry)
-          }
-
-          // Abandon waiting callers whose polled request had no stored reply
-          // after drain requested abandonment.
-          for (let i = 0; i < polled.length; i++) {
-            const [requestId] = polled[i]
-            const entry = storageRequests.get(requestId)
-            if (!entry || foundRequests.has(entry)) continue
-            for (const msg of entry.messages) {
-              const wait = ClusterAbandon.replyWaits.get(msg)
-              if (wait?.commitAbandon === undefined || gen <= wait.abandonAfterGen) continue
-              const commit = wait.commitAbandon
-              wait.commitAbandon = undefined
-              commit()
-              ClusterAbandon.abandonWait(wait)
-            }
-          }
+        // put the replies into the storage requests and then open the latches
+        for (let i = 0; i < replies.length; i++) {
+          const reply = replies[i]
+          const entry = storageRequests.get(reply.requestId)
+          if (!entry) continue
+          entry.replies.push(reply)
+          waitingStorageRequests.delete(reply.requestId)
+          foundRequests.add(entry)
         }
 
         foundRequests.forEach((entry) => entry.latch.openUnsafe())

@@ -39,7 +39,7 @@ import type { Sharding } from "../Sharding.ts"
 import { ShardingConfig } from "../ShardingConfig.ts"
 import * as Snowflake from "../Snowflake.ts"
 import * as ClusterAbandon from "./clusterAbandon.ts"
-import { CurrentActivationScope } from "./entityActivation.ts"
+import { CurrentActivationScope, CurrentRetirementLatch } from "./entityActivation.ts"
 import { EntityReaper } from "./entityReaper.ts"
 import { acquireEntity, releaseEntity } from "./interruptors.ts"
 import { ResourceMap } from "./resourceMap.ts"
@@ -343,6 +343,7 @@ export const make = Effect.fnUntraced(function*<
           Context.add(CurrentRunnerAddress, options.runnerAddress),
           Context.add(KeepAliveLatch, keepAliveLatch),
           Context.add(CurrentActivationScope, scope),
+          Context.add(CurrentRetirementLatch, retired),
           Context.add(Scope.Scope, handlerScope),
           Context.add(CurrentLogAnnotations, {})
         )
@@ -643,9 +644,9 @@ export const make = Effect.fnUntraced(function*<
       scope,
       Effect.suspend(() => {
         activeServers.delete(address.entityId)
-        retired.openUnsafe()
         closeLatches.closing = true
         acquireEntity(address)
+        retired.openUnsafe()
         drainingServers.set(address.entityId, state)
         return Effect.raceFirst(
           Effect.gen(function*() {
@@ -658,16 +659,12 @@ export const make = Effect.fnUntraced(function*<
               request.terminating = true
               yield* state.write(0, { _tag: "Interrupt", requestId: requestId as any, interruptors: [] })
             }
-            const delivered = new Set<Snowflake.Snowflake>()
-            for (const [requestId, request] of activeRequests) {
-              if (request.delivered) delivered.add(requestId)
-            }
             // A handler this drain waits for may be parked on a request the
             // retired entity will never start, such as its own queued request.
             // Release callers before `Eof`, which waits for handler acquisition.
             yield* options.abandonUndelivered(
               address,
-              (requestId) => delivered.has(requestId)
+              (requestId) => activeRequests.get(requestId)?.delivered === true
             )
             yield* state.write(0, { _tag: "Eof" })
           }).pipe(
