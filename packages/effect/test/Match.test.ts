@@ -36,6 +36,27 @@ describe("Match", () => {
     strictEqual(formatTodo({ status: "Active", title: "Write tests" }), "Active: Write tests")
   })
 
+  it("type passes handlers the input alone", () => {
+    const argCount = (...args: Array<unknown>) => args.length
+
+    const single = Match.type<string | number>().pipe(
+      Match.when(Match.string, parseInt),
+      Match.orElse(argCount)
+    )
+    strictEqual(single("8"), 8)
+    strictEqual(single(1), 1)
+
+    const multi = Match.type<string | number>().pipe(
+      Match.when(Match.string, argCount),
+      Match.when(Match.number, argCount),
+      Match.exhaustive
+    )
+    strictEqual(multi(1), 1)
+
+    const tags = Match.typeTags<{ readonly _tag: "A" }>()({ A: argCount })
+    strictEqual(tags({ _tag: "A" }), 1)
+  })
+
   it("tag matches an exact _tag and falls through for null", () => {
     const match = pipe(
       Match.type<{ _tag: "A" } | null>(),

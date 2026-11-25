@@ -39,6 +39,10 @@ type HandledKeys<P, Keys extends keyof P = keyof P> = {
   readonly [K in Keys]-?: undefined extends P[K] ? never : K
 }[Keys]
 
+type InternalTypeMatcher = TypeMatcher<any, any, any, any, any, any> & {
+  readonly forwardArgs: boolean
+}
+
 const TypeMatcherProto: Omit<TypeMatcher<any, any, any, any, any, any>, "cases" | "select"> = {
   [TypeId]: {
     _input: identity,
@@ -50,10 +54,10 @@ const TypeMatcherProto: Omit<TypeMatcher<any, any, any, any, any, any>, "cases" 
   },
   _tag: "TypeMatcher",
   add<I, R, RA, A>(
-    this: TypeMatcher<any, any, any, any, any, any>,
+    this: InternalTypeMatcher,
     _case: Case
   ): TypeMatcher<I, R, RA, A, any, any> {
-    return makeTypeMatcher(this.select, [...this.cases, _case])
+    return makeTypeMatcher(this.select, [...this.cases, _case], this.forwardArgs)
   },
   pipe() {
     return pipeArguments(this, arguments)
@@ -62,11 +66,13 @@ const TypeMatcherProto: Omit<TypeMatcher<any, any, any, any, any, any>, "cases" 
 
 function makeTypeMatcher<I, R, RA, A, Ret, Args extends Array<any>>(
   select: (...args: any) => I,
-  cases: ReadonlyArray<Case>
+  cases: ReadonlyArray<Case>,
+  forwardArgs: boolean
 ): TypeMatcher<I, R, RA, A, Ret, Args> {
   const matcher = Object.create(TypeMatcherProto)
   matcher.select = select
   matcher.cases = cases
+  matcher.forwardArgs = forwardArgs
   return matcher
 }
 
@@ -136,6 +142,8 @@ const makeNot = (
   guard,
   evaluate
 })
+
+const matches = (_case: Case, input: unknown): boolean => _case.guard(input) === (_case._tag === "When")
 
 const makePredicate = (pattern: unknown): Predicate.Predicate<unknown> => {
   if (typeof pattern === "function") {
@@ -223,12 +231,12 @@ export const type = <I>(): Matcher<
   I,
   never,
   never
-> => makeTypeMatcher(identity, [])
+> => makeTypeMatcher(identity, [], false)
 
 /** @internal */
 export const fn = <Args extends Array<any>, I>(
   select: (...args: Args) => I
-): Matcher<I, Types.Without<never>, I, never, never, any, Args> => makeTypeMatcher(select, [])
+): Matcher<I, Types.Without<never>, I, never, never, any, Args> => makeTypeMatcher(select, [], true)
 
 /** @internal */
 export const value = <const I>(
@@ -265,7 +273,7 @@ export const valueTags: {
     input: I,
     fields: Contextual<P, ValueTagHandlers<I>>
   ): Unify<ReturnType<P[keyof P]>> => {
-    const match: any = tagsExhaustive(fields as any)(makeTypeMatcher(identity, []))
+    const match: any = tagsExhaustive(fields as any)(type())
     return match(input)
   }
 )
@@ -281,7 +289,7 @@ export const typeTags = <I>() =>
 >(
   fields: P
 ) => {
-  const match: any = tagsExhaustive(fields as any)(makeTypeMatcher(identity, []))
+  const match: any = tagsExhaustive(fields as any)(type())
   return (input: I): Unify<ReturnType<P[keyof P]>> => match(input)
 }
 
@@ -603,10 +611,11 @@ export const orElse =
       return toResult._tag === "Success" ? toResult.success as any : (f as any)(toResult.failure)
     }
 
+    const forwardArgs = (self as InternalTypeMatcher).forwardArgs
     // @ts-expect-error
     return (...args: Array<any>) => {
       const a = (toResult as any)(...args)
-      return Result.isSuccess(a) ? a.success : (f as any)(a.failure, ...args)
+      return Result.isSuccess(a) ? a.success : forwardArgs ? (f as any)(a.failure, ...args) : (f as any)(a.failure)
     }
   }
 
@@ -633,15 +642,14 @@ export const result: <I, F, R, A, Pr, Ret, Args extends Array<any>>(
       return self.value
     }
 
+    const forwardArgs = (self as InternalTypeMatcher).forwardArgs
     const len = self.cases.length
     if (len === 1) {
       const _case = self.cases[0]
       return (...args: Array<any>): Result.Result<A, RA> => {
         const input = self.select(...args)
-        if (_case._tag === "When" && _case.guard(input) === true) {
-          return Result.succeed(_case.evaluate(input, ...args))
-        } else if (_case._tag === "Not" && _case.guard(input) === false) {
-          return Result.succeed(_case.evaluate(input, ...args))
+        if (matches(_case, input)) {
+          return Result.succeed(forwardArgs ? _case.evaluate(input, ...args) : _case.evaluate(input))
         }
         return Result.fail(input as any)
       }
@@ -650,10 +658,8 @@ export const result: <I, F, R, A, Pr, Ret, Args extends Array<any>>(
       const input = self.select(...args)
       for (let i = 0; i < len; i++) {
         const _case = self.cases[i]
-        if (_case._tag === "When" && _case.guard(input) === true) {
-          return Result.succeed(_case.evaluate(input, ...args))
-        } else if (_case._tag === "Not" && _case.guard(input) === false) {
-          return Result.succeed(_case.evaluate(input, ...args))
+        if (matches(_case, input)) {
+          return Result.succeed(forwardArgs ? _case.evaluate(input, ...args) : _case.evaluate(input))
         }
       }
 
