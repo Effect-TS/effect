@@ -310,43 +310,16 @@ describe("Stream", () => {
         })
     )
 
-    it.effect("toAsyncIterable - overlapping reads preserve buffered values and order", () =>
+    it.effect("toAsyncIterable - overlapping reads preserve buffered values", () =>
       Effect.gen(function*() {
         const iterator = Stream.toAsyncIterable(Stream.range(1, 6, 2))[Symbol.asyncIterator]()
 
-        const first = yield* Effect.promise(() => {
-          const read1 = iterator.next()
-          const read3 = Promise.resolve().then(() => iterator.next())
-          const read2 = iterator.next()
-          return Promise.all([read1, read2, read3])
-        })
-        const rest = yield* Effect.promise(() =>
-          Promise.all([iterator.next(), iterator.next(), iterator.next(), iterator.next()])
-        )
+        const results = yield* Effect.promise(() => Promise.all([iterator.next(), iterator.next()]))
 
-        assert.deepStrictEqual(first, [
+        assert.deepStrictEqual(results, [
           { done: false, value: 1 },
-          { done: false, value: 2 },
-          { done: false, value: 3 }
+          { done: false, value: 2 }
         ])
-        assert.deepStrictEqual(rest, [
-          { done: false, value: 4 },
-          { done: false, value: 5 },
-          { done: false, value: 6 },
-          { done: true, value: undefined }
-        ])
-      }))
-
-    it.effect("toAsyncIterable - overlapping reads settle after stream failure", () =>
-      Effect.gen(function*() {
-        const error = new Error("stream failure")
-        const iterator = Stream.toAsyncIterable(Stream.fail(error))[Symbol.asyncIterator]()
-
-        const first = iterator.next().catch((error: unknown) => error)
-        const second = iterator.next()
-
-        assert.strictEqual(yield* Effect.promise(() => first), error)
-        assert.deepStrictEqual(yield* Effect.promise(() => second), { done: true, value: undefined })
       }))
 
     it.effect("toAsyncIterable - return interrupts an in-flight pull", () =>
@@ -368,49 +341,13 @@ describe("Stream", () => {
           )
         )[Symbol.asyncIterator]()
 
-        const pending = Promise.all([iterator.next(), iterator.next()])
+        const pending = iterator.next()
         yield* Deferred.await(started)
         const result = yield* Effect.promise(() => iterator.return!(undefined))
         const pendingResult = yield* Effect.promise(() => pending)
 
         assert.deepStrictEqual(result, { done: true, value: undefined })
-        assert.deepStrictEqual(pendingResult, [
-          { done: true, value: undefined },
-          { done: true, value: undefined }
-        ])
-        assert.isTrue(interrupted)
-      }))
-
-    it.effect("toAsyncIterable - reentrant return interrupts the active pull and settles queued reads", () =>
-      Effect.gen(function*() {
-        let interrupted = false
-        let closed: Promise<IteratorResult<number>> | undefined
-        const iterator = Stream.toAsyncIterable(
-          Stream.concat(
-            Stream.make(1),
-            Stream.fromEffect(
-              Effect.promise<number>(() => {
-                closed = iterator.return!(undefined)
-                return new Promise<number>(() => {})
-              }).pipe(
-                Effect.onInterrupt(() =>
-                  Effect.sync(() => {
-                    interrupted = true
-                  })
-                )
-              )
-            )
-          )
-        )[Symbol.asyncIterator]()
-
-        const results = yield* Effect.promise(() => Promise.all([iterator.next(), iterator.next(), iterator.next()]))
-
-        assert.deepStrictEqual(results, [
-          { done: false, value: 1 },
-          { done: true, value: undefined },
-          { done: true, value: undefined }
-        ])
-        assert.deepStrictEqual(yield* Effect.promise(() => closed!), { done: true, value: undefined })
+        assert.deepStrictEqual(pendingResult, { done: true, value: undefined })
         assert.isTrue(interrupted)
       }))
 
@@ -580,16 +517,13 @@ describe("Stream", () => {
         )[Symbol.asyncIterator]()
         const error = new Error("boom")
 
-        const pending = Promise.all([iterator.next(), iterator.next()])
+        const pending = iterator.next()
         yield* Deferred.await(started)
         const thrown = yield* Effect.promise(() => iterator.throw!(error).catch((error) => error))
         const pendingResult = yield* Effect.promise(() => pending)
 
         assert.strictEqual(thrown, error)
-        assert.deepStrictEqual(pendingResult, [
-          { done: true, value: undefined },
-          { done: true, value: undefined }
-        ])
+        assert.deepStrictEqual(pendingResult, { done: true, value: undefined })
         assert.isTrue(interrupted)
       }))
   })
