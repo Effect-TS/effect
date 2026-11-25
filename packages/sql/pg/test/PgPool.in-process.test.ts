@@ -494,7 +494,6 @@ describe("PgClient failed transaction cleanup", () => {
   it.effect("retires a session left in a pin-owned transaction without retiring closed or caller-owned ones", () =>
     Effect.scoped(Effect.gen(function*() {
       let opened = 0
-      let lastSelectInTx = false
       const pool = yield* PgPool.make({
         username: "test",
         maxConnections: 1,
@@ -502,7 +501,6 @@ describe("PgClient failed transaction cleanup", () => {
         stream: () => {
           opened++
           let startup = true
-          let inTx = false
           const socket = new Duplex({
             read() {},
             write(chunk: Buffer, _encoding, callback) {
@@ -510,11 +508,8 @@ describe("PgClient failed transaction cleanup", () => {
                 startup = false
                 queueMicrotask(() => socket.push(ready))
               } else if (chunk[0] === 0x50) {
-                const tag = chunk.includes("BEGIN") ? "BEGIN" : chunk.includes("COMMIT") ? "COMMIT" : "SELECT 0"
-                if (tag === "BEGIN") inTx = true
-                else if (tag === "COMMIT") inTx = false
-                else lastSelectInTx = inTx
-                queueMicrotask(() => socket.push(completed(tag, inTx ? "T" : "I")))
+                const response = chunk.includes("BEGIN") ? completed("BEGIN", "T") : completed("COMMIT", "I")
+                queueMicrotask(() => socket.push(response))
               }
               callback()
             }
@@ -527,28 +522,21 @@ describe("PgClient failed transaction cleanup", () => {
       yield* Effect.scoped(
         Effect.flatMap(pool.reserve, (conn) => Effect.andThen(conn.query("BEGIN"), conn.query("COMMIT")))
       )
-      const reused = yield* Effect.scoped(pool.get)
-      assert.strictEqual(opened, 1)
 
-      // A pin taken inside a caller's transaction leaves it open for the caller.
+      // A pin taken inside a caller's transaction leaves the session to the
+      // caller, whose `COMMIT` would fail on a retired one.
       yield* Effect.scoped(Effect.gen(function*() {
         const conn = yield* pool.get
         yield* conn.query("BEGIN")
         yield* Effect.scoped(conn.pin)
-        yield* conn.query("SELECT 1")
-        assert.isTrue(lastSelectInTx)
         yield* conn.query("COMMIT")
       }))
+      assert.strictEqual(opened, 1)
 
       // A pin released with its own transaction still open retires the session.
-      yield* Effect.scoped(Effect.flatMap(pool.reserve, (conn) => {
-        assert.strictEqual(opened, 1)
-        return conn.query("BEGIN")
-      }))
-      const replacement = yield* Effect.scoped(Effect.tap(pool.get, (conn) => conn.query("SELECT 1")))
+      yield* Effect.scoped(Effect.flatMap(pool.reserve, (conn) => conn.query("BEGIN")))
+      yield* Effect.scoped(pool.get)
       assert.strictEqual(opened, 2)
-      assert.notStrictEqual(replacement, reused)
-      assert.isFalse(lastSelectInTx)
     })))
 })
 

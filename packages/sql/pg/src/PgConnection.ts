@@ -868,10 +868,9 @@ class PgConnectionImpl implements PgConnection {
             // A transaction the pin left open or aborted, such as an abandoned
             // `BEGIN` or a cancelled `ROLLBACK`, would leak into the next
             // checkout. A transaction open before the pin is its caller's.
-            const state = this.transactionStatus === "E" ? "an aborted" : "an open"
             this.fatal(connectionQueryError(
-              new Error(`Pinned connection released in ${state} transaction`),
-              `PgConnection: Pinned connection released in ${state} transaction`
+              new Error("Pinned connection released inside a transaction"),
+              "PgConnection: Pinned connection released inside a transaction"
             ))
           }
           return idle ? Effect.andThen(this.wire.release(1), this.owner.release(1)) : this.owner.release(1)
