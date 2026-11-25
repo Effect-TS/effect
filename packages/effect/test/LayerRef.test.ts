@@ -126,6 +126,26 @@ describe("LayerRef", () => {
       }).pipe(Effect.provide(ResourceRef.layer))
     }))
 
+  it.live("does not inherit a borrower memo map when created without a parent memo map", () =>
+    Effect.gen(function*() {
+      const acquired: Array<number> = []
+      const released: Array<number> = []
+      const layer = makeLayer(acquired, released)
+      const ref = yield* LayerRef.make(layer)
+
+      const ids = yield* Effect.gen(function*() {
+        const provided = yield* Resource
+        const borrowerScope = yield* Scope.make()
+        const first = yield* ref.contextEffect.pipe(Scope.provide(borrowerScope))
+        yield* ref.invalidate
+        const second = yield* Effect.scoped(ref.contextEffect)
+        yield* Scope.close(borrowerScope, Exit.void)
+        return [provided.id, Context.get(first, Resource).id, Context.get(second, Resource).id]
+      }).pipe(Effect.provide(layer))
+
+      assert.deepStrictEqual(ids, [1, 2, 3])
+    }))
+
   it.effect("preload acquires the resource when the LayerRef is created", () =>
     Effect.gen(function*() {
       const acquired: Array<number> = []

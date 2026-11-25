@@ -156,8 +156,13 @@ export const make = Effect.fnUntraced(
     [Preload] extends [true] ? E : never,
     Scope.Scope | R | SR
   > {
+    const context = yield* Effect.context<never>()
+
     const rcRef = yield* RcRef.make({
-      acquire: Layer.build(layer),
+      acquire: Effect.flatMap(
+        Effect.scope,
+        (scope) => Layer.buildWithMemoMap(layer, Layer.CurrentMemoMap.forkOrCreate(context), scope)
+      ),
       idleTimeToLive: options?.idleTimeToLive
     })
 
