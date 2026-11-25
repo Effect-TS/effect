@@ -33,30 +33,36 @@ describe("Scope", () => {
   describe("cleanup scope", () => {
     const Tag = Context.Service<string>("ScopeTest/Tag")
 
+    const cleanup = Effect.fnUntraced(function*(
+      events: Array<string>,
+      label: string,
+      exit: Exit.Exit<unknown, unknown>
+    ) {
+      const tag = yield* Tag
+      yield* Effect.acquireRelease(
+        Effect.sync(() => {
+          events.push("acquire")
+        }),
+        () =>
+          Effect.sync(() => {
+            events.push("release")
+          })
+      )
+      events.push(`use:${label}:${tag}:${Exit.isFailure(exit) ? String(Cause.squash(exit.cause)) : "ok"}`)
+    })
+
     it.effect("Effect.addFinalizer keeps resources acquired during cleanup alive until cleanup finishes", () =>
       Effect.gen(function*() {
         const events: Array<string> = []
         yield* Effect.scoped(
           Effect.gen(function*() {
-            yield* Effect.addFinalizer((exit) =>
-              Effect.gen(function*() {
-                const tag = yield* Tag
-                yield* Effect.acquireRelease(
-                  Effect.sync(() => {
-                    events.push("acquire")
-                  }),
-                  () =>
-                    Effect.sync(() => {
-                      events.push("release")
-                    })
-                )
-                events.push(`use:${tag}:${Exit.isFailure(exit) ? String(Cause.squash(exit.cause)) : "ok"}`)
-              })
-            ).pipe(Effect.provideService(Tag, "captured"))
+            yield* Effect.addFinalizer((exit) => cleanup(events, "finalizer", exit)).pipe(
+              Effect.provideService(Tag, "captured")
+            )
             return yield* Effect.fail("boom")
           })
         ).pipe(Effect.exit)
-        expect(events).toEqual(["acquire", "use:captured:boom", "release"])
+        expect(events).toEqual(["acquire", "use:finalizer:captured:boom", "release"])
       }))
 
     it.effect("Effect.acquireRelease keeps resources acquired during release alive until release finishes", () =>
@@ -66,22 +72,7 @@ describe("Scope", () => {
           Effect.gen(function*() {
             yield* Effect.acquireRelease(
               Effect.succeed("resource"),
-              (resource, exit) =>
-                Effect.gen(function*() {
-                  const tag = yield* Tag
-                  yield* Effect.acquireRelease(
-                    Effect.sync(() => {
-                      events.push("acquire")
-                    }),
-                    () =>
-                      Effect.sync(() => {
-                        events.push("release")
-                      })
-                  )
-                  events.push(
-                    `use:${resource}:${tag}:${Exit.isFailure(exit) ? String(Cause.squash(exit.cause)) : "ok"}`
-                  )
-                })
+              (resource, exit) => cleanup(events, resource, exit)
             ).pipe(Effect.provideService(Tag, "captured"))
             return yield* Effect.fail("boom")
           })
