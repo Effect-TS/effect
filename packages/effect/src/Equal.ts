@@ -13,6 +13,7 @@
 import type { Equivalence } from "./Equivalence.ts"
 import * as Hash from "./Hash.ts"
 import { bufferBytes, byReferenceInstances, getAllObjectKeys, isArrayBufferLike, viewBytes } from "./internal/equal.ts"
+import { hashCache } from "./internal/hash.ts"
 import { hasProperty } from "./Predicate.ts"
 
 /**
@@ -133,9 +134,9 @@ export interface Equal extends Hash.Hash {
  * Functions without an `Equal` implementation compare by reference. Circular
  * structures use coinductive equality.
  *
- * Hash values are checked first as a fast-path rejection. The function also
- * supports dual data-last usage: call it with one argument to get a curried
- * predicate.
+ * Custom `Hash` implementations and already-cached structural hashes are
+ * checked first as a fast-path rejection. The function also supports dual
+ * data-last usage: call it with one argument to get a curried predicate.
  *
  * **Gotchas**
  *
@@ -237,9 +238,7 @@ const pathRight: Array<object> = []
 const results = new WeakMap<object, WeakMap<object, boolean>>()
 
 function compareStructure(self: object, that: object): boolean {
-  if (Hash.hash(self) !== Hash.hash(that)) {
-    return false
-  } else if (self instanceof Date) {
+  if (self instanceof Date) {
     if (!(that instanceof Date)) return false
     const selfTime = self.getTime()
     const thatTime = that.getTime()
@@ -250,7 +249,19 @@ function compareStructure(self: object, that: object): boolean {
   const bothEquals = isEqual(self)
   if (bothEquals !== isEqual(that) || (typeof self === "function" && !bothEquals)) {
     return false
-  } else if (bothEquals) {
+  }
+  if (bothEquals || Hash.isHash(self) || Hash.isHash(that)) {
+    // Custom hashes are cheap, and implementors rely on them to reject foreign values.
+    if (Hash.hash(self) !== Hash.hash(that)) return false
+  } else {
+    // A structural hash costs more than comparing, so only reuse a cached one.
+    const selfHash = hashCache.get(self)
+    if (selfHash !== undefined) {
+      const thatHash = hashCache.get(that)
+      if (thatHash !== undefined && selfHash !== thatHash) return false
+    }
+  }
+  if (bothEquals) {
     return (self as Equal)[symbol](that as Equal)
   } else if (Array.isArray(self)) {
     if (!Array.isArray(that) || self.length !== that.length) {
@@ -317,6 +328,32 @@ function compareRecords(
   self: Record<PropertyKey, unknown>,
   that: Record<PropertyKey, unknown>
 ): boolean {
+  if (self.constructor === Object && that.constructor === Object) {
+    const selfKeys = Reflect.ownKeys(self)
+    if (selfKeys.length !== Reflect.ownKeys(that).length) {
+      return false
+    }
+    for (let i = 0; i < selfKeys.length; i++) {
+      const key = selfKeys[i]
+      if (!Object.hasOwn(that, key) || !compareBoth(self[key], that[key])) {
+        return false
+      }
+    }
+    return true
+  }
+
+  if (
+    that instanceof Date ||
+    that instanceof RegExp ||
+    Array.isArray(that) ||
+    isArrayBufferLike(that) ||
+    ArrayBuffer.isView(that) ||
+    that instanceof Map ||
+    that instanceof Set
+  ) {
+    return false
+  }
+
   const selfKeys = getAllObjectKeys(self)
   const thatKeys = getAllObjectKeys(that)
 

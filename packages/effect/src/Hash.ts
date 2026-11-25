@@ -12,7 +12,7 @@
  */
 import { dual } from "./Function.ts"
 import { bufferBytes, byReferenceInstances, getAllObjectKeys, isArrayBufferLike, viewBytes } from "./internal/equal.ts"
-import { addBackEdge, backEdges } from "./internal/hash.ts"
+import { addBackEdge, backEdges, hashCache } from "./internal/hash.ts"
 import { hasProperty } from "./Predicate.ts"
 
 /**
@@ -526,5 +526,4 @@ const setSeed = string("Set")
 const hashSet: <A>(set: Iterable<A>) => number = unordered(setSeed, (element) => combine(setSeed, hash(element)))
 
 const randomHashCache = new WeakMap<any, number>()
-const hashCache = new WeakMap<object, number>()
 const visitedObjects = new WeakSet<object>()

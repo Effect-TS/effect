@@ -82,6 +82,35 @@ describe("Equal.equals", () => {
       assert.isFalse(Equal.equals(p1, q1))
     })
 
+    it("compares differently unrolled plain cycles equal regardless of pre-hashing", () => {
+      const makeObjectPair = () => {
+        const a: { self?: unknown } = {}
+        a.self = a
+        const b1: { self?: unknown } = {}
+        const b2: { self?: unknown } = { self: b1 }
+        b1.self = b2
+        return [a, b1] as const
+      }
+      const makeArrayPair = () => {
+        const a: Array<unknown> = []
+        a.push(a)
+        const b1: Array<unknown> = []
+        const b2: Array<unknown> = [b1]
+        b1.push(b2)
+        return [a, b1] as const
+      }
+
+      for (const make of [makeObjectPair, makeArrayPair]) {
+        for (const prehash of ["none", "left", "right", "both"] as const) {
+          const [a, b] = make()
+          if (prehash === "left" || prehash === "both") Hash.hash(a)
+          if (prehash === "right" || prehash === "both") Hash.hash(b)
+          assert.isTrue(Equal.equals(a, b), prehash)
+          assert.isTrue(Equal.equals(b, a), prehash)
+        }
+      }
+    })
+
     it("agrees with bisimilarity on random cyclic graphs", () => {
       // Compute the greatest bisimulation by eliminating invalid pairs.
       const bisimilar = (left: Spec, right: Spec): ReadonlyArray<ReadonlyArray<boolean>> => {
@@ -152,6 +181,18 @@ describe("Equal.equals", () => {
       const obj1 = { a: 1, b: 2 }
       const obj2 = { a: 1, c: 2 }
       expect(Equal.equals(obj1, obj2)).toBe(false)
+    })
+
+    it("reads each property once on fresh plain objects", () => {
+      let reads = 0
+      const make = () => ({
+        get a() {
+          reads++
+          return 1
+        }
+      })
+      assert.isTrue(Equal.equals(make(), make()))
+      assert.strictEqual(reads, 2)
     })
 
     // The protocol keys are strings, so data can carry them without implementing the protocols.
@@ -504,6 +545,22 @@ describe("Equal.equals", () => {
       const point1 = new CustomPoint(1, 2)
       const point2 = new CustomPoint(1, 2)
       expect(Equal.equals(point1, point2)).toBe(true)
+    })
+
+    it("respects Hash-only implementations using reference hashing", () => {
+      class RefHashed implements Hash.Hash {
+        constructor(readonly x: number) {}
+        [Hash.symbol](): number {
+          return Hash.random(this)
+        }
+      }
+
+      const a = new RefHashed(1)
+      const b = new RefHashed(1)
+      assert.isTrue(Equal.equals(a, a))
+      assert.isFalse(Equal.equals(a, b))
+      assert.isFalse(Equal.equals(a, { x: 1 }))
+      assert.isFalse(Equal.equals({ x: 1 }, a))
     })
 
     it("clears visited state when a custom Equal throws", () => {
