@@ -266,6 +266,93 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }))
   }
 
+  for (const withFinalizer of [false, true]) {
+    const test = withFinalizer
+      ? it.effect
+      : it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)
+    test(
+      withFinalizer
+        ? "clears superseded deferred tracking across suspended replays while keeping finalizers"
+        : "releases empty scopes and superseded instances across suspended replays",
+      () =>
+        Effect.gen(function*() {
+          const gates = [
+            DurableDeferred.make(`SuspendedReplayRetention/${withFinalizer}/First`),
+            DurableDeferred.make(`SuspendedReplayRetention/${withFinalizer}/Second`)
+          ]
+          const workflow = Workflow.make(`SuspendedReplayRetention/${withFinalizer}`, {
+            payload: {},
+            idempotencyKey: () => "one"
+          })
+          let runs = 0
+          const control = new WeakRef({})
+          let firstInstance: WeakRef<object> | undefined
+          let firstScope: WeakRef<object> | undefined
+          let firstAwaits: Map<string, number> | undefined
+          const finalized: Array<number> = []
+          const layer = workflow.toLayer(() =>
+            Effect.gen(function*() {
+              const run = ++runs
+              if (run === 1) {
+                const instance = yield* WorkflowInstance
+                if (withFinalizer) {
+                  firstAwaits = instance.awaitedDeferreds
+                } else {
+                  firstInstance = new WeakRef(instance)
+                  firstScope = new WeakRef(instance.scope)
+                }
+              }
+              if (withFinalizer) {
+                yield* Workflow.addFinalizer(() =>
+                  Effect.sync(() => {
+                    finalized.push(run)
+                  })
+                )
+              }
+              for (const gate of gates) yield* DurableDeferred.await(gate)
+            })
+          ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+
+          yield* Effect.gen(function*() {
+            const executionId = yield* workflow.execute({}, { discard: true })
+            yield* pollStorageUntil(() => runs >= 1, "run 1 must start")
+            yield* pollUntil(workflow, executionId, "Suspended")
+            if (withFinalizer) assert.strictEqual(firstAwaits?.size, 1)
+
+            yield* DurableDeferred.succeed(gates[0], {
+              token: DurableDeferred.tokenFromExecutionId(gates[0], { workflow, executionId }),
+              value: undefined
+            })
+            yield* pollStorageUntil(() => runs >= 2, "run 2 must start")
+            yield* pollUntil(workflow, executionId, "Suspended")
+
+            if (withFinalizer) {
+              assert.strictEqual(firstAwaits?.size, 0, "superseded awaitedDeferreds must be cleared")
+              assert.isEmpty(finalized, "retained finalizers must not run while suspended")
+            } else {
+              yield* collectGarbage
+              assert.isUndefined(control.deref())
+              assert.isUndefined(firstInstance?.deref(), "superseded WorkflowInstance must not be retained")
+              assert.isUndefined(firstScope?.deref(), "empty child Scope from suspended run must not be retained")
+            }
+
+            yield* DurableDeferred.succeed(gates[1], {
+              token: DurableDeferred.tokenFromExecutionId(gates[1], { workflow, executionId }),
+              value: undefined
+            })
+            assert.deepStrictEqual(
+              yield* pollUntil(workflow, executionId, "Complete"),
+              new Workflow.Complete({ exit: Exit.void })
+            )
+            if (withFinalizer) {
+              assert.deepStrictEqual([...finalized].sort(), [1, 2, 3])
+            }
+          }).pipe(Effect.provide(layer))
+        }),
+      20_000
+    )
+  }
+
   it.effect("wakes an activity deferred completed before a parallel sibling lets the workflow suspend", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("EarlyActivityWake/Gate", { success: Schema.String })
