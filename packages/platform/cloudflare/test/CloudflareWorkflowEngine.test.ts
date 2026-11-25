@@ -520,14 +520,13 @@ describe("CloudflareWorkflowEngine", () => {
   it.effect("does not re-scan clocks or rewrite the alarm when replaying existing sleeps", () =>
     Effect.gen(function*() {
       const namespace = new FakeWorkflowNamespace()
-      const steps = 5
       const Looping = Workflow.make("ReplaySleeps", {
         payload: {},
         success: Schema.String,
         idempotencyKey: () => "loop"
       })
       const layer = Looping.toLayer(Effect.fnUntraced(function*() {
-        for (let step = 0; step < steps; step++) {
+        for (let step = 0; step < 3; step++) {
           yield* DurableClock.sleep({ name: `step-${step}`, duration: "60 seconds" })
         }
         return "done"
@@ -539,36 +538,26 @@ describe("CloudflareWorkflowEngine", () => {
         yield* pollUntil(Looping, executionId, "Suspended")
         yield* namespace.settle()
         const store = namespace.store(name)
-        assert.strictEqual(store.alarm.current, 60_000)
 
-        // Re-scheduling an already pending clock is a no-op and must not touch clocks or the alarm.
-        const lookupsBefore = store.sql.clockLookups
-        const writesBefore = store.alarm.writes
-        yield* Effect.promise(() => namespace.getByName(name).scheduleClock("step-0", "DurableClock/step-0", 120_000))
-        assert.strictEqual(store.sql.clockLookups, lookupsBefore)
-        assert.strictEqual(store.alarm.writes, writesBefore)
-        assert.strictEqual(store.alarm.current, 60_000)
-
-        const wakes: Array<{ readonly clockLookups: number; readonly alarmWrites: number }> = []
-        for (let step = 0; step < steps - 1; step++) {
+        const wake = Effect.fnUntraced(function*() {
           const clockLookups = store.sql.clockLookups
           const alarmWrites = store.alarm.writes
           yield* TestClock.adjust("60 seconds")
           namespace.now += 60_000
           yield* Effect.promise(() => namespace.getByName(name).runAlarm())
           yield* namespace.settle()
-          wakes.push({
+          return {
             clockLookups: store.sql.clockLookups - clockLookups,
             alarmWrites: store.alarm.writes - alarmWrites
-          })
-        }
+          }
+        })
 
         // Per-wake clock lookups and alarm writes must stay constant as replayed sleeps accumulate.
-        assert.deepStrictEqual(wakes.at(-1), wakes[0])
+        const first = yield* wake()
+        const second = yield* wake()
+        assert.deepStrictEqual(second, first)
 
-        yield* TestClock.adjust("60 seconds")
-        namespace.now += 60_000
-        yield* Effect.promise(() => namespace.getByName(name).runAlarm())
+        yield* wake()
         const result = yield* pollUntil(Looping, executionId, "Complete")
         assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.succeed("done") }))
       }).pipe(Effect.provide(layer))

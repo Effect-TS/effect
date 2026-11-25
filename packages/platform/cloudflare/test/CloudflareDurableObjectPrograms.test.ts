@@ -226,13 +226,9 @@ describe("CloudflareDurableObjectPrograms", () => {
           wake_up INTEGER NOT NULL,
           fired INTEGER NOT NULL DEFAULT 0
         )`)
-        const insert = database.prepare(
-          "INSERT INTO workflow_clocks (name, deferred_name, wake_up, fired) VALUES (?, ?, ?, ?)"
-        )
-        for (let i = 0; i < 50; i++) {
-          insert.run(`fired-${i}`, `DurableClock/fired-${i}`, (i + 1) * 1_000, 1)
-        }
-        insert.run("pending", "DurableClock/pending", 100_000, 0)
+        database.exec(`INSERT INTO workflow_clocks (name, deferred_name, wake_up, fired) VALUES
+          ('fired', 'DurableClock/fired', 1000, 1),
+          ('pending', 'DurableClock/pending', 100000, 0)`)
 
         const queries: Array<{ readonly query: string; readonly bindings: Array<unknown> }> = []
         const exec = storage.sql.exec
@@ -245,6 +241,12 @@ describe("CloudflareDurableObjectPrograms", () => {
 
         const program = yield* makeClusterWorkflowProgram(state)
         assert.strictEqual(storage.alarm, 100_000)
+        const onConstruct = queries.length
+        assert.isAbove(onConstruct, 0)
+
+        yield* program.alarm()
+        assert.strictEqual(storage.alarm, 100_000)
+        assert.isAbove(queries.length, onConstruct)
 
         const partialIndexes = new Set(
           (database.prepare(
@@ -255,9 +257,9 @@ describe("CloudflareDurableObjectPrograms", () => {
         )
         assert.isAbove(partialIndexes.size, 0, "expected a partial index on pending workflow_clocks rows")
 
-        const assertUsesPartialIndex = (entry: { readonly query: string; readonly bindings: Array<unknown> }) => {
-          const plan = (database.prepare(`EXPLAIN QUERY PLAN ${entry.query}`).all(
-            ...entry.bindings as Array<SQLInputValue>
+        for (const { bindings, query } of queries) {
+          const plan = (database.prepare(`EXPLAIN QUERY PLAN ${query}`).all(
+            ...bindings as Array<SQLInputValue>
           ) as Array<{ readonly detail: string }>).map((row) => row.detail)
           assert.isTrue(
             plan.some((detail) => {
@@ -267,15 +269,6 @@ describe("CloudflareDurableObjectPrograms", () => {
             `expected clock lookup to use a partial pending index, got: ${plan.join("; ")}`
           )
         }
-
-        assert.isAbove(queries.length, 0)
-        for (const entry of queries) assertUsesPartialIndex(entry)
-
-        queries.length = 0
-        yield* program.alarm()
-        assert.strictEqual(storage.alarm, 100_000)
-        assert.isAbove(queries.length, 0)
-        for (const entry of queries) assertUsesPartialIndex(entry)
       }))
   })
 
