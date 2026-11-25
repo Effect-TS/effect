@@ -591,6 +591,50 @@ describe("Effect.catchTag", () => {
     expect(result).type.toBe<Effect.Effect<string, OtherError>>()
   })
 
+  it("preserves tagged errors for an inline Effect.map in data-first usage", () => {
+    const scalar = Effect.catchTag(
+      Effect.map(mixedEffect, (s) => s.length),
+      "AiError",
+      (error) => {
+        expect(error).type.toBe<AiError>()
+        return Effect.succeed(0)
+      }
+    )
+    expect(scalar).type.toBe<Effect.Effect<number, OtherError>>()
+
+    const array = Effect.catchTag(
+      Effect.map(mixedEffect, (s) => s.length),
+      ["AiError", "OtherError"],
+      (error) => {
+        expect(error).type.toBe<AiError | OtherError>()
+        return Effect.succeed(0)
+      }
+    )
+    expect(array).type.toBe<Effect.Effect<number>>()
+
+    const withOrElse = Effect.catchTag(
+      Effect.map(mixedEffect, (s) => s.length),
+      "AiError",
+      () => Effect.succeed(0),
+      (error) => {
+        expect(error).type.toBe<OtherError>()
+        return Effect.fail(new SimpleError({ code: 1 }))
+      }
+    )
+    expect(withOrElse).type.toBe<Effect.Effect<number, SimpleError>>()
+  })
+
+  it("rejects unknown tags and unknown error channels in data-first usage", () => {
+    expect(Effect.catchTag).type.not.toBeCallableWith(mixedEffect, "UnknownError", () => Effect.succeed("ok"))
+    expect(Effect.catchTag).type.not.toBeCallableWith(
+      mixedEffect,
+      ["AiError", "UnknownError"],
+      () => Effect.succeed("ok")
+    )
+    const source = Effect.fail<unknown>({ _tag: "Oops" })
+    expect(Effect.catchTag).type.not.toBeCallableWith(source, "Oops", () => Effect.succeed(0))
+  })
+
   it("handles an array of tags", () => {
     const result = pipe(
       mixedEffect,

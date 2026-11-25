@@ -2933,12 +2933,13 @@ export const catchTag: {
   >
   <
     A,
-    E,
-    R,
-    const K extends Tags<E> | Arr.NonEmptyReadonlyArray<Tags<E>>,
-    R1,
-    E1,
-    A1,
+    // Default `E` to `any` so `K` is not rejected while TS defers an inline `self` (e.g. `Effect.map(...)`)
+    E = any,
+    R = unknown,
+    const K extends Tags<E> | Arr.NonEmptyReadonlyArray<Tags<E>> = never,
+    R1 = unknown,
+    E1 = unknown,
+    A1 = unknown,
     A2 = unassigned,
     E2 = never,
     R2 = never
