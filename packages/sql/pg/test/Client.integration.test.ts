@@ -1,4 +1,4 @@
-import { PgClient, PgTypes } from "@effect/sql-pg"
+import { PgClient, type PgConnection, PgTypes } from "@effect/sql-pg"
 import { assert, expect, it } from "@effect/vitest"
 import {
   Cause,
@@ -728,6 +728,23 @@ it.layer(PgContainer.layerClientWithTransforms, { timeout: "30 seconds" })("PgCl
       const [query, params] = sql`INSERT INTO people ${sql.insert({ first_name: "Tim", age: 10 })}`.compile()
       expect(query).toEqual(`INSERT INTO people ("first_name","age") VALUES ($1,$2)`)
       expect(params).toEqual(["Tim", 10])
+    }))
+
+  it.effect("queryTextValues uses the active transaction and preserves column names", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      yield* sql`CREATE TABLE query_text (recorded_at timestamptz)`
+      let inside: PgConnection.TextResult | undefined
+      const rollback = yield* Effect.flip(sql.withTransaction(Effect.gen(function*() {
+        yield* sql`INSERT INTO query_text VALUES ('infinity')`
+        inside = yield* sql.queryTextValues("SELECT recorded_at FROM query_text")
+        return yield* Effect.fail("rollback" as const)
+      })))
+      assert.strictEqual(rollback, "rollback")
+      const outside = yield* sql.queryTextValues("SELECT recorded_at FROM query_text")
+      assert.deepStrictEqual(inside?.fields, [{ name: "recorded_at", dataTypeId: PgTypes.OID.timestamptz }])
+      assert.deepStrictEqual(inside?.values, [["infinity"]])
+      assert.deepStrictEqual(outside.values, [])
     }))
 
   it.effect("rejects multi-statement queries", () =>

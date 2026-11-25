@@ -469,6 +469,35 @@ describe("PgConnection in-process server", () => {
       assert.notStrictEqual(firstName[0], secondName[0])
     }))
 
+  it.effect("does not collide text and binary prepared cache keys on embedded NUL", () =>
+    Effect.gen(function*() {
+      const writes: Array<Buffer> = []
+      const socket: Duplex = new Duplex({
+        read() {},
+        write(chunk: Buffer, _encoding, callback) {
+          writes.push(Buffer.from(chunk))
+          queueMicrotask(() => {
+            socket.push(
+              writes.length === 1
+                ? Buffer.concat([authenticationOk, backendKeyData, readyForQuery])
+                : emptyQueryResult
+            )
+          })
+          callback()
+        }
+      })
+
+      const connection = yield* PgConnection.make({ username: "test", stream: () => socket })
+      yield* connection.queryTextValues("SELECT 1")
+      yield* connection.query("SELECT 1\u0000text")
+
+      const textNames = frontendPreparedNames(writes[1])
+      const binaryNames = frontendPreparedNames(writes[2])
+      assert.strictEqual(textNames.length, 1)
+      assert.strictEqual(binaryNames.length, 1)
+      assert.notStrictEqual(textNames[0], binaryNames[0])
+    }))
+
   it.effect("reuses a prepared name after a pending pipeline query is interrupted", () =>
     Effect.gen(function*() {
       const writes: Array<Buffer> = []
