@@ -8,7 +8,7 @@
  *
  * @internal
  */
-import type { SqlStorage } from "@cloudflare/workers-types"
+import type { DurableObjectStorage, SqlStorage } from "@cloudflare/workers-types"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
@@ -21,7 +21,7 @@ import * as DurableClock from "effect/workflow/DurableClock"
 import * as Workflow from "effect/workflow/Workflow"
 import * as WorkflowEngine from "effect/workflow/WorkflowEngine"
 import { decodeName, encodeName } from "./clusterName.ts"
-import { armAlarm, type EntityAlarm } from "./entityStorage.ts"
+import { armAlarm } from "./entityStorage.ts"
 import {
   CurrentExecutionHandle,
   deferredState,
@@ -48,10 +48,13 @@ const mergeWake = (
 ): WorkflowStorage.WakeMode => current === "explicit" ? current : mode
 
 /** @internal */
+export type WorkflowAlarm = Pick<DurableObjectStorage, "deleteAlarm" | "getAlarm" | "setAlarm">
+
+/** @internal */
 export interface WorkflowRuntimeOptions {
   readonly name: string
   readonly sql: SqlStorage
-  readonly alarm: EntityAlarm
+  readonly alarm: WorkflowAlarm
   readonly now: () => number
   readonly waitUntil: (promise: Promise<unknown>) => void
   readonly getStub: (name: string) => WorkflowStub
@@ -137,7 +140,30 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     return true
   }
 
-  const armResumeGuard = Effect.suspend(() => armAlarm(options.alarm, options.now() + resumeGuardMillis))
+  const needsGuard = (): boolean => {
+    if (inflight !== undefined) return true
+    const row = WorkflowStorage.loadExecution(sql)
+    if (row === undefined || row.resumePending === undefined) return false
+    return isComplete(row.result)
+      ? row.parent !== undefined
+      : !isUnwakeable(row.result, row.resumePending)
+  }
+
+  const armResumeGuard = Effect.suspend(() => {
+    const guardAt = options.now() + resumeGuardMillis
+    return Effect.promise(() => options.alarm.getAlarm()).pipe(
+      Effect.flatMap((current) =>
+        needsGuard() && (current === null || current > guardAt)
+          ? Effect.promise(() => options.alarm.setAlarm(guardAt))
+          : Effect.void
+      )
+    )
+  })
+
+  const reconcileAlarm = (): Promise<void> => {
+    const earliest = WorkflowStorage.earliestClockWakeUp(sql)
+    return earliest === undefined ? options.alarm.deleteAlarm() : options.alarm.setAlarm(earliest)
+  }
 
   const resumeParent = (parent: { readonly workflowName: string; readonly executionId: string }) =>
     Effect.promise(() => options.getStub(encodeName(parent.workflowName, parent.executionId)).resume("automatic")).pipe(
@@ -157,7 +183,12 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     return armResumeGuard.pipe(
       Effect.andThen(
         resumeParent(row.parent).pipe(
-          Effect.tap(() => Effect.sync(() => WorkflowStorage.setResumePending(sql, undefined))),
+          Effect.tap(() =>
+            Effect.suspend(() => {
+              WorkflowStorage.setResumePending(sql, undefined)
+              return Effect.promise(() => options.alarm.deleteAlarm())
+            })
+          ),
           Effect.catchCause(logResumeParentFailure)
         )
       )
@@ -178,9 +209,11 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       const parent = WorkflowStorage.loadExecution(sql)?.parent
       if (parent !== undefined) yield* armResumeGuard
       WorkflowStorage.saveCompletion(sql, text, parent !== undefined)
+      const cleared = parent === undefined ? options.alarm.deleteAlarm() : undefined
       inflight = undefined
       resumeRequested = undefined
       if (parent !== undefined) options.waitUntil(Effect.runPromise(deliverParentWake))
+      if (cleared !== undefined) yield* Effect.promise(() => cleared)
       return text
     }))
 
@@ -231,18 +264,24 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
           // queues behind this attempt instead of replaying alongside it.
           if (result._tag === "Complete") {
             WorkflowStorage.saveCompletion(sql, text, parent !== undefined)
+            const cleared = parent === undefined ? options.alarm.deleteAlarm() : undefined
             inflight = undefined
             resumeRequested = undefined
             if (parent !== undefined) options.waitUntil(Effect.runPromise(deliverParentWake))
+            if (cleared !== undefined) yield* Effect.promise(() => cleared)
             return text
           }
           const replay = resumeRequested !== undefined && !isUnwakeable(text, resumeRequested)
             ? resumeRequested
             : undefined
           WorkflowStorage.saveSuspension(sql, text, replay)
+          // Reconcile synchronously with the save so a subsequent resume's
+          // guard alarm queues after this update rather than before it.
+          const reconciled = replay === undefined ? reconcileAlarm() : undefined
           inflight = undefined
           resumeRequested = undefined
           if (replay !== undefined) detach(startAttempt(row))
+          if (reconciled !== undefined) yield* Effect.promise(() => reconciled)
           return text
         }).pipe(Effect.tapCause(() =>
           Effect.sync(() => {
@@ -404,9 +443,13 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
         return (pending && inflight === undefined ? resume(mode) : Promise.resolve()).then(() => {
           // While a resume is pending a guard alarm stays armed, so a replay
           // lost with this isolate is retried instead of sleeping forever.
+          const latest = WorkflowStorage.loadExecution(sql)
+          const latestMode = latest?.resumePending
+          const stillPending = inflight !== undefined ||
+            (latestMode !== undefined && !isUnwakeable(latest?.result, latestMode))
           const targets = [
             WorkflowStorage.earliestClockWakeUp(sql),
-            pending ? options.now() + resumeGuardMillis : undefined
+            stillPending ? options.now() + resumeGuardMillis : undefined
           ].filter((target) => target !== undefined)
           if (targets.length === 0) return undefined
           // The alarm that fired is spent, so set the next one outright:

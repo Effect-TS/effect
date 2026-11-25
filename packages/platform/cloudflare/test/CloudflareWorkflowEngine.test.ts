@@ -1,8 +1,11 @@
 import type { SqlStorage } from "@cloudflare/workers-types"
 import * as CloudflareWorkflowEngine from "@effect/platform-cloudflare/CloudflareWorkflowEngine"
 import { encodeName } from "@effect/platform-cloudflare/internal/clusterName"
-import type { EntityAlarm } from "@effect/platform-cloudflare/internal/entityStorage"
-import { makeWorkflowRuntime, type WorkflowRuntime } from "@effect/platform-cloudflare/internal/workflowRuntime"
+import {
+  makeWorkflowRuntime,
+  type WorkflowAlarm,
+  type WorkflowRuntime
+} from "@effect/platform-cloudflare/internal/workflowRuntime"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Deferred, Effect, Exit, Fiber, Latch, Layer, Option, Schema } from "effect"
 import { RpcTest } from "effect/rpc"
@@ -125,9 +128,13 @@ class FakeAlarm {
     this.current = scheduledTime
     return Promise.resolve()
   }
+  deleteAlarm() {
+    this.current = null
+    return Promise.resolve()
+  }
 
-  get alarm(): EntityAlarm {
-    return this as unknown as EntityAlarm
+  get alarm(): WorkflowAlarm {
+    return this as unknown as WorkflowAlarm
   }
 }
 
@@ -419,6 +426,7 @@ describe("CloudflareWorkflowEngine", () => {
         yield* pollUntil(Long, executionId, "Suspended")
         yield* namespace.settle()
         assert.strictEqual(runs, 1, "a guard alarm during a live attempt must not replay it")
+        assert.strictEqual(namespace.store(name).alarm.current, null)
       }).pipe(Effect.provide(layer))
     }))
 
