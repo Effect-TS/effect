@@ -10,28 +10,14 @@ import * as Module from "node:module"
 const worker = new URL("../src/internal/proxyProcessWorker.ts", import.meta.url)
 const output = new URL("../src/internal/proxyProcessSource.ts", import.meta.url)
 
-// Node's type stripper blanks types with spaces at the same offsets. Drop lines
-// that only held erased types (and the extra blank lines they leave), leaving
-// inline separators, comments, and string literals untouched.
+// Node's type stripper blanks types with spaces at the same offsets. Drop the
+// lines that only held types, and the blank line after them, leaving inline
+// separators, comments, and string literals untouched.
 const stripTypes = (source: string): string => {
-  const sourceLines = source.split("\n")
-  const strippedLines = Module.stripTypeScriptTypes(source).split("\n")
-  const lines: Array<string> = []
-  let droppedTypeLine = false
-  for (let i = 0; i < sourceLines.length; i++) {
-    const original = sourceLines[i]
-    const clean = strippedLines[i]
-    if (original.trim().length > 0 && clean.trim().length === 0) {
-      droppedTypeLine = true
-      continue
-    }
-    if (droppedTypeLine && clean.length === 0 && (lines.length === 0 || lines.at(-1) === "")) {
-      continue
-    }
-    droppedTypeLine = false
-    lines.push(clean)
-  }
-  return lines.join("\n")
+  const original = source.split("\n")
+  const stripped = Module.stripTypeScriptTypes(source).split("\n")
+  const erased = (i: number) => stripped[i].trim() === "" && original[i].trim() !== ""
+  return stripped.filter((line, i) => !erased(i) && !(line === "" && i > 0 && erased(i - 1))).join("\n")
 }
 
 // The source text of the program, as an ES module that calls `run`.
