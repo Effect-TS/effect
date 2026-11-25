@@ -1328,6 +1328,16 @@ const make = Effect.gen(function*() {
       return runnersService.notifyLocal({ message, notify, discard, storageOnly: !isLocal }) as any
     })
 
+  // A handler on a shard this runner is releasing cannot be answered for a
+  // durable request to that same shard: only the next owner can serve it, and
+  // it waits for this handler to finish before taking the shard.
+  const isHandoffCaller = (caller: Context.Context<never>, target: EntityAddress): boolean => {
+    const address = Context.getOption(caller, CurrentAddress).valueOrUndefined
+    return address !== undefined &&
+      MutableHashSet.has(releasingShards, address.shardId) &&
+      Equal.equals(address.shardId, target.shardId)
+  }
+
   function sendOutgoing(
     message: Message.Outgoing<any>,
     discard: boolean,
@@ -1368,13 +1378,16 @@ const make = Effect.gen(function*() {
         )
       )
     }
+    const isHandoff = () =>
+      isPersisted && message._tag === "OutgoingRequest" &&
+      isHandoffCaller(message.context, message.envelope.address)
     return Effect.catchFilter(
       Effect.suspend(() => {
         const address = message.envelope.address
         if (isPersisted && !storageEnabled) {
           return Effect.die("Sharding.sendOutgoing: Persisted messages require MessageStorage")
         }
-        if (shouldFail && MutableRef.get(isShutdown)) {
+        if (shouldFail && (MutableRef.get(isShutdown) || isHandoff())) {
           return Effect.fail(new EntityNotAssignedToRunner({ address }))
         }
         const maybeRunner = runner !== undefined
@@ -1406,7 +1419,8 @@ const make = Effect.gen(function*() {
         if (error._tag === "EntityNotAssignedToRunner") {
           const targetManager = entityManagers.get(message.envelope.address.entityType)
           const cannotRecover = MutableRef.get(isShutdown) ||
-            (targetManager !== undefined && targetManager.status !== "alive")
+            (targetManager !== undefined && targetManager.status !== "alive") ||
+            (shouldFail && isHandoff())
           if (cannotRecover) {
             return abandon(error)
           }
@@ -1633,21 +1647,24 @@ const make = Effect.gen(function*() {
   }
   const clientRequests = new Map<Snowflake.Snowflake, ClientRequestEntry>()
 
-  // During shutdown, abandon local callers parked on persisted requests that a
-  // retiring entity never started. They are served by the next owner. Callers
-  // on a runner that keeps running are left waiting, so they stay durable.
+  // During shutdown or shard handoff, abandon local callers parked on persisted
+  // requests that a retiring entity never started. They are served by the next
+  // owner. Callers on a runner that keeps running are left waiting unless they
+  // are draining on the same shard and block its release.
   const abandonUndelivered = (
     address: EntityAddress,
     isDelivered: (requestId: Snowflake.Snowflake) => boolean
   ): Effect.Effect<void> =>
     Effect.suspend(() => {
-      if (!MutableRef.get(isShutdown)) return Effect.void
+      const shutdown = MutableRef.get(isShutdown)
+      if (!shutdown && !MutableHashSet.has(releasingShards, address.shardId)) return Effect.void
       const abandon: Array<Effect.Effect<void>> = []
       for (const [requestId, entry] of clientRequests) {
         if (
           !Context.get(entry.message.annotations, Persisted) ||
           !Equal.equals(entry.message.envelope.address, address) ||
-          isDelivered(requestId)
+          isDelivered(requestId) ||
+          (!shutdown && !isHandoffCaller(entry.context, address))
         ) continue
         abandon.push(storage.unregisterReplyHandler(requestId, { interrupt: true }))
       }
@@ -1762,7 +1779,8 @@ const make = Effect.gen(function*() {
               const singletonShard = Context.getOption(entry.context, SingletonShardTag).valueOrUndefined
               const isTransientInterrupt = MutableRef.get(isShutdown) ||
                 (caller !== undefined && ActiveTeardown.isActive(caller)) ||
-                (singletonShard !== undefined && ActiveTeardown.isShardActive(singletonShard))
+                (singletonShard !== undefined && ActiveTeardown.isShardActive(singletonShard)) ||
+                isHandoffCaller(entry.context, address)
               if (isTransientInterrupt && Context.get(entry.message.annotations, Persisted)) {
                 return Effect.void
               }
