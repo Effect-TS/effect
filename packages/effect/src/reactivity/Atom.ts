@@ -1052,9 +1052,9 @@ const makeSubRef = (
   function write(ctx: WriteContext<SubscriptionRef.SubscriptionRef<any>>, value: any) {
     const ref = ctx.get(refAtom)
     if (SubscriptionRef.isSubscriptionRef(ref)) {
-      Effect.runSync(SubscriptionRef.set(ref, value))
+      Effect.runFork(SubscriptionRef.set(ref, value))
     } else if (AsyncResult.isSuccess(ref)) {
-      Effect.runSync(SubscriptionRef.set(ref.value, value))
+      Effect.runFork(SubscriptionRef.set(ref.value, value))
     }
   }
   return writable((get) => {
