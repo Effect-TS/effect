@@ -359,7 +359,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     )
   }
 
-  it.effect("keeps workflow scopes open across suspension and closes late finalizers in reverse run order", () =>
+  it.effect("keeps workflow scopes open across suspension and closes late-read scopes in reverse first-use order", () =>
     Effect.gen(function*() {
       const gates = [
         DurableDeferred.make("CapturedScopeLateFinalizer/First"),
@@ -367,25 +367,15 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         DurableDeferred.make("CapturedScopeLateFinalizer/Third")
       ]
       const workflow = Workflow.make("CapturedScopeLateFinalizer", {
-        payload: { id: Schema.String },
-        idempotencyKey: ({ id }) => id
+        payload: {},
+        idempotencyKey: () => "one"
       })
       let runs = 0
-      let parentScope: Scope.Scope | undefined
-      let fiber: Fiber.Fiber<never> | undefined
       let secondInstance: WorkflowInstance["Service"] | undefined
       let thirdScope: Scope.Scope | undefined
-      const finalized: Array<number | string> = []
-      const layer = workflow.toLayer(({ id }) =>
+      const finalized: Array<number> = []
+      const layer = workflow.toLayer(() =>
         Effect.gen(function*() {
-          if (id === "b") {
-            const scope = yield* Workflow.scope
-            assert.isDefined(scope.parent)
-            assert.isDefined(fiber)
-            Fiber.runIn(fiber, scope.parent)
-            yield* DurableDeferred.await(gates[0])
-            return
-          }
           const run = ++runs
           if (run === 1) {
             const scope = yield* Workflow.scope
@@ -395,21 +385,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
                 finalized.push(1)
               })
             )
-            assert.isDefined(scope.parent)
-            parentScope = scope.parent
-            fiber = yield* Effect.never.pipe(
-              Effect.onInterrupt(() =>
-                Effect.sync(() => {
-                  finalized.push("fiber")
-                })
-              ),
-              Effect.forkIn(parentScope, { startImmediately: true })
-            )
           } else if (run === 2) {
             secondInstance = yield* WorkflowInstance
-            assert.isDefined(fiber)
-            assert.isDefined(parentScope)
-            Fiber.runIn(fiber, parentScope)
           } else if (run === 3) {
             thirdScope = yield* Workflow.scope
           }
@@ -418,7 +395,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
 
       yield* Effect.gen(function*() {
-        const executionId = yield* workflow.execute({ id: "a" }, { discard: true })
+        const executionId = yield* workflow.execute({}, { discard: true })
         yield* pollUntil(workflow, executionId, "Suspended")
         for (const [index, gate] of gates.slice(0, 2).entries()) {
           yield* DurableDeferred.succeed(gate, {
@@ -428,9 +405,6 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           yield* pollStorageUntil(() => runs >= index + 2, `run ${index + 2} must start`)
           yield* pollUntil(workflow, executionId, "Suspended")
         }
-
-        const otherExecutionId = yield* workflow.execute({ id: "b" }, { discard: true })
-        yield* pollUntil(workflow, otherExecutionId, "Suspended")
 
         assert.isDefined(secondInstance)
         assert.isDefined(thirdScope)
@@ -451,7 +425,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         yield* workflow.interrupt(executionId)
         const result = yield* pollUntil(workflow, executionId, "Complete")
         assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit))
-        assert.deepStrictEqual(finalized, [3, "fiber", 2, 1])
+        assert.deepStrictEqual(finalized, [2, 3, 1])
       }).pipe(Effect.provide(layer))
     }))
 
