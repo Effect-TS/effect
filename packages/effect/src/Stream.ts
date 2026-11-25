@@ -12000,16 +12000,16 @@ export const toAsyncIterableWith: {
   ): AsyncIterable<A> => ({
     [Symbol.asyncIterator]() {
       const runPromise = Effect.runPromiseWith(context)
-      const runFork = Effect.runForkWith(context)
+      const runPromiseExit = Effect.runPromiseExitWith(context)
       const scope = Scope.makeUnsafe()
       let pull: Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E, void, R> | undefined
       let currentIter: Iterator<A> | undefined
       let currentFiber: Fiber.Fiber<unknown, unknown> | undefined
-      let pending: Promise<void> | undefined
+      let reading = false
+      const queuedReads: Array<() => void> = []
       let closePromise: Promise<IteratorResult<A>> | undefined
       const close = (exit: Exit.Exit<unknown, unknown>): Promise<IteratorResult<A>> => {
         if (closePromise) return closePromise
-        currentIter = undefined
         const fiber = currentFiber
         closePromise = runPromise(Effect.as(
           Effect.andThen(
@@ -12027,64 +12027,46 @@ export const toAsyncIterableWith: {
           await runPromise(Effect.logError("Suppressed error while closing Stream async iterator", error))
         }
       }
-      const read = async (): Promise<IteratorResult<A>> => {
-        if (closePromise) return closePromise
-        if (currentIter) {
-          const next = currentIter.next()
-          if (!next.done) return next
-          currentIter = undefined
-        }
-        const fiber = runFork(
-          Effect.withFiber((fiber) => {
-            currentFiber = fiber
-            return pull ??
-              Effect.flatMap(Channel.toPullScoped(self.channel, scope), (nextPull) => {
-                pull = nextPull
-                return nextPull
-              })
+      // Registers the fiber before the pull runs, so that a close during the
+      // pull can interrupt it.
+      const pullChunk = Effect.withFiber((fiber) => {
+        currentFiber = fiber
+        return pull ??
+          Effect.flatMap(Channel.toPullScoped(self.channel, scope), (nextPull) => {
+            pull = nextPull
+            return nextPull
           })
-        )
-        const exit = await runPromise(Fiber.await(fiber))
-        if (currentFiber === fiber) {
-          currentFiber = undefined
-        }
-        if (Exit.isSuccess(exit)) {
-          if (closePromise) return closePromise
-          currentIter = exit.value[Symbol.iterator]()
-          return currentIter.next()
-        } else if (Pull.isDoneCause(exit.cause)) {
-          return close(Exit.void)
-        }
-        if (closePromise && Cause.hasInterruptsOnly(exit.cause)) {
-          return closePromise
-        }
-        await closeAndReportError(exit)
-        throw Cause.squash(exit.cause)
-      }
+      })
       return {
         async next(): Promise<IteratorResult<A>> {
-          if (pending === undefined) {
+          if (reading) {
+            await new Promise<void>((resolve) => queuedReads.push(resolve))
+          }
+          reading = true
+          try {
             if (closePromise) return closePromise
             if (currentIter) {
               const next = currentIter.next()
               if (!next.done) return next
               currentIter = undefined
             }
-          }
-          const previous = pending
-          let release!: () => void
-          const current = new Promise<void>((resolve) => {
-            release = resolve
-          })
-          pending = current
-          try {
-            if (previous !== undefined) await previous
-            return await read()
-          } finally {
-            if (pending === current) {
-              pending = undefined
+            const exit = await runPromiseExit(pullChunk)
+            currentFiber = undefined
+            if (Exit.isSuccess(exit)) {
+              currentIter = exit.value[Symbol.iterator]()
+              return currentIter.next()
+            } else if (Pull.isDoneCause(exit.cause)) {
+              return close(Exit.void)
             }
-            release()
+            if (closePromise && Cause.hasInterruptsOnly(exit.cause)) {
+              return closePromise
+            }
+            await closeAndReportError(exit)
+            throw Cause.squash(exit.cause)
+          } finally {
+            const resume = queuedReads.shift()
+            if (resume) resume()
+            else reading = false
           }
         },
         return() {
