@@ -937,8 +937,7 @@ export const mutate: {
   return makeZonedFromAdjusted(newAdjustedDate.getTime(), self.zone, options?.disambiguation ?? "compatible")
 })
 
-// Like `mutate`, but keeps the input's offset when it is still valid for the
-// new wall clock time, so the result stays in the same occurrence of a repeated hour
+// Keep the input offset when valid for the updated wall-clock time so repeated hours stay in the same occurrence.
 const mutateWithOffset = (
   self: DateTime.DateTime,
   f: (date: Date) => void,
