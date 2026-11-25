@@ -1285,8 +1285,10 @@ class PreparedCache {
   }
 
   get(sql: string, parameterTypes: ReadonlyArray<number>, textResults: boolean): Prepared {
-    let key = parameterTypes.length === 0 ? sql : `${sql}\u0000${parameterTypes.join(",")}`
-    if (textResults) key += "\u0000text"
+    const prefix = textResults ? "T" : "B"
+    const key = parameterTypes.length === 0
+      ? `${prefix}\u0000\u0000${sql}`
+      : `${prefix}\u0000${parameterTypes.join(",")}\u0000${sql}`
     const found = this.statements.get(key)
     if (found !== undefined) {
       // Re-insert to move it to the end: `Map` iterates in insertion order, so
@@ -1755,7 +1757,7 @@ const runQuery = (
     })
   })
 
-const textDecoder = new TextDecoder("utf-8", { fatal: true })
+const textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
 
 /** Reads a text-format value as the server sent it: under UTF8 client encoding, always valid UTF-8. */
 const readText: PgProtocol.FieldReader<string | null> = (bytes, offset, size) =>

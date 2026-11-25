@@ -320,8 +320,8 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
 
   it.effect("returns queryTextValues as the server's text beside binary runs of the same statement", () =>
     Effect.gen(function*() {
-      const sql = "SELECT $1::timestamptz AS at, $2::numeric AS amount, NULL::int4 AS missing"
-      const params = ["2026-01-02 03:04:05.123456+00", "123456789012345678901234567890.5"]
+      const sql = "SELECT $1::timestamptz AS at, $2::numeric AS amount, $3::text AS bom, NULL::int4 AS missing"
+      const params = ["2026-01-02 03:04:05.123456+00", "123456789012345678901234567890.5", "\uFEFF"]
       const expected: PgConnection.TextResult = {
         command: "SELECT",
         rowCount: 1,
@@ -329,9 +329,10 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
         fields: [
           { name: "at", dataTypeId: PgTypes.OID.timestamptz },
           { name: "amount", dataTypeId: PgTypes.OID.numeric },
+          { name: "bom", dataTypeId: PgTypes.OID.text },
           { name: "missing", dataTypeId: PgTypes.OID.int4 }
         ],
-        values: [["2026-01-02 03:04:05.123456+00", "123456789012345678901234567890.5", null]]
+        values: [["2026-01-02 03:04:05.123456+00", "123456789012345678901234567890.5", "\uFEFF", null]]
       }
       for (const multiplex of [false, true]) {
         const connection = yield* makeConnection({ multiplex })
