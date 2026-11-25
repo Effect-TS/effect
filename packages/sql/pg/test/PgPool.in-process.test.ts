@@ -491,105 +491,63 @@ describe("PgClient failed transaction cleanup", () => {
       Effect.provide(Reactivity.layer)
     ))
 
-  interface Session {
-    readonly socket: Duplex
-    readonly statements: Array<string>
-    status: string
-  }
-
-  // A backend that tracks its own transaction state, so a session left inside
-  // `BEGIN` keeps reporting status `T` to whoever borrows it next.
-  const transactionalBackend = (sessions: Array<Session>) => () => {
-    let startup = true
-    const socket = new Duplex({
-      read() {},
-      write(chunk: Buffer, _encoding, callback) {
-        if (startup) {
-          startup = false
-          queueMicrotask(() => socket.push(ready))
-        } else if (chunk[0] === 0x50) {
-          const statement = chunk.includes("BEGIN") ? "BEGIN" : chunk.includes("COMMIT") ? "COMMIT" : "SELECT"
-          session.statements.push(statement)
-          if (statement === "BEGIN") session.status = "T"
-          else if (statement === "COMMIT") session.status = "I"
-          const tag = statement === "SELECT" ? "SELECT 0" : statement
-          queueMicrotask(() => socket.push(completed(tag, session.status)))
+  it.effect("retires a session left in a pin-owned transaction without retiring closed or caller-owned ones", () =>
+    Effect.scoped(Effect.gen(function*() {
+      let opened = 0
+      let lastSelectInTx = false
+      const pool = yield* PgPool.make({
+        username: "test",
+        maxConnections: 1,
+        prepare: false,
+        stream: () => {
+          opened++
+          let startup = true
+          let inTx = false
+          const socket = new Duplex({
+            read() {},
+            write(chunk: Buffer, _encoding, callback) {
+              if (startup) {
+                startup = false
+                queueMicrotask(() => socket.push(ready))
+              } else if (chunk[0] === 0x50) {
+                const tag = chunk.includes("BEGIN") ? "BEGIN" : chunk.includes("COMMIT") ? "COMMIT" : "SELECT 0"
+                if (tag === "BEGIN") inTx = true
+                else if (tag === "COMMIT") inTx = false
+                else lastSelectInTx = inTx
+                queueMicrotask(() => socket.push(completed(tag, inTx ? "T" : "I")))
+              }
+              callback()
+            }
+          })
+          return socket
         }
-        callback()
-      }
-    })
-    const session: Session = { socket, statements: [], status: "I" }
-    sessions.push(session)
-    return socket
-  }
-
-  it.effect("does not reuse a session left in an open transaction", () =>
-    Effect.gen(function*() {
-      const sessions: Array<Session> = []
-      const pool = yield* PgPool.make({
-        username: "test",
-        maxConnections: 1,
-        prepare: false,
-        stream: transactionalBackend(sessions)
       })
 
-      yield* Effect.scoped(Effect.flatMap(pool.reserve, (connection) => connection.query("BEGIN")))
-      const next = yield* pool.get
-      yield* next.query("SELECT 1")
+      // A pin that closes its own transaction keeps the session.
+      yield* Effect.scoped(Effect.flatMap(pool.reserve, (conn) =>
+        Effect.andThen(conn.query("BEGIN"), conn.query("COMMIT"))))
+      const reused = yield* Effect.scoped(pool.get)
+      assert.strictEqual(opened, 1)
 
-      assert.strictEqual(sessions.length, 2)
-      assert.isTrue(sessions[0].socket.destroyed)
-      assert.deepStrictEqual(sessions[0].statements, ["BEGIN"])
-      assert.deepStrictEqual(sessions[1].statements, ["SELECT"])
-      assert.strictEqual(sessions[1].status, "I")
-    }).pipe(Effect.scoped))
-
-  it.effect("keeps a session whose pin closed the transaction it began", () =>
-    Effect.gen(function*() {
-      const sessions: Array<Session> = []
-      const pool = yield* PgPool.make({
-        username: "test",
-        maxConnections: 1,
-        prepare: false,
-        stream: transactionalBackend(sessions)
-      })
-
-      yield* Effect.scoped(Effect.flatMap(pool.reserve, (connection) =>
-        Effect.andThen(connection.query("BEGIN"), connection.query("COMMIT"))))
-      const next = yield* pool.get
-      yield* next.query("SELECT 1")
-
-      assert.strictEqual(sessions.length, 1)
-      assert.deepStrictEqual(sessions[0].statements, ["BEGIN", "COMMIT", "SELECT"])
-    }).pipe(Effect.scoped))
-
-  it.effect("keeps a session whose pin started inside its caller's transaction", () =>
-    Effect.gen(function*() {
-      const sessions: Array<Session> = []
-      const pool = yield* PgPool.make({
-        username: "test",
-        maxConnections: 1,
-        prepare: false,
-        stream: transactionalBackend(sessions)
-      })
-
+      // A pin taken inside a caller's transaction leaves it open for the caller.
       yield* Effect.scoped(Effect.gen(function*() {
-        const connection = yield* pool.get
-        yield* connection.query("BEGIN")
-        // The transaction was open before the pin, so releasing the pin leaves it to its caller.
-        yield* Effect.scoped(Effect.flatMap(connection.pin, (pinned) => pinned.query("SELECT 1")))
-        assert.isFalse(sessions[0].socket.destroyed)
-        assert.strictEqual(sessions[0].status, "T")
-        yield* connection.query("COMMIT")
+        const conn = yield* pool.get
+        yield* conn.query("BEGIN")
+        yield* Effect.scoped(Effect.flatMap(conn.pin, (pinned) => pinned.query("SELECT 1")))
+        assert.isTrue(lastSelectInTx)
+        yield* conn.query("COMMIT")
       }))
-      const next = yield* pool.get
-      yield* next.query("SELECT 1")
 
-      assert.strictEqual(sessions.length, 1)
-      assert.isFalse(sessions[0].socket.destroyed)
-      assert.deepStrictEqual(sessions[0].statements, ["BEGIN", "SELECT", "COMMIT", "SELECT"])
-      assert.strictEqual(sessions[0].status, "I")
-    }).pipe(Effect.scoped))
+      // A pin released with its own transaction still open retires the session.
+      yield* Effect.scoped(Effect.flatMap(pool.reserve, (conn) => {
+        assert.strictEqual(opened, 1)
+        return conn.query("BEGIN")
+      }))
+      const replacement = yield* Effect.scoped(Effect.tap(pool.get, (conn) => conn.query("SELECT 1")))
+      assert.strictEqual(opened, 2)
+      assert.notStrictEqual(replacement, reused)
+      assert.isFalse(lastSelectInTx)
+    })))
 })
 
 const readyStream = () => {

@@ -2,4 +2,4 @@
 "@effect/sql-pg": patch
 ---
 
-Close a pinned session that is released with a transaction it began still open, so a connection left inside `BEGIN` is never returned to the pool.
+Retire a pinned `PgConnection` session released with an open transaction it began so it is never returned to `PgPool` in transaction state.

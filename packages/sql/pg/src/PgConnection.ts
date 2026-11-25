@@ -865,8 +865,8 @@ class PgConnectionImpl implements PgConnection {
               "PgConnection: Pinned connection released with work outstanding"
             ))
           } else if (view.startedIdle && this.transactionStatus !== "I") {
-            // A transaction the pin left open or aborted, such as one missing its
-            // `COMMIT` or with a cancelled `ROLLBACK`, would leak into the next
+            // A transaction the pin left open or aborted, such as an abandoned
+            // `BEGIN` or a cancelled `ROLLBACK`, would leak into the next
             // checkout. A transaction open before the pin is its caller's.
             const state = this.transactionStatus === "E" ? "an aborted" : "an open"
             this.fatal(connectionQueryError(
