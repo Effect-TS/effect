@@ -119,7 +119,7 @@ const makeExportedState = Effect.fnUntraced(function*(name: string, jurisdiction
     exports: { ClusterEntity: namespace, ClusterWorkflow: namespace },
     waitUntil: () => {}
   }
-  return { database, state, storage, called: Deferred.await(called) }
+  return { state, storage, called: Deferred.await(called) }
 })
 
 const registerProbe = Effect.fnUntraced(function*(type: string) {
@@ -217,7 +217,8 @@ describe("CloudflareDurableObjectPrograms", () => {
 
     it.effect("re-arms a pending clock on construction and indexes clock lookups over fired rows", () =>
       Effect.gen(function*() {
-        const { database, state, storage } = yield* makeExportedState(encodeName("ClockScan", "c1"))
+        const { state, storage } = yield* makeExportedState(encodeName("ClockScan", "c1"))
+        const database = storage.database
         // Seed pre-existing storage without any secondary index on workflow_clocks.
         database.exec(`CREATE TABLE workflow_clocks (
           name TEXT PRIMARY KEY,

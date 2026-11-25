@@ -15,12 +15,9 @@ export class SqliteStorage {
       exec: (query: string, ...bindings: Array<unknown>) => {
         const statement = database.prepare(query)
         const columnNames = statement.columns().map((column) => column.name)
-        const before = (database.prepare("SELECT total_changes() AS total").get() as { readonly total: number }).total
         const rows = statement.all(...bindings as Array<SQLInputValue>) as Array<Record<string, unknown>>
-        const after = (database.prepare("SELECT total_changes() AS total").get() as { readonly total: number }).total
         return {
           columnNames,
-          rowsWritten: after - before,
           toArray: () => rows,
           raw: () => rows.map((row) => columnNames.map((column) => row[column]))[Symbol.iterator]()
         }

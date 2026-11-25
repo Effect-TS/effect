@@ -199,14 +199,18 @@ export const saveDeferred = (sql: SqlStorage, name: string, exit: string): boole
   return true
 }
 
-/** @internal */
+/**
+ * Returns whether the clock was newly saved.
+ *
+ * @internal
+ */
 export const saveClock = (sql: SqlStorage, name: string, deferredName: string, wakeUp: number): boolean =>
   sql.exec(
-    "INSERT OR IGNORE INTO workflow_clocks (name, deferred_name, wake_up, fired) VALUES (?, ?, ?, 0)",
+    "INSERT OR IGNORE INTO workflow_clocks (name, deferred_name, wake_up, fired) VALUES (?, ?, ?, 0) RETURNING 1",
     name,
     deferredName,
     wakeUp
-  ).rowsWritten > 0
+  ).toArray().length > 0
 
 /** @internal */
 export const earliestClockWakeUp = (sql: SqlStorage): number | undefined => {
