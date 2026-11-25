@@ -524,8 +524,9 @@ describe("PgClient failed transaction cleanup", () => {
       })
 
       // A pin that closes its own transaction keeps the session.
-      yield* Effect.scoped(Effect.flatMap(pool.reserve, (conn) =>
-        Effect.andThen(conn.query("BEGIN"), conn.query("COMMIT"))))
+      yield* Effect.scoped(
+        Effect.flatMap(pool.reserve, (conn) => Effect.andThen(conn.query("BEGIN"), conn.query("COMMIT")))
+      )
       const reused = yield* Effect.scoped(pool.get)
       assert.strictEqual(opened, 1)
 
