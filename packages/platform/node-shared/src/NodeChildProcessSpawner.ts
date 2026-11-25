@@ -8,7 +8,8 @@
  * interruption-time cleanup, process killing, and custom file-descriptor pipes.
  * Provide {@link layerProxyProcess} instead to launch commands from a separate
  * proxy process, for Node.js builds where spawning from a process that holds a
- * lot of memory stalls the event loop.
+ * lot of memory stalls the event loop. Packaged applications that start the
+ * proxy process themselves run it with `NodeChildProcessProxy.run`.
  *
  * The implementation sits below the command-building API. It validates and
  * resolves `cwd` through the Effect `FileSystem` and `Path` services,
@@ -35,12 +36,14 @@
  * @since 4.0.0
  */
 import type * as Arr from "effect/Array"
+import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
+import type * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import * as PlatformError from "effect/PlatformError"
 import * as Predicate from "effect/Predicate"
@@ -61,7 +64,7 @@ import * as Stream from "effect/Stream"
 import * as NodeChildProcess from "node:child_process"
 import { PassThrough, type Writable } from "node:stream"
 import { buildSpawnOptions, type SpawnedProcess, type SpawnProcess } from "./internal/nodeChildProcessSpawner.ts"
-import * as ProxyProcess from "./internal/proxyProcess.ts"
+import * as ProxyProcesses from "./internal/proxyProcess.ts"
 import { handleErrnoException } from "./internal/utils.ts"
 import * as NodeSink from "./NodeSink.ts"
 import * as NodeStream from "./NodeStream.ts"
@@ -897,15 +900,44 @@ export const layer: Layer.Layer<
 > = Layer.effect(ChildProcessSpawner, makeWith(spawnDirect))
 
 /**
- * Layer that provides a `ChildProcessSpawner` which launches commands from a
- * small, long-lived proxy process instead of the current process.
+ * Service that reports the proxy process started by {@link layerProxyProcess}.
+ *
+ * **Details**
+ *
+ * `currentPid` is the process ID of the proxy process that new spawns go to,
+ * which is the parent process ID of the commands it launches. It is `None`
+ * from the moment that proxy process is seen to exit, or is replaced after a
+ * credential change, until the replacement started by a later spawn is ready.
+ * It is also `None` after the layer's scope closes.
+ *
+ * **Gotchas**
+ *
+ * - The service does not show which spawner is in context. If a layer
+ *   providing another `ChildProcessSpawner`, such as {@link layer}, is merged
+ *   over {@link layerProxyProcess}, commands are spawned directly while this
+ *   service still reports the proxy process.
+ * - Commands of a proxy process that was replaced keep their old parent.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.1.6
+ */
+export class ProxyProcess extends Context.Service<ProxyProcess, {
+  readonly currentPid: Effect.Effect<Option.Option<ProcessId>>
+}>()("@effect/platform-node/NodeChildProcessSpawner/ProxyProcess") {}
+
+/**
+ * Creates a layer that provides a `ChildProcessSpawner` which launches commands
+ * from a small, long-lived proxy process instead of the current process, along
+ * with the {@link ProxyProcess} service.
  *
  * **When to use**
  *
  * Use when spawning a command measurably stalls the event loop of a Node.js
  * application on Linux that holds a lot of memory outside the JavaScript heap,
- * such as large `Buffer`s. The stall depends on the Node.js build, so measure
- * a direct spawn with {@link layer} on the deployed build first.
+ * such as large `Buffer`s. The stall depends on the Node.js
+ * build, so measure a direct spawn with {@link layer} on the deployed build
+ * first.
  *
  * **Details**
  *
@@ -913,49 +945,116 @@ export const layer: Layer.Layer<
  * connected to the application over Unix domain sockets, and signals are sent
  * to the command directly, so output does not pass through the proxy process.
  *
- * The proxy process runs `process.execPath` and starts when the layer is
- * built. It stops when the layer's scope closes, once its remaining referenced
+ * Building the layer starts the proxy process and waits until it is ready.
+ * The build fails with a `PlatformError` if it cannot start, does not answer
+ * within `responseTimeout` (10 seconds by default), or runs on Windows. Fall
+ * back with `Layer.catch(() => NodeChildProcessSpawner.layer)`. The proxy
+ * process stops when the layer's scope closes, once its remaining referenced
  * commands have exited. Commands keep running if the application exits, as
- * with {@link layer}. On Windows, this layer behaves like {@link layer}.
+ * with {@link layer}.
+ *
+ * By default the proxy process runs `process.execPath -e <program>` with the
+ * application's environment minus `NODE_OPTIONS`. `executable`, `args` and
+ * `env` replace these. A custom entry point must call
+ * `NodeChildProcessProxy.run`. Commands always receive their own environment.
+ *
+ * If the proxy process exits, or the application changes its user or group
+ * IDs, the next spawn starts a new proxy process and waits until it is ready.
+ * A spawn whose proxy process fails to start fails with a `PlatformError`.
+ * Its command was not sent, so retrying is safe.
+ *
+ * A spawn request is sent at most once. If the proxy process exits, or sends
+ * nothing within `responseTimeout`, after a request was sent but before it
+ * replied, the command may already be running. The proxy process is stopped,
+ * the spawn fails with a `PlatformError`, and the request is not sent again.
  *
  * **Gotchas**
  *
+ * - A proxy process that does not respond in time is killed, so the exit
+ *   status of every command it launched is lost.
+ * - A command that started but was never acknowledged cannot be signalled,
+ *   since its process ID was never received. Its stdio is closed.
  * - Commands run with the user and group IDs the proxy process started with.
  *   Build the layer after the application has changed its credentials, and
  *   before it has grown large, since starting the proxy process from a large
- *   process stalls once. If the credentials change later, the next spawn
- *   starts a new proxy process.
- * - If the proxy process exits early, the next spawn starts a new one.
- *   Commands it launched keep their stdio, but `exitCode` and `isRunning`
- *   fail with a `PlatformError` because their exit can no longer be observed.
- *   `kill` still sends its first signal, without escalating, and that signal
- *   can reach an unrelated process if the command has already exited and its
- *   ID has been reused. On a single-command handle `kill` then fails with a
- *   `PlatformError`. A pipeline handle's `kill` ignores the failures of its
- *   commands, so it succeeds. Scope release does not signal these commands, so
- *   they keep running.
+ *   process stalls once.
+ * - If the proxy process exits early, commands it launched keep their stdio,
+ *   but `exitCode` and `isRunning` fail with a `PlatformError` because their
+ *   exit can no longer be observed. `kill` still sends its first signal,
+ *   without escalating, and that signal can reach an unrelated process if the
+ *   command has already exited and its ID has been reused. On a
+ *   single-command handle `kill` then fails with a `PlatformError`. A
+ *   pipeline handle's `kill` ignores the failures of its commands, so it
+ *   succeeds. Scope release does not signal these commands, so they keep
+ *   running.
+ * - Every call creates a separate layer, with its own proxy process. Keep the
+ *   result in one constant to share a proxy process.
  * - The socket path under `os.tmpdir()` must fit the platform limit of about
- *   100 bytes. Spawns fail with a `PlatformError` otherwise.
+ *   100 bytes.
+ *
+ * **Example** (Wiring a packaged command-line application)
+ *
+ * ```ts
+ * // bin.ts dispatches `__proxy-process` to `NodeChildProcessProxy.run` before
+ * // it imports the application
+ * import * as NodeChildProcessSpawner from "@effect/platform-node/NodeChildProcessSpawner"
+ * import { Effect, Layer, Option } from "effect"
+ * import * as NodeSea from "node:sea"
+ *
+ * // One constant, so the whole application shares one proxy process
+ * export const SpawnerLayer = NodeChildProcessSpawner.layerProxyProcess({
+ *   // In a single executable application, process.execPath is the application
+ *   args: NodeSea.isSea() ? ["__proxy-process"] : undefined
+ * }).pipe(Layer.catch(() => NodeChildProcessSpawner.layer))
+ *
+ * // The parent process ID of commands spawned from now on
+ * export const spawnParentPid = Effect.gen(function*() {
+ *   const proxy = yield* Effect.serviceOption(NodeChildProcessSpawner.ProxyProcess)
+ *   const pid = Option.isSome(proxy) ? yield* proxy.value.currentPid : Option.none()
+ *   return Option.getOrElse(pid, () => process.pid)
+ * })
+ * ```
  *
  * @stability unstable
  * @category layers
  * @since 4.1.6
  */
-export const layerProxyProcess: Layer.Layer<
-  ChildProcessSpawner,
-  never,
+export const layerProxyProcess = (options?: {
+  readonly executable?: string | undefined
+  readonly args?: ReadonlyArray<string> | undefined
+  readonly env?: Record<string, string | undefined> | undefined
+  readonly responseTimeout?: Duration.Input | undefined
+}): Layer.Layer<
+  ChildProcessSpawner | ProxyProcess,
+  PlatformError.PlatformError,
   FileSystem.FileSystem | Path.Path
-> = Layer.effect(
-  ChildProcessSpawner,
-  Effect.suspend(() => {
+> =>
+  Layer.effectContext(Effect.gen(function*() {
     if (globalThis.process.platform === "win32") {
-      return makeWith(spawnDirect)
+      return yield* Effect.fail(PlatformError.systemError({
+        _tag: "Unknown",
+        module: "ChildProcess",
+        method: "layerProxyProcess",
+        description: "The proxy process is not supported on Windows"
+      }))
     }
-    return Effect.acquireRelease(Effect.sync(ProxyProcess.make), (proxy) => proxy.close).pipe(
-      Effect.flatMap((proxy) => makeWith(proxy.spawn))
+    const proxy = yield* Effect.acquireRelease(
+      Effect.sync(() =>
+        ProxyProcesses.make({
+          executable: options?.executable,
+          args: options?.args,
+          env: options?.env,
+          responseTimeoutMillis: Duration.toMillis(Duration.fromInputUnsafe(options?.responseTimeout ?? "10 seconds"))
+        })
+      ),
+      (proxy) => proxy.close
     )
-  })
-)
+    yield* proxy.ready
+    const spawner = yield* makeWith(proxy.spawn)
+    return Context.make(ChildProcessSpawner, spawner).pipe(
+      Context.add(ProxyProcess, ProxyProcess.of({ currentPid: proxy.currentPid }))
+    )
+  }))
 
 // =============================================================================
 // Internal Helpers

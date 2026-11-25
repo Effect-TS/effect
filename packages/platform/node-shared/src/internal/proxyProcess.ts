@@ -1,4 +1,7 @@
 import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
+import * as PlatformError from "effect/PlatformError"
+import { ProcessId } from "effect/process/ChildProcessSpawner"
 import * as NodeChildProcess from "node:child_process"
 import * as Crypto from "node:crypto"
 import { EventEmitter } from "node:events"
@@ -7,67 +10,21 @@ import * as Net from "node:net"
 import * as Os from "node:os"
 import * as Path from "node:path"
 import type { SpawnedProcess, SpawnProcess } from "./nodeChildProcessSpawner.ts"
+import { headerLength, source, tokenLength } from "./proxyProcessSource.ts"
+import { handleErrnoException } from "./utils.ts"
 
-const tokenLength = 16
-const headerLength = tokenLength + 8
 // macOS limits Unix socket paths to 104 bytes including the terminator, Linux to 108
 const maxSocketPathLength = 103
 
-// The proxy process runs this with `node -e`, so it must not import anything
-// but Node.js builtins. For each piped fd it connects to the application's
-// socket, identifies the socket with a header, and hands it to the command as
-// that fd, so no output passes through the proxy process.
-const source = `"use strict"
-const ChildProcess = require("node:child_process")
-const Net = require("node:net")
-const [socketPath, token] = process.argv.slice(1)
-const send = (message) => {
-  if (process.connected) process.send(message)
+type Request = {
+  readonly id: number
+  readonly command: string
+  readonly args: ReadonlyArray<string>
+  readonly options: NodeChildProcess.SpawnOptions
 }
-const serializeError = (error) => ({
-  message: error.message,
-  code: error.code,
-  errno: error.errno,
-  syscall: error.syscall,
-  path: error.path
-})
-const connect = (id, fd) => new Promise((resolve, reject) => {
-  const socket = Net.connect(socketPath)
-  socket.pause()
-  socket.once("error", reject)
-  socket.once("connect", () => {
-    const header = Buffer.alloc(${headerLength})
-    header.write(token, "hex")
-    header.writeUInt32BE(id, ${tokenLength})
-    header.writeUInt32BE(fd, ${tokenLength + 4})
-    socket.write(header, (error) => error ? reject(error) : resolve(socket))
-  })
-})
-const spawn = async ({ id, command, args, options }) => {
-  const stdio = await Promise.allSettled(options.stdio.map((mode, fd) => mode === "pipe" ? connect(id, fd) : mode))
-  const sockets = stdio.flatMap((result) => result.value instanceof Net.Socket ? [result.value] : [])
-  try {
-    const failure = stdio.find((result) => result.status === "rejected")
-    if (failure) throw failure.reason
-    const child = ChildProcess.spawn(command, args, { ...options, stdio: stdio.map((result) => result.value) })
-    child.on("error", (error) => send({ _tag: "Error", id, error: serializeError(error) }))
-    child.on("spawn", () => send({ _tag: "Spawned", id, pid: child.pid }))
-    child.on("exit", (code, signal) => send({ _tag: "Exit", id, code, signal }))
-  } catch (error) {
-    send({ _tag: "Error", id, error: serializeError(error) })
-  } finally {
-    // The command holds its own copies of the sockets
-    for (const socket of sockets) socket.destroy()
-  }
-}
-// The application decides how to handle these. Once it has disconnected,
-// the proxy process exits when its commands have exited.
-process.on("SIGINT", () => {})
-process.on("SIGTERM", () => {})
-process.on("message", spawn)
-`
 
 type Message =
+  | { readonly _tag: "Ready" }
   | { readonly _tag: "Spawned"; readonly id: number; readonly pid: number }
   | { readonly _tag: "Exit"; readonly id: number; readonly code: number | null; readonly signal: NodeJS.Signals | null }
   | {
@@ -90,6 +47,8 @@ export interface ProxiedProcessOwner {
 export class ProxiedProcess extends EventEmitter implements SpawnedProcess {
   pid: number | undefined = undefined
   lost = false
+  /** The request has been sent to the proxy process, which may have started the command. */
+  dispatched = false
   exitCode: number | null = null
   signalCode: NodeJS.Signals | null = null
   readonly stdio: Array<Net.Socket | null>
@@ -226,19 +185,38 @@ const credentials = (): string => {
   ].join(":")
 }
 
+/** @internal */
+export interface Options {
+  readonly executable?: string | undefined
+  readonly args?: ReadonlyArray<string> | undefined
+  readonly env?: Record<string, string | undefined> | undefined
+  readonly responseTimeoutMillis: number
+}
+
 class Proxy implements ProxiedProcessOwner {
   readonly commands = new Map<number, ProxiedProcess>()
   readonly credentials = credentials()
+  pid: number | undefined = undefined
+  ready = false
   exited = false
+  private failure: Error | undefined = undefined
   private retired = false
+  private readonly options: Options
   private readonly token = Crypto.randomBytes(tokenLength)
   private nextId = 0
-  private refs = 0
+  // Starting holds a reference, so the application waits for the proxy process to be ready
+  private refs = 1
   private directory: string | undefined
   private server: Net.Server | undefined
   private child: NodeChildProcess.ChildProcess | undefined
+  // Requests waiting for the proxy process to be ready
+  private readonly unsent: Array<Request> = []
+  // Bounds the wait for `Ready`, and for the reply to each sent request
+  private readonly timers = new Map<number | "ready", ReturnType<typeof setTimeout>>()
+  private readonly readyCallbacks: Array<(error: Error | undefined) => void> = []
 
-  constructor() {
+  constructor(options: Options) {
+    this.options = options
     try {
       this.directory = Fs.mkdtempSync(Path.join(Os.tmpdir(), "effect-proxy-"))
       const socketPath = Path.join(this.directory, "socket")
@@ -251,15 +229,18 @@ class Proxy implements ProxiedProcessOwner {
       this.server.on("error", (error) => this.end(error))
       this.server.listen(socketPath)
       this.server.unref()
-      const env = { ...globalThis.process.env }
-      // Commands receive their environment with each request, and the proxy
-      // process must not load the application's preloads or inspector
-      delete env.NODE_OPTIONS
+      const env = options.env ?? { ...globalThis.process.env }
+      if (options.env === undefined) {
+        // Commands receive their environment with each request, and the proxy
+        // process must not load the application's preloads or inspector
+        delete env.NODE_OPTIONS
+      }
       this.child = NodeChildProcess.spawn(
-        globalThis.process.execPath,
-        ["-e", source, socketPath, this.token.toString("hex")],
+        options.executable ?? globalThis.process.execPath,
+        options.args ?? ["-e", source],
         { env, stdio: ["inherit", "inherit", "inherit", "ipc"], windowsHide: true }
       )
+      this.pid = this.child.pid
       this.child.on("message", (message: Message) => this.receive(message))
       this.child.on("error", (error) => this.end(error))
       this.child.on(
@@ -267,6 +248,10 @@ class Proxy implements ProxiedProcessOwner {
         (code, signal) =>
           this.end(new Error(`The proxy process exited with ${signal === null ? `code ${code}` : `signal ${signal}`}`))
       )
+      this.startTimer("ready")
+      // The socket path and token are kept out of the arguments, which other
+      // users can read
+      this.send({ _tag: "Init", socketPath, token: this.token.toString("hex") })
       this.updateRef()
     } catch (error) {
       globalThis.process.nextTick(() => this.end(error as Error))
@@ -281,7 +266,7 @@ class Proxy implements ProxiedProcessOwner {
     )
     const child = new ProxiedProcess(this, id, stdio.map((mode) => mode === "pipe"))
     this.commands.set(id, child)
-    const request = {
+    const request: Request = {
       id,
       command,
       args,
@@ -294,12 +279,18 @@ class Proxy implements ProxiedProcessOwner {
         stdio
       }
     }
-    if (this.child?.connected === true) {
-      this.child.send(request, (error: Error | null) => {
-        if (error) this.end(error)
-      })
+    if (this.ready) {
+      this.dispatch(request)
+    } else {
+      this.unsent.push(request)
     }
     return child
+  }
+
+  /** Calls back once the proxy process is ready, or with the error that stopped it. */
+  whenReady(callback: (error: Error | undefined) => void): void {
+    if (this.ready || this.exited) return callback(this.ready ? undefined : this.failure)
+    this.readyCallbacks.push(callback)
   }
 
   ref(): void {
@@ -330,6 +321,12 @@ class Proxy implements ProxiedProcessOwner {
   readonly close: Effect.Effect<void> = Effect.callback((resume) => {
     const child = this.child
     if (this.exited || child === undefined) return resume(Effect.void)
+    if (!this.ready) {
+      // It has not been sent any command, and may never answer
+      child.kill("SIGKILL")
+      this.end(new Error("The proxy process was stopped before it was ready"))
+      return resume(Effect.void)
+    }
     // Each referenced command holds one reference
     const wait = this.refs === this.commands.size
     if (wait) {
@@ -339,6 +336,43 @@ class Proxy implements ProxiedProcessOwner {
     this.disconnect()
     if (!wait) resume(Effect.void)
   })
+
+  /**
+   * Sends a request. Once it is sent the command may have started, so it is
+   * never sent again, and only a reply or the loss of the proxy process
+   * settles it.
+   */
+  private dispatch(request: Request): void {
+    const command = this.commands.get(request.id)
+    if (command === undefined) return
+    command.dispatched = true
+    this.startTimer(request.id)
+    this.send(request)
+  }
+
+  private send(message: unknown): void {
+    if (this.child?.connected !== true) return
+    this.child.send(message as NodeChildProcess.Serializable, (error: Error | null) => {
+      if (error) this.end(error)
+    })
+  }
+
+  private startTimer(key: number | "ready"): void {
+    const millis = this.options.responseTimeoutMillis
+    const timer = setTimeout(() => {
+      // Its exit has not been seen, so its ID has not been reused
+      this.child?.kill("SIGKILL")
+      this.end(Object.assign(new Error(`The proxy process did not respond within ${millis} ms`), { code: "ETIMEDOUT" }))
+    }, millis)
+    // Whatever waits for the reply keeps the application running
+    timer.unref()
+    this.timers.set(key, timer)
+  }
+
+  private stopTimer(key: number | "ready"): void {
+    clearTimeout(this.timers.get(key))
+    this.timers.delete(key)
+  }
 
   private disconnect(): void {
     if (this.child?.connected === true) this.child.disconnect()
@@ -356,18 +390,29 @@ class Proxy implements ProxiedProcessOwner {
   }
 
   private receive(message: Message): void {
+    if (message._tag === "Ready") return this.onReady()
     const command = this.commands.get(message.id)
     if (command === undefined) return
     switch (message._tag) {
       case "Spawned":
+        this.stopTimer(message.id)
         return command.onSpawned(message.pid)
       case "Exit":
         return command.onExit(message.code, message.signal)
       case "Error":
+        this.stopTimer(message.id)
         return command.onError(deserializeError(message.error))
     }
   }
 
+  private onReady(): void {
+    if (this.ready || this.exited) return
+    this.ready = true
+    this.stopTimer("ready")
+    this.unref()
+    for (const request of this.unsent.splice(0)) this.dispatch(request)
+    for (const callback of this.readyCallbacks.splice(0)) callback(undefined)
+  }
   private accept(socket: Net.Socket): void {
     // Errors are reported to the readers and writers of the stdio streams
     socket.on("error", () => {})
@@ -408,27 +453,74 @@ class Proxy implements ProxiedProcessOwner {
   private end(cause: Error): void {
     if (this.exited) return
     this.exited = true
-    const error = new Error("The proxy process exited before the command's exit status was received", { cause })
+    this.failure = cause
+    for (const timer of this.timers.values()) clearTimeout(timer)
+    this.timers.clear()
+    this.unsent.length = 0
+    if (!this.ready) this.unref()
+    const notSent = new Error("The proxy process stopped before the command was sent to it, so it was not started", {
+      cause
+    })
+    const unacknowledged = new Error(
+      "The proxy process stopped after the command was sent to it but before it replied, so the command may have started",
+      { cause }
+    )
+    const lost = new Error("The proxy process exited before the command's exit status was received", { cause })
     // Every command is marked lost before anything else can run
-    const reports = Array.from(this.commands.values(), (command) => command.onLost(error))
+    const reports = Array.from(
+      this.commands.values(),
+      (command) => command.onLost(command.pid !== undefined ? lost : command.dispatched ? unacknowledged : notSent)
+    )
     this.disconnect()
     for (const report of reports) report()
+    for (const callback of this.readyCallbacks.splice(0)) callback(cause)
   }
 }
 
-/** @internal */
-export const make = () => {
-  let current = new Proxy()
+const toStartError = (options: Options) => (error: NodeJS.ErrnoException): PlatformError.PlatformError => {
+  const executable = options.executable ?? globalThis.process.execPath
+  if (error.code === "ETIMEDOUT") {
+    return PlatformError.systemError({
+      _tag: "TimedOut",
+      module: "ChildProcess",
+      method: "layerProxyProcess",
+      description: error.message,
+      pathOrDescriptor: executable,
+      cause: error
+    })
+  }
+  if (error.syscall !== undefined) {
+    return handleErrnoException("ChildProcess", "layerProxyProcess")(error, [executable])
+  }
+  return PlatformError.systemError({
+    _tag: "Unknown",
+    module: "ChildProcess",
+    method: "layerProxyProcess",
+    description: error.message,
+    pathOrDescriptor: executable,
+    cause: error
+  })
+}
+
+/**
+ * Starts a proxy process. Another one is started on demand after it exits, or
+ * after the application changes its credentials.
+ *
+ * @internal
+ */
+export const make = (options: Options) => {
+  let closed = false
+  let current = new Proxy(options)
   // Retired proxy processes still running commands
   const retired = new Set<Proxy>()
   const get = () => {
     if (current.exited) {
-      current = new Proxy()
+      current = new Proxy(options)
     } else if (current.credentials !== credentials()) {
       // The application changed its credentials, so its commands must not
       // run with the old ones
       const previous = current
-      current = new Proxy()
+      current = new Proxy(options)
       retired.add(previous)
       previous.retire()
     }
@@ -440,8 +532,20 @@ export const make = () => {
   const spawn: SpawnProcess = (command, args, options) => get().spawn(command, args, options)
   return {
     spawn,
-    close: Effect.suspend(() =>
-      Effect.forEach([current, ...retired], (proxy) => proxy.close, { concurrency: "unbounded", discard: true })
-    )
+    /** Waits for the first proxy process to be ready. */
+    ready: Effect.callback<void, PlatformError.PlatformError>((resume) => {
+      current.whenReady((error) =>
+        resume(error === undefined ? Effect.void : Effect.fail(toStartError(options)(error)))
+      )
+    }),
+    currentPid: Effect.sync(() =>
+      !closed && current.ready && !current.exited && current.pid !== undefined
+        ? Option.some(ProcessId(current.pid))
+        : Option.none()
+    ),
+    close: Effect.suspend(() => {
+      closed = true
+      return Effect.forEach([current, ...retired], (proxy) => proxy.close, { concurrency: "unbounded", discard: true })
+    })
   }
 }

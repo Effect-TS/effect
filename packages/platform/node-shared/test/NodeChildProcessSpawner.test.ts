@@ -1,5 +1,6 @@
 import { buildSpawnOptions } from "@effect/platform-node-shared/internal/nodeChildProcessSpawner"
 import { ProxiedProcess } from "@effect/platform-node-shared/internal/proxyProcess"
+import { source as proxyProcessSource } from "@effect/platform-node-shared/internal/proxyProcessSource"
 import * as NodeChildProcessSpawner from "@effect/platform-node-shared/NodeChildProcessSpawner"
 import * as NodeFileSystem from "@effect/platform-node-shared/NodeFileSystem"
 import * as NodePath from "@effect/platform-node-shared/NodePath"
@@ -12,6 +13,7 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as ChildProcess from "effect/process/ChildProcess"
 import { ChildProcessSpawner } from "effect/process/ChildProcessSpawner"
 import * as Scope from "effect/Scope"
@@ -30,9 +32,12 @@ const NodeServices = NodeChildProcessSpawner.layer.pipe(
   ))
 )
 
-const ProxyServices = NodeChildProcessSpawner.layerProxyProcess.pipe(
-  Layer.provideMerge(Layer.mergeAll(NodeFileSystem.layer, NodePath.layer))
-)
+const proxyServices = (options?: Parameters<typeof NodeChildProcessSpawner.layerProxyProcess>[0]) =>
+  NodeChildProcessSpawner.layerProxyProcess(options).pipe(
+    Layer.provideMerge(Layer.mergeAll(NodeFileSystem.layer, NodePath.layer))
+  )
+
+const ProxyServices = proxyServices()
 
 // The process supervision tests count processes by name, so the suites must
 // not run at the same time
@@ -41,7 +46,7 @@ describe("shared suite", { concurrent: false }, () => {
     processGroups: true
   })
 
-  ChildProcessSpawnerTest.suite("NodeChildProcessSpawner.layerProxyProcess", ProxyServices, {
+  ChildProcessSpawnerTest.suite("NodeChildProcessSpawner.layerProxyProcess", Layer.orDie(ProxyServices), {
     processGroups: true
   })
 })
@@ -62,12 +67,89 @@ describe.skipIf(process.platform === "win32")("layerProxyProcess", { concurrent:
     }
   }
 
+  const currentPid = Effect.flatMap(NodeChildProcessSpawner.ProxyProcess, (proxy) => proxy.currentPid)
+
   it.live("stops the proxy process when the layer scope closes", () =>
     Effect.gen(function*() {
-      const pid = yield* proxyPid.pipe(Effect.provide(ProxyServices))
+      const [pid, proxy] = yield* Effect.gen(function*() {
+        const pid = yield* proxyPid
+        assert.deepStrictEqual(yield* currentPid, Option.some(pid))
+        return [pid, yield* NodeChildProcessSpawner.ProxyProcess] as const
+      }).pipe(Effect.provide(ProxyServices))
       assert.notStrictEqual(pid, process.pid)
       assert.isFalse(isAlive(pid))
+      assert.deepStrictEqual(yield* proxy.currentPid, Option.none())
     }))
+
+  it.live("fails to build when the proxy process cannot start or does not answer", () =>
+    Effect.gen(function*() {
+      const build = (options: Parameters<typeof proxyServices>[0]) =>
+        Effect.flip(Effect.scoped(Layer.build(proxyServices(options))))
+      const missing = yield* build({ executable: "/nonexistent/node" })
+      assert.strictEqual(missing.reason._tag, "NotFound")
+
+      const pidFile = join(yield* FileSystem.FileSystem.use((fs) => fs.makeTempDirectoryScoped()), "pid")
+      const silent = yield* build({
+        args: [
+          "-e",
+          `require("node:fs").writeFileSync(${
+            JSON.stringify(pidFile)
+          }, String(process.pid)); setInterval(() => {}, 60_000)`
+        ],
+        responseTimeout: "1 second"
+      })
+      assert.strictEqual(silent.reason._tag, "TimedOut")
+      const pid = Number(NodeFs.readFileSync(pidFile, "utf8"))
+      while (isAlive(pid)) yield* Effect.sleep("10 millis")
+    }).pipe(Effect.provide(NodeFileSystem.layer), Effect.scoped))
+
+  it.live("runs the proxy process from a packaged application's subcommand", () =>
+    Effect.gen(function*() {
+      const fixture = join(__dirname, "fixtures", "proxy-cli.ts")
+      const pid = yield* proxyPid.pipe(Effect.provide(proxyServices({ args: [fixture, "__proxy-process"] })))
+      assert.notStrictEqual(pid, process.pid)
+
+      const { NODE_OPTIONS: _, ...env } = process.env
+      const result = spawnSync(process.execPath, [fixture, "__proxy-process"], { encoding: "utf8", env })
+      assert.strictEqual(result.status, 1)
+      assert.include(result.stderr, "must be started by NodeChildProcessSpawner.layerProxyProcess")
+    }))
+
+  it.live("does not send a command again when its acknowledgement is lost", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const directory = yield* fs.makeTempDirectoryScoped()
+      const runs = join(directory, "runs")
+      const dropFlag = join(directory, "drop")
+      yield* fs.writeFileString(dropFlag, "")
+      // The first proxy process starts commands but never acknowledges them
+      const program = `const dropSpawned = (() => {
+  try {
+    process.getBuiltinModule("node:fs").rmSync(${JSON.stringify(dropFlag)})
+    return true
+  } catch {
+    return false
+  }
+})()
+const sendMessage = process.send.bind(process)
+process.send = (message, ...rest) => dropSpawned && message._tag === "Spawned" ? true : sendMessage(message, ...rest)
+${proxyProcessSource}`
+
+      yield* Effect.gen(function*() {
+        const first = Option.getOrThrow(yield* currentPid)
+        const error = yield* Effect.flip(Effect.scoped(ChildProcess.make("sh", ["-c", "echo run >> \"$0\"", runs])))
+        assert.include(String((error.reason.cause as Error).message), "may have started")
+        assert.deepStrictEqual(yield* currentPid, Option.none())
+        // The command ran once
+        while (!(yield* fs.exists(runs))) yield* Effect.sleep("10 millis")
+
+        const next = yield* proxyPid
+        assert.notStrictEqual(next, first)
+        assert.deepStrictEqual(yield* currentPid, Option.some(next))
+        assert.strictEqual(yield* fs.readFileString(runs), "run\n")
+        while (isAlive(first)) yield* Effect.sleep("10 millis")
+      }).pipe(Effect.provide(proxyServices({ args: ["-e", program], responseTimeout: "1 second" })))
+    }).pipe(Effect.provide(NodeFileSystem.layer), Effect.scoped))
 
   it.live("keeps stdio and kill working, fails exitCode, and restarts when the proxy process exits", () =>
     Effect.gen(function*() {
@@ -78,6 +160,7 @@ describe.skipIf(process.platform === "win32")("layerProxyProcess", { concurrent:
 
       const exitCodeError = yield* Effect.flip(echo.exitCode)
       assert.strictEqual(exitCodeError._tag, "PlatformError")
+      assert.deepStrictEqual(yield* currentPid, Option.none())
       assert.strictEqual((yield* Effect.flip(echo.isRunning))._tag, "PlatformError")
 
       yield* Stream.run(Stream.make(new TextEncoder().encode("hello\n")), echo.stdin)
@@ -91,6 +174,7 @@ describe.skipIf(process.platform === "win32")("layerProxyProcess", { concurrent:
 
       const nextPid = yield* proxyPid
       assert.notStrictEqual(nextPid, pid)
+      assert.deepStrictEqual(yield* currentPid, Option.some(nextPid))
     }).pipe(Effect.provide(ProxyServices)))
 
   // Simulates an application that can no longer remove the socket directory,
