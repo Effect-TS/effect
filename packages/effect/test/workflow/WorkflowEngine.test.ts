@@ -1576,54 +1576,64 @@ describe("WorkflowEngine", () => {
     )
   }
 
-  for (
-    const access of [
-      "Workflow.scope",
-      "WorkflowInstance.scope",
-      "WorkflowInstance.scope after suspend"
-    ] as const
-  ) {
-    it.effect(`layerMemory keeps a scope obtained via ${access} open across suspension for late finalizers`, () =>
-      Effect.gen(function*() {
-        const gate = DurableDeferred.make(`WorkflowEngine/CapturedScopeLateFinalizer/${access}/Gate`)
-        const workflow = Workflow.make(`WorkflowEngine/CapturedScopeLateFinalizer/${access}`, {
-          payload: {},
-          idempotencyKey: () => "one"
+  it.effect("layerMemory keeps workflow scopes open across suspension for late finalizers", () =>
+    Effect.gen(function*() {
+      const gates = [
+        DurableDeferred.make("WorkflowEngine/CapturedScopeLateFinalizer/First"),
+        DurableDeferred.make("WorkflowEngine/CapturedScopeLateFinalizer/Second")
+      ]
+      const workflow = Workflow.make("WorkflowEngine/CapturedScopeLateFinalizer", {
+        payload: {},
+        idempotencyKey: () => "one"
+      })
+      let runs = 0
+      const run2Started = yield* Latch.make()
+      let capturedScope: Scope.Scope | undefined
+      let savedInstance: WorkflowEngine.WorkflowInstance["Service"] | undefined
+      const finalized: Array<string> = []
+      const layer = workflow.toLayer(() =>
+        Effect.gen(function*() {
+          const run = ++runs
+          if (run === 1) capturedScope = yield* Workflow.scope
+          if (run === 2) {
+            run2Started.openUnsafe()
+            savedInstance = yield* WorkflowEngine.WorkflowInstance
+          }
+          for (const gate of gates) yield* DurableDeferred.await(gate)
         })
-        let captured: Scope.Scope | undefined
-        let savedInstance: WorkflowEngine.WorkflowInstance["Service"] | undefined
-        let finalized = 0
-        const layer = workflow.toLayer(() =>
-          Effect.gen(function*() {
-            if (access === "Workflow.scope") {
-              captured ??= yield* Workflow.scope
-            } else if (access === "WorkflowInstance.scope") {
-              captured ??= (yield* WorkflowEngine.WorkflowInstance).scope
-            } else {
-              savedInstance ??= yield* WorkflowEngine.WorkflowInstance
-            }
-            yield* DurableDeferred.await(gate)
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.execute({}, { discard: true })
+        yield* pollUntil(workflow, executionId, "Suspended")
+        assert.isDefined(capturedScope)
+        yield* Scope.addFinalizer(
+          capturedScope,
+          Effect.sync(() => {
+            finalized.push("before")
           })
-        ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+        )
+        assert.isEmpty(finalized, "late finalizer must not run while suspended")
 
-        yield* Effect.gen(function*() {
-          const executionId = yield* workflow.execute({}, { discard: true })
-          yield* pollUntil(workflow, executionId, "Suspended")
-          const scope = access === "WorkflowInstance.scope after suspend" ? savedInstance?.scope : captured
-          assert.isDefined(scope)
-          yield* Scope.addFinalizer(
-            scope,
-            Effect.sync(() => {
-              finalized++
-            })
-          )
-          assert.strictEqual(finalized, 0, "late finalizer must not run while suspended")
+        yield* DurableDeferred.succeed(gates[0], {
+          token: DurableDeferred.tokenFromExecutionId(gates[0], { workflow, executionId }),
+          value: undefined
+        })
+        yield* run2Started.await
+        yield* pollUntil(workflow, executionId, "Suspended")
+        assert.isDefined(savedInstance)
+        yield* Scope.addFinalizer(
+          savedInstance.scope,
+          Effect.sync(() => {
+            finalized.push("after")
+          })
+        )
+        assert.isEmpty(finalized, "late finalizer read after suspension must not run while suspended")
 
-          yield* workflow.interrupt(executionId)
-          const result = yield* pollUntil(workflow, executionId, "Complete")
-          assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit))
-          assert.strictEqual(finalized, 1, "late finalizer must run once on cancellation")
-        }).pipe(Effect.provide(layer))
-      }))
-  }
+        yield* workflow.interrupt(executionId)
+        const result = yield* pollUntil(workflow, executionId, "Complete")
+        assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit))
+        assert.deepStrictEqual(finalized, ["after", "before"])
+      }).pipe(Effect.provide(layer))
+    }))
 })
