@@ -25,16 +25,21 @@ class FakeSql {
   readonly activities = new Map<string, string>()
   readonly deferreds = new Map<string, string>()
   readonly clocks = new Map<string, { deferredName: string; wakeUp: number; fired: boolean }>()
+  clockLookups = 0
 
   exec(query: string, ...bindings: Array<unknown>) {
-    const rows = this.run(query, bindings)
-    return { toArray: () => rows }
+    const { rows, rowsWritten } = this.run(query, bindings)
+    return { rowsWritten, toArray: () => rows }
   }
 
-  private run(query: string, bindings: Array<unknown>): Array<Record<string, unknown>> {
-    if (query.startsWith("CREATE TABLE")) return []
+  private run(
+    query: string,
+    bindings: Array<unknown>
+  ): { readonly rows: Array<Record<string, unknown>>; readonly rowsWritten: number } {
+    if (query.startsWith("CREATE TABLE") || query.startsWith("CREATE INDEX")) return { rows: [], rowsWritten: 0 }
     if (query.includes("INSERT OR IGNORE INTO workflow_execution")) {
-      this.execution ??= {
+      if (this.execution !== undefined) return { rows: [], rowsWritten: 0 }
+      this.execution = {
         workflow_name: bindings[0],
         execution_id: bindings[1],
         payload: bindings[2],
@@ -43,48 +48,55 @@ class FakeSql {
         result: null,
         resume_pending: 0
       }
-      return []
+      return { rows: [], rowsWritten: 1 }
     }
     if (query.includes("SET parent_name")) {
       if (this.execution !== undefined && this.execution.parent_name === null) {
         this.execution.parent_name = bindings[0]
         this.execution.parent_execution_id = bindings[1]
+        return { rows: [], rowsWritten: 1 }
       }
-      return []
+      return { rows: [], rowsWritten: 0 }
     }
     if (query.includes("SET resume_pending")) {
-      if (this.execution !== undefined) this.execution.resume_pending = bindings[0]
-      return []
+      if (this.execution !== undefined) {
+        this.execution.resume_pending = bindings[0]
+        return { rows: [], rowsWritten: 1 }
+      }
+      return { rows: [], rowsWritten: 0 }
     }
     if (query.includes("UPDATE workflow_execution")) {
       if (this.execution !== undefined) {
         this.execution.result = bindings[0]
         if (query.includes("resume_pending")) this.execution.resume_pending = bindings[1]
+        return { rows: [], rowsWritten: 1 }
       }
-      return []
+      return { rows: [], rowsWritten: 0 }
     }
     if (query.includes("FROM workflow_execution")) {
-      return this.execution === undefined ? [] : [this.execution]
+      return { rows: this.execution === undefined ? [] : [this.execution], rowsWritten: 0 }
     }
     if (query.includes("INSERT OR IGNORE INTO workflow_activities")) {
       if (!this.activities.has(String(bindings[0]))) {
         this.activities.set(String(bindings[0]), String(bindings[1]))
+        return { rows: [], rowsWritten: 1 }
       }
-      return []
+      return { rows: [], rowsWritten: 0 }
     }
     if (query.includes("FROM workflow_activities")) {
       const exit = this.activities.get(String(bindings[0]))
-      return exit === undefined ? [] : [{ exit }]
+      return { rows: exit === undefined ? [] : [{ exit }], rowsWritten: 0 }
     }
     if (query.includes("INSERT INTO workflow_deferreds")) {
       if (!this.deferreds.has(String(bindings[0]))) {
         this.deferreds.set(String(bindings[0]), String(bindings[1]))
+        return { rows: [], rowsWritten: 1 }
       }
-      return []
+      return { rows: [], rowsWritten: 0 }
     }
     if (query.includes("FROM workflow_deferreds")) {
       const exit = this.deferreds.get(String(bindings[0]))
-      return exit === undefined ? [] : [{ exit }]
+      return { rows: exit === undefined ? [] : [{ exit }], rowsWritten: 0 }
     }
     if (query.includes("INSERT OR IGNORE INTO workflow_clocks")) {
       if (!this.clocks.has(String(bindings[0]))) {
@@ -93,22 +105,31 @@ class FakeSql {
           wakeUp: Number(bindings[2]),
           fired: false
         })
+        return { rows: [], rowsWritten: 1 }
       }
-      return []
+      return { rows: [], rowsWritten: 0 }
     }
     if (query.includes("min(wake_up)")) {
+      this.clockLookups++
       const pending = Array.from(this.clocks.values()).filter((clock) => !clock.fired).map((clock) => clock.wakeUp)
-      return [{ wake_up: pending.length === 0 ? null : Math.min(...pending) }]
+      return { rows: [{ wake_up: pending.length === 0 ? null : Math.min(...pending) }], rowsWritten: 0 }
     }
     if (query.includes("wake_up <= ?")) {
-      return Array.from(this.clocks)
-        .filter(([, clock]) => !clock.fired && clock.wakeUp <= Number(bindings[0]))
-        .map(([name, clock]) => ({ name, deferred_name: clock.deferredName }))
+      this.clockLookups++
+      return {
+        rows: Array.from(this.clocks)
+          .filter(([, clock]) => !clock.fired && clock.wakeUp <= Number(bindings[0]))
+          .map(([name, clock]) => ({ name, deferred_name: clock.deferredName })),
+        rowsWritten: 0
+      }
     }
     if (query.includes("SET fired = 1")) {
       const clock = this.clocks.get(String(bindings[0]))
-      if (clock !== undefined) clock.fired = true
-      return []
+      if (clock !== undefined) {
+        clock.fired = true
+        return { rows: [], rowsWritten: 1 }
+      }
+      return { rows: [], rowsWritten: 0 }
     }
     throw new Error(`Unexpected SQL: ${query}`)
   }
@@ -120,12 +141,15 @@ class FakeSql {
 
 class FakeAlarm {
   current: number | null = null
+  writes = 0
 
   setAlarm(scheduledTime: number) {
+    this.writes++
     this.current = scheduledTime
     return Promise.resolve()
   }
   deleteAlarm() {
+    this.writes++
     this.current = null
     return Promise.resolve()
   }
@@ -508,6 +532,63 @@ describe("CloudflareWorkflowEngine", () => {
         yield* release.open
         yield* namespace.settle()
       }).pipe(Effect.ensuring(release.open), Effect.provide(layer))
+    }))
+
+  it.effect("does not re-scan clocks or rewrite the alarm when replaying existing sleeps", () =>
+    Effect.gen(function*() {
+      const namespace = new FakeWorkflowNamespace()
+      const steps = 5
+      const Looping = Workflow.make("ReplaySleeps", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "loop"
+      })
+      const layer = Looping.toLayer(Effect.fnUntraced(function*() {
+        for (let step = 0; step < steps; step++) {
+          yield* DurableClock.sleep({ name: `step-${step}`, duration: "60 seconds" })
+        }
+        return "done"
+      })).pipe(Layer.provideMerge(namespace.layer))
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* Looping.execute({}, { discard: true })
+        const name = encodeName(Looping._tag, executionId)
+        yield* pollUntil(Looping, executionId, "Suspended")
+        yield* namespace.settle()
+        const store = namespace.store(name)
+        assert.strictEqual(store.alarm.current, 60_000)
+
+        // Re-scheduling an already pending clock is a no-op and must not touch clocks or the alarm.
+        const lookupsBefore = store.sql.clockLookups
+        const writesBefore = store.alarm.writes
+        yield* Effect.promise(() => namespace.getByName(name).scheduleClock("step-0", "DurableClock/step-0", 120_000))
+        assert.strictEqual(store.sql.clockLookups, lookupsBefore)
+        assert.strictEqual(store.alarm.writes, writesBefore)
+        assert.strictEqual(store.alarm.current, 60_000)
+
+        const wakes: Array<{ readonly clockLookups: number; readonly alarmWrites: number }> = []
+        for (let step = 0; step < steps - 1; step++) {
+          const clockLookups = store.sql.clockLookups
+          const alarmWrites = store.alarm.writes
+          yield* TestClock.adjust("60 seconds")
+          namespace.now += 60_000
+          yield* Effect.promise(() => namespace.getByName(name).runAlarm())
+          yield* namespace.settle()
+          wakes.push({
+            clockLookups: store.sql.clockLookups - clockLookups,
+            alarmWrites: store.alarm.writes - alarmWrites
+          })
+        }
+
+        // Per-wake clock lookups and alarm writes must stay constant as replayed sleeps accumulate.
+        assert.deepStrictEqual(wakes.at(-1), wakes[0])
+
+        yield* TestClock.adjust("60 seconds")
+        namespace.now += 60_000
+        yield* Effect.promise(() => namespace.getByName(name).runAlarm())
+        const result = yield* pollUntil(Looping, executionId, "Complete")
+        assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.succeed("done") }))
+      }).pipe(Effect.provide(layer))
     }))
 
   it.effect("does not let a rejected alarm write from a settled attempt release its successor", () =>
