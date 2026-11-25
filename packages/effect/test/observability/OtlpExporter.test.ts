@@ -495,17 +495,19 @@ describe("OtlpExporter", () => {
         assert.deepStrictEqual(batches, [[1], [2]])
 
         if (phase === "before") {
-          // Healthy sibling A finishes at 999 ms within the original 1 s deadline
+          // Original 1 s shutdown deadline fires at 1,000 ms without restarting when cooldown begins at 800 ms
+          yield* TestClock.adjust("1 millis")
+          yield* yieldNowN(3)
+          assert.isDefined(closeFiber.pollUnsafe())
+          yield* Fiber.join(closeFiber)
+          yield* Fiber.join(flushFiber)
+          assert.strictEqual(yield* Ref.get(interruptedA), 1)
+        } else {
+          // Healthy sibling A finishes at 999 ms within the 1 s deadline
           yield* Deferred.succeed(releaseA, undefined)
           yield* Fiber.join(flushFiber)
           yield* Fiber.join(closeFiber)
           assert.strictEqual(yield* Ref.get(interruptedA), 0)
-        } else {
-          // Original 1 s shutdown deadline still fires without restarting on cooldown
-          yield* TestClock.adjust("1 millis")
-          yield* Fiber.join(closeFiber)
-          yield* Fiber.join(flushFiber)
-          assert.strictEqual(yield* Ref.get(interruptedA), 1)
         }
         assert.deepStrictEqual(batches, [[1], [2]])
         assert.strictEqual(dropped, 0)
