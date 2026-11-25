@@ -1345,7 +1345,6 @@ const prepareToolResultContent = Effect.fnUntraced(function*(
 const getBase64Data = (data: string | Uint8Array): string =>
   typeof data === "string" ? data.replace(/^data:[^;]+;base64,/, "") : Base64.encode(data)
 
-// Decodes a base64 data URL to bytes, leaving any other file data untouched.
 const decodeBase64DataUrl = (
   data: typeof Prompt.FilePart.Type["data"]
 ): Effect.Effect<typeof Prompt.FilePart.Type["data"], AiError.AiError> => {
