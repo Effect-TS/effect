@@ -1328,9 +1328,8 @@ const make = Effect.gen(function*() {
       return runnersService.notifyLocal({ message, notify, discard, storageOnly: !isLocal }) as any
     })
 
-  // A handler on a shard this runner is releasing cannot be answered for a
-  // durable request to that same shard: only the next owner can serve it, and
-  // it waits for this handler to finish before taking the shard.
+  // A handler on a releasing shard cannot wait for a durable request to that
+  // same shard: the next owner cannot serve it until this handler finishes.
   const isHandoffCaller = (caller: Context.Context<never>, target: EntityAddress): boolean => {
     const address = Context.getOption(caller, CurrentAddress).valueOrUndefined
     return address !== undefined &&
@@ -1367,14 +1366,10 @@ const make = Effect.gen(function*() {
       return Effect.catchTag(persist, "MalformedMessage", Effect.die).pipe(
         Effect.andThen(
           shouldFail
-            // The message is durable, so a transient routing state is never an
-            // error for the caller. The runner is tearing down and can no
-            // longer observe the reply, so interrupt the caller instead: the
-            // request will be served under the next owner.
+            // The request is durable and will be served by the next owner;
+            // abandon this wait without cancelling the persisted request.
             ? message._tag === "OutgoingRequest"
               ? Effect.suspend(() => {
-                // Without its entry, the abandoned caller's interrupt is not
-                // sent to the request the next owner will serve.
                 clientRequests.delete(message.envelope.requestId)
                 return ClusterAbandon.interrupt
               })
@@ -1652,10 +1647,9 @@ const make = Effect.gen(function*() {
   }
   const clientRequests = new Map<Snowflake.Snowflake, ClientRequestEntry>()
 
-  // During shutdown or shard handoff, abandon local callers parked on persisted
-  // requests that a retiring entity never started. They are served by the next
-  // owner. Callers on a runner that keeps running are left waiting unless they
-  // are draining on the same shard and block its release.
+  // Abandon local callers parked on persisted requests a retiring entity never
+  // started so the next owner can serve them. Outside shutdown, only abandon
+  // callers draining on the same shard that block its release.
   const abandonUndelivered = (
     address: EntityAddress,
     isDelivered: (requestId: Snowflake.Snowflake) => boolean
@@ -1671,7 +1665,7 @@ const make = Effect.gen(function*() {
           isDelivered(requestId) ||
           (!shutdown && !isHandoffCaller(entry.context, address))
         ) continue
-        // the caller's interrupt must not reach the request left for the next owner
+        // Drop the entry so abandoning the caller does not cancel the request.
         clientRequests.delete(requestId)
         abandon.push(storage.unregisterReplyHandler(requestId, { interrupt: true }))
       }
