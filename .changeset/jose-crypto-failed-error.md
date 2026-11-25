@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add `JoseError.CryptoFailed` for non-key crypto backend failures in `effect/jose`, keeping `InvalidKey` for rejected keys.
+Add `JoseError.CryptoFailed` in `effect/jose`: an unsupported signing or encryption provider now returns `JoseError.CryptoFailed` instead of `InvalidKey`, while rejected keys still return `InvalidKey`.

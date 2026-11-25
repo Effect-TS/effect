@@ -77,8 +77,8 @@ export class InvalidKey extends Data.TaggedError("InvalidKey")<{
  * **Details**
  *
  * `module`, `method`, and `reason` identify the failed backend operation and
- * reason tag; the backend description and cause are dropped so secret material
- * cannot leak.
+ * reason tag. The backend description and cause are omitted because they may
+ * contain secret material.
  *
  * @stability unstable
  * @category errors
