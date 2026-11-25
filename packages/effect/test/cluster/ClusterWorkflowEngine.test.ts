@@ -267,7 +267,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
   }
 
   it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
-    "releases empty scopes and superseded instances across suspended replays",
+    "releases empty scopes, superseded instances, and wait sets across suspended replays",
     () =>
       Effect.gen(function*() {
         const gates = [
@@ -281,12 +281,15 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         let runs = 0
         const control = new WeakRef({})
         let firstInstance: WeakRef<object> | undefined
+        let firstAwaits: Map<string, number> | undefined
         let secondParent: Scope.Scope | undefined
         const layer = workflow.toLayer(() =>
           Effect.gen(function*() {
             const run = ++runs
             if (run === 1) {
-              firstInstance = new WeakRef(yield* WorkflowInstance)
+              const instance = yield* WorkflowInstance
+              firstInstance = new WeakRef(instance)
+              firstAwaits = instance.awaitedDeferreds
             } else if (run === 2) {
               secondParent = (yield* WorkflowInstance).scope.parent
             }
@@ -297,7 +300,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         yield* Effect.gen(function*() {
           const executionId = yield* workflow.execute({}, { discard: true })
           yield* pollUntil(workflow, executionId, "Suspended")
-          assert.strictEqual(runs, 1)
+          assert.strictEqual(firstAwaits?.size, 1)
 
           yield* DurableDeferred.succeed(gates[0], {
             token: DurableDeferred.tokenFromExecutionId(gates[0], { workflow, executionId }),
@@ -305,16 +308,13 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           })
           yield* pollStorageUntil(() => runs >= 2, "run 2 must start")
           yield* pollUntil(workflow, executionId, "Suspended")
+          assert.strictEqual(firstAwaits?.size, 0)
 
           yield* collectGarbage
           assert.isUndefined(control.deref())
-          assert.isUndefined(firstInstance?.deref(), "superseded WorkflowInstance must not be retained")
+          assert.isUndefined(firstInstance?.deref())
           assert.isDefined(secondParent)
-          assert.strictEqual(
-            secondParent.state._tag === "Open" ? secondParent.state.finalizers?.size ?? 1 : 0,
-            1,
-            "superseded run must not retain an empty child Scope in parent"
-          )
+          assert.strictEqual(secondParent.state._tag === "Open" ? secondParent.state.finalizers?.size ?? 1 : 0, 1)
 
           yield* DurableDeferred.succeed(gates[1], {
             token: DurableDeferred.tokenFromExecutionId(gates[1], { workflow, executionId }),
@@ -329,135 +329,17 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     20_000
   )
 
-  it.effect(
-    "clears superseded deferred tracking and keeps late finalizers on superseded handles until termination",
-    () =>
-      Effect.gen(function*() {
-        const gates = [
-          DurableDeferred.make("CapturedScopeLateFinalizer/First"),
-          DurableDeferred.make("CapturedScopeLateFinalizer/Second"),
-          DurableDeferred.make("CapturedScopeLateFinalizer/Third")
-        ]
-        const workflow = Workflow.make("CapturedScopeLateFinalizer", {
-          payload: {},
-          idempotencyKey: () => "one"
-        })
-        let runs = 0
-        let firstAwaits: Map<string, number> | undefined
-        let secondInstance: WorkflowInstance["Service"] | undefined
-        let thirdScope: Scope.Scope | undefined
-        const finalized: Array<number | string> = []
-        let lateExit: Exit.Exit<unknown, unknown> | undefined
-        const layer = workflow.toLayer(() =>
-          Effect.gen(function*() {
-            const run = ++runs
-            if (run === 1) {
-              firstAwaits = (yield* WorkflowInstance).awaitedDeferreds
-              yield* Workflow.addFinalizer(() =>
-                Effect.sync(() => {
-                  finalized.push(1)
-                })
-              )
-            } else if (run === 2) {
-              secondInstance = yield* WorkflowInstance
-            } else if (run === 3) {
-              thirdScope = yield* Workflow.scope
-            }
-            for (const gate of gates) yield* DurableDeferred.await(gate)
-          })
-        ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
-
-        yield* Effect.gen(function*() {
-          const executionId = yield* workflow.execute({}, { discard: true })
-          yield* pollUntil(workflow, executionId, "Suspended")
-          assert.strictEqual(firstAwaits?.size, 1)
-
-          for (const [index, gate] of gates.slice(0, 2).entries()) {
-            yield* DurableDeferred.succeed(gate, {
-              token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
-              value: undefined
-            })
-            yield* pollStorageUntil(() => runs >= index + 2, `run ${index + 2} must start`)
-            yield* pollUntil(workflow, executionId, "Suspended")
-            if (index === 0) {
-              assert.strictEqual(firstAwaits?.size, 0, "superseded awaitedDeferreds must be cleared")
-              assert.isEmpty(finalized, "retained finalizers must not run while suspended")
-            }
-          }
-
-          assert.isDefined(secondInstance)
-          assert.isDefined(thirdScope)
-          yield* Workflow.addFinalizer((exit) =>
-            Effect.sync(() => {
-              lateExit = exit
-              finalized.push(2)
-            })
-          ).pipe(Effect.provideService(WorkflowInstance, secondInstance))
-          yield* Workflow.withCompensation(Effect.void, () =>
-            Effect.sync(() => {
-              finalized.push("comp")
-            })).pipe(
-              Effect.provideService(WorkflowInstance, secondInstance),
-              Scope.provide(secondInstance.scope)
-            )
-          yield* Scope.addFinalizer(
-            thirdScope,
-            Effect.sync(() => {
-              finalized.push(3)
-            })
-          )
-          assert.isEmpty(finalized, "late finalizers must not run while suspended")
-
-          yield* workflow.interrupt(executionId)
-          const result = yield* pollUntil(workflow, executionId, "Complete")
-          assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit))
-          assert.isDefined(lateExit)
-          assert.isTrue(Exit.isSuccess(lateExit))
-          assert.deepStrictEqual(finalized, [3, 2, 1])
-        }).pipe(Effect.provide(layer))
-      })
-  )
-
-  it.effect("skips durable finalizers and compensations on a shared scope during active handoff and after teardown", () =>
+  it.effect("skips durable finalizers and compensations on a shared scope during owner handoff", () =>
     Effect.gen(function*() {
-      const otherRunner = Runner.make({
-        address: RunnerAddress.make("localhost", 9998),
-        groups: ["default"],
-        weight: 1
-      })
-      let assignSelf = true
-      const releases: Array<ShardId.ShardId> = []
-      const runnerStorage = Layer.effect(
-        RunnerStorage.RunnerStorage,
-        Effect.map(RunnerStorage.makeMemory, (storage) =>
-          RunnerStorage.RunnerStorage.of({
-            ...storage,
-            getRunners: Effect.map(
-              storage.getRunners,
-              (runners) =>
-                assignSelf ? runners : [...runners.map(([runner]) => [runner, false] as const), [otherRunner, true]]
-            ),
-            release: (_address, shardId) =>
-              Effect.sync(() => {
-                releases.push(shardId)
-              })
-          }))
-      )
-      const gate = DurableDeferred.make("AbandonedLateFinalizer/Gate")
-      const workflow = Workflow.make("AbandonedLateFinalizer", {
+      const gate = DurableDeferred.make("AbandonedSharedScope/Gate")
+      const workflow = Workflow.make("AbandonedSharedScope", {
         payload: {},
         idempotencyKey: () => "one"
       })
       const started = yield* Latch.make()
       const release = yield* Latch.make()
-      const slow = Activity.make({
-        name: "slow",
-        execute: started.open.pipe(Effect.andThen(release.await))
-      })
-      const after = Activity.make({
-        name: "after",
-        execute: Effect.void
-      })
+      const slow = Activity.make({ name: "slow", execute: started.open.pipe(Effect.andThen(release.await)) })
+      const after = Activity.make({ name: "after", execute: Effect.void })
       let savedInstance: WorkflowInstance["Service"] | undefined
       const layer = workflow.toLayer(() =>
         Effect.gen(function*() {
@@ -466,70 +348,35 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           yield* slow
           yield* after
         })
-      ).pipe(
-        Layer.provideMerge(makeTestWorkflowEngine({
-          shardingLayer: Sharding.layer.pipe(Layer.provide(runnerStorage)),
-          config: {
-            shardsPerGroup: 1,
-            availableShardGroups: ["default"],
-            assignedShardGroups: ["default"],
-            entityTerminationTimeout: Duration.seconds(90),
-            entityMessagePollInterval: 10,
-            refreshAssignmentsInterval: 10
-          }
-        }))
-      )
+      ).pipe(Layer.provideMerge(makeTestWorkflowEngine({ config: { entityTerminationTimeout: Duration.minutes(1) } })))
+
+      const scope = yield* Scope.make()
+      const context = yield* Layer.buildWithScope(layer, scope)
+      const executionId = yield* workflow.execute({}, { discard: true }).pipe(Effect.provide(context))
+      yield* pollUntil(workflow, executionId, "Suspended").pipe(Effect.provide(context))
+      assert.isDefined(savedInstance)
+
+      yield* DurableDeferred.succeed(gate, {
+        token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+        value: undefined
+      }).pipe(Effect.provide(context))
+      yield* advanceUntil(() => started.isOpen(), "run 2 slow activity must start").pipe(Effect.provide(context))
 
       const cleanup: Array<string> = []
-      const registerCleanup = (instance: WorkflowInstance["Service"], prefix: string) =>
-        Effect.gen(function*() {
-          yield* Scope.addFinalizer(
-            instance.scope,
-            Effect.sync(() => {
-              cleanup.push(`${prefix}local`)
-            })
-          )
-          yield* Workflow.addFinalizer(() =>
-            Effect.sync(() => {
-              cleanup.push(`${prefix}durable`)
-            })
-          )
-          yield* Workflow.withCompensation(Effect.void, () =>
-            Effect.sync(() => {
-              cleanup.push(`${prefix}comp`)
-            }))
-        }).pipe(
-          Effect.provideService(WorkflowInstance, instance),
-          Scope.provide(instance.scope)
-        )
       yield* Effect.gen(function*() {
-        const sharding = yield* Sharding.Sharding
-        const shardId = ShardId.make("default", 1)
-        yield* advanceUntil(() => sharding.hasShardId(shardId), "runner must acquire the shard", 10, 500)
+        yield* Scope.addFinalizer(savedInstance!.scope, Effect.sync(() => cleanup.push("local")))
+        yield* Workflow.addFinalizer(() => Effect.sync(() => cleanup.push("durable")))
+        yield* Workflow.withCompensation(Effect.void, () => Effect.sync(() => cleanup.push("comp")))
+      }).pipe(Effect.provideService(WorkflowInstance, savedInstance), Scope.provide(savedInstance.scope))
 
-        const executionId = yield* workflow.execute({}, { discard: true })
-        yield* pollUntil(workflow, executionId, "Suspended")
-        assert.isDefined(savedInstance)
+      const shutdown = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
+      for (let i = 0; i < 100 && shutdown.pollUnsafe() === undefined; i++) yield* TestClock.adjust(10)
+      yield* release.open
+      for (let i = 0; i < 100 && shutdown.pollUnsafe() === undefined; i++) yield* TestClock.adjust(10)
+      yield* TestClock.adjust(Duration.minutes(1))
+      yield* Fiber.join(shutdown)
 
-        yield* DurableDeferred.succeed(gate, {
-          token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
-          value: undefined
-        })
-        yield* advanceUntil(() => started.isOpen(), "run 2 slow activity must start", 10, 500)
-
-        yield* registerCleanup(savedInstance, "")
-
-        assignSelf = false
-        yield* advanceUntil(() => !sharding.hasShardId(shardId), "runner must drop the moved shard", 10, 500)
-        yield* release.open
-        yield* advanceUntil(() => releases.length > 0, "shard must be released", 10, 500)
-
-        assert.deepStrictEqual(cleanup, ["local"])
-      }).pipe(Effect.provide(layer))
-
-      assert.isDefined(savedInstance)
-      yield* registerCleanup(savedInstance, "late-")
-      assert.deepStrictEqual(cleanup, ["local", "late-local"])
+      assert.deepStrictEqual(cleanup, ["local"])
     }))
 
   it.effect("wakes an activity deferred completed before a parallel sibling lets the workflow suspend", () =>

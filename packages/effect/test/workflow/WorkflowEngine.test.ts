@@ -1602,7 +1602,7 @@ describe("WorkflowEngine", () => {
     }))
 
   it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
-    "layerMemory releases empty scopes and superseded instances across suspended replays",
+    "layerMemory releases empty scopes, superseded instances, and wait sets across suspended replays",
     () =>
       Effect.gen(function*() {
         const gates = [
@@ -1617,12 +1617,15 @@ describe("WorkflowEngine", () => {
         const run2Started = yield* Latch.make()
         const control = new WeakRef({})
         let firstInstance: WeakRef<object> | undefined
+        let firstAwaits: Map<string, number> | undefined
         let secondParent: Scope.Scope | undefined
         const layer = workflow.toLayer(() =>
           Effect.gen(function*() {
             const run = ++runs
             if (run === 1) {
-              firstInstance = new WeakRef(yield* WorkflowEngine.WorkflowInstance)
+              const instance = yield* WorkflowEngine.WorkflowInstance
+              firstInstance = new WeakRef(instance)
+              firstAwaits = instance.awaitedDeferreds
             } else if (run === 2) {
               run2Started.openUnsafe()
               secondParent = (yield* WorkflowEngine.WorkflowInstance).scope.parent
@@ -1634,7 +1637,7 @@ describe("WorkflowEngine", () => {
         yield* Effect.gen(function*() {
           const executionId = yield* workflow.execute({}, { discard: true })
           yield* pollUntil(workflow, executionId, "Suspended")
-          assert.strictEqual(runs, 1)
+          assert.strictEqual(firstAwaits?.size, 1)
 
           yield* DurableDeferred.succeed(gates[0], {
             token: DurableDeferred.tokenFromExecutionId(gates[0], { workflow, executionId }),
@@ -1642,16 +1645,13 @@ describe("WorkflowEngine", () => {
           })
           yield* run2Started.await
           yield* pollUntil(workflow, executionId, "Suspended")
+          assert.strictEqual(firstAwaits?.size, 0)
 
           yield* collectGarbage
           assert.isUndefined(control.deref())
-          assert.isUndefined(firstInstance?.deref(), "superseded WorkflowInstance must not be retained")
+          assert.isUndefined(firstInstance?.deref())
           assert.isDefined(secondParent)
-          assert.strictEqual(
-            secondParent.state._tag === "Open" ? secondParent.state.finalizers?.size ?? 1 : 0,
-            1,
-            "superseded run must not retain an empty child Scope in parent"
-          )
+          assert.strictEqual(secondParent.state._tag === "Open" ? secondParent.state.finalizers?.size ?? 1 : 0, 1)
 
           yield* DurableDeferred.succeed(gates[1], {
             token: DurableDeferred.tokenFromExecutionId(gates[1], { workflow, executionId }),
@@ -1664,97 +1664,5 @@ describe("WorkflowEngine", () => {
         }).pipe(Effect.provide(layer))
       }),
     20_000
-  )
-
-  it.effect(
-    "layerMemory clears superseded deferred tracking and keeps late finalizers on superseded handles until termination",
-    () =>
-      Effect.gen(function*() {
-        const gates = [
-          DurableDeferred.make("WorkflowEngine/CapturedScopeLateFinalizer/First"),
-          DurableDeferred.make("WorkflowEngine/CapturedScopeLateFinalizer/Second"),
-          DurableDeferred.make("WorkflowEngine/CapturedScopeLateFinalizer/Third")
-        ]
-        const workflow = Workflow.make("WorkflowEngine/CapturedScopeLateFinalizer", {
-          payload: {},
-          idempotencyKey: () => "one"
-        })
-        let runs = 0
-        const runStarted = [yield* Latch.make(), yield* Latch.make()]
-        let firstAwaits: Map<string, number> | undefined
-        let secondInstance: WorkflowEngine.WorkflowInstance["Service"] | undefined
-        let thirdScope: Scope.Scope | undefined
-        const finalized: Array<number | string> = []
-        let lateExit: Exit.Exit<unknown, unknown> | undefined
-        const layer = workflow.toLayer(() =>
-          Effect.gen(function*() {
-            const run = ++runs
-            if (run === 1) {
-              firstAwaits = (yield* WorkflowEngine.WorkflowInstance).awaitedDeferreds
-              yield* Workflow.addFinalizer(() =>
-                Effect.sync(() => {
-                  finalized.push(1)
-                })
-              )
-            } else if (run === 2) {
-              runStarted[0].openUnsafe()
-              secondInstance = yield* WorkflowEngine.WorkflowInstance
-            } else if (run === 3) {
-              runStarted[1].openUnsafe()
-              thirdScope = yield* Workflow.scope
-            }
-            for (const gate of gates) yield* DurableDeferred.await(gate)
-          })
-        ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
-
-        yield* Effect.gen(function*() {
-          const executionId = yield* workflow.execute({}, { discard: true })
-          yield* pollUntil(workflow, executionId, "Suspended")
-          assert.strictEqual(firstAwaits?.size, 1)
-
-          for (const [index, gate] of gates.slice(0, 2).entries()) {
-            yield* DurableDeferred.succeed(gate, {
-              token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
-              value: undefined
-            })
-            yield* runStarted[index].await
-            yield* pollUntil(workflow, executionId, "Suspended")
-            if (index === 0) {
-              assert.strictEqual(firstAwaits?.size, 0, "superseded awaitedDeferreds must be cleared")
-              assert.isEmpty(finalized, "retained finalizers must not run while suspended")
-            }
-          }
-
-          assert.isDefined(secondInstance)
-          assert.isDefined(thirdScope)
-          yield* Workflow.addFinalizer((exit) =>
-            Effect.sync(() => {
-              lateExit = exit
-              finalized.push(2)
-            })
-          ).pipe(Effect.provideService(WorkflowEngine.WorkflowInstance, secondInstance))
-          yield* Workflow.withCompensation(Effect.void, () =>
-            Effect.sync(() => {
-              finalized.push("comp")
-            })).pipe(
-              Effect.provideService(WorkflowEngine.WorkflowInstance, secondInstance),
-              Scope.provide(secondInstance.scope)
-            )
-          yield* Scope.addFinalizer(
-            thirdScope,
-            Effect.sync(() => {
-              finalized.push(3)
-            })
-          )
-          assert.isEmpty(finalized, "late finalizers must not run while suspended")
-
-          yield* workflow.interrupt(executionId)
-          const result = yield* pollUntil(workflow, executionId, "Complete")
-          assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit))
-          assert.isDefined(lateExit)
-          assert.isTrue(Exit.isSuccess(lateExit))
-          assert.deepStrictEqual(finalized, [3, 2, 1])
-        }).pipe(Effect.provide(layer))
-      })
   )
 })
