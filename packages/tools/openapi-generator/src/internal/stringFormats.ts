@@ -35,10 +35,21 @@ const formatCodecs: ReadonlyMap<string, FormatCodec> = new Map([
 ])
 
 const getFormatCodec = (representation: Representation): FormatCodec | undefined => {
-  if (representation._tag !== "String") return undefined
+  if (representation._tag === "Reference") return undefined
   const format = representation.annotations?.format
   return typeof format === "string" ? formatCodecs.get(format) : undefined
 }
+
+const isStringLiteral = (representation: Representation): boolean =>
+  representation._tag === "Literal" && typeof representation.literal === "string"
+
+const isStringOnly = (representation: Representation): boolean =>
+  representation._tag === "String" || isStringLiteral(representation)
+
+const isUniqueCheck = (check: SchemaRepresentation.Check): boolean =>
+  check._tag === "Filter"
+    ? check.representation?.id === "effect/schema/isUnique"
+    : check.checks.some(isUniqueCheck)
 
 const valueChildren = (representation: Representation): ReadonlyArray<Representation> => {
   switch (representation._tag) {
@@ -114,14 +125,23 @@ const findSuspendedDefinitions = (document: SchemaDocument): ReadonlySet<string>
 }
 
 const makeDecodes = (decoding: ReadonlySet<string>) => {
-  const decodes = (representation: Representation): boolean => {
+  const decodes = (representation: Representation, inherited?: FormatCodec): boolean => {
     switch (representation._tag) {
       case "Reference":
         return decoding.has(representation.$ref)
       case "Suspend":
         return false
+      case "String":
+        return (getFormatCodec(representation) ?? inherited) !== undefined
+      case "Literal":
+        return typeof representation.literal === "string" &&
+          (getFormatCodec(representation) ?? inherited) !== undefined
+      case "Union": {
+        const codec = getFormatCodec(representation) ?? inherited
+        return representation.types.some((type) => decodes(type, codec))
+      }
       default:
-        return getFormatCodec(representation) !== undefined || valueChildren(representation).some(decodes)
+        return valueChildren(representation).some((child) => decodes(child))
     }
   }
   return decodes
@@ -154,6 +174,21 @@ const wrapDecodeTo = (wire: Representation, codec: FormatCodec): SchemaRepresent
       runtime: `${schema.runtime}.pipe(Schema.decodeTo(${codec.runtime}))`,
       Type: codec.Type,
       importDeclarations: codec.importDeclarations
+    })
+  }
+})
+
+const wrapWireThenDecode = (
+  wire: Representation,
+  decoded: Representation
+): SchemaRepresentation.Declaration => ({
+  _tag: "Declaration",
+  typeParameters: [wire, decoded],
+  checks: [],
+  annotations: {
+    toCode: ({ typeParameters: [wireCode, decodedCode] }: SchemaRepresentation.Generation.DeclarationInput) => ({
+      runtime: `${wireCode.runtime}.pipe(Schema.decodeTo(${decodedCode.runtime}))`,
+      Type: decodedCode.Type
     })
   }
 })
@@ -232,10 +267,16 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
     }
   }
 
-  const rewriteValue = (representation: Representation, path: string): Representation => {
+  const rewriteValue = (
+    representation: Representation,
+    path: string,
+    inherited?: FormatCodec
+  ): Representation => {
     if (representation._tag === "Reference") return representation
-    const codec = getFormatCodec(representation)
-    if (codec !== undefined) return wrapDecodeTo(rewriteWire(representation), codec)
+    const codec = getFormatCodec(representation) ?? inherited
+    if (codec !== undefined && isStringOnly(representation)) {
+      return wrapDecodeTo(rewriteWire(representation), codec)
+    }
     const checks = representation.checks.map(rewriteCheck)
     switch (representation._tag) {
       case "Declaration":
@@ -248,24 +289,43 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
         return { ...representation, thunk: rewriteWire(representation.thunk) }
       case "TemplateLiteral":
         return rewriteWire(representation)
-      case "Arrays":
-        return {
-          ...representation,
-          checks,
-          elements: representation.elements.map((element, index) => ({
-            ...element,
-            type: rewriteValue(element.type, `${path}/${index}`)
-          })),
-          rest: representation.rest.map((item, index) => rewriteValue(item, `${path}/rest/${index}`))
+      case "Arrays": {
+        const elements = representation.elements.map((element, index) => ({
+          ...element,
+          type: rewriteValue(element.type, `${path}/${index}`)
+        }))
+        const rest = representation.rest.map((item, index) => rewriteValue(item, `${path}/rest/${index}`))
+        const hasUnique = representation.checks.some(isUniqueCheck)
+        if (hasUnique && valueChildren(representation).some((child) => decodes(child))) {
+          const uniqueChecks = representation.checks.filter(isUniqueCheck).map(rewriteCheck)
+          const otherChecks = representation.checks.filter((check) => !isUniqueCheck(check)).map(rewriteCheck)
+          const wireArray = rewriteWire({
+            ...representation,
+            annotations: undefined,
+            checks: uniqueChecks
+          })
+          const decodedArray: SchemaRepresentation.Arrays = {
+            ...representation,
+            checks: otherChecks,
+            elements,
+            rest
+          }
+          return wrapWireThenDecode(wireArray, decodedArray)
         }
+        return { ...representation, checks, elements, rest }
+      }
       case "Objects": {
         if (
+          representation.propertySignatures.length > 0 &&
           representation.indexSignatures.length > 0 &&
-          representation.propertySignatures.some((property) => decodes(property.type))
+          (
+            representation.propertySignatures.some((property) => decodes(property.type)) ||
+            representation.indexSignatures.some((signature) => decodes(signature.type))
+          )
         ) {
           throw new Error(
             `Cannot decode string formats at ${path}: objects combining named properties and additional properties ` +
-              "cannot contain named properties that decode from wire strings"
+              "cannot decode formatted strings"
           )
         }
         return {
@@ -281,12 +341,20 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
           }))
         }
       }
-      case "Union":
+      case "Union": {
+        if (
+          codec !== undefined &&
+          representation.types.length > 0 &&
+          representation.types.every(isStringOnly)
+        ) {
+          return wrapDecodeTo(rewriteWire(representation), codec)
+        }
         return {
           ...representation,
           checks,
-          types: representation.types.map((type, index) => rewriteValue(type, `${path}/${index}`))
+          types: representation.types.map((type, index) => rewriteValue(type, `${path}/${index}`, codec))
         }
+      }
       default:
         return { ...representation, checks }
     }

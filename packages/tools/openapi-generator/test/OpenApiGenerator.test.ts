@@ -854,7 +854,10 @@ describe("OpenApiGenerator", () => {
                 type: "object",
                 properties: {
                   changed: { type: "string", format: "date-time" },
+                  deletedAt: { type: ["string", "null"], format: "date-time" },
                   balance: { $ref: "#/components/schemas/Balance" },
+                  tier: { type: "string", format: "int64", enum: ["1", "2"] },
+                  amounts: { type: "array", items: { type: "string", format: "int64" }, uniqueItems: true },
                   count: { type: "string", format: "uint64" },
                   labels: {
                     type: "object",
@@ -864,7 +867,7 @@ describe("OpenApiGenerator", () => {
                   node: { $ref: "#/components/schemas/Node" },
                   label: { type: "string" }
                 },
-                required: ["changed", "balance", "count", "labels", "node", "label"],
+                required: ["changed", "deletedAt", "balance", "tier", "amounts", "count", "labels", "node", "label"],
                 additionalProperties: false
               },
               Balance: { type: "string", format: "int64", pattern: "^-?[1-9][0-9]*$" },
@@ -887,7 +890,10 @@ describe("OpenApiGenerator", () => {
         const options = { name: "Ledger", format: "httpapi", stringFormats: "decoded" } as const
         const wire = {
           changed: "2026-06-01T01:00:00.000+01:00",
+          deletedAt: null,
           balance: "9007199254740993",
+          tier: "1",
+          amounts: ["01", "1"],
           count: "18446744073709551615",
           labels: { "42": "daily" },
           node: { at: "2026-06-01T00:00:00.000Z" },
@@ -900,7 +906,10 @@ describe("OpenApiGenerator", () => {
             const decode = Schema.decodeUnknownExit(LedgerReading)
             const decoded = {
               changed: DateTime.makeUnsafe("2026-06-01T00:00:00.000Z"),
+              deletedAt: null,
               balance: 9007199254740993n,
+              tier: 1n,
+              amounts: [1n, 1n],
               count: 18446744073709551615n,
               labels: { "42": "daily" },
               node: { at: "2026-06-01T00:00:00.000Z" },
@@ -908,17 +917,48 @@ describe("OpenApiGenerator", () => {
             }
             assert.deepStrictEqual(decode(wire), Exit.succeed(decoded))
             assert.deepStrictEqual(
-              Schema.encodeUnknownExit(LedgerReading)(decoded),
-              Exit.succeed({ ...wire, changed: "2026-06-01T00:00:00.000Z" })
+              decode({ ...wire, deletedAt: "2026-06-01T00:00:00.000Z" }),
+              Exit.succeed({ ...decoded, deletedAt: DateTime.makeUnsafe("2026-06-01T00:00:00.000Z") })
+            )
+            assert.deepStrictEqual(
+              Schema.encodeUnknownExit(LedgerReading)({ ...decoded, amounts: [1n, 2n] }),
+              Exit.succeed({ ...wire, changed: "2026-06-01T00:00:00.000Z", amounts: ["1", "2"] })
             )
             assert.isTrue(Exit.isFailure(decode({ ...wire, changed: "not a date" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, balance: "007" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, balance: "9223372036854775808" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, balance: "-9223372036854775809" })))
+            assert.isTrue(Exit.isFailure(decode({ ...wire, tier: "01" })))
+            assert.isTrue(Exit.isFailure(decode({ ...wire, tier: "3" })))
+            assert.isTrue(Exit.isFailure(decode({ ...wire, amounts: ["1", "1"] })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, count: "-1" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, count: "18446744073709551616" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, labels: { "007": "daily" } })))
           })
+        )
+
+        const openApi30NullableSource = yield* generator.generate({
+          ...spec,
+          openapi: "3.0.3",
+          components: {
+            ...spec.components,
+            schemas: {
+              LedgerReading: { type: "string", format: "date-time", nullable: true }
+            }
+          }
+        } as unknown as OpenAPISpec, options)
+        yield* Effect.promise(() =>
+          withGeneratedModule<{ LedgerReading: Schema.Codec<unknown> }>(
+            openApi30NullableSource,
+            ({ LedgerReading }) => {
+              const decode = Schema.decodeUnknownExit(LedgerReading)
+              assert.deepStrictEqual(decode(null), Exit.succeed(null))
+              assert.deepStrictEqual(
+                decode("2026-06-01T00:00:00.000Z"),
+                Exit.succeed(DateTime.makeUnsafe("2026-06-01T00:00:00.000Z"))
+              )
+            }
+          )
         )
 
         const defaultSource = yield* generator.generate(spec, { name: "Ledger", format: "httpapi" })
@@ -948,6 +988,22 @@ describe("OpenApiGenerator", () => {
           }
         }
         assert.isTrue(Exit.isFailure(yield* Effect.exit(generator.generate(openSpec, options))))
+
+        const mixedAdditionalSpec: OpenAPISpec = {
+          ...spec,
+          components: {
+            ...spec.components,
+            schemas: {
+              LedgerReading: {
+                type: "object",
+                properties: { name: { type: "string" } },
+                required: ["name"],
+                additionalProperties: { type: "string", format: "int64" }
+              }
+            }
+          }
+        }
+        assert.isTrue(Exit.isFailure(yield* Effect.exit(generator.generate(mixedAdditionalSpec, options))))
       }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
 
     it.effect("get operation", () =>
