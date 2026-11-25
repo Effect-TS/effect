@@ -197,7 +197,8 @@ suite("single-table", Persistence.layerBackingSql, {
 
 PersistedQueueTest.suite(
   "sql-sqlite-node",
-  PersistedQueue.layerStoreSql().pipe(Layer.provide(ClientLayer))
+  PersistedQueue.layerStoreSql().pipe(Layer.provide(ClientLayer)),
+  { nonDeliveryWait: "250 millis" }
 )
 
 it.layer(ClientLayer)((it) => PersistedQueueSqlTest.suiteWith(it))
