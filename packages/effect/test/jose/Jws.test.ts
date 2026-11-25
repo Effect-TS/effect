@@ -233,16 +233,13 @@ it.effect("resolves the verification key from the Jwks service by algorithm and 
 it.effect("maps crypto backend failures without exposing diagnostics", () =>
   Effect.gen(function*() {
     const marker = "backend-secret-marker"
-    const makeMac = (reason: () => CryptoError.CryptoErrorReason) =>
-      Layer.succeed(
+    const makeMac = (reason: CryptoError.CryptoErrorReason) => {
+      const fail = (method: string) => () => Effect.fail(new CryptoError.CryptoError({ module: "Mac", method, reason }))
+      return Layer.succeed(
         Mac.Mac,
-        Mac.Mac.of({
-          generateKey: () =>
-            Effect.fail(new CryptoError.CryptoError({ module: "Mac", method: "generateKey", reason: reason() })),
-          sign: () => Effect.fail(new CryptoError.CryptoError({ module: "Mac", method: "sign", reason: reason() })),
-          verify: () => Effect.fail(new CryptoError.CryptoError({ module: "Mac", method: "verify", reason: reason() }))
-        })
+        Mac.Mac.of({ generateKey: fail("generateKey"), sign: fail("sign"), verify: fail("verify") })
       )
+    }
     const key = yield* Jwk.importSecret(Redacted.make(rfc7515.hs256.jwk), "HS256")
     const operations: ReadonlyArray<{
       readonly effect: Effect.Effect<unknown, JoseError.JoseError, Mac.Mac>
@@ -253,7 +250,7 @@ it.effect("maps crypto backend failures without exposing diagnostics", () =>
       { effect: Jws.verify(rfc7515.hs256.token, key), method: "verify", description: "Could not verify with the key" }
     ]
 
-    const unsupported = makeMac(() => new CryptoError.Unsupported({ description: marker, cause: new Error(marker) }))
+    const unsupported = makeMac(new CryptoError.Unsupported({ description: marker, cause: new Error(marker) }))
     for (const { description, effect, method } of operations) {
       const error = yield* effect.pipe(Effect.provide(unsupported), Effect.flip)
       assertReason(error, "CryptoFailed")
@@ -267,7 +264,7 @@ it.effect("maps crypto backend failures without exposing diagnostics", () =>
       assert.notInclude(NodeUtil.inspect(error, { depth: Infinity }), marker)
     }
 
-    const invalidKey = makeMac(() => new CryptoError.InvalidKey({ description: marker, cause: new Error(marker) }))
+    const invalidKey = makeMac(new CryptoError.InvalidKey({ description: marker, cause: new Error(marker) }))
     const error = yield* Jws.sign(utf8("payload"), key).pipe(Effect.provide(invalidKey), Effect.flip)
     assertReason(error, "InvalidKey")
     assert.strictEqual(error.reason.description, "Could not sign with the key")
