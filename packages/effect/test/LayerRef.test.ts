@@ -107,9 +107,8 @@ describe("LayerRef", () => {
       let sharedBuilds = 0
       const acquired: Array<number> = []
       const released: Array<number> = []
-      const sharedLayer = Layer.effectDiscard(Effect.sync(() => {
-        sharedBuilds++
-      }))
+      class Shared extends Context.Service<Shared, number>()("LayerRefTest/Shared") {}
+      const sharedLayer = Layer.effect(Shared)(Effect.sync(() => ++sharedBuilds))
 
       class ResourceRef extends LayerRef.Service<ResourceRef>()("LayerRefTest/SharedDepRef", {
         layer: makeLayer(acquired, released).pipe(Layer.provide(sharedLayer)),
