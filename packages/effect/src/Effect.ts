@@ -2933,9 +2933,7 @@ export const catchTag: {
   >
   <
     A,
-    // `E` defaults to `any` so the tag is not rejected while TypeScript defers
-    // an inline `self` such as `Effect.map(...)` during inference. Type
-    // parameters after a default need one too.
+    // Default `E` to `any` so `K` is not rejected while TS defers an inline `self` (e.g. `Effect.map(...)`)
     E = any,
     R = unknown,
     const K extends Tags<E> | Arr.NonEmptyReadonlyArray<Tags<E>> = never,
