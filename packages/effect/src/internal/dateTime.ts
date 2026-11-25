@@ -484,8 +484,7 @@ export const zoneMakeOffset = (offset: number): DateTime.TimeZone.Offset => {
 
 /** @internal */
 export const zoneMakeNamed = (zoneId: string): Option.Option<DateTime.TimeZone.Named> => {
-  // Do not pass `zoneMakeNamedUnsafe` to a top-level call such as `Option.liftThrowable`,
-  // or AOT compilers that prune per function treat `Intl` as reachable whenever this module loads.
+  // Plain function for the same reason as `makeZoned`.
   try {
     return Option.some(zoneMakeNamedUnsafe(zoneId))
   } catch {
