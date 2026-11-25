@@ -75,14 +75,9 @@ export const run = (): void => {
       // The command shares the file status flags of each socket, and libuv only
       // makes fds 0 to 2 blocking
       for (const socket of sockets) {
+        // A socket that has lost its handle is rejected by `spawn`
         const errno = (socket as SocketWithHandle)._handle?.setBlocking(true)
-        if (errno !== 0) {
-          const code = typeof errno === "number" && errno < 0 ? Util.getSystemErrorName(errno) : undefined
-          throw Object.assign(
-            new Error(code !== undefined ? `setBlocking failed: ${code}` : "Failed to set stdio socket to blocking"),
-            { code, errno, syscall: "setBlocking" }
-          )
-        }
+        if (errno) throw new Error(`setBlocking failed: ${Util.getSystemErrorName(errno)}`)
       }
       const child = ChildProcess.spawn(command, args, { ...options, stdio: values as Array<Net.Socket | "inherit"> })
       child.on("error", (error) => send({ _tag: "Error", id, error: serializeError(error) }))
