@@ -538,7 +538,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.provide(layer(false)))
     }))
 
-  for (const mode of ["sequential", "queued"] as const) {
+  for (const mode of ["sequential", "queued", "pre-persisted"] as const) {
     it.effect(`releases a rebalanced shard promptly after an in-flight activity completes (${mode})`, () =>
       Effect.gen(function*() {
         const otherRunner = Runner.make({
@@ -565,8 +565,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
             }))
         )
         const storage = yield* makeSharedStorage
-        const queuedSaved = yield* Latch.make()
-        let hideQueued = mode === "queued"
+        let queuedSaves = 0
+        let hideQueued = mode !== "sequential"
         const isQueuedActivity = (envelope: Message.Incoming<any>["envelope"] | Message.Outgoing<any>["envelope"]) =>
           envelope._tag === "Request" &&
           envelope.tag === "activity" &&
@@ -578,7 +578,10 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           saveRequest: (message) =>
             Effect.tap(
               storage.saveRequest(message),
-              () => isQueuedActivity(message.envelope) ? queuedSaved.open : Effect.void
+              () =>
+                Effect.sync(() => {
+                  if (isQueuedActivity(message.envelope)) queuedSaves++
+                })
             ),
           unprocessedMessages: (shardIds, options) =>
             Effect.map(storage.unprocessedMessages(shardIds, options), visible),
@@ -601,8 +604,10 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         })
         const queued = Activity.make({
           name: "queued",
+          success: Schema.String,
           execute: Effect.sync(() => {
             runs.queued++
+            return "queued"
           })
         })
         const after = Activity.make({
@@ -640,9 +645,20 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           const shardId = ShardId.make("default", 1)
           yield* advanceUntil(() => sharding.hasShardId(shardId), "runner must acquire the shard", 10, 500)
 
-          const executionId = yield* workflow.execute({}, { discard: true })
+          const executionId = yield* workflow.executionId({})
+          const sharedCaller = mode === "pre-persisted"
+            ? yield* (yield* Entity.make(`Workflow/${workflow._tag}`, [RecoveryActivityRpc]).client)(executionId)
+              .activity({ name: "queued", attempt: 1, withTransaction: false })
+              .pipe(Effect.forkScoped({ startImmediately: true }))
+            : undefined
+          if (sharedCaller) {
+            yield* advanceUntil(() => queuedSaves >= 1, "pre-persisted activity must be saved", 10, 500)
+          }
+
+          yield* workflow.execute({}, { discard: true })
+          const expectedQueuedSaves = mode === "sequential" ? 0 : mode === "queued" ? 1 : 2
           yield* advanceUntil(
-            () => started.isOpen() && (mode === "sequential" || queuedSaved.isOpen()),
+            () => started.isOpen() && queuedSaves >= expectedQueuedSaves,
             "in-flight activity must start",
             10,
             500
@@ -660,6 +676,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           if (!released) yield* TestClock.adjust(Duration.seconds(90))
           assert.isTrue(released, "shard must be released promptly without waiting for entityTerminationTimeout")
           assert.deepStrictEqual(runs, { slow: 1, after: 0, queued: 0 })
+          if (sharedCaller) assert.isUndefined(sharedCaller.pollUnsafe(), "shared caller must remain waiting")
 
           assignSelf = true
           hideQueued = false
@@ -668,7 +685,19 @@ describe.concurrent("ClusterWorkflowEngine", () => {
             yield* pollUntil(workflow, executionId, "Complete"),
             new Workflow.Complete({ exit: Exit.void })
           )
-          assert.deepStrictEqual(runs, { slow: 1, after: 1, queued: mode === "queued" ? 1 : 0 })
+          assert.deepStrictEqual(runs, { slow: 1, after: 1, queued: mode === "sequential" ? 0 : 1 })
+          if (sharedCaller) {
+            yield* advanceUntil(
+              () => sharedCaller.pollUnsafe() !== undefined,
+              "shared caller must receive the activity reply",
+              10,
+              500
+            )
+            assert.deepStrictEqual(
+              yield* Fiber.join(sharedCaller),
+              new Workflow.Complete({ exit: Exit.succeed("queued") })
+            )
+          }
         }).pipe(Effect.provide(layer))
       }))
   }

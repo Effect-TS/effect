@@ -1641,6 +1641,7 @@ const make = Effect.gen(function*() {
     readonly rpc: Rpc.AnyWithProps
     readonly context: Context.Context<never>
     readonly message: Message.OutgoingRequest<any>
+    readonly wait?: ClusterAbandon.ReplyWait | undefined
     lastChunkId?: Snowflake.Snowflake
     // the runner a volatile request was last sent to
     runner?: RunnerAddress
@@ -1659,15 +1660,21 @@ const make = Effect.gen(function*() {
       if (!shutdown && !MutableHashSet.has(releasingShards, address.shardId)) return Effect.void
       const abandon: Array<Effect.Effect<void>> = []
       for (const [requestId, entry] of clientRequests) {
+        const persistedId = entry.wait?.persistedId ?? requestId
         if (
           !Context.get(entry.message.annotations, Persisted) ||
           !Equal.equals(entry.message.envelope.address, address) ||
-          isDelivered(requestId) ||
+          isDelivered(persistedId) ||
           (!shutdown && !isHandoffCaller(entry.context, address))
         ) continue
         // Drop the entry so abandoning the caller does not cancel the request.
         clientRequests.delete(requestId)
-        abandon.push(storage.unregisterReplyHandler(requestId, { interrupt: true }))
+        if (entry.wait !== undefined) {
+          ClusterAbandon.abandonWait(entry.wait)
+          if (!entry.wait.waiting) {
+            abandon.push(storage.unregisterReplyHandler(requestId, { interrupt: true }))
+          }
+        }
       }
       return Effect.all(abandon, { discard: true })
     })
@@ -1735,10 +1742,17 @@ const make = Effect.gen(function*() {
                   () => client.write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.void as any })
                 )
               }
+              const wait: ClusterAbandon.ReplyWait | undefined = Context.get(message.annotations, Persisted)
+                ? { persistedId: undefined, waiting: false, abandoned: false, fiber }
+                : undefined
+              if (wait !== undefined) {
+                ClusterAbandon.replyWaits.set(message, wait)
+              }
               const entry: ClientRequestEntry = {
                 rpc: rpc as any,
                 context: fiber.context,
-                message
+                message,
+                wait
               }
               clientRequests.set(id, entry)
               respond = makeClientRespond(entry, client.write)

@@ -32,6 +32,7 @@ import type { MalformedMessage, PersistenceError } from "./ClusterError.ts"
 import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, RunnerUnavailable } from "./ClusterError.ts"
 import { Persisted } from "./ClusterSchema.ts"
 import * as Envelope from "./Envelope.ts"
+import * as ClusterAbandon from "./internal/clusterAbandon.ts"
 import { TransactionNotifications } from "./internal/transactionNotifications.ts"
 import * as Message from "./Message.ts"
 import * as MessageStorage from "./MessageStorage.ts"
@@ -227,10 +228,30 @@ export const make: (
     // received reply.
     //
     // Otherwise, we notify the remote entity and then reply from storage.
+    const wait = ClusterAbandon.replyWaits.get(message)
+    const afterPersistWith = (outgoing: Message.OutgoingRequest<any>, duplicate: boolean) => {
+      if (wait !== undefined) {
+        wait.persistedId = outgoing.envelope.requestId
+        if (wait.abandoned) {
+          if (duplicate) requestIdRewrites.delete(message.envelope.requestId)
+          return ClusterAbandon.interrupt
+        }
+        wait.waiting = true
+      }
+      const effect = afterPersist(outgoing, duplicate)
+      return duplicate && wait !== undefined
+        ? Effect.onInterrupt(effect, () =>
+          wait.abandoned
+            ? Effect.sync(() => {
+              requestIdRewrites.delete(message.envelope.requestId)
+            })
+            : Effect.void)
+        : effect
+    }
     return Effect.flatMap(
       Effect.catchTag(storage.saveRequest(message), "MalformedMessage", Effect.die),
       MessageStorage.SaveResult.$match({
-        Success: () => afterPersist(message, false),
+        Success: () => afterPersistWith(message, false),
         Duplicate: ({ lastReceivedReply, originalId }) => {
           // If the last received reply is an exit, we can just return it
           // as the response.
@@ -238,7 +259,7 @@ export const make: (
             return message.respond(lastReceivedReply.value.withRequestId(message.envelope.requestId))
           }
           requestIdRewrites.set(message.envelope.requestId, originalId)
-          return afterPersist(
+          return afterPersistWith(
             new Message.OutgoingRequest({
               ...message,
               lastReceivedReply,
