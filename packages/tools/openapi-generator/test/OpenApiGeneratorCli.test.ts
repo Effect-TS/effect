@@ -106,6 +106,49 @@ describe("openapigen CLI", () => {
       assert.include(httpapiResult.stdout, "export class CliClient extends HttpApi.make(\"CliClient\")")
     }))
 
+  it.effect("routes --string-formats decoded to schema-backed output only", () =>
+    Effect.gen(function*() {
+      const spec = fixturePath("cli-basic-spec.json")
+      const patch = JSON.stringify([
+        {
+          op: "add",
+          path: "/paths/~1users/get/responses/200/content/application~1json/schema/items/format",
+          value: "date-time"
+        }
+      ])
+
+      const encodedResult = yield* runCli(["--spec", spec, "--name", "CliClient", "--patch", patch])
+      const decodedResult = yield* runCli([
+        "--spec",
+        spec,
+        "--name",
+        "CliClient",
+        "--patch",
+        patch,
+        "--string-formats",
+        "decoded"
+      ])
+      const typeOnlyResult = yield* runCli([
+        "--spec",
+        spec,
+        "--name",
+        "CliClient",
+        "--patch",
+        patch,
+        "--format",
+        "httpclient-type-only",
+        "--string-formats",
+        "decoded"
+      ])
+
+      assert.isTrue(Exit.isSuccess(encodedResult.exit))
+      assert.isTrue(Exit.isSuccess(decodedResult.exit))
+      assert.isTrue(Exit.isSuccess(typeOnlyResult.exit))
+      assert.notInclude(encodedResult.stdout, "DateTime.Utc")
+      assert.include(decodedResult.stdout, "DateTime.Utc")
+      assert.notInclude(typeOnlyResult.stdout, "DateTime.Utc")
+    }))
+
   it.effect("rejects legacy --type-only flag", () =>
     Effect.gen(function*() {
       const spec = fixturePath("cli-basic-spec.json")

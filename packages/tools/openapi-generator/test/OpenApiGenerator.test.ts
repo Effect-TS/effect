@@ -827,7 +827,7 @@ const cookieParameterSpec: OpenAPISpec = {
 
 describe("OpenApiGenerator", () => {
   describe("schema", () => {
-    it.effect("decodes formatted strings while preserving the wire constraints", () =>
+    it.effect("decodes formatted strings while preserving wire constraints and defaults", () =>
       Effect.gen(function*() {
         const spec: OpenAPISpec = {
           openapi: "3.1.0",
@@ -861,12 +861,22 @@ describe("OpenApiGenerator", () => {
                     propertyNames: { $ref: "#/components/schemas/Balance" },
                     additionalProperties: { type: "string" }
                   },
+                  node: { $ref: "#/components/schemas/Node" },
                   label: { type: "string" }
                 },
-                required: ["changed", "balance", "count", "labels", "label"],
+                required: ["changed", "balance", "count", "labels", "node", "label"],
                 additionalProperties: false
               },
-              Balance: { type: "string", format: "int64", pattern: "^-?[1-9][0-9]*$" }
+              Balance: { type: "string", format: "int64", pattern: "^-?[1-9][0-9]*$" },
+              Node: {
+                type: "object",
+                properties: {
+                  at: { type: "string", format: "date-time" },
+                  next: { $ref: "#/components/schemas/Node" }
+                },
+                required: ["at"],
+                additionalProperties: false
+              }
             },
             securitySchemes: {}
           },
@@ -875,38 +885,58 @@ describe("OpenApiGenerator", () => {
         }
         const generator = yield* OpenApiGenerator.OpenApiGenerator
         const options = { name: "Ledger", format: "httpapi", stringFormats: "decoded" } as const
-        const source = yield* generator.generate(spec, options)
         const wire = {
           changed: "2026-06-01T01:00:00.000+01:00",
           balance: "9007199254740993",
           count: "18446744073709551615",
           labels: { "42": "daily" },
+          node: { at: "2026-06-01T00:00:00.000Z" },
           label: "daily"
         }
-        yield* Effect.tryPromise({
-          try: () =>
-            withGeneratedModule<{ LedgerReading: Schema.Codec<unknown> }>(source, ({ LedgerReading }) => {
-              const decode = Schema.decodeUnknownExit(LedgerReading)
-              const decoded = {
-                changed: DateTime.makeUnsafe("2026-06-01T00:00:00.000Z"),
-                balance: 9007199254740993n,
-                count: 18446744073709551615n,
-                labels: { "42": "daily" },
-                label: "daily"
-              }
-              assert.deepStrictEqual(decode(wire), Exit.succeed(decoded))
-              assert.deepStrictEqual(
-                Schema.encodeUnknownExit(LedgerReading)(decoded),
-                Exit.succeed({ ...wire, changed: "2026-06-01T00:00:00.000Z" })
-              )
-              assert.isTrue(Exit.isFailure(decode({ ...wire, changed: "not a date" })))
-              assert.isTrue(Exit.isFailure(decode({ ...wire, balance: "007" })))
-              assert.isTrue(Exit.isFailure(decode({ ...wire, balance: "9223372036854775808" })))
-              assert.isTrue(Exit.isFailure(decode({ ...wire, count: "-1" })))
-              assert.isTrue(Exit.isFailure(decode({ ...wire, labels: { "007": "daily" } })))
-            }),
-          catch: (cause) => cause
-        })
+
+        const decodedSource = yield* generator.generate(spec, options)
+        yield* Effect.promise(() =>
+          withGeneratedModule<{ LedgerReading: Schema.Codec<unknown> }>(decodedSource, ({ LedgerReading }) => {
+            const decode = Schema.decodeUnknownExit(LedgerReading)
+            const decoded = {
+              changed: DateTime.makeUnsafe("2026-06-01T00:00:00.000Z"),
+              balance: 9007199254740993n,
+              count: 18446744073709551615n,
+              labels: { "42": "daily" },
+              node: { at: "2026-06-01T00:00:00.000Z" },
+              label: "daily"
+            }
+            assert.deepStrictEqual(decode(wire), Exit.succeed(decoded))
+            assert.deepStrictEqual(
+              Schema.encodeUnknownExit(LedgerReading)(decoded),
+              Exit.succeed({ ...wire, changed: "2026-06-01T00:00:00.000Z" })
+            )
+            assert.isTrue(Exit.isFailure(decode({ ...wire, changed: "not a date" })))
+            assert.isTrue(Exit.isFailure(decode({ ...wire, balance: "007" })))
+            assert.isTrue(Exit.isFailure(decode({ ...wire, balance: "9223372036854775808" })))
+            assert.isTrue(Exit.isFailure(decode({ ...wire, balance: "-9223372036854775809" })))
+            assert.isTrue(Exit.isFailure(decode({ ...wire, count: "-1" })))
+            assert.isTrue(Exit.isFailure(decode({ ...wire, count: "18446744073709551616" })))
+            assert.isTrue(Exit.isFailure(decode({ ...wire, labels: { "007": "daily" } })))
+          })
+        )
+
+        const defaultSource = yield* generator.generate(spec, { name: "Ledger", format: "httpapi" })
+        yield* Effect.promise(() =>
+          withGeneratedModule<{ LedgerReading: Schema.Codec<unknown> }>(defaultSource, ({ LedgerReading }) => {
+            assert.deepStrictEqual(Schema.decodeUnknownExit(LedgerReading)(wire), Exit.succeed(wire))
+          })
+        )
+
+        const typeOnlySource = yield* OpenApiGenerator.OpenApiGenerator.pipe(
+          Effect.flatMap((g) =>
+            g.generate(spec, { name: "Ledger", format: "httpclient-type-only", stringFormats: "decoded" })
+          ),
+          Effect.provide(OpenApiGenerator.layerTransformerTs)
+        )
+        assert.notInclude(typeOnlySource, "DateTime.Utc")
+        assert.notInclude(typeOnlySource, "bigint")
+
         const openSpec: OpenAPISpec = {
           ...spec,
           components: {
@@ -917,8 +947,7 @@ describe("OpenApiGenerator", () => {
             }
           }
         }
-        const refused = yield* Effect.exit(generator.generate(openSpec, options))
-        assert.isTrue(Exit.isFailure(refused))
+        assert.isTrue(Exit.isFailure(yield* Effect.exit(generator.generate(openSpec, options))))
       }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
 
     it.effect("get operation", () =>
@@ -1788,42 +1817,47 @@ export const TestClientError = <Tag extends string, E>(
   describe("httpapi", () => {
     const Bytes = Schema.Uint8Array.pipe(HttpApiSchema.asUint8Array())
 
-    it.effect("round-trips group-local endpoint names and keeps the qualified OpenAPI ids", () =>
-      assertHttpApiIncludes(
-        OpenApi.fromApi(
+    it.effect("uses group-local endpoint names, qualified OpenAPI ids, and grouped parameter schemas", () =>
+      Effect.gen(function*() {
+        const spec = OpenApi.fromApi(
           HttpApi.make("Api").add(
             HttpApiGroup.make("balance").add(
-              HttpApiEndpoint.get("read", "/balance", { query: { currency: Schema.String } })
+              HttpApiEndpoint.get("read", "/balance/:accountId", {
+                params: { accountId: Schema.String },
+                query: { currency: Schema.String },
+                headers: { "x-trace-id": Schema.String }
+              })
             ),
             HttpApiGroup.make("orders").add(
               HttpApiEndpoint.get("read", "/orders"),
               HttpApiEndpoint.get("read_page2fa", "/orders/page")
             )
           )
-        ),
-        [
-          `HttpApiEndpoint.get("read", "/balance", { query: BalanceReadQuery`,
-          `HttpApiEndpoint.get("read", "/orders"`,
-          `HttpApiEndpoint.get("read_page2fa", "/orders/page"`,
-          `.annotate(OpenApi.Identifier, "balance.read")`,
-          `.annotate(OpenApi.Identifier, "orders.read")`
-        ]
-      ))
+        )
+        const { source } = yield* generateHttpApi(spec)
+        assert.notInclude(source, "BalanceReadParams")
 
-    it.effect("excludes flat parameter schemas from grouped endpoints", () =>
-      assertHttpApiIncludes(
-        OpenApi.fromApi(
-          HttpApi.make("Api").add(
-            HttpApiGroup.make("balance").add(
-              HttpApiEndpoint.get("read", "/balance", { query: { currency: Schema.String } })
+        yield* Effect.promise(() =>
+          withGeneratedModule<{
+            TestClient: HttpApi.HttpApi<string, never> & {
+              readonly groups: Record<string, { readonly endpoints: Record<string, unknown> }>
+            }
+          }>(source, ({ TestClient }) => {
+            assert.deepStrictEqual(Object.keys(TestClient.groups.balance.endpoints), ["read"])
+            assert.deepStrictEqual(Object.keys(TestClient.groups.orders.endpoints), ["read", "read_page2fa"])
+            const reexported = OpenApi.fromApi(TestClient)
+            assert.strictEqual(reexported.paths["/balance/{accountId}"].get?.operationId, "balance.read")
+            assert.strictEqual(reexported.paths["/orders"].get?.operationId, "orders.read")
+            assert.strictEqual(reexported.paths["/orders/page"].get?.operationId, "orders.read_page2fa")
+            assert.deepStrictEqual(
+              reexported.paths["/balance/{accountId}"].get?.parameters,
+              spec.paths["/balance/{accountId}"].get?.parameters
             )
-          )
-        ),
-        [`query: BalanceReadQuery`],
-        [`export type BalanceReadParams`, `export const BalanceReadParams`]
-      ))
+          })
+        )
+      }))
 
-    it.effect("refuses ambiguous endpoint names in the same group", () =>
+    it.effect("rejects duplicate local endpoint names in the same group", () =>
       Effect.gen(function*() {
         const spec = OpenApi.fromApi(
           HttpApi.make("Api").add(
@@ -1834,19 +1868,13 @@ export const TestClientError = <Tag extends string, E>(
           )
         )
         const result = yield* Effect.result(generateHttpApi(spec))
-        switch (result._tag) {
-          case "Failure":
-            assert.deepInclude(result.failure, {
-              _tag: "HttpApiEndpointNameCollision",
-              group: "balance",
-              endpoint: "read",
-              first: { method: "get", path: "/balance/latest", operationId: "balance.read" },
-              repeated: { method: "get", path: "/balance/history", operationId: "read" }
-            })
-            break
-          case "Success":
-            assert.fail("Expected two operations named balance.read to be refused")
+        if (result._tag === "Success") {
+          assert.fail("Expected duplicate local endpoint names in the same group to fail")
         }
+        assert.include(result.failure.message, "GET /balance/latest")
+        assert.include(result.failure.message, "GET /balance/history")
+        assert.include(result.failure.message, "read")
+        assert.include(result.failure.message, "balance")
       }))
     const event = (name: string) =>
       Schema.Struct({ ...Sse.EventEncoded.fields, event: Schema.Literal(name) }).annotate({ identifier: name })
