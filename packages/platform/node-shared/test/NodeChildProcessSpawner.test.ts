@@ -51,7 +51,8 @@ describe("shared suite", { concurrent: false }, () => {
   // The proxy process layer fails to build on Windows
   if (process.platform !== "win32") {
     ChildProcessSpawnerTest.suite("NodeChildProcessSpawner.layerProxyProcess", Layer.orDie(ProxyServices), {
-      processGroups: true
+      processGroups: true,
+      inheritedFds: false
     })
   }
 })
@@ -386,6 +387,14 @@ ${proxyProcessSource}`
     assert.isTrue(stdin.destroyed)
     assert.deepStrictEqual(released, [7])
   })
+
+  it.effect("rejects numeric file descriptors with BadArgument", () =>
+    Effect.gen(function*() {
+      for (const options of [{ stdin: 0 }, { stdout: 1 }, { stderr: 2 }, { additionalFds: { fd3: 3 } }] as const) {
+        const error = yield* Effect.flip(Effect.scoped(ChildProcess.make("echo", ["test"], options)))
+        assert.strictEqual(error.reason._tag, "BadArgument")
+      }
+    }).pipe(Effect.provide(ProxyServices)))
 })
 
 describe.skipIf(process.platform === "win32")("error descriptions", () => {

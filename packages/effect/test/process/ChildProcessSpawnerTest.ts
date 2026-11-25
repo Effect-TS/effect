@@ -18,6 +18,7 @@ import { inspect } from "node:util"
 export interface Options {
   readonly processGroups: boolean
   readonly additionalFds?: boolean | undefined
+  readonly inheritedFds?: boolean | undefined
 }
 
 const sourceError = PlatformError.systemError({
@@ -1423,7 +1424,7 @@ export const suite = (
         }), { timeout: 10_000 })
     })
     exitStatusSuite(layer)
-    if (options.additionalFds !== false) {
+    if (options.inheritedFds ?? options.additionalFds !== false) {
       inheritedFdSuite(layer)
     }
   })

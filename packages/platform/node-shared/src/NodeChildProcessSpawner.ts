@@ -181,7 +181,10 @@ const spawnDirect: SpawnProcess = (command, args, options) => NodeChildProcess.s
 // Returns the function that launches a command. The proxy process layer waits
 // here, interruptibly, for a proxy process that is ready, since the launch
 // itself cannot be interrupted.
-const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnProcess, PlatformError.PlatformError>) {
+const makeWith = Effect.fnUntraced(function*(
+  prepareSpawn: Effect.Effect<SpawnProcess, PlatformError.PlatformError>,
+  supportsInheritedFds: boolean
+) {
   const fs = yield* FileSystem.FileSystem
   const path = yield* Path.Path
 
@@ -296,10 +299,14 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
 
   // Every number in stdio is a caller-supplied descriptor.
   const findInvalidFd = (stdio: ReadonlyArray<NodeChildProcess.IOType | number | undefined>): string | undefined => {
-    const fd = stdio.findIndex((io) => typeof io === "number" && !(Number.isInteger(io) && io >= 0))
-    return fd === -1
-      ? undefined
-      : `Invalid ${["stdin", "stdout", "stderr"][fd] ?? ChildProcess.fdName(fd)} file descriptor: ${stdio[fd]}`
+    const fd = stdio.findIndex((io) =>
+      typeof io === "number" && (!supportsInheritedFds || !(Number.isInteger(io) && io >= 0))
+    )
+    if (fd === -1) return undefined
+    if (!supportsInheritedFds) {
+      return "Numeric file descriptors are unsupported by NodeChildProcessSpawner.layerProxyProcess"
+    }
+    return `Invalid ${["stdin", "stdout", "stderr"][fd] ?? ChildProcess.fdName(fd)} file descriptor: ${stdio[fd]}`
   }
 
   // Runs a user-provided input stream into its sink, recording a failure of
@@ -925,7 +932,7 @@ export const layer: Layer.Layer<
   ChildProcessSpawner,
   never,
   FileSystem.FileSystem | Path.Path
-> = Layer.effect(ChildProcessSpawner, makeWith(Effect.succeed(spawnDirect)))
+> = Layer.effect(ChildProcessSpawner, makeWith(Effect.succeed(spawnDirect), true))
 
 /**
  * Service that reports the proxy process started by {@link layerProxyProcess}.
@@ -1023,6 +1030,9 @@ export class ProxyProcess extends Context.Service<ProxyProcess, {
  *   result in one constant to share a proxy process.
  * - The socket path under `os.tmpdir()` must fit the platform limit of about
  *   100 bytes.
+ * - Numeric file descriptors in `stdin`, `stdout`, `stderr`, or `additionalFds`
+ *   fail with `BadArgument`, since descriptors belong to the application
+ *   process rather than the proxy process.
  *
  * **Example** (Wiring a packaged command-line application)
  *
@@ -1082,7 +1092,7 @@ export const layerProxyProcess = (options?: {
       (proxy) => proxy.close
     )
     yield* proxy.ready
-    const spawner = yield* makeWith(proxy.prepareSpawn)
+    const spawner = yield* makeWith(proxy.prepareSpawn, false)
     return Context.make(ChildProcessSpawner, spawner).pipe(
       Context.add(ProxyProcess, ProxyProcess.of({ currentPid: proxy.currentPid }))
     )
