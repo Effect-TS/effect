@@ -24,10 +24,12 @@ import * as Option from "effect/Option"
 import * as Rec from "effect/Record"
 import * as Schema from "effect/Schema"
 import * as SchemaRepresentation from "effect/SchemaRepresentation"
+import { decodeStringFormats, type StringFormats } from "./internal/stringFormats.ts"
 
 type Source = "openapi-3.0" | "openapi-3.1"
 interface GenerateOptions {
   readonly onEnter?: ((js: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
+  readonly stringFormats?: StringFormats | undefined
   readonly multipartSchemaRefs?: MultipartSchemaRefs | undefined
   readonly binarySchemas?: ReadonlySet<string> | undefined
   readonly includeSchemas?: ReadonlyArray<string> | undefined
@@ -117,10 +119,9 @@ export function compile(
 ): ReadonlyMap<string, Codegen.Binding> {
   const prepared = prepareSchemas(schemas, source, components, options)
   if (prepared === undefined) return new Map()
-  return module.addSchemas(prepared.schemas, {
-    references: prepared.references,
-    typeOnly
-  })
+  // Type-only output has no codecs to decode with, so it keeps the wire types.
+  const document = options?.stringFormats === "decoded" && !typeOnly ? decodeStringFormats(prepared) : prepared
+  return module.addSchemas(document.schemas, { references: document.references, typeOnly })
 }
 
 function prepareSchemas(

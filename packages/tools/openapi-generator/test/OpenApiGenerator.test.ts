@@ -1,5 +1,6 @@
 import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import { assert, describe, it } from "@effect/vitest"
+import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import * as Sse from "effect/encoding/Sse"
 import * as Exit from "effect/Exit"
@@ -826,6 +827,100 @@ const cookieParameterSpec: OpenAPISpec = {
 
 describe("OpenApiGenerator", () => {
   describe("schema", () => {
+    it.effect("decodes formatted strings while preserving the wire constraints", () =>
+      Effect.gen(function*() {
+        const spec: OpenAPISpec = {
+          openapi: "3.1.0",
+          info: { title: "Ledger", version: "1.0.0" },
+          paths: {
+            "/reading": {
+              get: {
+                operationId: "readLedger",
+                parameters: [],
+                responses: {
+                  200: {
+                    description: "Ledger reading",
+                    content: { "application/json": { schema: { $ref: "#/components/schemas/LedgerReading" } } }
+                  }
+                },
+                tags: ["ledger"],
+                security: []
+              }
+            }
+          },
+          components: {
+            schemas: {
+              LedgerReading: {
+                type: "object",
+                properties: {
+                  changed: { type: "string", format: "date-time" },
+                  balance: { $ref: "#/components/schemas/Balance" },
+                  count: { type: "string", format: "uint64" },
+                  labels: {
+                    type: "object",
+                    propertyNames: { $ref: "#/components/schemas/Balance" },
+                    additionalProperties: { type: "string" }
+                  },
+                  label: { type: "string" }
+                },
+                required: ["changed", "balance", "count", "labels", "label"],
+                additionalProperties: false
+              },
+              Balance: { type: "string", format: "int64", pattern: "^-?[1-9][0-9]*$" }
+            },
+            securitySchemes: {}
+          },
+          tags: [],
+          security: []
+        }
+        const generator = yield* OpenApiGenerator.OpenApiGenerator
+        const options = { name: "Ledger", format: "httpapi", stringFormats: "decoded" } as const
+        const source = yield* generator.generate(spec, options)
+        const wire = {
+          changed: "2026-06-01T01:00:00.000+01:00",
+          balance: "9007199254740993",
+          count: "18446744073709551615",
+          labels: { "42": "daily" },
+          label: "daily"
+        }
+        yield* Effect.tryPromise({
+          try: () =>
+            withGeneratedModule<{ LedgerReading: Schema.Codec<unknown> }>(source, ({ LedgerReading }) => {
+              const decode = Schema.decodeUnknownExit(LedgerReading)
+              const decoded = {
+                changed: DateTime.makeUnsafe("2026-06-01T00:00:00.000Z"),
+                balance: 9007199254740993n,
+                count: 18446744073709551615n,
+                labels: { "42": "daily" },
+                label: "daily"
+              }
+              assert.deepStrictEqual(decode(wire), Exit.succeed(decoded))
+              assert.deepStrictEqual(
+                Schema.encodeUnknownExit(LedgerReading)(decoded),
+                Exit.succeed({ ...wire, changed: "2026-06-01T00:00:00.000Z" })
+              )
+              assert.isTrue(Exit.isFailure(decode({ ...wire, changed: "not a date" })))
+              assert.isTrue(Exit.isFailure(decode({ ...wire, balance: "007" })))
+              assert.isTrue(Exit.isFailure(decode({ ...wire, balance: "9223372036854775808" })))
+              assert.isTrue(Exit.isFailure(decode({ ...wire, count: "-1" })))
+              assert.isTrue(Exit.isFailure(decode({ ...wire, labels: { "007": "daily" } })))
+            }),
+          catch: (cause) => cause
+        })
+        const openSpec: OpenAPISpec = {
+          ...spec,
+          components: {
+            ...spec.components,
+            schemas: {
+              ...spec.components.schemas,
+              LedgerReading: { ...spec.components.schemas.LedgerReading, additionalProperties: true }
+            }
+          }
+        }
+        const refused = yield* Effect.exit(generator.generate(openSpec, options))
+        assert.isTrue(Exit.isFailure(refused))
+      }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
+
     it.effect("get operation", () =>
       assertRuntime(
         {

@@ -47,8 +47,13 @@ const patch = Flag.String("patch").pipe(
   Flag.between(0, Infinity)
 )
 
-const root = Command.make("openapigen", { spec, format, name, patch }).pipe(
-  Command.withHandler(Effect.fnUntraced(function*({ name, spec, format, patch }) {
+const stringFormats = Flag.Literals("string-formats", ["encoded", "decoded"]).pipe(
+  Flag.withDescription("Emit wire strings or decode date-time, int64, and uint64 strings in schema-backed output"),
+  Flag.withDefault("encoded")
+)
+
+const root = Command.make("openapigen", { spec, format, name, patch, stringFormats }).pipe(
+  Command.withHandler(Effect.fnUntraced(function*({ name, spec, format, patch, stringFormats }) {
     let patchedSpec: Schema.Json = spec as Schema.Json
 
     if (patch.length > 0) {
@@ -70,6 +75,7 @@ const root = Command.make("openapigen", { spec, format, name, patch }).pipe(
     const source = yield* generator.generate(patchedSpec as unknown as OpenAPISpec, {
       name,
       format,
+      stringFormats,
       onWarning: (warning) => {
         warnings.push(warning)
       }

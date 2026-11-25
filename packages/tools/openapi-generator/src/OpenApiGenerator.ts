@@ -29,6 +29,7 @@ import SwaggerToOpenApi from "swagger2openapi"
 import * as HttpApiTransformer from "./HttpApiTransformer.ts"
 import * as HttpClientGenerator from "./internal/httpClient.ts"
 import * as InternalJsonPointer from "./internal/jsonPointer.ts"
+import type { StringFormats } from "./internal/stringFormats.ts"
 import * as JsonSchemaGenerator from "./JsonSchemaGenerator.ts"
 import * as ParsedOperation from "./ParsedOperation.ts"
 import * as Utils from "./Utils.ts"
@@ -152,6 +153,18 @@ export interface OpenApiGenerateOptions {
    */
   readonly format: OpenApiGeneratorFormat
   /**
+   * Decode string schemas with `date-time`, `int64`, or `uint64` formats as `DateTime.Utc` or `bigint`.
+   *
+   * **Details**
+   *
+   * The string's own checks still run on the wire text. A schema that a recursive reference points to, and all
+   * `httpclient-type-only` output, keep the wire types. An object that combines named properties with
+   * additional properties is refused when a named property decodes.
+   *
+   * @default "encoded"
+   */
+  readonly stringFormats?: StringFormats | undefined
+  /**
    * Hook to transform each JSON Schema node before processing.
    */
   readonly onEnter?: ((js: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
@@ -229,6 +242,7 @@ export const make = Effect.gen(function*() {
       const schemaOptions = {
         onEnter: options.onEnter,
         closeObjects: options.closeObjects,
+        stringFormats: options.stringFormats,
         multipartSchemaRefs: multipart.refs,
         binarySchemas: new Set(parsed.operations.flatMap((operation) =>
           [
