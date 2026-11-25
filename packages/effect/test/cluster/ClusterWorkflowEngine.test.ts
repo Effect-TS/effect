@@ -371,6 +371,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         idempotencyKey: () => "one"
       })
       let runs = 0
+      let parentScope: Scope.Scope | undefined
       let secondInstance: WorkflowInstance["Service"] | undefined
       let thirdScope: Scope.Scope | undefined
       const finalized: Array<number | string> = []
@@ -386,14 +387,22 @@ describe.concurrent("ClusterWorkflowEngine", () => {
               })
             )
             assert.isDefined(scope.parent)
+            parentScope = scope.parent
             yield* Scope.addFinalizer(
-              scope.parent,
+              parentScope,
               Effect.sync(() => {
-                finalized.push("parent")
+                finalized.push("before2")
               })
             )
           } else if (run === 2) {
             secondInstance = yield* WorkflowInstance
+            assert.isDefined(parentScope)
+            yield* Scope.addFinalizer(
+              parentScope,
+              Effect.sync(() => {
+                finalized.push("after2")
+              })
+            )
           } else if (run === 3) {
             thirdScope = yield* Workflow.scope
           }
@@ -432,7 +441,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         yield* workflow.interrupt(executionId)
         const result = yield* pollUntil(workflow, executionId, "Complete")
         assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit))
-        assert.deepStrictEqual(finalized, [3, 2, "parent", 1])
+        assert.deepStrictEqual(finalized, [3, "after2", 2, "before2", 1])
       }).pipe(Effect.provide(layer))
     }))
 
