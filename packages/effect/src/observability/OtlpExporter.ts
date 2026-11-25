@@ -90,7 +90,8 @@ export class Flusher extends Context.Service<Flusher, {
    * exports or dropping queued items.
    *
    * There is no built-in timeout; use `Effect.timeoutOption` to bound the
-   * operation. Exporters in their 60-second `disabledUntil` window are skipped.
+   * operation. Exporters in their 60-second `disabledUntil` window start no new
+   * exports while still awaiting any export already in flight.
    *
    * **Example** (Flushing exporters)
    *
@@ -259,13 +260,13 @@ export const make: (
   const queue = MutableList.make<any>()
   let disabledUntil: number | undefined = undefined
   let closed = false
-  const isStopped = () => {
-    if (closed) return true
+  const isDisabled = () => {
     if (disabledUntil === undefined) return false
     if (clock.currentTimeMillisUnsafe() < disabledUntil) return true
     disabledUntil = undefined
     return false
   }
+  const isStopped = () => closed || isDisabled()
 
   // Progress is counted in items, or in snapshots when `exportsEmpty` is set:
   // `requested` is how far callers asked to drain, `started` is how far batches
@@ -289,10 +290,9 @@ export const make: (
   }
   const waiters = new Set<Waiter>()
   const notifyWaiters = () => {
-    const stopped = isStopped()
-    const settled = stopped ? started : settledWatermark()
+    const settled = closed ? started : settledWatermark()
     for (const waiter of waiters) {
-      if (stopped || settled >= waiter.target) {
+      if (closed || settled >= waiter.target) {
         waiters.delete(waiter)
         waiter.resume(Effect.void)
       }
@@ -300,7 +300,7 @@ export const make: (
   }
   const awaitSettled = (target: number): Effect.Effect<void> =>
     Effect.callback((resume) => {
-      if (isStopped() || settledWatermark() >= target) return resume(Effect.void)
+      if (closed || settledWatermark() >= target) return resume(Effect.void)
       const waiter: Waiter = { target, resume }
       waiters.add(waiter)
       return Effect.sync(() => {
@@ -328,6 +328,10 @@ export const make: (
     }).pipe(
       Effect.catchCause((cause) => {
         MutableList.clear(queue)
+        // Discarded queued/requested work will never start; advance `started`
+        // past it so waiters still await healthy in-flight batches without
+        // hanging on discarded items.
+        started = Math.max(started, requested)
         requested = started
         const now = clock.currentTimeMillisUnsafe()
         if (disabledUntil !== undefined && now < disabledUntil) return Effect.void
@@ -383,9 +387,11 @@ export const make: (
   }
 
   // Exports everything accepted so far, or one fresh snapshot, and waits for
-  // it to settle together with every export already in flight.
+  // it to settle together with every export already in flight. During cooldown,
+  // no new export starts, but any surviving in-flight export is still awaited.
   const drain: Effect.Effect<void> = Effect.suspend(() => {
-    if (isStopped()) return Effect.void
+    if (closed) return Effect.void
+    if (isDisabled()) return awaitSettled(started)
     const target = started + (exportsEmpty ? 1 : queue.length)
     requested = Math.max(requested, target)
     startWorkers()

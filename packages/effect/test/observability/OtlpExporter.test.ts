@@ -409,6 +409,97 @@ describe("OtlpExporter", () => {
       assert.strictEqual(dropped, 0)
     }).pipe(Effect.provide(OtlpExporter.layerFlusher)))
 
+  for (const phase of ["before", "during"] as const) {
+    it.effect(`waits for a healthy in-flight sibling on flush and shutdown ${phase} cooldown`, () =>
+      Effect.gen(function*() {
+        const scope = yield* Scope.make()
+        const startedA = yield* Deferred.make<void>()
+        const startedB = yield* Deferred.make<void>()
+        const releaseA = yield* Deferred.make<void>()
+        const releaseB = yield* Deferred.make<void>()
+        const interruptedA = yield* Ref.make(0)
+        const batches: Array<Array<number>> = []
+        let requestIndex = 0
+        let dropped = 0
+
+        const httpClient = HttpClient.makeWith(
+          Effect.fnUntraced(function*(requestEffect) {
+            const request = yield* requestEffect
+            const index = requestIndex++
+            if (index === 0) {
+              yield* Deferred.succeed(startedA, undefined)
+              yield* Deferred.await(releaseA).pipe(
+                Effect.onInterrupt(() => Ref.update(interruptedA, (count) => count + 1))
+              )
+              return HttpClientResponse.fromWeb(request, new Response())
+            }
+            yield* Deferred.succeed(startedB, undefined)
+            yield* Deferred.await(releaseB)
+            return HttpClientResponse.fromWeb(request, new Response(null, { status: 400 }))
+          }),
+          Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
+        )
+
+        const flusher = yield* OtlpExporter.Flusher
+        const exporter = yield* OtlpExporter.make({
+          label: "OtlpExporterTest",
+          url: "http://localhost:4318/v1/logs",
+          headers: undefined,
+          exportInterval: "1 hour",
+          maxBatchSize: 1,
+          maxQueueSize: 4,
+          concurrency: 2,
+          onDrop: (count) => {
+            dropped += count
+          },
+          body(data) {
+            batches.push(data.map((item) => item.value))
+            return [HttpBody.empty, Effect.void]
+          },
+          shutdownTimeout: "1 second"
+        }).pipe(
+          Effect.provideService(HttpClient.HttpClient, httpClient),
+          Scope.provide(scope)
+        )
+
+        // Start healthy A and failing B in flight, with C queued behind both slots
+        exporter.push({ value: 1 })
+        exporter.push({ value: 2 })
+        yield* Deferred.await(startedA)
+        yield* Deferred.await(startedB)
+        exporter.push({ value: 3 })
+
+        if (phase === "during") {
+          yield* Deferred.succeed(releaseB, undefined)
+          yield* yieldNowN(3)
+        }
+
+        const flushFiber = yield* Effect.forkChild(flusher.flush)
+        yield* yieldNowN(2)
+        const closeFiber = yield* Effect.forkChild(Scope.close(scope, Exit.void))
+        yield* yieldNowN(2)
+
+        if (phase === "before") {
+          yield* Deferred.succeed(releaseB, undefined)
+        }
+
+        yield* TestClock.adjust("100 millis")
+        yield* yieldNowN(3)
+        assert.strictEqual(yield* Ref.get(interruptedA), 0)
+        assert.isUndefined(flushFiber.pollUnsafe())
+        assert.isUndefined(closeFiber.pollUnsafe())
+        assert.deepStrictEqual(batches, [[1], [2]])
+
+        // Healthy sibling A finishes within shutdownTimeout; discarded C never starts
+        yield* Deferred.succeed(releaseA, undefined)
+        yield* Fiber.join(flushFiber)
+        yield* Fiber.join(closeFiber)
+        assert.strictEqual(yield* Ref.get(interruptedA), 0)
+        assert.deepStrictEqual(batches, [[1], [2]])
+        assert.strictEqual(dropped, 0)
+      }).pipe(Effect.provide(OtlpExporter.layerFlusher)))
+  }
+
   it.effect("bounds pending queue separately from in-flight batches and caps concurrency including retries", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.make()
