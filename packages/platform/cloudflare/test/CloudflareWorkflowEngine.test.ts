@@ -456,6 +456,94 @@ describe("CloudflareWorkflowEngine", () => {
       }).pipe(Effect.provide(layer))
     }))
 
+  it.effect("does not let a concurrent resume guard postpone an earlier clock", () =>
+    Effect.gen(function*() {
+      const namespace = new FakeWorkflowNamespace()
+      const started = yield* Latch.make()
+      const release = yield* Latch.make()
+      let runs = 0
+      const Racing = Workflow.make("ClockBeforeGuard", { payload: {}, idempotencyKey: () => "race" })
+      const layer = Racing.toLayer(Effect.fnUntraced(function*() {
+        if (++runs === 2) {
+          yield* started.open
+          yield* release.await
+        }
+        yield* DurableClock.sleep({ name: "long", duration: "180 seconds" })
+      })).pipe(Layer.provideMerge(namespace.layer))
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust("2 seconds")
+        namespace.now = 2_000
+        const executionId = yield* Racing.execute({}, { discard: true })
+        const name = encodeName(Racing._tag, executionId)
+        yield* pollUntil(Racing, executionId, "Suspended")
+        yield* namespace.settle()
+        assert.strictEqual(namespace.store(name).alarm.current, 182_000)
+
+        const stub = namespace.getByName(name)
+        yield* Effect.promise(() =>
+          Promise.all([
+            stub.scheduleClock("short", "short/deferred", 7_000),
+            stub.resume()
+          ])
+        )
+        yield* started.await
+        assert.strictEqual(namespace.store(name).alarm.current, 7_000)
+        yield* release.open
+        yield* namespace.settle()
+      }).pipe(Effect.ensuring(release.open), Effect.provide(layer))
+    }))
+
+  it.effect("does not let a rejected alarm write from a settled attempt release its successor", () =>
+    Effect.gen(function*() {
+      const namespace = new FakeWorkflowNamespace()
+      const replayed = yield* Latch.make()
+      const release = yield* Latch.make()
+      const Gate = DurableDeferred.make("RejectedAlarmWrite/Gate")
+      let runs = 0
+      const Replacing = Workflow.make("RejectedAlarmWrite", { payload: {}, idempotencyKey: () => "replace" })
+      const layer = Replacing.toLayer(Effect.fnUntraced(function*() {
+        const run = ++runs
+        if (run === 1) return yield* DurableDeferred.await(Gate)
+        yield* replayed.open
+        yield* release.await
+      })).pipe(Layer.provideMerge(namespace.layer))
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* Replacing.executionId({})
+        const name = encodeName(Replacing._tag, executionId)
+        const alarm = namespace.store(name).alarm
+        const originalDeleteAlarm = alarm.deleteAlarm.bind(alarm)
+        let rejectFirstDelete!: (error: Error) => void
+        let firstDelete = true
+        alarm.deleteAlarm = () => {
+          if (!firstDelete) return originalDeleteAlarm()
+          firstDelete = false
+          return new Promise<void>((_, reject) => {
+            rejectFirstDelete = reject
+          })
+        }
+
+        yield* Replacing.execute({}, { discard: true })
+        yield* pollUntil(Replacing, executionId, "Suspended")
+
+        yield* Replacing.resume(executionId)
+        yield* replayed.await
+
+        rejectFirstDelete(new Error("alarm write failed"))
+        yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 10)))
+
+        yield* Replacing.resume(executionId)
+        yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 10)))
+        assert.strictEqual(runs, 2)
+
+        yield* release.open
+        yield* pollUntil(Replacing, executionId, "Complete")
+        yield* namespace.settle()
+        assert.strictEqual(runs, 2)
+      }).pipe(Effect.ensuring(release.open), Effect.provide(layer))
+    }))
+
   it.effect("stores a discarded child's defect and wakes its parent once", () => {
     const namespace = new FakeWorkflowNamespace()
     let parentRuns = 0

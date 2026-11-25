@@ -21,7 +21,6 @@ import * as DurableClock from "effect/workflow/DurableClock"
 import * as Workflow from "effect/workflow/Workflow"
 import * as WorkflowEngine from "effect/workflow/WorkflowEngine"
 import { decodeName, encodeName } from "./clusterName.ts"
-import { armAlarm } from "./entityStorage.ts"
 import {
   CurrentExecutionHandle,
   deferredState,
@@ -48,7 +47,7 @@ const mergeWake = (
 ): WorkflowStorage.WakeMode => current === "explicit" ? current : mode
 
 /** @internal */
-export type WorkflowAlarm = Pick<DurableObjectStorage, "deleteAlarm" | "getAlarm" | "setAlarm">
+export type WorkflowAlarm = Pick<DurableObjectStorage, "deleteAlarm" | "setAlarm">
 
 /** @internal */
 export interface WorkflowRuntimeOptions {
@@ -140,29 +139,31 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     return true
   }
 
-  const needsGuard = (): boolean => {
-    if (inflight !== undefined) return true
-    const row = WorkflowStorage.loadExecution(sql)
-    if (row === undefined || row.resumePending === undefined) return false
-    return isComplete(row.result)
-      ? row.parent !== undefined
-      : !isUnwakeable(row.result, row.resumePending)
+  const releaseInflight = (owner?: WorkflowEngine.WorkflowInstance["Service"]): void => {
+    if (owner === undefined || inflight?.instance === owner) {
+      inflight = undefined
+      resumeRequested = undefined
+    }
   }
 
-  const armResumeGuard = Effect.suspend(() => {
-    const guardAt = options.now() + resumeGuardMillis
-    return Effect.promise(() => options.alarm.getAlarm()).pipe(
-      Effect.flatMap((current) =>
-        needsGuard() && (current === null || current > guardAt)
-          ? Effect.promise(() => options.alarm.setAlarm(guardAt))
-          : Effect.void
-      )
+  // Compute the single alarm target synchronously from current durable and
+  // in-flight state so concurrent clock, guard, and settlement writes never
+  // overwrite a newer target from a stale `getAlarm()` read.
+  const syncAlarm = (): Promise<void> => {
+    const row = WorkflowStorage.loadExecution(sql)
+    const complete = isComplete(row?.result)
+    const earliest = complete ? undefined : WorkflowStorage.earliestClockWakeUp(sql)
+    const guard = inflight !== undefined || (
+      row !== undefined &&
+      row.resumePending !== undefined &&
+      (complete ? row.parent !== undefined : !isUnwakeable(row.result, row.resumePending))
     )
-  })
-
-  const reconcileAlarm = (): Promise<void> => {
-    const earliest = WorkflowStorage.earliestClockWakeUp(sql)
-    return earliest === undefined ? options.alarm.deleteAlarm() : options.alarm.setAlarm(earliest)
+      ? options.now() + resumeGuardMillis
+      : undefined
+    const target = earliest !== undefined && guard !== undefined
+      ? Math.min(earliest, guard)
+      : earliest ?? guard
+    return target === undefined ? options.alarm.deleteAlarm() : options.alarm.setAlarm(target)
   }
 
   const resumeParent = (parent: { readonly workflowName: string; readonly executionId: string }) =>
@@ -180,13 +181,13 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       return Effect.void
     }
     // Re-arm before sending so a crash or exhausted retries leave another attempt.
-    return armResumeGuard.pipe(
+    return Effect.promise(() => syncAlarm()).pipe(
       Effect.andThen(
         resumeParent(row.parent).pipe(
           Effect.tap(() =>
             Effect.suspend(() => {
               WorkflowStorage.setResumePending(sql, undefined)
-              return Effect.promise(() => options.alarm.deleteAlarm())
+              return Effect.promise(() => syncAlarm())
             })
           ),
           Effect.catchCause(logResumeParentFailure)
@@ -202,20 +203,28 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
   // object never rejects `run` for such a reason, so a caller can tell the
   // child's own defect from a transport failure, and a parent replaying a
   // discarded child finds the result instead of restarting it.
-  const failAttempt = (cause: Cause.Cause<unknown>): Promise<string> =>
-    Effect.runPromise(Effect.gen(function*() {
-      yield* Effect.logError("Workflow execution failed", cause)
-      const text = yield* encodeDefectResult(Cause.squash(cause))
-      const parent = WorkflowStorage.loadExecution(sql)?.parent
-      if (parent !== undefined) yield* armResumeGuard
-      WorkflowStorage.saveCompletion(sql, text, parent !== undefined)
-      const cleared = parent === undefined ? options.alarm.deleteAlarm() : undefined
-      inflight = undefined
-      resumeRequested = undefined
-      if (parent !== undefined) options.waitUntil(Effect.runPromise(deliverParentWake))
-      if (cleared !== undefined) yield* Effect.promise(() => cleared)
-      return text
-    }))
+  const failAttempt = (
+    cause: Cause.Cause<unknown>,
+    owner?: WorkflowEngine.WorkflowInstance["Service"]
+  ): Promise<string> =>
+    Effect.runPromise(
+      Effect.gen(function*() {
+        yield* Effect.logError("Workflow execution failed", cause)
+        const text = yield* encodeDefectResult(Cause.squash(cause))
+        const parent = WorkflowStorage.loadExecution(sql)?.parent
+        if (parent !== undefined) yield* Effect.promise(() => syncAlarm())
+        WorkflowStorage.saveCompletion(sql, text, parent !== undefined)
+        releaseInflight(owner)
+        const synced = parent === undefined ? syncAlarm() : undefined
+        if (parent !== undefined) options.waitUntil(Effect.runPromise(deliverParentWake))
+        if (synced !== undefined) yield* Effect.promise(() => synced)
+        return text
+      }).pipe(Effect.tapCause(() =>
+        Effect.sync(() => {
+          if (owner !== undefined && inflight?.instance === owner) inflight = undefined
+        })
+      ))
+    )
 
   const startAttempt = (row: WorkflowStorage.ExecutionRow): Promise<string> => {
     const registration = getWorkflowRegistration(workflowName)
@@ -258,34 +267,32 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
           if (result._tag === "Complete" && parent !== undefined) {
             // Arm before the atomic result/pending save so a persisted
             // completion always has a delivery wake.
-            yield* armResumeGuard
+            yield* Effect.promise(() => syncAlarm())
           }
           // Stay in flight until the result is saved so a concurrent resume
           // queues behind this attempt instead of replaying alongside it.
           if (result._tag === "Complete") {
             WorkflowStorage.saveCompletion(sql, text, parent !== undefined)
-            const cleared = parent === undefined ? options.alarm.deleteAlarm() : undefined
-            inflight = undefined
-            resumeRequested = undefined
+            releaseInflight(instance)
+            const synced = parent === undefined ? syncAlarm() : undefined
             if (parent !== undefined) options.waitUntil(Effect.runPromise(deliverParentWake))
-            if (cleared !== undefined) yield* Effect.promise(() => cleared)
+            if (synced !== undefined) yield* Effect.promise(() => synced)
             return text
           }
           const replay = resumeRequested !== undefined && !isUnwakeable(text, resumeRequested)
             ? resumeRequested
             : undefined
           WorkflowStorage.saveSuspension(sql, text, replay)
+          releaseInflight(instance)
           // Reconcile synchronously with the save so a subsequent resume's
           // guard alarm queues after this update rather than before it.
-          const reconciled = replay === undefined ? reconcileAlarm() : undefined
-          inflight = undefined
-          resumeRequested = undefined
+          const synced = replay === undefined ? syncAlarm() : undefined
           if (replay !== undefined) detach(startAttempt(row))
-          if (reconciled !== undefined) yield* Effect.promise(() => reconciled)
+          if (synced !== undefined) yield* Effect.promise(() => synced)
           return text
         }).pipe(Effect.tapCause(() =>
           Effect.sync(() => {
-            inflight = undefined
+            if (inflight?.instance === instance) inflight = undefined
           })
         ))
       )
@@ -297,7 +304,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       // Close retained scopes before saving, so a durable completion never
       // has unrun finalizers. A dying finalizer fails the attempt instead.
       return Effect.runPromise(Effect.exit(closeExecutionScope)).then((closed) =>
-        Exit.isSuccess(closed) ? persist(attempt) : failAttempt(closed.cause)
+        Exit.isSuccess(closed) ? persist(attempt) : failAttempt(closed.cause, instance)
       )
     }
     const fiber = Effect.runFork(execute)
@@ -316,7 +323,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       // A defect ends every retained attempt; a replay starts in fresh scopes.
       // Stay in flight while closing so cleanup precedes any replay.
       return Effect.runPromise(Effect.exit(closeExecutionScope)).then((closed) =>
-        failAttempt(Exit.isSuccess(closed) ? exit.cause : Cause.combine(exit.cause, closed.cause))
+        failAttempt(Exit.isSuccess(closed) ? exit.cause : Cause.combine(exit.cause, closed.cause), instance)
       )
     })
     inflight = { instance, fiber, promise }
@@ -341,7 +348,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     // caller awaits it.
     WorkflowStorage.setResumePending(sql, mergeWake(row.resumePending, "automatic"))
     const attempt = startAttempt(row)
-    const armed = Effect.runPromise(armResumeGuard)
+    const armed = syncAlarm()
     if (opts.discard) {
       detach(attempt)
       return armed.then(() => "")
@@ -360,7 +367,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     if (!requestWake(mode)) return Promise.resolve()
     // Persist and guard the resume before acknowledging it, so an abort after
     // the RPC returns is still recovered.
-    return Effect.runPromise(armResumeGuard).then(startPending)
+    return syncAlarm().then(startPending)
   }
 
   const completeDeferred = (
@@ -374,9 +381,9 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     // the execution. The in-flight request is set synchronously so a settling
     // attempt cannot clear the pending resume without a restart.
     if (!requestWake(mode)) return Promise.resolve()
-    return Effect.runPromise(
-      armResumeGuard.pipe(Effect.andThen(deferredState.deferredDone(executionId, deferredName)))
-    ).then(() => resume(mode))
+    return syncAlarm()
+      .then(() => Effect.runPromise(deferredState.deferredDone(executionId, deferredName)))
+      .then(() => resume(mode))
   }
 
   const deferredDone = (deferredName: string, exitText: string): Promise<void> =>
@@ -395,7 +402,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
           Effect.suspend(() => inflight === undefined ? Effect.promise(() => resume("automatic")) : Effect.void)
         )
       )
-      return armResumeGuard.pipe(
+      return Effect.promise(() => syncAlarm()).pipe(
         Effect.andThen(Effect.forkDetach(wake)),
         Effect.flatMap((fiber) => Effect.sync(() => detach(Effect.runPromise(Fiber.await(fiber)))))
       )
@@ -419,8 +426,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
 
   const scheduleClock = (clockName: string, deferredName: string, wakeUp: number): Promise<void> => {
     WorkflowStorage.saveClock(sql, clockName, deferredName, wakeUp)
-    const earliest = WorkflowStorage.earliestClockWakeUp(sql)
-    return earliest === undefined ? Promise.resolve() : Effect.runPromise(armAlarm(options.alarm, earliest))
+    return syncAlarm()
   }
 
   const runAlarm = (): Promise<void> =>
@@ -440,22 +446,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
         const pending = mode !== undefined && !isUnwakeable(row?.result, mode)
         // A live attempt is not lost: only re-arm the guard. Requesting a wake
         // would replay the attempt once it suspends, for no reason.
-        return (pending && inflight === undefined ? resume(mode) : Promise.resolve()).then(() => {
-          // While a resume is pending a guard alarm stays armed, so a replay
-          // lost with this isolate is retried instead of sleeping forever.
-          const latest = WorkflowStorage.loadExecution(sql)
-          const latestMode = latest?.resumePending
-          const stillPending = inflight !== undefined ||
-            (latestMode !== undefined && !isUnwakeable(latest?.result, latestMode))
-          const targets = [
-            WorkflowStorage.earliestClockWakeUp(sql),
-            stillPending ? options.now() + resumeGuardMillis : undefined
-          ].filter((target) => target !== undefined)
-          if (targets.length === 0) return undefined
-          // The alarm that fired is spent, so set the next one outright:
-          // `armAlarm` only ever moves an alarm earlier.
-          return options.alarm.setAlarm(Math.min(...targets))
-        })
+        return (pending && inflight === undefined ? resume(mode) : Promise.resolve()).then(syncAlarm)
       })
     }).then(() => Effect.runPromise(deliverParentWake)).then(() => undefined)
 
