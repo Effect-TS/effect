@@ -25,8 +25,9 @@ import {
   EntityAddress,
   EntityId,
   EntityType,
-  type Message,
+  Message,
   MessageStorage,
+  Reply,
   Runner,
   RunnerAddress,
   RunnerHealth,
@@ -1127,7 +1128,10 @@ describe.concurrent("ClusterWorkflowEngine", () => {
             const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
               ...storage,
               saveRequest: (envelope) => {
-                if (envelope.envelope.address.entityType !== `Workflow/${Child._tag}`) {
+                if (
+                  envelope.envelope.address.entityType !== `Workflow/${Child._tag}` ||
+                  envelope.envelope.tag !== "run"
+                ) {
                   return storage.saveRequest(envelope)
                 }
                 const save = Effect.tap(storage.saveRequest(envelope), (result) =>
@@ -1167,6 +1171,581 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       )
     }
   }
+
+  it.effect("wakes both parents when an older child owner defects on the parent RPC before upgrade", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("OldRunnerParent/Gate", { success: Schema.String })
+      const Child = Workflow.make("OldRunnerParent/Child", {
+        payload: { key: Schema.String },
+        success: Schema.String,
+        idempotencyKey: ({ key }) => key
+      })
+      const Parent = Workflow.make("OldRunnerParent/Parent", {
+        payload: { name: Schema.String },
+        success: Schema.String,
+        idempotencyKey: ({ name }) => name
+      })
+      const storage = yield* makeSharedStorage
+      let oldRunner = true
+      let defectSeq = 1n
+      const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+        ...storage,
+        saveRequest: (envelope) => {
+          if (
+            !oldRunner ||
+            envelope.envelope.address.entityType !== `Workflow/${Child._tag}` ||
+            envelope.envelope.tag !== "parent"
+          ) {
+            return storage.saveRequest(envelope)
+          }
+          return Effect.gen(function*() {
+            const saved = yield* storage.saveRequest(envelope)
+            const requestId = saved._tag === "Success" ? envelope.envelope.requestId : saved.originalId
+            if (saved._tag === "Success" || Option.isNone(saved.lastReceivedReply)) {
+              yield* storage.saveReply(Reply.ReplyWithContext.fromDefect({
+                id: Snowflake.Snowflake(defectSeq++),
+                requestId,
+                defect: new ClusterError.MalformedMessage({ cause: "Expected a known entity RPC tag" })
+              }))
+            }
+            return saved
+          })
+        }
+      })
+      const layer = Layer.merge(
+        Child.toLayer(() => DurableDeferred.await(gate)),
+        Parent.toLayer(Effect.fnUntraced(function*({ name }) {
+          const value = yield* Child.execute({ key: "shared" })
+          return `${name}:${value}`
+        }))
+      ).pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer })))
+
+      yield* Effect.gen(function*() {
+        const parentA = yield* Parent.execute({ name: "A" }, { discard: true })
+        const childId = yield* Child.executionId({ key: "shared" })
+        yield* pollUntil(Parent, parentA, "Suspended")
+        yield* pollUntil(Child, childId, "Suspended")
+
+        oldRunner = false
+        const parentB = yield* Parent.execute({ name: "B" }, { discard: true })
+        yield* pollUntil(Parent, parentB, "Suspended")
+
+        yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow: Child, executionId: childId }),
+          value: "done"
+        })
+
+        assert.deepStrictEqual(
+          yield* pollUntil(Parent, parentA, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed("A:done") })
+        )
+        assert.deepStrictEqual(
+          yield* pollUntil(Parent, parentB, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed("B:done") })
+        )
+      }).pipe(Effect.provide(layer))
+    }))
+
+  it.effect("wakes a non-detached discarded join that races child completion", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("DiscardedJoinRace/Gate", { success: Schema.String })
+      const neverGate = DurableDeferred.make("DiscardedJoinRace/Never", { success: Schema.String })
+      const Child = Workflow.make("DiscardedJoinRace/Child", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "shared"
+      })
+      const Parent = Workflow.make("DiscardedJoinRace/Parent", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "parent"
+      })
+      const storage = yield* makeSharedStorage
+      const savingComplete = yield* Latch.make()
+      const releaseComplete = yield* Latch.make()
+      const parentSaved = yield* Latch.make()
+      let parentRuns = 0
+      const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+        ...storage,
+        saveRequest: (envelope) =>
+          storage.saveRequest(envelope).pipe(
+            Effect.tap(() =>
+              envelope.envelope.address.entityType === `Workflow/${Child._tag}` &&
+                envelope.envelope.tag === "parent"
+                ? parentSaved.open
+                : Effect.void
+            )
+          ),
+        saveReply: (reply) => {
+          if (
+            reply.rpc._tag === "run" &&
+            reply.reply._tag === "WithExit" &&
+            reply.reply.exit._tag === "Success" &&
+            (reply.reply.exit.value as { readonly _tag?: unknown } | undefined)?._tag === "Complete" &&
+            !savingComplete.isOpen()
+          ) {
+            return savingComplete.open.pipe(
+              Effect.andThen(releaseComplete.await),
+              Effect.andThen(storage.saveReply(reply))
+            )
+          }
+          return storage.saveReply(reply)
+        }
+      })
+      const layer = Layer.merge(
+        Child.toLayer(() => DurableDeferred.await(gate)),
+        Parent.toLayer(Effect.fnUntraced(function*() {
+          parentRuns++
+          const childId = yield* Child.execute({}, { discard: true })
+          const polled = yield* Child.poll(childId)
+          if (parentRuns > 1 && Option.isSome(polled) && polled.value._tag === "Complete") {
+            return yield* polled.value.exit
+          }
+          return yield* DurableDeferred.await(neverGate)
+        }))
+      ).pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer })))
+
+      yield* Effect.gen(function*() {
+        const childId = yield* Child.execute({}, { discard: true })
+        yield* pollUntil(Child, childId, "Suspended")
+
+        yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow: Child, executionId: childId }),
+          value: "done"
+        })
+        yield* pollStorageUntil(() => savingComplete.isOpen(), "child must pause while saving Complete")
+
+        const parentId = yield* Parent.execute({}, { discard: true })
+        yield* pollStorageUntil(() => parentSaved.isOpen(), "parent registration must land while Complete is saving")
+
+        yield* releaseComplete.open
+        assert.deepStrictEqual(
+          yield* pollUntil(Child, childId, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed("done") })
+        )
+        assert.deepStrictEqual(
+          yield* pollUntil(Parent, parentId, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed("done") })
+        )
+      }).pipe(Effect.provide(layer))
+    }))
+
+  for (
+    const [mode, label] of [
+      ["sameRunner", ""],
+      ["crash", ", across a crash before the commit"],
+      ["stopAfterCommit", ", when the child's runner stops right after the commit"]
+    ] as const
+  ) {
+    const handoff = mode !== "sameRunner"
+    it.effect(
+      `wakes a registered parent only once the child's result is durable${label}`,
+      () =>
+        Effect.gen(function*() {
+          const gate = DurableDeferred.make("DurableParentWake/Gate", { success: Schema.String })
+          const neverGate = DurableDeferred.make("DurableParentWake/Never", { success: Schema.String })
+          const Child = Workflow.make("DurableParentWake/Child", {
+            payload: {},
+            success: Schema.String,
+            idempotencyKey: () => "shared"
+          })
+          const Parent = Workflow.make("DurableParentWake/Parent", {
+            payload: {},
+            success: Schema.String,
+            idempotencyKey: () => "parent"
+          })
+          const storage = yield* makeSharedStorage
+          const savingComplete = yield* Latch.make()
+          const releaseComplete = yield* Latch.make()
+          let registered = false
+          let parentRuns = 0
+          let childRuns = 0
+          // With `stopAfterCommit`, the first runner stops once the child's
+          // result commits: it delivers no more parent wakes and its later
+          // writes are lost.
+          let released = false
+          let completeSaved = false
+          let txDepth = 0
+          let stopped = false
+          const isParentResume = (envelope: { readonly tag: string; readonly address: EntityAddress.EntityAddress }) =>
+            envelope.tag === "resume" && envelope.address.entityType === `Workflow/${Parent._tag}`
+          const stop = Effect.sync(() => {
+            if (mode === "stopAfterCommit" && completeSaved && txDepth === 0) stopped = true
+          })
+          // Holds the child's Complete write. With `crash`, the write fails as
+          // the runner shuts down, so nothing commits.
+          const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
+            ...storage,
+            withTransaction: (effect) =>
+              Effect.suspend(() => {
+                txDepth++
+                return storage.withTransaction(effect).pipe(
+                  Effect.ensuring(Effect.andThen(Effect.sync(() => txDepth--), stop))
+                )
+              }),
+            // Messages decoded here reply through `this`, so keep the wrapper as the receiver.
+            unprocessedMessages(shardIds, options) {
+              return storage.unprocessedMessages.call(this, shardIds, options).pipe(
+                Effect.map((messages) =>
+                  released
+                    ? messages.filter((message) =>
+                      message._tag !== "IncomingRequest" || !isParentResume(message.envelope)
+                    )
+                    : messages
+                )
+              )
+            },
+            // A released parent runner decodes `resume` with only `childExecutionId`.
+            saveRequest: (request) => {
+              if (stopped) return Effect.succeed(MessageStorage.SaveResult.Success())
+              if (mode !== "stopAfterCommit" || !isParentResume(request.envelope)) return storage.saveRequest(request)
+              const payload = Object.create(Object.getPrototypeOf(request.envelope.payload))
+              payload.childExecutionId = (request.envelope.payload as { childExecutionId: string }).childExecutionId
+              return storage.saveRequest(
+                new Message.OutgoingRequest({
+                  envelope: { ...request.envelope, payload },
+                  context: request.context,
+                  lastReceivedReply: request.lastReceivedReply,
+                  rpc: request.rpc,
+                  respond: request.respond,
+                  annotations: request.annotations
+                })
+              )
+            },
+            clearReplies: (requestId, options) => stopped ? Effect.void : storage.clearReplies(requestId, options),
+            saveReply: (reply) => {
+              if (stopped) return Effect.void
+              if (reply.rpc._tag === "parent") registered = true
+              if (
+                reply.rpc._tag === "run" &&
+                reply.reply._tag === "WithExit" &&
+                reply.reply.exit._tag === "Success" &&
+                (reply.reply.exit.value as { readonly _tag?: unknown } | undefined)?._tag === "Complete" &&
+                (mode === "crash" || !savingComplete.isOpen())
+              ) {
+                return savingComplete.open.pipe(
+                  Effect.andThen(
+                    mode === "crash"
+                      ? Effect.fail(new ClusterError.PersistenceError({ cause: "runner crashed" }))
+                      : Effect.andThen(releaseComplete.await, storage.saveReply(reply))
+                  ),
+                  Effect.andThen(Effect.sync(() => {
+                    completeSaved = true
+                  })),
+                  Effect.andThen(stop)
+                )
+              }
+              return storage.saveReply(reply)
+            }
+          })
+          const layer = (storageLayer: Layer.Layer<MessageStorage.MessageStorage>) =>
+            Layer.merge(
+              Child.toLayer(() => {
+                childRuns++
+                return DurableDeferred.await(gate)
+              }),
+              Parent.toLayer(Effect.fnUntraced(function*() {
+                parentRuns++
+                const childId = yield* Child.execute({}, { discard: true })
+                const polled = yield* Child.poll(childId)
+                if (Option.isSome(polled) && polled.value._tag === "Complete") {
+                  return yield* polled.value.exit
+                }
+                return yield* DurableDeferred.await(neverGate)
+              }))
+            ).pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer })))
+          const childId = yield* Child.executionId({})
+          const parentId = yield* Parent.executionId({})
+          const expectParentComplete = Effect.gen(function*() {
+            assert.deepStrictEqual(
+              yield* pollUntil(Parent, parentId, "Complete"),
+              new Workflow.Complete({ exit: Exit.succeed("done") })
+            )
+            assert.strictEqual(parentRuns, 2)
+          })
+
+          const scope = yield* Scope.make()
+          yield* Effect.gen(function*() {
+            yield* Child.execute({}, { discard: true })
+            yield* pollUntil(Child, childId, "Suspended")
+            yield* Parent.execute({}, { discard: true })
+            yield* pollUntil(Parent, parentId, "Suspended")
+            yield* pollStorageUntil(() => registered, "parent registration must be processed")
+
+            yield* DurableDeferred.succeed(gate, {
+              token: DurableDeferred.tokenFromExecutionId(gate, { workflow: Child, executionId: childId }),
+              value: "done"
+            })
+            yield* pollStorageUntil(() => savingComplete.isOpen(), "child must pause while saving Complete")
+            const sharding = yield* Sharding.Sharding
+            for (let i = 0; i < 50; i++) {
+              yield* sharding.pollStorage
+              yield* TestClock.adjust(1)
+            }
+            // A released parent runner would wake here and answer `resume` early.
+            if (mode !== "stopAfterCommit") {
+              assert.strictEqual(parentRuns, 1, "parent must not wake before the child's result is durable")
+            }
+            if (mode === "crash") return
+            released = mode === "stopAfterCommit"
+            yield* releaseComplete.open
+            if (mode === "sameRunner") return yield* expectParentComplete
+            yield* pollStorageUntil(() => stopped, "the child's result must commit")
+            const child = yield* Child.poll(childId)
+            assert(Option.isSome(child) && child.value._tag === "Complete", "the child's result must be committed")
+          }).pipe(Effect.provide(yield* Layer.buildWithScope(layer(storageLayer), scope)))
+          const closing = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+          yield* advanceUntil(() => closing.pollUnsafe() !== undefined, "the runner must shut down", 100, 50)
+          if (!handoff) return
+          const childRunsBeforeHandoff = childRuns
+          const parentRunsBeforeHandoff = parentRuns
+
+          // Without a shared RunnerStorage, the next owner can repeat the previous
+          // owner's snowflakes on the same TestClock millisecond.
+          yield* TestClock.adjust(1)
+          yield* expectParentComplete.pipe(
+            Effect.provide(layer(Layer.succeed(MessageStorage.MessageStorage, storage)))
+          )
+          if (mode === "stopAfterCommit") {
+            assert.strictEqual(parentRunsBeforeHandoff, 1, "the stopped runner must not deliver the wake")
+            assert.strictEqual(childRuns, childRunsBeforeHandoff, "the committed child must not replay")
+          }
+        })
+    )
+  }
+
+  it.effect("wakes a parent after a committed transactional discarded child start, not after rollback", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("TxDiscardedChild/Gate", { success: Schema.String })
+      const neverGate = DurableDeferred.make("TxDiscardedChild/Never", { success: Schema.String })
+      const Child = Workflow.make("TxDiscardedChild/Child", {
+        payload: { key: Schema.String },
+        success: Schema.String,
+        idempotencyKey: ({ key }) => key
+      })
+      const Parent = Workflow.make("TxDiscardedChild/Parent", {
+        payload: { key: Schema.String, rollback: Schema.Boolean },
+        success: Schema.String,
+        idempotencyKey: ({ key }) => key
+      })
+      const shared = yield* Layer.build(
+        MessageStorage.layerMemory.pipe(Layer.provide(ShardingConfig.layerDefaults))
+      )
+      const storage = Context.get(shared, MessageStorage.MessageStorage)
+      const driver = Context.get(shared, MessageStorage.MemoryDriver)
+      let inTx = false
+      const uncommitted = new Set<string>()
+      const txStorage: MessageStorage.MessageStorage["Service"] = {
+        ...storage,
+        saveRequest: (envelope) =>
+          storage.saveRequest(envelope).pipe(
+            Effect.tap((result) =>
+              Effect.sync(() => {
+                if (inTx && result._tag === "Success") {
+                  uncommitted.add(String(envelope.envelope.requestId))
+                }
+              })
+            )
+          ),
+        // Hide uncommitted writes from the runner's storage poller, matching SQL isolation.
+        unprocessedMessages: (shardIds, options) =>
+          storage.unprocessedMessages(shardIds, options).pipe(
+            Effect.map((messages) => messages.filter((m) => !uncommitted.has(String(m.envelope.requestId))))
+          ),
+        withTransaction: (effect) =>
+          storage.withTransaction(
+            Effect.acquireUseRelease(
+              Effect.sync(() => {
+                inTx = true
+              }),
+              () => effect,
+              (_, exit) =>
+                Effect.sync(() => {
+                  if (Exit.isFailure(exit)) {
+                    for (const id of uncommitted) {
+                      const entry = driver.requests.get(id)
+                      if (entry) {
+                        driver.requests.delete(id)
+                        driver.unprocessed.delete(entry.envelope)
+                        for (const [key, value] of driver.requestsByPrimaryKey) {
+                          if (value === entry) driver.requestsByPrimaryKey.delete(key)
+                        }
+                        const idx = driver.journal.indexOf(entry.envelope)
+                        if (idx >= 0) driver.journal.splice(idx, 1)
+                      }
+                    }
+                  }
+                  uncommitted.clear()
+                  inTx = false
+                })
+            )
+          )
+      }
+      const runs = new Map<string, number>()
+      const layer = Layer.merge(
+        Child.toLayer(() => DurableDeferred.await(gate)),
+        Parent.toLayer(Effect.fnUntraced(function*({ key, rollback }) {
+          runs.set(key, (runs.get(key) ?? 0) + 1)
+          const childId = yield* Child.executionId({ key })
+          const polled = yield* Child.poll(childId)
+          if (Option.isSome(polled) && polled.value._tag === "Complete") {
+            return yield* polled.value.exit
+          }
+          const msgStorage = yield* MessageStorage.MessageStorage
+          yield* msgStorage.withTransaction(
+            Child.execute({ key }, { discard: true }).pipe(
+              Effect.andThen(rollback ? Effect.fail("abort") : Effect.void)
+            )
+          ).pipe(Effect.ignore)
+          return yield* DurableDeferred.await(neverGate)
+        }))
+      ).pipe(Layer.provideMerge(makeTestWorkflowEngine({
+        storageLayer: Layer.succeed(MessageStorage.MessageStorage, txStorage)
+      })))
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        // Committed transaction
+        const committedParent = yield* Parent.execute({ key: "commit", rollback: false }, { discard: true })
+        const committedChild = yield* Child.executionId({ key: "commit" })
+        yield* pollUntil(Parent, committedParent, "Suspended")
+        yield* pollUntil(Child, committedChild, "Suspended")
+
+        yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow: Child, executionId: committedChild }),
+          value: "done"
+        })
+        assert.deepStrictEqual(
+          yield* pollUntil(Parent, committedParent, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed("done") })
+        )
+
+        // Rolled-back transaction
+        const rolledBackChild = yield* Child.execute({ key: "rollback" }, { discard: true })
+        yield* pollUntil(Child, rolledBackChild, "Suspended")
+
+        const rolledBackParent = yield* Parent.execute({ key: "rollback", rollback: true }, { discard: true })
+        yield* pollUntil(Parent, rolledBackParent, "Suspended")
+
+        yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow: Child, executionId: rolledBackChild }),
+          value: "done"
+        })
+        yield* pollUntil(Child, rolledBackChild, "Complete")
+        for (let i = 0; i < 50; i++) {
+          yield* Effect.yieldNow
+          yield* TestClock.adjust(1)
+          yield* sharding.pollStorage
+        }
+        assert.strictEqual(runs.get("rollback"), 1)
+      }).pipe(Effect.provide(layer))
+    }))
+
+  it.effect("wakes every parent awaiting a shared child workflow, even without the parent registered locally", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("SharedChild/Gate", { success: Schema.String })
+      const Child = Workflow.make("SharedChild/Child", {
+        payload: { key: Schema.String },
+        success: Schema.String,
+        idempotencyKey: ({ key }) => key
+      })
+      const Parent = Workflow.make("SharedChild/Parent", {
+        payload: { name: Schema.String },
+        success: Schema.String,
+        idempotencyKey: ({ name }) => name
+      }).annotate(ClusterSchema.ShardGroup, () => "workflow")
+
+      const storage = yield* makeSharedStorage
+      const storageLayer = Layer.succeed(MessageStorage.MessageStorage, storage)
+      const runnerStorage = yield* RunnerStorage.makeMemory
+      const runnerStorageLayer = Layer.succeed(RunnerStorage.RunnerStorage, runnerStorage)
+
+      const childRunner = yield* Layer.build(
+        Child.toLayer(() => DurableDeferred.await(gate)).pipe(
+          Layer.provideMerge(makeTestWorkflowEngine({
+            storageLayer,
+            shardingLayer: Sharding.layer.pipe(Layer.provide(runnerStorageLayer)),
+            config: {
+              shardsPerGroup: 10,
+              assignedShardGroups: ["default"],
+              runnerAddress: Option.some(RunnerAddress.make("localhost", 34431)),
+              entityMessagePollInterval: 50,
+              entityReplyPollInterval: 50,
+              refreshAssignmentsInterval: 50
+            }
+          }))
+        )
+      )
+      const parentRunner = yield* Layer.build(
+        Parent.toLayer(Effect.fnUntraced(function*({ name }) {
+          const value = yield* Child.execute({ key: "shared" })
+          return `${name}:${value}`
+        })).pipe(
+          Layer.provideMerge(makeTestWorkflowEngine({
+            storageLayer,
+            shardingLayer: Sharding.layer.pipe(Layer.provide(runnerStorageLayer)),
+            config: {
+              shardsPerGroup: 10,
+              assignedShardGroups: ["workflow"],
+              runnerAddress: Option.some(RunnerAddress.make("localhost", 34432)),
+              entityMessagePollInterval: 50,
+              entityReplyPollInterval: 50,
+              refreshAssignmentsInterval: 50
+            }
+          }))
+        )
+      )
+
+      const childSharding = Context.get(childRunner, Sharding.Sharding)
+      const parentSharding = Context.get(parentRunner, Sharding.Sharding)
+      const pollBoth = Effect.fnUntraced(function*<A extends Schema.Top, E extends Schema.Top>(
+        context: Context.Context<WorkflowEngine>,
+        workflow: Workflow.Workflow<any, any, A, E>,
+        executionId: string,
+        tag: "Suspended" | "Complete"
+      ) {
+        let result = yield* workflow.poll(executionId).pipe(Effect.provide(context))
+        for (let i = 0; i < 400 && !(Option.isSome(result) && result.value._tag === tag); i++) {
+          yield* Effect.yieldNow
+          yield* TestClock.adjust(10)
+          yield* childSharding.pollStorage
+          yield* parentSharding.pollStorage
+          result = yield* workflow.poll(executionId).pipe(Effect.provide(context))
+        }
+        assert(
+          Option.isSome(result) && result.value._tag === tag,
+          `workflow must reach ${tag}, got ${Option.isSome(result) ? result.value._tag : "None"}`
+        )
+        return result.value
+      })
+
+      const childId = yield* Child.execute({ key: "shared" }, { discard: true }).pipe(Effect.provide(childRunner))
+      yield* pollBoth(childRunner, Child, childId, "Suspended")
+
+      const parentA = yield* Parent.execute({ name: "A" }, { discard: true }).pipe(Effect.provide(parentRunner))
+      yield* pollBoth(parentRunner, Parent, parentA, "Suspended")
+
+      const parentB = yield* Parent.execute({ name: "B" }, { discard: true }).pipe(Effect.provide(parentRunner))
+      yield* pollBoth(parentRunner, Parent, parentB, "Suspended")
+
+      yield* DurableDeferred.succeed(gate, {
+        token: DurableDeferred.tokenFromExecutionId(gate, { workflow: Child, executionId: childId }),
+        value: "done"
+      }).pipe(Effect.provide(childRunner))
+
+      assert.deepStrictEqual(
+        yield* pollBoth(childRunner, Child, childId, "Complete"),
+        new Workflow.Complete({ exit: Exit.succeed("done") })
+      )
+      assert.deepStrictEqual(
+        yield* pollBoth(parentRunner, Parent, parentA, "Complete"),
+        new Workflow.Complete({ exit: Exit.succeed("A:done") })
+      )
+      assert.deepStrictEqual(
+        yield* pollBoth(parentRunner, Parent, parentB, "Complete"),
+        new Workflow.Complete({ exit: Exit.succeed("B:done") })
+      )
+    }))
 
   it.effect("recovers an awaited deferred after a read outage exceeds the old retry budget", () =>
     Effect.gen(function*() {
@@ -4043,7 +4622,10 @@ const pollUntil = Effect.fnUntraced(function*<A extends Schema.Top, E extends Sc
     yield* sharding.pollStorage
     result = yield* workflow.poll(executionId)
   }
-  assert(Option.isSome(result) && result.value._tag === tag, `workflow must reach ${tag}`)
+  assert(
+    Option.isSome(result) && result.value._tag === tag,
+    `workflow must reach ${tag}, got ${Option.isSome(result) ? result.value._tag : "None"}`
+  )
   return result.value
 })
 

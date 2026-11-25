@@ -33,14 +33,36 @@ const ddl = [
     fired INTEGER NOT NULL DEFAULT 0
   )`,
   `CREATE INDEX IF NOT EXISTS workflow_clocks_pending_idx
-    ON workflow_clocks (wake_up) WHERE fired = 0`
+    ON workflow_clocks (wake_up) WHERE fired = 0`,
+  `CREATE TABLE IF NOT EXISTS workflow_parents (
+    workflow_name TEXT NOT NULL,
+    execution_id TEXT NOT NULL,
+    PRIMARY KEY (workflow_name, execution_id)
+  )`
 ]
+
+/** @internal */
+export const isComplete = (result: string | undefined): boolean =>
+  result !== undefined && (JSON.parse(result) as { readonly _tag?: unknown })._tag === "Complete"
 
 /** @internal */
 export const ensureWorkflowStorage = (sql: SqlStorage): void => {
   for (const statement of ddl) {
     sql.exec(statement)
   }
+  const legacy = sql.exec<LegacyParentRow>(
+    `SELECT parent_name, parent_execution_id, result, resume_pending
+     FROM workflow_execution
+     WHERE id = 0 AND parent_name IS NOT NULL AND parent_execution_id IS NOT NULL`
+  ).toArray()[0]
+  if (legacy === undefined) return
+  // Once complete, `resume_pending` used to mean the parent wake was undelivered.
+  const complete = isComplete(legacy.result ?? undefined)
+  if (!complete || legacy.resume_pending !== 0) {
+    addParent(sql, { workflowName: legacy.parent_name, executionId: legacy.parent_execution_id })
+  }
+  sql.exec("UPDATE workflow_execution SET parent_name = NULL, parent_execution_id = NULL WHERE id = 0")
+  if (complete) setResumePending(sql, undefined)
 }
 
 /**
@@ -52,6 +74,12 @@ export const ensureWorkflowStorage = (sql: SqlStorage): void => {
  */
 export type WakeMode = "explicit" | "automatic"
 
+/** @internal */
+export interface ParentRef {
+  readonly workflowName: string
+  readonly executionId: string
+}
+
 /**
  * The stored `(workflowName, executionId)` also serve to recover the object
  * name on an alarm wake, where `ctx.id.name` is undefined.
@@ -62,11 +90,9 @@ export interface ExecutionRow {
   readonly workflowName: string
   readonly executionId: string
   readonly payload: string
-  readonly parent: { readonly workflowName: string; readonly executionId: string } | undefined
   readonly result: string | undefined
   /**
-   * The pending replay of an incomplete execution. Once complete, any value
-   * means the parent completion wake is still undelivered.
+   * The pending replay of an incomplete execution.
    */
   readonly resumePending: WakeMode | undefined
 }
@@ -75,10 +101,20 @@ type StoredExecutionRow = {
   readonly workflow_name: string
   readonly execution_id: string
   readonly payload: string
-  readonly parent_name: string | null
-  readonly parent_execution_id: string | null
   readonly result: string | null
   readonly resume_pending: number
+}
+
+type LegacyParentRow = {
+  readonly parent_name: string
+  readonly parent_execution_id: string
+  readonly result: string | null
+  readonly resume_pending: number
+}
+
+type ParentRow = {
+  readonly workflow_name: string
+  readonly execution_id: string
 }
 
 type ExitRow = {
@@ -103,7 +139,7 @@ const decodeWakeMode = (value: number): WakeMode | undefined =>
 /** @internal */
 export const loadExecution = (sql: SqlStorage): ExecutionRow | undefined => {
   const row = sql.exec<StoredExecutionRow>(
-    `SELECT workflow_name, execution_id, payload, parent_name, parent_execution_id, result, resume_pending
+    `SELECT workflow_name, execution_id, payload, result, resume_pending
      FROM workflow_execution WHERE id = 0`
   ).toArray()[0]
   if (row === undefined) return undefined
@@ -111,9 +147,6 @@ export const loadExecution = (sql: SqlStorage): ExecutionRow | undefined => {
     workflowName: row.workflow_name,
     executionId: row.execution_id,
     payload: row.payload,
-    parent: row.parent_name !== null && row.parent_execution_id !== null
-      ? { workflowName: row.parent_name, executionId: row.parent_execution_id }
-      : undefined,
     result: row.result ?? undefined,
     resumePending: decodeWakeMode(row.resume_pending)
   }
@@ -124,28 +157,44 @@ export const createExecution = (
   sql: SqlStorage,
   workflowName: string,
   executionId: string,
-  payload: string,
-  parent: { readonly workflowName: string; readonly executionId: string } | undefined
+  payload: string
 ): void => {
   sql.exec(
     `INSERT OR IGNORE INTO workflow_execution
-       (id, workflow_name, execution_id, payload, parent_name, parent_execution_id, result)
-     VALUES (0, ?, ?, ?, ?, ?, NULL)`,
+       (id, workflow_name, execution_id, payload, result)
+     VALUES (0, ?, ?, ?, NULL)`,
     workflowName,
     executionId,
-    payload,
-    parent?.workflowName ?? null,
-    parent?.executionId ?? null
+    payload
   )
 }
 
 /** @internal */
-export const setParent = (
-  sql: SqlStorage,
-  parent: { readonly workflowName: string; readonly executionId: string }
-): void => {
+export const addParent = (sql: SqlStorage, parent: ParentRef): void => {
   sql.exec(
-    "UPDATE workflow_execution SET parent_name = ?, parent_execution_id = ? WHERE id = 0 AND parent_name IS NULL",
+    "INSERT OR IGNORE INTO workflow_parents (workflow_name, execution_id) VALUES (?, ?)",
+    parent.workflowName,
+    parent.executionId
+  )
+}
+
+/** @internal */
+export const loadParents = (sql: SqlStorage): Array<ParentRef> =>
+  sql.exec<ParentRow>(
+    "SELECT workflow_name, execution_id FROM workflow_parents"
+  ).toArray().map((row) => ({
+    workflowName: row.workflow_name,
+    executionId: row.execution_id
+  }))
+
+/** @internal */
+export const hasParents = (sql: SqlStorage): boolean =>
+  sql.exec("SELECT 1 FROM workflow_parents LIMIT 1").toArray().length > 0
+
+/** @internal */
+export const deleteParent = (sql: SqlStorage, parent: ParentRef): void => {
+  sql.exec(
+    "DELETE FROM workflow_parents WHERE workflow_name = ? AND execution_id = ?",
     parent.workflowName,
     parent.executionId
   )
@@ -161,8 +210,8 @@ export const saveSuspension = (sql: SqlStorage, result: string, pending: WakeMod
 }
 
 /** @internal */
-export const saveCompletion = (sql: SqlStorage, result: string, wakeParent: boolean): void => {
-  sql.exec("UPDATE workflow_execution SET result = ?, resume_pending = ? WHERE id = 0", result, wakeParent ? 1 : 0)
+export const saveCompletion = (sql: SqlStorage, result: string): void => {
+  sql.exec("UPDATE workflow_execution SET result = ?, resume_pending = 0 WHERE id = 0", result)
 }
 
 /** @internal */

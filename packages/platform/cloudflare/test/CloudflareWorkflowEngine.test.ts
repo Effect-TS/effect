@@ -22,6 +22,7 @@ import {
 
 class FakeSql {
   execution: Record<string, unknown> | undefined
+  readonly parents = new Map<string, { readonly workflowName: string; readonly executionId: string }>()
   readonly activities = new Map<string, string>()
   readonly deferreds = new Map<string, string>()
   readonly clocks = new Map<string, { deferredName: string; wakeUp: number; fired: boolean }>()
@@ -39,17 +40,17 @@ class FakeSql {
         workflow_name: bindings[0],
         execution_id: bindings[1],
         payload: bindings[2],
-        parent_name: bindings[3],
-        parent_execution_id: bindings[4],
+        parent_name: null,
+        parent_execution_id: null,
         result: null,
         resume_pending: 0
       }
       return []
     }
-    if (query.includes("SET parent_name")) {
-      if (this.execution !== undefined && this.execution.parent_name === null) {
-        this.execution.parent_name = bindings[0]
-        this.execution.parent_execution_id = bindings[1]
+    if (query.includes("SET parent_name = NULL")) {
+      if (this.execution !== undefined) {
+        this.execution.parent_name = null
+        this.execution.parent_execution_id = null
       }
       return []
     }
@@ -60,12 +61,39 @@ class FakeSql {
     if (query.includes("UPDATE workflow_execution")) {
       if (this.execution !== undefined) {
         this.execution.result = bindings[0]
-        if (query.includes("resume_pending")) this.execution.resume_pending = bindings[1]
+        if (query.includes("resume_pending = 0")) this.execution.resume_pending = 0
+        else if (query.includes("resume_pending = ?")) this.execution.resume_pending = bindings[1]
       }
       return []
     }
     if (query.includes("FROM workflow_execution")) {
+      if (query.includes("parent_name IS NOT NULL")) {
+        return this.execution !== undefined &&
+            this.execution.parent_name !== null &&
+            this.execution.parent_execution_id !== null
+          ? [this.execution]
+          : []
+      }
       return this.execution === undefined ? [] : [this.execution]
+    }
+    if (query.includes("INSERT OR IGNORE INTO workflow_parents")) {
+      const workflowName = String(bindings[0])
+      const executionId = String(bindings[1])
+      const key = `${workflowName.length}:${workflowName}:${executionId}`
+      if (!this.parents.has(key)) this.parents.set(key, { workflowName, executionId })
+      return []
+    }
+    if (query.includes("DELETE FROM workflow_parents")) {
+      const workflowName = String(bindings[0])
+      const executionId = String(bindings[1])
+      this.parents.delete(`${workflowName.length}:${workflowName}:${executionId}`)
+      return []
+    }
+    if (query.includes("FROM workflow_parents")) {
+      return Array.from(this.parents.values()).map((parent) => ({
+        workflow_name: parent.workflowName,
+        execution_id: parent.executionId
+      }))
     }
     if (query.includes("INSERT OR IGNORE INTO workflow_activities")) {
       if (!this.activities.has(String(bindings[0]))) {
@@ -146,6 +174,7 @@ class FakeWorkflowNamespace {
   readonly stores = new Map<string, { readonly sql: FakeSql; readonly alarm: FakeAlarm }>()
   readonly runtimes = new Map<string, WorkflowRuntime>()
   readonly hungResumes = new Set<string>()
+  readonly resumeCalls: Array<string> = []
   /** `${name}/${method}` calls whose next attempt is lost in transit, as Cloudflare rejects them. */
   readonly lostCalls = new Set<string>()
   readonly background = new Set<Promise<unknown>>()
@@ -173,10 +202,16 @@ class FakeWorkflowNamespace {
           const tracked: Promise<unknown> = promise.finally(() => this.background.delete(tracked))
           this.background.add(tracked)
         },
-        getStub: (stubName) =>
-          this.hungResumes.has(stubName)
-            ? { ...this.getByName(stubName), resume: () => new Promise<void>(() => {}) }
-            : this.getByName(stubName)
+        getStub: (stubName) => {
+          const stub = this.getByName(stubName)
+          return {
+            ...stub,
+            resume: (mode) => {
+              this.resumeCalls.push(stubName)
+              return this.hungResumes.has(stubName) ? new Promise<void>(() => {}) : stub.resume(mode)
+            }
+          }
+        }
       })
       this.runtimes.set(name, runtime)
     }
@@ -252,7 +287,7 @@ describe("CloudflareWorkflowEngine", () => {
         value: undefined
       })
       yield* pollUntil(Child, childId, "Complete")
-      assert.strictEqual(namespace.store(childName).sql.execution?.resume_pending, 1)
+      assert.strictEqual(namespace.store(childName).sql.parents.size, 1)
       assert.strictEqual(namespace.store(childName).alarm.current, 60_000)
 
       namespace.hungResumes.clear()
@@ -262,7 +297,7 @@ describe("CloudflareWorkflowEngine", () => {
       yield* Effect.promise(() => namespace.getByName(childName).runAlarm())
       const result = yield* pollUntil(Parent, parentId, "Complete")
       assert(result._tag === "Complete" && Exit.isSuccess(result.exit))
-      assert.strictEqual(namespace.store(childName).sql.execution?.resume_pending, 0)
+      assert.strictEqual(namespace.store(childName).sql.parents.size, 0)
     }).pipe(Effect.provide(layer))
   })
 
@@ -697,6 +732,73 @@ describe("CloudflareWorkflowEngine", () => {
       const result = yield* pollUntil(Parent, parentExecutionId, "Complete")
       assert(result._tag === "Complete" && Exit.isSuccess(result.exit))
       assert.strictEqual(result.exit.value, "parent-child")
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect("wakes every parent awaiting a shared child workflow and retries only failed wakes", () => {
+    const namespace = new FakeWorkflowNamespace()
+    const Gate = DurableDeferred.make("SharedChild/Gate", { success: Schema.String })
+    const Child = Workflow.make("SharedChild", {
+      payload: { key: Schema.String },
+      success: Schema.String,
+      idempotencyKey: ({ key }) => key
+    })
+    const Parent = Workflow.make("SharedChildParent", {
+      payload: { name: Schema.String },
+      success: Schema.String,
+      idempotencyKey: ({ name }) => name
+    })
+    const layer = Layer.merge(
+      Child.toLayer(() => DurableDeferred.await(Gate)),
+      Parent.toLayer(Effect.fnUntraced(function*({ name }) {
+        const value = yield* Child.execute({ key: "shared" })
+        return `${name}:${value}`
+      }))
+    ).pipe(Layer.provideMerge(namespace.layer))
+
+    return Effect.gen(function*() {
+      const childId = yield* Child.execute({ key: "shared" }, { discard: true })
+      yield* pollUntil(Child, childId, "Suspended")
+
+      const parentA = yield* Parent.execute({ name: "A" }, { discard: true })
+      yield* pollUntil(Parent, parentA, "Suspended")
+
+      const parentB = yield* Parent.execute({ name: "B" }, { discard: true })
+      yield* pollUntil(Parent, parentB, "Suspended")
+
+      const childName = encodeName(Child._tag, childId)
+      const parentBName = encodeName(Parent._tag, parentB)
+      namespace.hungResumes.add(parentBName)
+
+      yield* DurableDeferred.succeed(Gate, {
+        token: DurableDeferred.tokenFromExecutionId(Gate, { workflow: Child, executionId: childId }),
+        value: "done"
+      })
+
+      assert.deepStrictEqual(
+        yield* pollUntil(Child, childId, "Complete"),
+        new Workflow.Complete({ exit: Exit.succeed("done") })
+      )
+      // Parent A completes without waiting on unreachable parent B.
+      assert.deepStrictEqual(
+        yield* pollUntil(Parent, parentA, "Complete"),
+        new Workflow.Complete({ exit: Exit.succeed("A:done") })
+      )
+      const parentBBeforeRetry = yield* Parent.poll(parentB)
+      assert(Option.isSome(parentBBeforeRetry) && parentBBeforeRetry.value._tag === "Suspended")
+
+      namespace.resumeCalls.length = 0
+      namespace.hungResumes.clear()
+      namespace.crash()
+      namespace.now = 60_000
+      namespace.store(childName).alarm.current = null
+      yield* Effect.promise(() => namespace.getByName(childName).runAlarm())
+
+      assert.deepStrictEqual(
+        yield* pollUntil(Parent, parentB, "Complete"),
+        new Workflow.Complete({ exit: Exit.succeed("B:done") })
+      )
+      assert.deepStrictEqual(namespace.resumeCalls, [parentBName])
     }).pipe(Effect.provide(layer))
   })
 

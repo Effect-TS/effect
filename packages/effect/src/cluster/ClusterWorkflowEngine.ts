@@ -43,7 +43,7 @@ import * as EntityId from "./EntityId.ts"
 import * as EntityType from "./EntityType.ts"
 import * as Envelope from "./Envelope.ts"
 import * as ClusterAbandon from "./internal/clusterAbandon.ts"
-import { CurrentActivationScope, CurrentRetirementLatch } from "./internal/entityActivation.ts"
+import { CurrentActivationScope, CurrentRetirementLatch, ExitReplyWrites } from "./internal/entityActivation.ts"
 import * as Message from "./Message.ts"
 import { MessageStorage } from "./MessageStorage.ts"
 import type { WithExitEncoded } from "./Reply.ts"
@@ -97,6 +97,7 @@ export const make = Effect.gen(function*() {
         Schema.declare<Workflow.Result<any, any>>
       >
       | typeof ResumeRpc
+      | typeof ParentRpc
     >
   >()
   const partialEntities = new Map<
@@ -109,7 +110,6 @@ export const make = Effect.gen(function*() {
         Schema.Struct<{ name: typeof Schema.String; attempt: typeof Schema.Int }>,
         Schema.declare<Workflow.Result<any, any>>
       >
-      | typeof ResumeRpc
     >
   >()
   const ensureEntity = (workflow: Workflow.Any) => {
@@ -168,21 +168,21 @@ export const make = Effect.gen(function*() {
     }),
     idleTimeToLive: "5 minutes"
   })
-  const entityAddressFor = (options: {
-    readonly workflow: Workflow.Any
-    readonly entityType: string
-    readonly executionId: string
-  }) => {
-    const shardGroup = Context.get(options.workflow.annotations, ClusterSchema.ShardGroup)(
-      options.executionId as EntityId.EntityId
-    )
-    const entityId = EntityId.make(options.executionId)
+  const shardGroupFor = (workflow: Workflow.Any, executionId: string) =>
+    Context.get(workflow.annotations, ClusterSchema.ShardGroup)(executionId as EntityId.EntityId)
+  const entityAddress = (entityType: string, executionId: string, shardGroup: string) => {
+    const entityId = EntityId.make(executionId)
     return EntityAddress.make({
-      entityType: EntityType.make(options.entityType),
+      entityType: EntityType.make(entityType),
       entityId,
       shardId: sharding.getShardId(entityId, shardGroup)
     })
   }
+  const entityAddressFor = (options: {
+    readonly workflow: Workflow.Any
+    readonly entityType: string
+    readonly executionId: string
+  }) => entityAddress(options.entityType, options.executionId, shardGroupFor(options.workflow, options.executionId))
 
   const sendDiscard = Effect.fnUntraced(function*(options: {
     readonly rpc: Rpc.AnyWithProps
@@ -190,16 +190,16 @@ export const make = Effect.gen(function*() {
     readonly payload: unknown
   }) {
     const payload = (options.rpc.payloadSchema as any).make(options.payload)
-    const span = yield* Effect.orDie(Effect.currentSpan)
+    const span = Option.getOrUndefined(yield* Effect.option(Effect.currentSpan))
     const envelope = Envelope.makeRequest<any>({
       requestId: yield* sharding.getSnowflake,
       address: options.address,
       tag: options.rpc._tag as any,
       payload,
       headers: Headers.empty,
-      traceId: span.traceId,
-      spanId: span.spanId,
-      sampled: span.sampled
+      traceId: span?.traceId,
+      spanId: span?.spanId,
+      sampled: span?.sampled
     })
     yield* sharding.sendOutgoing(
       new Message.OutgoingRequest({
@@ -251,6 +251,9 @@ export const make = Effect.gen(function*() {
     return yield* replyForRequestId(requestId.value)
   })
 
+  const runReply = (workflow: Workflow.Any, executionId: string) =>
+    requestReply({ workflow, entityType: `Workflow/${workflow._tag}`, executionId, tag: "run", id: "" })
+
   const resetActivityAttempt = Effect.fnUntraced(
     function*(options: {
       readonly workflow: Workflow.Any
@@ -283,27 +286,11 @@ export const make = Effect.gen(function*() {
     readonly workflow: Workflow.Any
     readonly executionId: string
   }) {
-    const shardGroup = Context.get(options.workflow.annotations, ClusterSchema.ShardGroup)(
-      options.executionId as EntityId.EntityId
-    )
-    const entityId = EntityId.make(options.executionId)
-    const shardId = sharding.getShardId(entityId, shardGroup)
-    const clockAddress = EntityAddress.make({
-      entityType: ClockEntity.type,
-      entityId,
-      shardId
-    })
-    yield* storage.clearAddress(clockAddress)
+    yield* storage.clearAddress(entityAddressFor({ ...options, entityType: ClockEntity.type }))
   })
 
   const resume = Effect.fnUntraced(function*(workflow: Workflow.Any, executionId: string, mode: WakeMode) {
-    const maybeReply = yield* requestReply({
-      workflow,
-      entityType: `Workflow/${workflow._tag}`,
-      executionId,
-      tag: "run",
-      id: ""
-    })
+    const maybeReply = yield* runReply(workflow, executionId)
 
     const maybeSuspended = Option.filter(maybeReply, isSuspendedReply)
 
@@ -330,25 +317,31 @@ export const make = Effect.gen(function*() {
         pending.results.has(InterruptSignal.name)
     })
 
-  const sendResumeParent = Effect.fnUntraced(function*(options: {
-    readonly workflowName: string
-    readonly executionId: string
-  }, childExecutionId: string) {
-    const requestId = yield* requestIdFor({
-      workflow: workflows.get(options.workflowName)!,
-      entityType: `Workflow/${options.workflowName}`,
-      executionId: options.executionId,
+  const sendResumeParent = Effect.fnUntraced(function*(parent: ParentRef, childExecutionId: string) {
+    // Parents saved before `shardGroup` existed, or in the default group, omit it.
+    const workflow = workflows.get(parent.workflowName)
+    const address = entityAddress(
+      `Workflow/${parent.workflowName}`,
+      parent.executionId,
+      parent.shardGroup ?? (workflow ? shardGroupFor(workflow, parent.executionId) : "default")
+    )
+    const requestId = yield* storage.requestIdForPrimaryKey({
+      address,
       tag: "resume",
       id: childExecutionId
     })
     if (Option.isNone(requestId)) {
-      const client = (yield* RcMap.get(clientsPartial, options.workflowName))(options.executionId)
-      return yield* client.resume({ childExecutionId }, { discard: true })
+      return yield* sendDiscard({
+        rpc: ResumeRpc,
+        address,
+        payload: { childExecutionId }
+      })
     }
     const reply = yield* replyForRequestId(requestId.value)
     if (Option.isNone(reply)) return
-    yield* sharding.reset(requestId.value, { expectedReplyId: Snowflake.Snowflake(reply.value.id) })
-  }, Effect.scoped)
+    // Reset through storage, so a failure fails the child's reply transaction.
+    yield* storage.clearReplies(requestId.value, { expectedReplyId: Snowflake.Snowflake(reply.value.id) })
+  })
 
   // Subscribe to the run's next reply before reading storage, so a reply
   // cannot fall between the read and the subscription. Returns `true` when the
@@ -423,11 +416,7 @@ export const make = Effect.gen(function*() {
       }
       const reply = yield* replyForRequestId(requestId.value)
 
-      const nonSuspendedReply = Option.filter(
-        reply,
-        (reply) => !isSuspendedReply(reply)
-      )
-      if (Option.isSome(nonSuspendedReply)) {
+      if (isRunSettled(reply)) {
         return Option.none()
       }
 
@@ -453,6 +442,7 @@ export const make = Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
             const activation = yield* CurrentActivationScope
+            const exitReplyWrites = yield* ExitReplyWrites
             let pending = pendingByActivation.get(activation)
             if (!pending) {
               const results = new Map<string, Exit.Exit<unknown, unknown>>()
@@ -493,6 +483,9 @@ export const make = Effect.gen(function*() {
               readonly instance: WorkflowEngine.WorkflowInstance["Service"]
               // Activity awaits must wake the run after suspension without preempting it.
               readonly activityAwaits: Map<string, number>
+              // Set once the terminal reply carries the parent wakes, so a
+              // concurrent `parent` registration waits for the reply and wakes.
+              completing: boolean
             } | undefined
             // Concurrent automatic wakes share one wait for the current run to
             // publish its reply. Explicit wakes cannot be dropped, because an
@@ -514,6 +507,18 @@ export const make = Effect.gen(function*() {
                     )
                   )
               )
+            // An asynchronous reply releases the RPC concurrency permit while
+            // the effect waits; the pending request still occupies mailbox capacity.
+            // The activation owns the fiber so it survives handler rebuilds,
+            // but activation shutdown still interrupts it for durable redelivery.
+            const forkReply = <A>(effect: Effect.Effect<A>) => {
+              const reply = Deferred.makeUnsafe<A>()
+              return effect.pipe(
+                Deferred.into(reply),
+                Effect.forkIn(activation, { startImmediately: true }),
+                Effect.as(reply)
+              )
+            }
             return {
               run: (request: Entity.Request<any>) => {
                 // A superseded instance retained by a finalizer no longer needs its wait sets.
@@ -522,9 +527,11 @@ export const make = Effect.gen(function*() {
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
                   scope: reuseOrForkScope(currentRun?.instance.scope, pending.scope)
                 })
-                currentRun = { request, instance, activityAwaits: new Map() }
+                const current = { request, instance, activityAwaits: new Map<string, number>(), completing: false }
+                currentRun = current
+                exitReplyWrites.delete(request.requestId)
                 const parent = (request.payload as any)[payloadParentKey] as
-                  | { workflowName: string; executionId: string; detached?: boolean }
+                  | (ParentRef & { readonly detached?: boolean })
                   | undefined
                 return execute(workflow.payloadSchema.make(request.payload) as object, executionId).pipe(
                   Effect.onExit((exit) => {
@@ -536,10 +543,34 @@ export const make = Effect.gen(function*() {
                     if (instance.abandoned) {
                       instance.suspended = false
                     }
-                    // Abandoned runs never wake the parent; another owner replays them.
-                    const resumeParent = parent && !parent.detached && !instance.abandoned
-                      ? ensureSuccess(sendResumeParent(parent, executionId))
-                      : Effect.void
+                    // The parent wakes are saved in the same storage transaction
+                    // as the run's terminal reply. A parent cannot replay before
+                    // the result is visible, and a runner that stops after the
+                    // commit leaves the wakes in storage. Abandoned runs never
+                    // wake parents; another owner replays them.
+                    const resumeParent = instance.abandoned ? Effect.void : Effect.sync(() => {
+                      current.completing = true
+                      exitReplyWrites.set(
+                        request.requestId,
+                        Effect.gen(function*() {
+                          const parents = (yield* storage.requestsForAddress({ address, tag: "parent" }))
+                            .map((request) => request.payload as ParentRef)
+                          // Registrations are unique by parent; only an older caller's payload parent can repeat one.
+                          if (parent && !parent.detached && !parents.some((ref) => sameParent(ref, parent))) {
+                            parents.push(parent)
+                          }
+                          for (const ref of parents) {
+                            yield* sendResumeParent(ref, executionId)
+                          }
+                        }).pipe(
+                          // A storage failure fails the transaction, which the
+                          // manager retries; a send failure cannot succeed on retry.
+                          Effect.catch((error) =>
+                            error._tag === "PersistenceError" ? Effect.fail(error) : Effect.die(error)
+                          )
+                        )
+                      )
+                    })
                     if (
                       !instance.suspended &&
                       !instance.abandoned &&
@@ -670,20 +701,28 @@ export const make = Effect.gen(function*() {
                       Effect.andThen(resumeCurrentRun(mode))
                     )
                 )
-                // An asynchronous reply releases the RPC concurrency permit while
-                // the wake waits; the pending request still occupies mailbox capacity.
-                // The activation owns the wake so it survives handler rebuilds,
-                // but activation shutdown still interrupts it for durable redelivery.
-                const reply = Deferred.makeUnsafe<Exit.Exit<unknown, unknown>>()
-                return wake.pipe(
-                  Effect.as(payload.exit),
-                  Deferred.into(reply),
-                  Effect.forkIn(activation, { startImmediately: true }),
-                  Effect.as(reply)
-                )
+                return forkReply(Effect.as(wake, payload.exit as Exit.Exit<unknown, unknown>))
               },
 
-              resume: () => resumeCurrentRun("automatic").pipe(Rpc.wrap({ fork: true, uninterruptible: true }))
+              resume: () => resumeCurrentRun("automatic").pipe(Rpc.wrap({ fork: true, uninterruptible: true })),
+
+              parent: (request: Entity.Request<any>) => {
+                const ref = request.payload as ParentRef
+                // The exiting run's reply transaction may have scanned parents
+                // before this registration; wait for the reply, then wake.
+                if (currentRun?.completing) {
+                  return forkReply(
+                    ensureSuccess(
+                      Effect.andThen(waitForRunReply(workflow, currentRun.request), sendResumeParent(ref, executionId))
+                    )
+                  )
+                }
+                return Effect.gen(function*() {
+                  if (isRunSettled(yield* retryPersistence(runReply(workflow, executionId)))) {
+                    yield* ensureSuccess(sendResumeParent(ref, executionId))
+                  }
+                }).pipe(Rpc.wrap({ fork: true }))
+              }
             }
           }),
           // Alongside the run, let deferred handlers briefly acquire a permit to
@@ -703,20 +742,35 @@ export const make = Effect.gen(function*() {
     execute: (workflow, { detached, discard, executionId, parent, payload }) => {
       ensureEntity(workflow)
       return RcMap.get(clients, workflow._tag).pipe(
-        Effect.flatMap((make) =>
-          make(executionId).run(
-            parent ?
+        Effect.flatMap((make) => {
+          const client = make(executionId)
+          // The shard group lets a runner without the parent's workflow address its wake.
+          const shardGroup = parent && !detached ? shardGroupFor(parent.workflow, parent.executionId) : "default"
+          const ref: ParentRef | undefined = parent && {
+            workflowName: parent.workflow._tag,
+            executionId: parent.executionId,
+            ...(shardGroup === "default" ? undefined : { shardGroup })
+          }
+          const run = client.run(
+            ref ?
               {
                 ...payload,
                 // A detached child keeps its parent for observability only.
-                [payloadParentKey]: detached
-                  ? { workflowName: parent.workflow._tag, executionId: parent.executionId, detached: true }
-                  : { workflowName: parent.workflow._tag, executionId: parent.executionId }
+                [payloadParentKey]: detached ? { ...ref, detached: true } : ref
               } :
               payload,
             { discard }
           )
-        ),
+          if (!ref || detached || sameParent(ref, { workflowName: workflow._tag, executionId })) {
+            return run
+          }
+          // Discarded, so an open transaction or an older runner cannot block it.
+          const register = Effect.flatMap(
+            runReply(workflow, executionId),
+            (reply) => isRunSettled(reply) ? Effect.void : client.parent(ref, { discard: true })
+          )
+          return Effect.andThen(register, run)
+        }),
         // A failed save inside a workflow would be stored as its result. Top-level
         // calls still fail, so their callers are not blocked during an outage.
         parent ? retryPersistence : Effect.orDie,
@@ -727,13 +781,7 @@ export const make = Effect.gen(function*() {
     poll: Effect.fnUntraced(function*(workflow, executionId) {
       const entity = ensureEntity(workflow)
       const exitSchema = Schema.toCodecJson(Rpc.exitSchema(entity.protocol.requests.get("run")!))
-      const reply = yield* requestReply({
-        workflow,
-        entityType: `Workflow/${workflow._tag}`,
-        executionId,
-        tag: "run",
-        id: ""
-      })
+      const reply = yield* runReply(workflow, executionId)
       if (Option.isNone(reply)) return Option.none()
       const exit = yield* (Schema.decodeUnknownEffect(exitSchema)(reply.value.exit) as Effect.Effect<
         Exit.Exit<any, any>,
@@ -1030,6 +1078,9 @@ interface ActivationState {
 const isSuspendedReply = (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>) =>
   reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended"
 
+const isRunSettled = (reply: Option.Option<WithExitEncoded<Workflow.ResultEncoded<any, any>>>) =>
+  Option.isSome(reply) && !isSuspendedReply(reply.value)
+
 const isFailedReply = (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>) =>
   reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended" && reply.exit.value.failed === true
 
@@ -1050,6 +1101,24 @@ const ResumeRpc = Rpc.make("resume", {
   .annotate(ClusterSchema.Persisted, true)
   .annotate(ClusterSchema.Uninterruptible, "server")
 
+const ParentRefSchema = Schema.Struct({
+  workflowName: Schema.String,
+  executionId: Schema.String,
+  shardGroup: Schema.optional(Schema.String)
+})
+type ParentRef = typeof ParentRefSchema.Type
+
+// The shard group only routes the wake, so it is not part of a parent's identity.
+const sameParent = (a: ParentRef, b: ParentRef) => a.workflowName === b.workflowName && a.executionId === b.executionId
+
+const ParentRpc = Rpc.make("parent", {
+  payload: ParentRefSchema.fields,
+  // Length-prefixed so an execution id containing a separator cannot collide.
+  primaryKey: (parent) => `${parent.workflowName.length}:${parent.workflowName}:${parent.executionId}`
+})
+  .annotate(ClusterSchema.Persisted, true)
+  .annotate(ClusterSchema.Uninterruptible, "server")
+
 const payloadParentKey = "~effect/cluster/ClusterWorkflowEngine/payloadParentKey"
 
 // Workflow state is durable, so an idle entity (completed or suspended) can
@@ -1064,8 +1133,7 @@ const makeWorkflowEntity = (workflow: Workflow.Any) =>
       payload: {
         ...workflow.payloadSchema.fields,
         [payloadParentKey]: Schema.optional(Schema.Struct({
-          workflowName: Schema.String,
-          executionId: Schema.String,
+          ...ParentRefSchema.fields,
           detached: Schema.optional(Schema.Boolean)
         }))
       },
@@ -1080,13 +1148,13 @@ const makeWorkflowEntity = (workflow: Workflow.Any) =>
 
     DeferredRpc,
     ResumeRpc,
+    ParentRpc,
     ActivityRpc
   ]).annotateMerge(workflow.annotations)
 
 const makePartialWorkflowEntity = (workflowName: string) =>
   Entity.make(`Workflow/${workflowName}`, [
     DeferredRpc,
-    ResumeRpc,
     ActivityRpc
   ])
 

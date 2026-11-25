@@ -86,18 +86,14 @@ export interface Workflow<
    * `discard: true` returns the execution ID without waiting for the result.
    * The child remains linked to its parent for completion wakes and interruption.
    *
-   * With `discard: true, detached: true`, the child neither wakes its parent
-   * nor gets interrupted with it. The cluster engine retains the parent for
-   * observability.
+   * With `discard: true, detached: true`, that call does not register the caller
+   * for completion wakes or interruption linkage. A later non-detached call for
+   * the same execution still registers its caller for a completion wake. The
+   * cluster engine retains the parent for observability.
    *
    * Inside a workflow, an awaited child that is interrupted fails the parent
    * with a defect rather than an interrupt, so the parent can recover with
    * `Effect.catchDefect` or `Effect.exit`.
-   *
-   * **Gotchas**
-   *
-   * Do not await a detached execution later. Executing the same payload joins
-   * it, but its completion will not wake the awaiting workflow.
    */
   readonly execute: <const Discard extends boolean = false>(
     payload: Payload["~type.make.in"],
