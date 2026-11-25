@@ -9,7 +9,6 @@ import { pgWaitStrategy, releasePgContainer } from "./utils.ts"
 // Less than the existing 30s integration hook limit, including all retry attempts.
 const cleanupBudget = "25 seconds"
 const testTimeout = 28_000
-// Bounds each remove attempt; the fake daemon answers a healthy remove well within it.
 const releaseOptions = { removeTimeout: "1 second" } as const
 
 describe("PostgreSQL container lifecycle", () => {
@@ -50,8 +49,7 @@ describe("PostgreSQL container lifecycle", () => {
       assert.strictEqual(url.searchParams.get("v"), "true")
       if (id === "retry-succeeds") {
         if (steps.length === 1) {
-          // Close after a partial body, deterministically exercising docker-modem's
-          // aborted-response path, not a probabilistic keep-alive reuse race.
+          // Close mid-body to deterministically trigger docker-modem's aborted-response path.
           response.flushHeaders()
           response.write("{\"message\":", () => {
             interrupted++
@@ -131,8 +129,7 @@ describe("PostgreSQL container lifecycle", () => {
       assert.deepStrictEqual(unexpected, [])
     }), testTimeout)
 
-  // `it.layer` provides TestClock to fixture layers, so their finalizers
-  // run with it during afterAll.
+  // it.layer runs fixture finalizers under TestClock.
   it.effect("bounds a hung remove and surfaces non-404 failures under TestClock", () =>
     Effect.gen(function*() {
       const fiber = yield* Effect.forkChild(

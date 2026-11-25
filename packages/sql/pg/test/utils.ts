@@ -81,10 +81,8 @@ export const releasePgContainer = Effect.fnUntraced(
     lifecycleLog(id, "container-release", "start", 0)
     const client = yield* Effect.promise(() => lifecycle(id, "runtime-client", () => getContainerRuntimeClient()))
     const handle = client.container.getById(id)
-    // A forced removal kills and removes the container in one request, and a
-    // retry after a dropped or timed-out response is safe because 404 means
-    // the container is already gone. Space retries so an overlapping Docker
-    // 409 ("removal already in progress") has time to settle.
+    // Force-remove in one request; retries are safe (404 = already gone) and
+    // spaced so an overlapping Docker 409 ("removal already in progress") settles.
     yield* Effect.tryPromise((signal) =>
       lifecycle(
         id,
@@ -101,8 +99,7 @@ export const releasePgContainer = Effect.fnUntraced(
     )
     lifecycleLog(id, "container-release", "done", 0)
   },
-  // Bound the entire release below the existing 30s hook limit. Exhausted
-  // retries and timeouts remain visible defects.
+  // Stay below the 30s hook limit and surface exhausted retries as defects.
   Effect.timeout("20 seconds"),
   (_) => Effect.orDie(_),
   // Fixture finalizers inherit TestClock from it.layer; cleanup must use real deadlines.
