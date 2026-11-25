@@ -363,21 +363,40 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     Effect.gen(function*() {
       const gates = [
         DurableDeferred.make("CapturedScopeLateFinalizer/First"),
-        DurableDeferred.make("CapturedScopeLateFinalizer/Second")
+        DurableDeferred.make("CapturedScopeLateFinalizer/Second"),
+        DurableDeferred.make("CapturedScopeLateFinalizer/Third")
       ]
       const workflow = Workflow.make("CapturedScopeLateFinalizer", {
         payload: {},
         idempotencyKey: () => "one"
       })
       let runs = 0
-      let savedInstance: WorkflowInstance["Service"] | undefined
-      let secondScope: Scope.Scope | undefined
-      const finalized: Array<number> = []
+      let secondInstance: WorkflowInstance["Service"] | undefined
+      let thirdScope: Scope.Scope | undefined
+      const finalized: Array<number | string> = []
       const layer = workflow.toLayer(() =>
         Effect.gen(function*() {
           const run = ++runs
-          if (run === 1) savedInstance = yield* WorkflowInstance
-          if (run === 2) secondScope = yield* Workflow.scope
+          if (run === 1) {
+            const scope = yield* Workflow.scope
+            yield* Scope.addFinalizer(
+              scope,
+              Effect.sync(() => {
+                finalized.push(1)
+              })
+            )
+            assert.isDefined(scope.parent)
+            yield* Scope.addFinalizer(
+              scope.parent,
+              Effect.sync(() => {
+                finalized.push("parent")
+              })
+            )
+          } else if (run === 2) {
+            secondInstance = yield* WorkflowInstance
+          } else if (run === 3) {
+            thirdScope = yield* Workflow.scope
+          }
           for (const gate of gates) yield* DurableDeferred.await(gate)
         })
       ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
@@ -385,25 +404,27 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       yield* Effect.gen(function*() {
         const executionId = yield* workflow.execute({}, { discard: true })
         yield* pollUntil(workflow, executionId, "Suspended")
-        yield* DurableDeferred.succeed(gates[0], {
-          token: DurableDeferred.tokenFromExecutionId(gates[0], { workflow, executionId }),
-          value: undefined
-        })
-        yield* pollStorageUntil(() => runs >= 2, "run 2 must start")
-        yield* pollUntil(workflow, executionId, "Suspended")
+        for (const [index, gate] of gates.slice(0, 2).entries()) {
+          yield* DurableDeferred.succeed(gate, {
+            token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+            value: undefined
+          })
+          yield* pollStorageUntil(() => runs >= index + 2, `run ${index + 2} must start`)
+          yield* pollUntil(workflow, executionId, "Suspended")
+        }
 
-        assert.isDefined(savedInstance)
-        assert.isDefined(secondScope)
+        assert.isDefined(secondInstance)
+        assert.isDefined(thirdScope)
         yield* Scope.addFinalizer(
-          savedInstance.scope,
+          secondInstance.scope,
           Effect.sync(() => {
-            finalized.push(1)
+            finalized.push(2)
           })
         )
         yield* Scope.addFinalizer(
-          secondScope,
+          thirdScope,
           Effect.sync(() => {
-            finalized.push(2)
+            finalized.push(3)
           })
         )
         assert.isEmpty(finalized, "late finalizers must not run while suspended")
@@ -411,7 +432,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         yield* workflow.interrupt(executionId)
         const result = yield* pollUntil(workflow, executionId, "Complete")
         assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit))
-        assert.deepStrictEqual(finalized, [2, 1])
+        assert.deepStrictEqual(finalized, [3, 2, "parent", 1])
       }).pipe(Effect.provide(layer))
     }))
 

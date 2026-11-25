@@ -50,13 +50,20 @@ export const withLazyScope = (
         scope = Scope.forkUnsafe(parent)
         scopeOrders.set(scope, order)
         if (order < parentState.maxOrder && parent.state._tag === "Open" && parent.state.finalizers !== undefined) {
-          const entries = Array.from(parent.state.finalizers).sort(
-            ([a], [b]) =>
-              (scopeOrders.get(a) ?? Number.MAX_SAFE_INTEGER) - (scopeOrders.get(b) ?? Number.MAX_SAFE_INTEGER)
-          )
+          const finalizer = parent.state.finalizers.get(scope)!
+          parent.state.finalizers.delete(scope)
+          const entries = Array.from(parent.state.finalizers)
           parent.state.finalizers.clear()
+          let inserted = false
           for (const [key, fn] of entries) {
+            if (!inserted && (scopeOrders.get(key) ?? -1) > order) {
+              parent.state.finalizers.set(scope, finalizer)
+              inserted = true
+            }
             parent.state.finalizers.set(key, fn)
+          }
+          if (!inserted) {
+            parent.state.finalizers.set(scope, finalizer)
           }
         } else if (order > parentState.maxOrder) {
           parentState.maxOrder = order
