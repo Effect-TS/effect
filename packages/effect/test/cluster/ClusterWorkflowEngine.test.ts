@@ -407,6 +407,41 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }))
   }
 
+  it.effect("skips late durable finalizers but runs late owner-local cleanup after owner teardown", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("AbandonedLateFinalizer/Gate")
+      const workflow = Workflow.make("AbandonedLateFinalizer", {
+        payload: {},
+        idempotencyKey: () => "one"
+      })
+      let savedInstance: WorkflowInstance["Service"] | undefined
+      const layer = workflow.toLayer(() =>
+        Effect.gen(function*() {
+          savedInstance ??= yield* WorkflowInstance
+          yield* DurableDeferred.await(gate)
+        })
+      ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.execute({}, { discard: true })
+        yield* pollUntil(workflow, executionId, "Suspended")
+      }).pipe(Effect.provide(layer))
+
+      assert.isDefined(savedInstance)
+      let ownerLocal = 0
+      let durable = 0
+      yield* Scope.addFinalizer(savedInstance.scope, Effect.sync(() => {
+        ownerLocal++
+      }))
+      yield* Workflow.addFinalizer(() =>
+        Effect.sync(() => {
+          durable++
+        })
+      ).pipe(Effect.provideService(WorkflowInstance, savedInstance))
+      assert.strictEqual(ownerLocal, 1, "late owner-local cleanup must run after teardown")
+      assert.strictEqual(durable, 0, "late durable finalizer must be skipped after teardown")
+    }))
+
   it.effect("wakes an activity deferred completed before a parallel sibling lets the workflow suspend", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("EarlyActivityWake/Gate", { success: Schema.String })

@@ -31,7 +31,7 @@ import * as Semaphore from "../Semaphore.ts"
 import * as Activity from "../workflow/Activity.ts"
 import * as DurableClock from "../workflow/DurableClock.ts"
 import * as DurableDeferred from "../workflow/DurableDeferred.ts"
-import { attachLazyScope } from "../workflow/internal/scope.ts"
+import { attachLazyScope, markScopeAbandoned } from "../workflow/internal/scope.ts"
 import * as Workflow from "../workflow/Workflow.ts"
 import * as WorkflowEngine from "../workflow/WorkflowEngine.ts"
 import * as ClusterSchema from "./ClusterSchema.ts"
@@ -144,9 +144,8 @@ export const make = Effect.gen(function*() {
     Effect.suspend(() => {
       const scope = state.scope
       if (abandoned) {
-        for (const instance of state.instances) instance.abandoned = true
+        markScopeAbandoned(scope)
       }
-      state.instances.clear()
       state.scope = Scope.makeUnsafe()
       return Scope.close(scope, Exit.void)
     })
@@ -478,7 +477,6 @@ export const make = Effect.gen(function*() {
                 workflowName: workflow._tag,
                 executionId,
                 results,
-                instances: new Set(),
                 scope: Scope.makeUnsafe(),
                 retired,
                 idle: Latch.makeUnsafe(true),
@@ -529,10 +527,7 @@ export const make = Effect.gen(function*() {
                 // replays rebuild compensations without retaining unused scopes or instances.
                 const instance = attachLazyScope(
                   WorkflowEngine.WorkflowInstance.initial(workflow, executionId),
-                  pending.scope,
-                  () => {
-                    pending.instances.add(instance)
-                  }
+                  pending.scope
                 )
                 currentRun = { request, instance, activityAwaits: new Map() }
                 const parent = (request.payload as any)[payloadParentKey] as
@@ -1031,7 +1026,6 @@ interface ActivationState {
   // Every run forks its scope from here, so runs that suspended keep their
   // resources and durable finalizers until the execution finishes.
   scope: Scope.Closeable
-  readonly instances: Set<WorkflowEngine.WorkflowInstance["Service"]>
   // Opens when this activation retires; paired with `idle` so in-flight
   // activities finish before any waiting run hands off to the next owner.
   readonly retired: Latch.Latch | undefined

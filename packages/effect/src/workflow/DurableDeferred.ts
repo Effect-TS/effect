@@ -324,7 +324,12 @@ const recordHeld = Effect.fnUntraced(function*<A, E, R>(
         },
         suspended: false,
         interrupted: instance.interrupted,
-        abandoned: instance.abandoned,
+        get abandoned() {
+          return instance.abandoned
+        },
+        set abandoned(value: boolean) {
+          instance.abandoned = value
+        },
         cause: instance.cause,
         failed: instance.failed,
         awaitedDeferreds: instance.awaitedDeferreds,
