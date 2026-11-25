@@ -944,9 +944,12 @@ class PgConnectionImpl implements PgConnection {
     )
 
   readonly batch = (statements: ReadonlyArray<BatchStatement>): Effect.Effect<ReadonlyArray<Result>, SqlError> =>
-    statements.length === 0
-      ? Effect.succeed([])
-      : Effect.map(this.run(this.batchCycle(statements), "rows", undefined), takeResults)
+    Effect.suspend(() => {
+      const snapshot = statements.slice()
+      return snapshot.length === 0
+        ? Effect.succeed([])
+        : Effect.map(this.run(this.batchCycle(snapshot), "rows", undefined), takeResults)
+    })
 
   readonly stream = (sql: string, params?: ReadonlyArray<unknown>): Stream.Stream<Row, SqlError> =>
     streamRows(this, this.pin, sql, params ?? emptyParams)
@@ -1034,9 +1037,12 @@ class PinnedPgConnection implements PgConnection {
     )
 
   readonly batch = (statements: ReadonlyArray<BatchStatement>): Effect.Effect<ReadonlyArray<Result>, SqlError> =>
-    statements.length === 0
-      ? Effect.succeed([])
-      : Effect.map(this.cycle(this.base.batchCycle(statements), "rows", undefined), takeResults)
+    Effect.suspend(() => {
+      const snapshot = statements.slice()
+      return snapshot.length === 0
+        ? Effect.succeed([])
+        : Effect.map(this.cycle(this.base.batchCycle(snapshot), "rows", undefined), takeResults)
+    })
 
   readonly stream = (sql: string, params?: ReadonlyArray<unknown>): Stream.Stream<Row, SqlError> =>
     streamRows(this.base, this.pin, sql, params ?? emptyParams)
@@ -1547,6 +1553,11 @@ const skippedWhileDraining = (message: PgProtocol.BackendMessage<unknown>): bool
   message._tag === "DataRow" || message._tag === "CommandComplete" || message._tag === "EmptyQueryResponse" ||
   message._tag === "ErrorResponse"
 
+/** Backend messages that open each subsequent statement in a batch. */
+const opensStatement = (message: PgProtocol.BackendMessage<unknown>): boolean =>
+  message._tag === "ParseComplete" || message._tag === "BindComplete" || message._tag === "RowDescription" ||
+  message._tag === "NoData"
+
 /**
  * Splits a command tag such as `SELECT 3` or `INSERT 0 1`. Reading the two
  * spaces directly keeps a completed statement from allocating the parts array
@@ -1655,6 +1666,7 @@ class QueryMachine implements Consumer {
     this.command = ""
     this.rowCount = 0
     this.oid = null
+    this.conn.session.parser.readField = undefined
     this.phase = "parse"
   }
 
@@ -1709,7 +1721,7 @@ class QueryMachine implements Consumer {
     }
     if (this.phase === "drain") {
       if (message._tag === "ReadyForQuery") return this.complete(Effect.fail(this.failure!))
-      if (skippedWhileDraining(message)) return
+      if (skippedWhileDraining(message) || (this.remaining > 1 && opensStatement(message))) return
       return this.failDesync(`Unexpected ${message._tag} after a row failed to decode`)
     }
     if (this.phase === "error") {

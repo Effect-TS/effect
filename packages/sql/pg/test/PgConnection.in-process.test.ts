@@ -551,6 +551,40 @@ describe("PgConnection in-process server", () => {
 
         assert.deepStrictEqual((yield* connection.query("SELECT 1")).rows, [])
       }))
+
+    it.effect("drains subsequent statements after a row decode failure", () =>
+      Effect.gen(function*() {
+        const { socket } = makeScripted(() =>
+          Buffer.concat([
+            statementResult(column("n", 23), Buffer.from([0, 1])),
+            statementResult(column("t", 25), Buffer.from("x")),
+            readyForQuery,
+            statementResult(column("m", 23), int32(7)),
+            readyForQuery
+          ])
+        )
+        const connection = yield* PgConnection.make({ username: "test", stream: () => socket, multiplex: true })
+
+        const [error, following] = yield* Effect.all([
+          Effect.flip(connection.batch([{ sql: "SELECT 1::int4 AS n" }, { sql: "SELECT 'x'::text AS t" }])),
+          connection.query("SELECT 7::int4 AS m")
+        ], { concurrency: "unbounded" })
+
+        assert.strictEqual(error.reason._tag, "UnknownError")
+        assert.deepStrictEqual(following.rows, [{ m: 7 }])
+      }))
+
+    it.effect("returns no results when a statement list is cleared before execution", () =>
+      Effect.gen(function*() {
+        const { socket, writes } = makeScripted(() => readyForQuery)
+        const connection = yield* PgConnection.make({ username: "test", stream: () => socket })
+        const statements: Array<PgConnection.BatchStatement> = [{ sql: "SELECT 1" }]
+        const batch = connection.batch(statements)
+        statements.length = 0
+
+        assert.deepStrictEqual(yield* batch, [])
+        assert.strictEqual(writes.length, 1)
+      }))
   })
 
   it.effect("uses distinct prepared statement names across connections", () =>
