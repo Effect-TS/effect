@@ -396,6 +396,7 @@ export const make: (options: {
     headers: options.headers,
     compression: options.compression,
     maxBatchSize: "disabled",
+    concurrency: 1,
     exportEmpty: true,
     exportInterval: options.exportInterval ?? Duration.seconds(10),
     body: snapshot,

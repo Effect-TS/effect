@@ -47,6 +47,7 @@ const makeExporter = (
     readonly exportInterval?: Duration.Input
     readonly maxBatchSize?: number | "disabled"
     readonly maxQueueSize?: number | undefined
+    readonly concurrency?: number | "unbounded" | undefined
     readonly onDrop?: ((count: number) => void) | undefined
     readonly shutdownTimeout?: Duration.Input
     readonly body?: (data: Array<any>) => HttpBody.HttpBody
@@ -60,6 +61,7 @@ const makeExporter = (
     exportInterval: options?.exportInterval ?? "1 hour",
     maxBatchSize: options?.maxBatchSize ?? 1,
     maxQueueSize: options?.maxQueueSize,
+    concurrency: options?.concurrency,
     onDrop: options?.onDrop,
     body: (data) => [options?.body?.(data) ?? HttpBody.empty, Effect.void],
     shutdownTimeout: options?.shutdownTimeout ?? "1 second"
@@ -305,7 +307,7 @@ describe("OtlpExporter", () => {
       yield* Fiber.join(closeFiber)
     }))
 
-  it.effect("exports remaining telemetry sequentially and waits for all requests during shutdown", () =>
+  it.effect("exports remaining telemetry concurrently and waits for all requests on parallel scope shutdown", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.make("parallel")
       const { httpClient, interrupted, releases, started } = yield* makeControlledHttpClient(2)
@@ -324,18 +326,16 @@ describe("OtlpExporter", () => {
       exporter.push({ value: 3 })
 
       const closeFiber = yield* Effect.forkChild(Scope.close(scope, Exit.void))
-      yield* yieldNowN(3)
+      yield* Deferred.await(started[1])
       assert.strictEqual(yield* Ref.get(interrupted), 0)
-      assert.isFalse(yield* Deferred.isDone(started[1]))
+      assert.deepStrictEqual(batches, [[1, 2], [3]])
+
+      // Complete out of order: finishing batch 1 must not let shutdown return before batch 0
+      yield* Deferred.succeed(releases[1], undefined)
+      yield* yieldNowN(3)
       assert.isUndefined(closeFiber.pollUnsafe())
-      assert.deepStrictEqual(batches, [[1, 2]])
 
       yield* Deferred.succeed(releases[0], undefined)
-      yield* Deferred.await(started[1])
-      assert.deepStrictEqual(batches, [[1, 2], [3]])
-      assert.isUndefined(closeFiber.pollUnsafe())
-
-      yield* Deferred.succeed(releases[1], undefined)
       yield* Fiber.join(closeFiber)
     }))
 
@@ -377,6 +377,7 @@ describe("OtlpExporter", () => {
         exportInterval: "1 hour",
         maxBatchSize: 1,
         maxQueueSize: 4,
+        concurrency: 1,
         onDrop: (count) => {
           dropped += count
         },
@@ -408,11 +409,11 @@ describe("OtlpExporter", () => {
       assert.strictEqual(dropped, 0)
     }).pipe(Effect.provide(OtlpExporter.layerFlusher)))
 
-  it.effect("bounds the pending queue, reports overflow drops, and drains FIFO batches serially", () =>
+  it.effect("bounds pending queue separately from in-flight batches and caps concurrency including retries", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.make()
-      const started = yield* Effect.forEach([0, 1, 2], () => Deferred.make<void>())
-      const releases = yield* Effect.forEach([0, 1, 2], () => Deferred.make<void>())
+      const started = yield* Effect.forEach([0, 1, 2, 3], () => Deferred.make<void>())
+      const releases = yield* Effect.forEach([0, 1, 2, 3], () => Deferred.make<void>())
       let inFlight = 0
       let maxInFlight = 0
       let attempt = 0
@@ -424,17 +425,15 @@ describe("OtlpExporter", () => {
           inFlight++
           maxInFlight = Math.max(maxInFlight, inFlight)
           const current = attempt++
-          // First request returns 500 once so retry overlap is also verified.
+          if (current < 4) {
+            yield* Deferred.succeed(started[current], undefined)
+            yield* Deferred.await(releases[current])
+          }
+          inFlight--
+          // First request returns 500 once so retry slot occupation is verified.
           if (current === 0) {
-            yield* Deferred.succeed(started[0], undefined)
-            yield* Deferred.await(releases[0])
-            inFlight--
             return HttpClientResponse.fromWeb(request, new Response(null, { status: 500 }))
           }
-          const gate = current === 1 ? 1 : 2
-          yield* Deferred.succeed(started[gate], undefined)
-          yield* Deferred.await(releases[gate])
-          inFlight--
           return HttpClientResponse.fromWeb(request, new Response())
         }),
         Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
@@ -444,6 +443,7 @@ describe("OtlpExporter", () => {
       const exporter = yield* makeExporter(httpClient, {
         maxBatchSize: 2,
         maxQueueSize: 3,
+        concurrency: 2,
         onDrop: (count) => {
           dropped += count
         },
@@ -453,44 +453,48 @@ describe("OtlpExporter", () => {
         }
       }).pipe(Scope.provide(scope))
 
-      // Trigger first batch [1, 2]
+      // Fill both concurrency slots: [1, 2] (gate 0) and [3, 4] (gate 1)
       exporter.push({ value: 1 })
       exporter.push({ value: 2 })
       yield* Deferred.await(started[0])
-
-      // While [1, 2] is in flight (and will retry), fill queue of size 3 and overflow by 2
       exporter.push({ value: 3 })
       exporter.push({ value: 4 })
+      yield* Deferred.await(started[1])
+
+      // While 4 items are in flight, pending queue still holds maxQueueSize (3) before dropping
       exporter.push({ value: 5 })
       exporter.push({ value: 6 })
       exporter.push({ value: 7 })
+      exporter.push({ value: 8 })
+      exporter.push({ value: 9 })
       assert.strictEqual(dropped, 2)
+      assert.isFalse(yield* Deferred.isDone(started[2]))
 
-      // First attempt fails with 500 -> waits 1s retry; no second batch may start during retry
+      // Batch 0 returns 500 and enters 1s retry backoff; slot stays occupied so [5, 6] cannot start
       yield* Deferred.succeed(releases[0], undefined)
       yield* yieldNowN(3)
-      assert.deepStrictEqual(batches, [[1, 2]])
-      assert.isFalse(yield* Deferred.isDone(started[1]))
-
-      // Advance retry delay -> retry of [1, 2] succeeds
-      yield* TestClock.adjust("1 second")
-      yield* Deferred.await(started[1])
-      assert.deepStrictEqual(batches, [[1, 2]])
-      yield* Deferred.succeed(releases[1], undefined)
-
-      // Next FIFO batch [3, 4] starts capped at maxBatchSize=2
-      yield* Deferred.await(started[2])
       assert.deepStrictEqual(batches, [[1, 2], [3, 4]])
+      assert.isFalse(yield* Deferred.isDone(started[2]))
+
+      // Batch 1 settles out of order -> frees a slot for FIFO batch [5, 6] (gate 2)
+      yield* Deferred.succeed(releases[1], undefined)
+      yield* Deferred.await(started[2])
+      assert.deepStrictEqual(batches, [[1, 2], [3, 4], [5, 6]])
+
+      // Advance retry delay -> retry of [1, 2] runs (gate 3) and succeeds
+      yield* TestClock.adjust("1 second")
+      yield* Deferred.await(started[3])
+      yield* Deferred.succeed(releases[3], undefined)
       yield* Deferred.succeed(releases[2], undefined)
 
-      // Remaining [5] drains on shutdown
+      // Remaining [7] drains on shutdown
       yield* Scope.close(scope, Exit.void)
-      assert.deepStrictEqual(batches, [[1, 2], [3, 4], [5]])
-      assert.strictEqual(maxInFlight, 1)
+      assert.deepStrictEqual(batches, [[1, 2], [3, 4], [5, 6], [7]])
+      assert.strictEqual(maxInFlight, 2)
       assert.strictEqual(dropped, 2)
     }))
 
-  it.effect("serializes overlapping timer and threshold exports", () =>
+  it.effect("serializes overlapping timer and threshold exports when concurrency is 1", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.make()
       const { httpClient, releases, started } = yield* makeControlledHttpClient(2)
@@ -498,6 +502,7 @@ describe("OtlpExporter", () => {
       const exporter = yield* makeExporter(httpClient, {
         exportInterval: "1 second",
         maxBatchSize: 2,
+        concurrency: 1,
         body(data) {
           batches.push(data.map((item) => item.value))
           return HttpBody.empty
@@ -524,16 +529,59 @@ describe("OtlpExporter", () => {
       yield* Scope.close(scope, Exit.void)
     }))
 
+  it.effect("allows unbounded concurrency when explicitly configured", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const { httpClient, releases, started } = yield* makeControlledHttpClient(6)
+      const flusher = yield* OtlpExporter.Flusher
+      const exporter = yield* OtlpExporter.make({
+        label: "OtlpExporterTest",
+        url: "http://localhost:4318/v1/logs",
+        headers: undefined,
+        exportInterval: "1 hour",
+        maxBatchSize: 1,
+        concurrency: "unbounded",
+        body: () => [HttpBody.empty, Effect.void],
+        shutdownTimeout: "1 second"
+      }).pipe(
+        Effect.provideService(HttpClient.HttpClient, httpClient),
+        Scope.provide(scope)
+      )
+
+      for (let i = 0; i < 6; i++) {
+        exporter.push({ value: i })
+      }
+      // All 6 requests (> default 4) start concurrently
+      for (let i = 0; i < 6; i++) {
+        yield* Deferred.await(started[i])
+      }
+
+      const flushFiber = yield* Effect.forkChild(flusher.flush)
+      for (let i = 5; i >= 1; i--) {
+        yield* Deferred.succeed(releases[i], undefined)
+      }
+      yield* yieldNowN(3)
+      assert.isUndefined(flushFiber.pollUnsafe())
+
+      yield* Deferred.succeed(releases[0], undefined)
+      yield* Fiber.join(flushFiber)
+      yield* Scope.close(scope, Exit.void)
+    }).pipe(Effect.provide(OtlpExporter.layerFlusher)))
+
   it.effect("returns from scope close at shutdownTimeout even with an uninterruptible client", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.make()
-      const started = yield* Deferred.make<void>()
+      const started = yield* Effect.forEach([0, 1], () => Deferred.make<void>())
       const gate = yield* Deferred.make<void>()
       const batches: Array<Array<number>> = []
+      let requestIndex = 0
       const httpClient = HttpClient.makeWith(
         Effect.fnUntraced(function*(requestEffect) {
           const request = yield* requestEffect
-          yield* Deferred.succeed(started, undefined)
+          const index = requestIndex++
+          if (index < started.length) {
+            yield* Deferred.succeed(started[index], undefined)
+          }
           yield* Effect.uninterruptible(Deferred.await(gate))
           return HttpClientResponse.fromWeb(request, new Response())
         }),
@@ -543,6 +591,7 @@ describe("OtlpExporter", () => {
       const exporter = yield* makeExporter(httpClient, {
         maxBatchSize: 1,
         maxQueueSize: 4,
+        concurrency: 2,
         shutdownTimeout: "40 millis",
         onDrop: (count) => {
           dropped += count
@@ -554,8 +603,10 @@ describe("OtlpExporter", () => {
       }).pipe(Scope.provide(scope))
 
       exporter.push({ value: 1 })
-      yield* Deferred.await(started)
       exporter.push({ value: 2 })
+      yield* Deferred.await(started[0])
+      yield* Deferred.await(started[1])
+      exporter.push({ value: 3 })
 
       const closeFiber = yield* Effect.forkChild(Scope.close(scope, Exit.void))
       yield* TestClock.adjust("40 millis")
@@ -565,7 +616,7 @@ describe("OtlpExporter", () => {
       // Releasing the gate after shutdown must not start any queued batch
       yield* Deferred.succeed(gate, undefined)
       yield* yieldNowN(5)
-      assert.deepStrictEqual(batches, [[1]])
+      assert.deepStrictEqual(batches, [[1], [2]])
       assert.strictEqual(dropped, 0)
     }))
 
@@ -578,6 +629,7 @@ describe("OtlpExporter", () => {
       yield* Effect.scoped(Effect.gen(function*() {
         const fractional = yield* makeExporter(httpClient, {
           maxBatchSize: 1.5,
+          concurrency: Number.NaN,
           body(data) {
             batches.push(data.map((item) => item.value))
             return HttpBody.empty
@@ -1002,51 +1054,67 @@ describe("OtlpExporter", () => {
         )
       }))
 
-    it.effect("drains in-flight and pre-flush items without waiting for new arrivals or cancelling", () =>
+    it.effect("drains in-flight and pre-flush items across out-of-order completion without cancelling", () =>
       Effect.gen(function*() {
-        const { httpClient, interrupted, releases, started } = yield* makeControlledHttpClient(3)
+        const { httpClient, interrupted, releases, started } = yield* makeControlledHttpClient(4)
         const batches: Array<Array<number>> = []
 
         yield* Effect.scoped(
           Effect.gen(function*() {
-            const exporter = yield* makeExporterRaw(2, (items) => {
-              batches.push(items.map((item) => item.value))
-              return HttpBody.empty
+            const exporter = yield* OtlpExporter.make({
+              label: "OtlpExporterTest",
+              url: "http://localhost:4318/v1/logs",
+              headers: undefined,
+              exportInterval: "1 hour",
+              maxBatchSize: 2,
+              concurrency: 2,
+              body: (items) => {
+                batches.push(items.map((item) => item.value))
+                return [HttpBody.empty, Effect.void]
+              },
+              shutdownTimeout: "1 second"
             })
             const flusher = yield* OtlpExporter.Flusher
 
-            // Start batch 0 ([1, 2]) in flight, queue [3, 4] before calling flush
+            // Fill both concurrency slots: [1, 2] (gate 0) and [3, 4] (gate 1), queue [5, 6]
             exporter.push({ value: 1 })
             exporter.push({ value: 2 })
             yield* Deferred.await(started[0])
             exporter.push({ value: 3 })
             exporter.push({ value: 4 })
+            yield* Deferred.await(started[1])
+            exporter.push({ value: 5 })
+            exporter.push({ value: 6 })
 
-            // An interrupted flush (timeout) must not cancel the in-flight export or drop queued items
+            // An interrupted flush (timeout) must not cancel in-flight exports or drop queued items
             const timedOut = yield* Effect.forkChild(Effect.timeoutOption(flusher.flush, "10 millis"))
             yield* TestClock.adjust("10 millis")
             assert.isTrue(Option.isNone(yield* Fiber.join(timedOut)))
             assert.strictEqual(yield* Ref.get(interrupted), 0)
 
-            // Now start a real flush covering [1, 2] and [3, 4], then push [5, 6] after flush started
+            // Start a flush covering [1..6], then push [7, 8] after flush started
             const flushFiber = yield* Effect.forkChild(flusher.flush)
             yield* yieldNowN(2)
             assert.isUndefined(flushFiber.pollUnsafe())
-            exporter.push({ value: 5 })
-            exporter.push({ value: 6 })
+            exporter.push({ value: 7 })
+            exporter.push({ value: 8 })
 
-            // Complete batch 0 -> batch 1 ([3, 4]) starts; flush still waiting
-            yield* Deferred.succeed(releases[0], undefined)
-            yield* Deferred.await(started[1])
+            // Complete batch 1 ([3, 4]) out of order -> starts batch 2 ([5, 6]); flush still waits for batch 0
+            yield* Deferred.succeed(releases[1], undefined)
+            yield* Deferred.await(started[2])
             assert.isUndefined(flushFiber.pollUnsafe())
 
-            // Complete batch 1 -> flush resolves without waiting for batch 2 ([5, 6])
-            yield* Deferred.succeed(releases[1], undefined)
-            yield* Fiber.join(flushFiber)
-            yield* Deferred.await(started[2])
-            assert.deepStrictEqual(batches, [[1, 2], [3, 4], [5, 6]])
-
+            // Complete batch 2 ([5, 6]) still before batch 0 -> starts post-flush batch 3 ([7, 8]); flush still waits
             yield* Deferred.succeed(releases[2], undefined)
+            yield* Deferred.await(started[3])
+            assert.isUndefined(flushFiber.pollUnsafe())
+
+            // Completing batch 0 settles all pre-flush items -> flush returns without waiting for batch 3
+            yield* Deferred.succeed(releases[0], undefined)
+            yield* Fiber.join(flushFiber)
+            assert.deepStrictEqual(batches, [[1, 2], [3, 4], [5, 6], [7, 8]])
+
+            yield* Deferred.succeed(releases[3], undefined)
           }).pipe(
             Effect.provideService(HttpClient.HttpClient, httpClient),
             Effect.provide(OtlpExporter.layerFlusher)

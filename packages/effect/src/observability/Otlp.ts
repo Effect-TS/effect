@@ -16,6 +16,7 @@ import type * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import * as Layer from "../Layer.ts"
 import type * as Tracer from "../Tracer.ts"
+import type { Concurrency } from "../Types.ts"
 import type * as OtlpExporter from "./OtlpExporter.ts"
 import * as OtlpLogger from "./OtlpLogger.ts"
 import type { AggregationTemporality } from "./OtlpMetrics.ts"
@@ -53,7 +54,10 @@ export const layer = (options: {
    */
   readonly compression?: "gzip" | "none" | undefined
   readonly maxBatchSize?: number | undefined
+  /** Maximum pending queued spans/logs (does not include in-flight batches). */
   readonly maxQueueSize?: number | undefined
+  /** Maximum concurrent export requests for spans/logs, or `"unbounded"`. Defaults to `4`. */
+  readonly concurrency?: Concurrency | undefined
   readonly onDrop?: ((count: number) => void) | undefined
   readonly tracerContext?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
   readonly loggerExportInterval?: Duration.Input | undefined
@@ -75,6 +79,7 @@ export const layer = (options: {
       exportInterval: options.loggerExportInterval,
       maxBatchSize: options.maxBatchSize,
       maxQueueSize: options.maxQueueSize,
+      concurrency: options.concurrency,
       onDrop: options.onDrop,
       shutdownTimeout: options.shutdownTimeout,
       excludeLogSpans: options.loggerExcludeLogSpans,
@@ -97,6 +102,7 @@ export const layer = (options: {
       exportInterval: options.tracerExportInterval,
       maxBatchSize: options.maxBatchSize,
       maxQueueSize: options.maxQueueSize,
+      concurrency: options.concurrency,
       onDrop: options.onDrop,
       context: options.tracerContext,
       shutdownTimeout: options.shutdownTimeout
@@ -125,6 +131,8 @@ export const layerFromConfig = (options?: {
     readonly attributes?: Record<string, unknown>
   } | undefined
   readonly headers?: Headers.Input | undefined
+  /** Maximum concurrent export requests for spans/logs, or `"unbounded"`. Defaults to `4`. */
+  readonly concurrency?: Concurrency | undefined
   readonly onDrop?: ((count: number) => void) | undefined
   readonly tracerContext?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
   readonly loggerExcludeLogSpans?: boolean | undefined
@@ -134,6 +142,7 @@ export const layerFromConfig = (options?: {
     OtlpLogger.layerFromConfig({
       resource: options?.resource,
       headers: options?.headers,
+      concurrency: options?.concurrency,
       onDrop: options?.onDrop,
       excludeLogSpans: options?.loggerExcludeLogSpans,
       mergeWithExisting: options?.loggerMergeWithExisting
@@ -145,6 +154,7 @@ export const layerFromConfig = (options?: {
     OtlpTracer.layerFromConfig({
       resource: options?.resource,
       headers: options?.headers,
+      concurrency: options?.concurrency,
       onDrop: options?.onDrop,
       context: options?.tracerContext
     })
@@ -172,7 +182,10 @@ export const layerJson: (options: {
    */
   readonly compression?: "gzip" | "none" | undefined
   readonly maxBatchSize?: number | undefined
+  /** Maximum pending queued spans/logs (does not include in-flight batches). */
   readonly maxQueueSize?: number | undefined
+  /** Maximum concurrent export requests for spans/logs, or `"unbounded"`. Defaults to `4`. */
+  readonly concurrency?: Concurrency | undefined
   readonly onDrop?: ((count: number) => void) | undefined
   readonly tracerContext?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
   readonly loggerExportInterval?: Duration.Input | undefined
@@ -209,7 +222,10 @@ export const layerProtobuf: (options: {
    */
   readonly compression?: "gzip" | "none" | undefined
   readonly maxBatchSize?: number | undefined
+  /** Maximum pending queued spans/logs (does not include in-flight batches). */
   readonly maxQueueSize?: number | undefined
+  /** Maximum concurrent export requests for spans/logs, or `"unbounded"`. Defaults to `4`. */
+  readonly concurrency?: Concurrency | undefined
   readonly onDrop?: ((count: number) => void) | undefined
   readonly tracerContext?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
   readonly loggerExportInterval?: Duration.Input | undefined

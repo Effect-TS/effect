@@ -27,6 +27,7 @@ import * as MutableList from "../MutableList.ts"
 import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Scope from "../Scope.ts"
+import type { Concurrency } from "../Types.ts"
 import * as Version from "../Version.ts"
 
 // A missing or invalid Retry-After falls back to a fixed delay.
@@ -63,12 +64,13 @@ const policy = Schedule.forever.pipe(
  *
  * Every exporter created by `make` registers its flush operation here, so a
  * single `flush` drains all signals sharing the registry concurrently while
- * each exporter serializes its own requests. For each exporter, `flush` returns
- * once any export already in flight when it was called has settled and every
- * item accepted before the call has been sent or discarded by a failed export
- * (or after one fresh snapshot settles when `exportEmpty` is enabled). `flush`
- * cannot fail and respects each exporter's temporary-disable window. Wrap it
- * with `Effect.timeoutOption` to bound its duration at the call site.
+ * each exporter respects its own `concurrency` limit. For each exporter,
+ * `flush` returns once every export already in flight when it was called has
+ * settled and every item accepted before the call has been sent or discarded by
+ * a failed export (or after one fresh snapshot settles when `exportEmpty` is
+ * enabled). `flush` cannot fail and respects each exporter's temporary-disable
+ * window. Wrap it with `Effect.timeoutOption` to bound its duration at the call
+ * site.
  *
  * @stability unstable
  * @category services
@@ -80,11 +82,12 @@ export class Flusher extends Context.Service<Flusher, {
    *
    * **Details**
    *
-   * Each exporter runs its exports sequentially. `flush` waits for any export
-   * already in flight when called to settle and drains items accepted before
-   * the call (items pushed while a flush is running may be included in a batch,
-   * but `flush` does not wait for them). Interrupting `flush` only stops the
-   * wait without cancelling in-flight exports or dropping queued items.
+   * Each exporter runs up to its configured `concurrency` exports at a time.
+   * `flush` waits for every export already in flight when called to settle and
+   * drains items accepted before the call (items pushed while a flush is
+   * running may be included in a batch, but `flush` does not wait for them).
+   * Interrupting `flush` only stops the wait without cancelling in-flight
+   * exports or dropping queued items.
    *
    * There is no built-in timeout; use `Effect.timeoutOption` to bound the
    * operation. Exporters in their 60-second `disabledUntil` window are skipped.
@@ -124,11 +127,10 @@ export class Flusher extends Context.Service<Flusher, {
  * Registration is scoped — an exporter is removed from the registry when its
  * own scope closes. Flushing with an empty registry is a no-op.
  *
- * For each registered exporter, `flush` awaits any export already in flight
+ * For each registered exporter, `flush` awaits all exports already in flight
  * when it was called and drains every item accepted before the call (or sends
  * one fresh snapshot when `exportEmpty` is enabled). Interrupting `flush` only
- * stops waiting and does not cancel the shared in-flight export or drop queued
- * items.
+ * stops waiting and does not cancel in-flight exports or drop queued items.
  *
  * @stability unstable
  * @category layers
@@ -162,11 +164,13 @@ export const layerFlusher: Layer.Layer<Flusher> = Layer.sync(Flusher, () => {
  *
  * **Details**
  *
- * The exporter buffers pushed data up to `maxQueueSize` (dropping new arrivals
- * on overflow and notifying `onDrop`), sends FIFO batches of at most
- * `maxBatchSize` with at most one export (including retries) in flight at a
- * time, temporarily disables exporting after unhandled failures, and drains
- * remaining items during scope finalization up to `shutdownTimeout`.
+ * The exporter buffers pending pushed items up to `maxQueueSize` (dropping new
+ * arrivals on overflow and notifying `onDrop`), sends FIFO batches of at most
+ * `maxBatchSize` with up to `concurrency` exports (including retries) in flight
+ * at a time, temporarily disables exporting after unhandled failures, and
+ * drains remaining items during scope finalization up to `shutdownTimeout`.
+ * `maxQueueSize` bounds only pending queued items, not batches already in
+ * flight.
  *
  * The export interval starts with the first push and stops once an export
  * empties the buffer, so an idle exporter keeps no timer pending. With
@@ -192,12 +196,20 @@ export const make: (
     readonly exportInterval: Duration.Input
     readonly maxBatchSize: number | "disabled"
     /**
-     * Maximum number of items buffered in the pending queue. New items pushed
+     * Maximum number of pending items buffered in the queue. Does not count
+     * items already dequeued into in-flight export batches. New items pushed
      * while the queue is full are dropped and reported to `onDrop`.
      *
      * Defaults to `2048` (or `maxBatchSize` if larger).
      */
     readonly maxQueueSize?: number | undefined
+    /**
+     * Maximum number of export requests (including retries) allowed in flight
+     * concurrently, or `"unbounded"` for no limit.
+     *
+     * Defaults to `4`.
+     */
+    readonly concurrency?: Concurrency | undefined
     /**
      * Synchronous callback invoked when items are dropped due to queue overflow.
      */
@@ -219,6 +231,11 @@ export const make: (
   const maxQueueSize = options.maxQueueSize === undefined || Number.isNaN(options.maxQueueSize)
     ? Number.isFinite(batchLimit) ? Math.max(2048, batchLimit) : 2048
     : Count.normalize(options.maxQueueSize)
+  const concurrency = options.concurrency === "unbounded"
+    ? Infinity
+    : options.concurrency === undefined || Number.isNaN(options.concurrency)
+    ? 4
+    : Count.normalizeNonEmpty(options.concurrency)
 
   const client = Context.get(services, HttpClient.HttpClient).pipe(
     HttpClient.tap((response) => Effect.ignore(response.arrayBuffer)),
@@ -251,11 +268,20 @@ export const make: (
   }
 
   // Progress is counted in items, or in snapshots when `exportsEmpty` is set:
-  // how far the worker was asked to export, how far the exports it started
-  // reach, and how far the ones that finished reach.
+  // `requested` is how far callers asked to drain, `started` is how far batches
+  // dequeued so far reach, and `inFlight` tracks each active batch's starting
+  // offset so out-of-order completion never advances the settled watermark past
+  // an earlier in-flight batch.
   let requested = 0
   let started = 0
-  let settled = 0
+  const inFlight = new Set<{ readonly start: number }>()
+  const settledWatermark = () => {
+    let min = started
+    for (const batch of inFlight) {
+      if (batch.start < min) min = batch.start
+    }
+    return min
+  }
 
   interface Waiter {
     readonly target: number
@@ -264,6 +290,7 @@ export const make: (
   const waiters = new Set<Waiter>()
   const notifyWaiters = () => {
     const stopped = isStopped()
+    const settled = stopped ? started : settledWatermark()
     for (const waiter of waiters) {
       if (stopped || settled >= waiter.target) {
         waiters.delete(waiter)
@@ -273,7 +300,7 @@ export const make: (
   }
   const awaitSettled = (target: number): Effect.Effect<void> =>
     Effect.callback((resume) => {
-      if (isStopped() || settled >= target) return resume(Effect.void)
+      if (isStopped() || settledWatermark() >= target) return resume(Effect.void)
       const waiter: Waiter = { target, resume }
       waiters.add(waiter)
       return Effect.sync(() => {
@@ -300,9 +327,11 @@ export const make: (
       )
     }).pipe(
       Effect.catchCause((cause) => {
-        disabledUntil = clock.currentTimeMillisUnsafe() + 60_000
         MutableList.clear(queue)
         requested = started
+        const now = clock.currentTimeMillisUnsafe()
+        if (disabledUntil !== undefined && now < disabledUntil) return Effect.void
+        disabledUntil = now + 60_000
         return Effect.logWarning("Disabling exporter for 60 seconds", cause)
       }),
       Effect.annotateLogs({
@@ -311,42 +340,55 @@ export const make: (
       })
     )
 
-  // The worker sends one batch at a time and only runs while there is work.
-  // The exporter owns it, so interrupting a flush never cancels a request.
+  // Up to `concurrency` workers run on demand while there is work. The
+  // exporter owns them, so interrupting a flush never cancels a request.
   const hasWork = () => !isStopped() && (requested > started || queue.length >= batchLimit)
   const workerLoop: Effect.Effect<void> = Effect.suspend(() => {
-    if (!hasWork()) {
-      working = false
-      if (!exportsEmpty && queue.length === 0 && armed.closeUnsafe()) {
-        wake.openUnsafe()
-      }
-      return Effect.void
-    }
+    if (!hasWork()) return Effect.void
     const items = MutableList.takeN(queue, batchLimit)
+    const batch = { start: started }
     started += exportsEmpty ? 1 : items.length
+    inFlight.add(batch)
     // `exit` keeps the worker alive if the failure handler itself dies, for
     // example when a logger throws.
-    return Effect.flatMap(Effect.exit(exportBatch(items)), () => {
-      settled = started
-      notifyWaiters()
-      return workerLoop
-    })
+    return Effect.exit(exportBatch(items)).pipe(
+      Effect.ensuring(Effect.sync(() => {
+        inFlight.delete(batch)
+        notifyWaiters()
+      })),
+      Effect.andThen(workerLoop)
+    )
   })
+  const runWorker = workerLoop.pipe(
+    Effect.ensuring(Effect.sync(() => {
+      activeWorkers--
+      if (activeWorkers === 0 && !exportsEmpty && queue.length === 0 && armed.closeUnsafe()) {
+        wake.openUnsafe()
+      }
+      notifyWaiters()
+    }))
+  )
   const runFork = Effect.runForkWith(services)
-  let working = false
-  let worker: Fiber.Fiber<void> | undefined = undefined
-  const startWorker = () => {
-    if (working || !hasWork()) return
-    working = true
-    worker = runFork(workerLoop)
+  let activeWorkers = 0
+  const workers = new Set<Fiber.Fiber<void, never>>()
+  const startWorkers = () => {
+    while (activeWorkers < concurrency && hasWork()) {
+      activeWorkers++
+      const fiber = runFork(runWorker)
+      workers.add(fiber)
+      fiber.addObserver(() => {
+        workers.delete(fiber)
+      })
+    }
   }
 
   // Exports everything accepted so far, or one fresh snapshot, and waits for
-  // it to settle together with any export already in flight.
+  // it to settle together with every export already in flight.
   const drain: Effect.Effect<void> = Effect.suspend(() => {
+    if (isStopped()) return Effect.void
     const target = started + (exportsEmpty ? 1 : queue.length)
     requested = Math.max(requested, target)
-    startWorker()
+    startWorkers()
     return awaitSettled(target)
   })
 
@@ -364,10 +406,10 @@ export const make: (
     }))
     : undefined
 
-  // A single finalizer stops the timer, drains, then stops the worker in that
-  // order even in a parallel scope. The worker is interrupted without waiting
-  // for it, so shutdown ends at `shutdownTimeout` even if the HTTP client is
-  // uninterruptible.
+  // A single finalizer stops the timer, drains, then stops active workers in
+  // that order even in a parallel scope. Workers are interrupted without
+  // waiting for them, so shutdown ends at `shutdownTimeout` even if the HTTP
+  // client is uninterruptible.
   yield* Scope.addFinalizer(
     scope,
     Effect.suspend(() => {
@@ -379,7 +421,9 @@ export const make: (
           closed = true
           MutableList.clear(queue)
           notifyWaiters()
-          worker?.interruptUnsafe()
+          for (const fiber of workers) {
+            fiber.interruptUnsafe()
+          }
         }))
       )
     })
@@ -398,7 +442,7 @@ export const make: (
       }
       MutableList.append(queue, data)
       if (queue.length >= batchLimit) {
-        startWorker()
+        startWorkers()
       } else {
         armed.openUnsafe()
       }

@@ -25,7 +25,7 @@ import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import type * as Scope from "../Scope.ts"
 import * as Tracer from "../Tracer.ts"
-import type { ExtractTag } from "../Types.ts"
+import type { Concurrency, ExtractTag } from "../Types.ts"
 import * as Version from "../Version.ts"
 import * as OtlpEnv from "./internal/otlpEnv.ts"
 import * as Exporter from "./OtlpExporter.ts"
@@ -62,7 +62,10 @@ export const make: (
     readonly compression?: "gzip" | "none" | undefined
     readonly exportInterval?: Duration.Input | undefined
     readonly maxBatchSize?: number | undefined
+    /** Maximum pending queued spans (does not include in-flight batches). */
     readonly maxQueueSize?: number | undefined
+    /** Maximum concurrent export requests, or `"unbounded"`. Defaults to `4`. */
+    readonly concurrency?: Concurrency | undefined
     readonly onDrop?: ((count: number) => void) | undefined
     readonly context?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
     readonly shutdownTimeout?: Duration.Input | undefined
@@ -87,6 +90,7 @@ export const make: (
     exportInterval: options.exportInterval ?? Duration.seconds(5),
     maxBatchSize: options.maxBatchSize ?? 1000,
     maxQueueSize: options.maxQueueSize,
+    concurrency: options.concurrency,
     onDrop: options.onDrop,
     body(spans) {
       const data: TraceData = {
@@ -145,7 +149,10 @@ export const layer: (options: {
   readonly compression?: "gzip" | "none" | undefined
   readonly exportInterval?: Duration.Input | undefined
   readonly maxBatchSize?: number | undefined
+  /** Maximum pending queued spans (does not include in-flight batches). */
   readonly maxQueueSize?: number | undefined
+  /** Maximum concurrent export requests, or `"unbounded"`. Defaults to `4`. */
+  readonly concurrency?: Concurrency | undefined
   readonly onDrop?: ((count: number) => void) | undefined
   readonly context?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
@@ -176,6 +183,8 @@ export const layerFromConfig = (options?: {
     readonly attributes?: Record<string, unknown>
   } | undefined
   readonly headers?: Headers.Input | undefined
+  /** Maximum concurrent export requests, or `"unbounded"`. Defaults to `4`. */
+  readonly concurrency?: Concurrency | undefined
   readonly onDrop?: ((count: number) => void) | undefined
   readonly context?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
 }): Layer.Layer<Exporter.Flusher, never, HttpClient.HttpClient | OtlpSerialization> =>
@@ -226,6 +235,7 @@ export const layerFromConfig = (options?: {
       exportInterval: Option.getOrUndefined(scheduleDelay),
       maxBatchSize: Option.getOrUndefined(maxBatchSize),
       maxQueueSize: Option.getOrUndefined(maxQueueSize),
+      concurrency: options?.concurrency,
       onDrop: options?.onDrop,
       context: options?.context,
       shutdownTimeout: Option.getOrUndefined(shutdownTimeout)

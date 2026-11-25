@@ -24,6 +24,7 @@ import type * as LogLevel from "../LogLevel.ts"
 import * as Option from "../Option.ts"
 import { CurrentLogAnnotations, CurrentLogSpans } from "../References.ts"
 import type * as Scope from "../Scope.ts"
+import type { Concurrency } from "../Types.ts"
 import * as Version from "../Version.ts"
 import * as OtlpEnv from "./internal/otlpEnv.ts"
 import * as Exporter from "./OtlpExporter.ts"
@@ -60,7 +61,10 @@ export const make: (
     readonly compression?: "gzip" | "none" | undefined
     readonly exportInterval?: Duration.Input | undefined
     readonly maxBatchSize?: number | undefined
+    /** Maximum pending queued log records (does not include in-flight batches). */
     readonly maxQueueSize?: number | undefined
+    /** Maximum concurrent export requests, or `"unbounded"`. Defaults to `4`. */
+    readonly concurrency?: Concurrency | undefined
     readonly onDrop?: ((count: number) => void) | undefined
     readonly shutdownTimeout?: Duration.Input | undefined
     readonly excludeLogSpans?: boolean | undefined
@@ -84,6 +88,7 @@ export const make: (
     compression: options.compression,
     maxBatchSize: options.maxBatchSize ?? 1000,
     maxQueueSize: options.maxQueueSize,
+    concurrency: options.concurrency,
     onDrop: options.onDrop,
     exportInterval: options.exportInterval ?? Duration.seconds(1),
     body: (data) => [
@@ -136,7 +141,10 @@ export const layer = (options: {
   readonly compression?: "gzip" | "none" | undefined
   readonly exportInterval?: Duration.Input | undefined
   readonly maxBatchSize?: number | undefined
+  /** Maximum pending queued log records (does not include in-flight batches). */
   readonly maxQueueSize?: number | undefined
+  /** Maximum concurrent export requests, or `"unbounded"`. Defaults to `4`. */
+  readonly concurrency?: Concurrency | undefined
   readonly onDrop?: ((count: number) => void) | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
   readonly excludeLogSpans?: boolean | undefined
@@ -167,6 +175,8 @@ export const layerFromConfig = (options?: {
     readonly attributes?: Record<string, unknown>
   } | undefined
   readonly headers?: Headers.Input | undefined
+  /** Maximum concurrent export requests, or `"unbounded"`. Defaults to `4`. */
+  readonly concurrency?: Concurrency | undefined
   readonly onDrop?: ((count: number) => void) | undefined
   readonly excludeLogSpans?: boolean | undefined
   readonly mergeWithExisting?: boolean | undefined
@@ -215,6 +225,7 @@ export const layerFromConfig = (options?: {
       exportInterval: Option.getOrUndefined(exportInterval),
       maxBatchSize: Option.getOrUndefined(maxBatchSize),
       maxQueueSize: Option.getOrUndefined(maxQueueSize),
+      concurrency: options?.concurrency,
       onDrop: options?.onDrop,
       shutdownTimeout: Option.getOrUndefined(shutdownTimeout),
       excludeLogSpans: options?.excludeLogSpans,
