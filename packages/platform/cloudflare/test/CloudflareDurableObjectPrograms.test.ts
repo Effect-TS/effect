@@ -245,29 +245,36 @@ describe("CloudflareDurableObjectPrograms", () => {
         const program = yield* makeClusterWorkflowProgram(state)
         assert.strictEqual(storage.alarm, 100_000)
 
-        const explain = (entry: { readonly query: string; readonly bindings: Array<unknown> }) =>
-          (database.prepare(`EXPLAIN QUERY PLAN ${entry.query}`).all(...entry.bindings as Array<SQLInputValue>) as Array<
-            { readonly detail: string }
-          >).map((row) => row.detail)
+        const partialIndexes = new Set(
+          (database.prepare(
+            "SELECT name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'workflow_clocks' AND sql IS NOT NULL"
+          ).all() as Array<{ readonly name: string; readonly sql: string }>)
+            .filter((index) => /\bWHERE\b[\s\S]*\bfired\s*=\s*0\b/i.test(index.sql))
+            .map((index) => index.name)
+        )
+        assert.isAbove(partialIndexes.size, 0, "expected a partial index on pending workflow_clocks rows")
 
-        assert.isAbove(queries.length, 0)
-        for (const entry of queries) {
+        const assertUsesPartialIndex = (entry: { readonly query: string; readonly bindings: Array<unknown> }) => {
+          const plan = (database.prepare(`EXPLAIN QUERY PLAN ${entry.query}`).all(
+            ...entry.bindings as Array<SQLInputValue>
+          ) as Array<{ readonly detail: string }>).map((row) => row.detail)
           assert.isTrue(
-            explain(entry).some((detail) => /USING COVERING INDEX/.test(detail)),
-            `expected next-wake lookup to use a covering index over pending rows, got: ${explain(entry).join("; ")}`
+            plan.some((detail) => {
+              const match = /USING (?:COVERING )?INDEX (\S+)/.exec(detail)
+              return match !== null && partialIndexes.has(match[1])
+            }),
+            `expected clock lookup to use a partial pending index, got: ${plan.join("; ")}`
           )
         }
+
+        assert.isAbove(queries.length, 0)
+        for (const entry of queries) assertUsesPartialIndex(entry)
 
         queries.length = 0
         yield* program.alarm()
         assert.strictEqual(storage.alarm, 100_000)
         assert.isAbove(queries.length, 0)
-        for (const entry of queries) {
-          assert.isTrue(
-            explain(entry).some((detail) => /USING (?:COVERING )?INDEX/.test(detail)),
-            `expected alarm clock lookup to use an index over pending rows, got: ${explain(entry).join("; ")}`
-          )
-        }
+        for (const entry of queries) assertUsesPartialIndex(entry)
       }))
   })
 
