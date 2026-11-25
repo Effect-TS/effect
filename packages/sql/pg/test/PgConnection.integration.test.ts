@@ -331,7 +331,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
           { name: "amount", dataTypeId: PgTypes.OID.numeric },
           { name: "missing", dataTypeId: PgTypes.OID.int4 }
         ],
-        rows: [[...params, null]]
+        rows: [["2026-01-02 03:04:05.123456+00", "123456789012345678901234567890.5", null]]
       }
       for (const multiplex of [false, true]) {
         const connection = yield* makeConnection({ multiplex })
@@ -343,7 +343,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
             connection.queryText(sql, params),
             connection.queryText(sql, params, false)
           ], { concurrency: "unbounded" })
-          assert.instanceOf(binary.rows[0].at, Date)
+          assert.deepStrictEqual(binary.rows[0].at, new Date("2026-01-02T03:04:05.123Z"))
           assert.deepStrictEqual(text, expected)
           assert.deepStrictEqual(unprepared, expected)
         }

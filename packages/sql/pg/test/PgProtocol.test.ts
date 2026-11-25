@@ -109,25 +109,12 @@ describe("PgProtocol", () => {
         else sink.raw(value)
         return Result.void
       })
-      assert.strictEqual(
-        hex(success(encodeBind({ portal: "p1", statement: "s1", parameters: [bytes("00000001"), null] }))),
-        frontend.bind
-      )
-    })
-
-    it("asks for text results when textResults is set", () => {
-      const encodeBind = PgProtocol.makeBindEncoder<Uint8Array | null>((sink, value) => {
-        if (value === null) sink.sqlNull()
-        else sink.raw(value)
-        return Result.void
-      })
       const options = { portal: "p1", statement: "s1", parameters: [bytes("00000001"), null] }
-      const binary = success(encodeBind(options))
-      const text = success(encodeBind({ ...options, textResults: true }))
-      // The frame ends with its one result format code: 1 for binary, 0 for text.
-      assert.strictEqual(hex(text.subarray(0, -1)), hex(binary.subarray(0, -1)))
-      assert.strictEqual(binary.at(-1), 1)
-      assert.strictEqual(text.at(-1), 0)
+      assert.strictEqual(hex(success(encodeBind(options))), frontend.bind)
+      assert.strictEqual(
+        hex(success(encodeBind({ ...options, textResults: true }))),
+        "42000000207031007331000001000100020000000400000001ffffffff00010000"
+      )
     })
 
     it("frames each sink-written parameter with the bytes it wrote", () => {
