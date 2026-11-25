@@ -1222,7 +1222,9 @@ export interface HandlerResult<Tool extends Any> {
    */
   readonly encodedResult: unknown
   /**
-   * The output of the tool's `toModelOutput` mapping for a successful result.
+   * The model-facing output parts for a successful result, set by the handler
+   * via `HandlerContext.modelOutput` or produced by the tool's `toModelOutput`
+   * mapping.
    */
   readonly modelOutput?: ReadonlyArray<Prompt.ToolModelOutputPart> | undefined
   /**

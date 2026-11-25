@@ -27,6 +27,7 @@ import type * as SchemaAST from "../SchemaAST.ts"
 import type * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import * as AiError from "./AiError.ts"
+import type * as Prompt from "./Prompt.ts"
 import * as Tool from "./Tool.ts"
 
 const TypeId = "~effect/ai/Toolkit" as const
@@ -130,6 +131,19 @@ export interface HandlerContext<Tool extends Tool.Any> {
    * buffered without limit unless the caller provides `PreliminaryBuffer`.
    */
   readonly preliminary: (result: Tool.Success<Tool>) => Effect.Effect<void>
+  /**
+   * Set the model-facing output parts for this tool call's final result.
+   *
+   * **Details**
+   *
+   * Replaces the tool's `toModelOutput` mapping and default encoded result for
+   * the final successful result of this call, with the last call winning. It is
+   * ignored for preliminary results and failures, and leaves `result` and
+   * `encodedResult` unchanged.
+   *
+   * @since 4.2.0
+   */
+  readonly modelOutput: (parts: ReadonlyArray<Prompt.ToolModelOutputPart>) => Effect.Effect<void>
 }
 
 /**
@@ -517,7 +531,9 @@ const Proto = {
           readonly result: any
           readonly isFailure: boolean
           readonly preliminary: boolean
+          readonly modelOutput?: ReadonlyArray<Prompt.ToolModelOutputPart> | undefined
         }, Cause.Done>(capacity === "unbounded" ? undefined : { capacity })
+        let modelOutput: ReadonlyArray<Prompt.ToolModelOutputPart> | undefined
         const context: HandlerContext<any> = {
           toolCallId,
           preliminary: (result) =>
@@ -525,11 +541,22 @@ const Proto = {
               result,
               isFailure: false,
               preliminary: true
-            }))
+            })),
+          modelOutput: (parts) =>
+            Effect.sync(() => {
+              modelOutput = parts
+            })
         }
 
         const fiber = yield* schemas.handler(decodedParams, context).pipe(
-          Effect.flatMap((result) => Queue.offer(queue, { result, isFailure: false, preliminary: false })),
+          Effect.flatMap((result) =>
+            Queue.offer(queue, {
+              result,
+              isFailure: false,
+              preliminary: false,
+              ...(modelOutput !== undefined ? { modelOutput } : undefined)
+            })
+          ),
           Effect.updateContext((input) => Context.merge(schemas.context, input)),
           Effect.matchCauseEffect({
             onFailure: (cause) => Queue.failCause(queue, cause),
@@ -582,10 +609,14 @@ const Proto = {
             ),
           Stream.mapEffect(Effect.fnUntraced(function*(output) {
             const encodedResult = yield* encodeResult(output.result, output.isFailure)
-            if (output.isFailure || output.preliminary || tool.toModelOutput === undefined) {
+            if (output.isFailure || output.preliminary) {
               return { ...output, encodedResult }
             }
-            return { ...output, encodedResult, modelOutput: tool.toModelOutput(output.result) }
+            const parts = ("modelOutput" in output ? output.modelOutput : undefined) ??
+              tool.toModelOutput?.(output.result)
+            return parts === undefined
+              ? { ...output, encodedResult }
+              : { ...output, encodedResult, modelOutput: parts }
           })),
           Stream.ensuring(Effect.flatMap(
             Effect.andThen(Fiber.interrupt(fiber), Fiber.await(fiber)),
