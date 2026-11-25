@@ -880,8 +880,8 @@ export const discriminator: <D extends string>(
   R,
   P extends Types.Tags<D, R> & string,
   Ret,
-  Args extends Array<any>,
-  Fn extends (_: Extract<R, Record<D, P>>, ...args: Args) => Ret
+  Fn extends (_: Extract<R, Record<D, P>>, ...args: Args) => Ret,
+  Args extends Array<any> = []
 >(
   ...pattern: [first: P, ...values: Array<P>, f: Fn]
 ) => <I, F, A, Pr>(
@@ -939,8 +939,8 @@ export const discriminatorStartsWith: <D extends string>(
   R,
   P extends string,
   Ret,
-  Args extends Array<any>,
-  Fn extends (_: Extract<R, Record<D, `${P}${string}`>>, ...args: Args) => Ret
+  Fn extends (_: Extract<R, Record<D, `${P}${string}`>>, ...args: Args) => Ret,
+  Args extends Array<any> = []
 >(
   pattern: P,
   f: Fn
@@ -1009,10 +1009,10 @@ export const discriminators: <D extends string>(
 ) => <
   R,
   Ret,
-  Args extends Array<any>,
   P extends
     & PartialTagHandlers<D, R, Ret, Args>
-    & { readonly [Tag in Exclude<keyof P, Types.Tags<D, R>>]: never }
+    & { readonly [Tag in Exclude<keyof P, Types.Tags<D, R>>]: never },
+  Args extends Array<any> = []
 >(
   fields: Contextual<P, PartialTagHandlers<D, R, Ret, Args>>
 ) => <I, F, A, Pr>(
@@ -1075,10 +1075,10 @@ export const discriminatorsExhaustive: <D extends string>(
 ) => <
   R,
   Ret,
-  Args extends Array<any>,
   P extends
     & TagHandlers<D, R, Ret, Args>
-    & { readonly [Tag in Exclude<keyof P, Types.Tags<D, R>>]: never }
+    & { readonly [Tag in Exclude<keyof P, Types.Tags<D, R>>]: never },
+  Args extends Array<any> = []
 >(
   fields: Contextual<P, TagHandlers<D, R, Ret, Args>>
 ) => <I, F, A, Pr>(
@@ -1185,8 +1185,8 @@ export const tagStartsWith: <
   R,
   P extends string,
   Ret,
-  Args extends Array<any>,
-  Fn extends (_: Extract<R, Record<"_tag", `${P}${string}`>>, ...args: Args) => Ret
+  Fn extends (_: Extract<R, Record<"_tag", `${P}${string}`>>, ...args: Args) => Ret,
+  Args extends Array<any> = []
 >(
   pattern: P,
   f: Fn
@@ -1242,10 +1242,10 @@ export const tagStartsWith: <
 export const tags: <
   R,
   Ret,
-  Args extends Array<any>,
   P extends
     & PartialTagHandlers<"_tag", R, Ret, Args>
-    & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", R>>]: never }
+    & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", R>>]: never },
+  Args extends Array<any> = []
 >(
   fields: Contextual<P, PartialTagHandlers<"_tag", R, Ret, Args>>
 ) => <I, F, A, Pr>(
@@ -1300,10 +1300,10 @@ export const tags: <
 export const tagsExhaustive: <
   R,
   Ret,
-  Args extends Array<any>,
   P extends
     & TagHandlers<"_tag", R, Ret, Args>
-    & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", R>>]: never }
+    & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", R>>]: never },
+  Args extends Array<any> = []
 >(
   fields: Contextual<P, TagHandlers<"_tag", R, Ret, Args>>
 ) => <I, F, A, Pr>(
@@ -1350,10 +1350,10 @@ export const tagsExhaustive: <
 export const literals: <
   R,
   Ret,
-  Args extends Array<any>,
   P extends
     & PartialLiteralHandlers<R, Ret, Args>
-    & { readonly [K in Exclude<keyof P, LiteralKeys<R>>]: never }
+    & { readonly [K in Exclude<keyof P, LiteralKeys<R>>]: never },
+  Args extends Array<any> = []
 >(
   fields: Contextual<P, PartialLiteralHandlers<R, Ret, Args>>
 ) => <I, F, A, Pr>(
@@ -1406,10 +1406,10 @@ export const literals: <
 export const literalsExhaustive: <
   R,
   Ret,
-  Args extends Array<any>,
   P extends
     & LiteralHandlers<R, Ret, Args>
-    & { readonly [K in Exclude<keyof P, LiteralKeys<R>>]: never }
+    & { readonly [K in Exclude<keyof P, LiteralKeys<R>>]: never },
+  Args extends Array<any> = []
 >(
   fields: Contextual<P, LiteralHandlers<R, Ret, Args>>
 ) => <I, F, A, Pr>(

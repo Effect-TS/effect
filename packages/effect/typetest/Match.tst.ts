@@ -114,6 +114,13 @@ describe("Match", () => {
       Match.literalsExhaustive({ b: (_value, context) => context })
     )
     expect(literals).type.toBe<(context: boolean, value: "a" | "b") => boolean>()
+
+    type ExplicitEvent = { readonly _tag: "A" }
+    const explicitFields = { A: (event: ExplicitEvent) => event._tag }
+    const explicit = Match.type<ExplicitEvent>().pipe(
+      Match.tagsExhaustive<ExplicitEvent, string, typeof explicitFields>(explicitFields)
+    )
+    expect(explicit).type.toBe<(u: ExplicitEvent) => "A">()
   })
 
   it("value matchers resolve terminals for generic inputs", () => {
