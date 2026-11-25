@@ -25,13 +25,23 @@ export const invalidArgument = (description: string, cause?: unknown) =>
 
 /**
  * Maps a failure of an operation on secret material, such as signing or
- * private-key import, to a fixed description. Backend messages and causes may
- * describe the secret, so they are dropped.
+ * private-key import, to a fixed description. A rejected key stays
+ * `InvalidKey`; other failures become `CryptoFailed`. Backend messages and
+ * causes may describe the secret, so they are dropped.
  *
  * @internal
  */
-export const cryptoFailure = (description: string) => (_: CryptoError.CryptoError): JoseError.JoseError =>
-  new JoseError.JoseError({ reason: new JoseError.InvalidKey({ description }) })
+export const cryptoFailure = (description: string) => (error: CryptoError.CryptoError): JoseError.JoseError =>
+  new JoseError.JoseError({
+    reason: error.reason._tag === "InvalidKey"
+      ? new JoseError.InvalidKey({ description })
+      : new JoseError.CryptoFailed({
+        description,
+        module: error.module,
+        method: error.method,
+        reason: error.reason._tag
+      })
+  })
 
 /**
  * Maps a public-key import failure, keeping the backend diagnostic.
