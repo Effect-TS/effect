@@ -53,23 +53,12 @@ export const suite = (name: string, layer: Layer.Layer<KeyValueStore.KeyValueSto
       Effect.gen(function*() {
         const kv = yield* KeyValueStore.KeyValueStore
         yield* kv.clear
-        const value = "héllo 👋"
+        const value = "\uFEFFhéllo 👋"
 
         yield* kv.set("utf8", value)
 
         assert.strictEqual(yield* kv.get("utf8"), value)
         assert.deepStrictEqual(yield* kv.getUint8Array("utf8"), new TextEncoder().encode(value))
-      }))
-
-    it.effect("string values keep a leading U+FEFF", () =>
-      Effect.gen(function*() {
-        const kv = yield* KeyValueStore.KeyValueStore
-        yield* kv.clear
-        const value = "\uFEFFhello"
-
-        yield* kv.set("bom", value)
-
-        assert.strictEqual(yield* kv.get("bom"), value)
       }))
 
     it.effect("keys", () =>
