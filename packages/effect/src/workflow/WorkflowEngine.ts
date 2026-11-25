@@ -820,9 +820,8 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       const executionScope = state.scope
       state.instance.awaitedDeferreds.clear()
       state.instance.completedDeferreds.clear()
-      // Like the cluster engine, each run gets a fresh lazy scope under the
-      // execution scope, so replays rebuild compensations without retaining
-      // unused child scopes.
+      // Fork lazily under the execution scope so replays rebuild compensations
+      // without retaining unused child scopes.
       const instance = withLazyScope(
         WorkflowInstance.initial(state.instance.workflow, state.instance.executionId),
         executionScope

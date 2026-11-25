@@ -515,13 +515,11 @@ export const make = Effect.gen(function*() {
               )
             return {
               run: (request: Entity.Request<any>) => {
-                // A finalizer can keep the superseded instance reachable, so drop
-                // the waits it tracked.
+                // Superseded instances retained by finalizers no longer need their wait sets.
                 currentRun?.instance.awaitedDeferreds.clear()
                 currentRun?.instance.completedDeferreds.clear()
-                // Each run forks its scope under the activation's parent on first
-                // use, so replays rebuild compensations while suspended runs keep
-                // theirs.
+                // Fork lazily under the activation scope so unused runs retain nothing,
+                // while replays rebuild compensations and suspended runs keep theirs.
                 const instance = withLazyScope(
                   WorkflowEngine.WorkflowInstance.initial(workflow, executionId),
                   pending.scope
