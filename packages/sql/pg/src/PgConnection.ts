@@ -832,49 +832,59 @@ class PgConnectionImpl implements PgConnection {
   })
 
   // Only the waits are interruptible, so a caller can bound how long it waits
-  // for the connection without leaking the `owner` permit.
-  private readonly pinExclusive: Effect.Effect<PinnedPgConnection, never, Scope.Scope> = Effect.acquireRelease(
-    Effect.uninterruptibleMask((restore) =>
-      Effect.flatMap(restore(this.owner.take(1)), () =>
-        // Holding `owner` stops new submissions; a pipeline already on the wire
-        // still has to drain before this fiber owns the connection.
-        Effect.map(
-          Effect.onInterrupt(restore(this.waitPipelineIdle), () => this.owner.release(1)),
+  // for the connection. Everything taken is owned by a finalizer in the same
+  // uninterruptible step, so an interrupt cannot strand the `owner` permit.
+  private readonly pinExclusive: Effect.Effect<PinnedPgConnection, never, Scope.Scope> = Effect.uninterruptibleMask(
+    (restore) =>
+      Effect.flatMap(Effect.scope, (scope) => {
+        const lease = Scope.makeUnsafe()
+        const releaseOwner = Scope.close(lease, Exit.void)
+        return Effect.flatMap(
+          Effect.onInterrupt(
+            Effect.andThen(
+              restore(Scope.provide(this.owner.takeScoped(1), lease)),
+              // Holding `owner` stops new submissions; a pipeline already on the
+              // wire still has to drain before this fiber owns the connection.
+              restore(this.waitPipelineIdle)
+            ),
+            () => releaseOwner
+          ),
           () => {
             this.pinned = true
-            return new PinnedPgConnection(this)
+            const view = new PinnedPgConnection(this)
+            return Effect.as(Scope.addFinalizer(scope, Effect.ensuring(this.unpin(view), releaseOwner)), view)
           }
-        ))
-    ),
-    (view) =>
-      Effect.flatMap(
-        Effect.suspend(() => {
-          view.released = true
-          this.pinned = false
-          // An `UNLISTEN` that took the wire before the release is bounded by its
-          // own timeout, so wait for it rather than treating it as leaked work.
-          return view.unlistening > 0 ? Effect.as(this.wire.take(1), true) : this.wire.takeIfAvailable(1)
-        }),
-        (idle) => {
-          // Retire rather than wait indefinitely for leaked work to finish.
-          if (!idle || view.listeners > 0) {
-            this.fatal(connectionQueryError(
-              new Error("Pinned connection released with work outstanding"),
-              "PgConnection: Pinned connection released with work outstanding"
-            ))
-          } else if (view.startedIdle && this.transactionStatus === "E") {
-            // A failed cleanup, such as a cancelled `ROLLBACK`, leaves every later
-            // statement failing. A transaction open before the pin is its caller's.
-            this.fatal(connectionQueryError(
-              new Error("Pinned connection released in an aborted transaction"),
-              "PgConnection: Pinned connection released in an aborted transaction"
-            ))
-          }
-          return idle ? Effect.andThen(this.wire.release(1), this.owner.release(1)) : this.owner.release(1)
-        }
-      ),
-    { interruptible: true }
+        )
+      })
   )
+
+  private readonly unpin = (view: PinnedPgConnection): Effect.Effect<void> =>
+    Effect.flatMap(
+      Effect.suspend(() => {
+        view.released = true
+        this.pinned = false
+        // An `UNLISTEN` that took the wire before the release is bounded by its
+        // own timeout, so wait for it rather than treating it as leaked work.
+        return view.unlistening > 0 ? Effect.as(this.wire.take(1), true) : this.wire.takeIfAvailable(1)
+      }),
+      (idle) => {
+        // Retire rather than wait indefinitely for leaked work to finish.
+        if (!idle || view.listeners > 0) {
+          this.fatal(connectionQueryError(
+            new Error("Pinned connection released with work outstanding"),
+            "PgConnection: Pinned connection released with work outstanding"
+          ))
+        } else if (view.startedIdle && this.transactionStatus === "E") {
+          // A failed cleanup, such as a cancelled `ROLLBACK`, leaves every later
+          // statement failing. A transaction open before the pin is its caller's.
+          this.fatal(connectionQueryError(
+            new Error("Pinned connection released in an aborted transaction"),
+            "PgConnection: Pinned connection released in an aborted transaction"
+          ))
+        }
+        return idle ? Effect.asVoid(this.wire.release(1)) : Effect.void
+      }
+    )
 
   private readonly run = (
     sql: string,

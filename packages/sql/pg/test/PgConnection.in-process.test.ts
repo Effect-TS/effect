@@ -434,6 +434,38 @@ describe("PgConnection in-process server", () => {
       assert.deepStrictEqual(frontendTags(writes[1]), ["P", "B", "D", "E", "S", "P", "B", "D", "E", "S"])
     }))
 
+  it.live("reuses a connection after cancelling a pin waiting for its pipeline to drain", () =>
+    Effect.gen(function*() {
+      const submitted = Promise.withResolvers<void>()
+      let writes = 0
+      const socket: Duplex = new Duplex({
+        read() {},
+        write(_chunk, _encoding, callback) {
+          switch (++writes) {
+            case 1:
+              queueMicrotask(() => socket.push(Buffer.concat([authenticationOk, backendKeyData, readyForQuery])))
+              break
+            case 2:
+              submitted.resolve()
+              break
+            case 3:
+              queueMicrotask(() => socket.push(emptyQueryResult))
+          }
+          callback()
+        }
+      })
+      const connection = yield* PgConnection.make({ username: "test", stream: () => socket, multiplex: true })
+      const first = yield* Effect.forkChild(connection.query("SELECT 1"))
+      yield* Effect.promise(() => submitted.promise)
+      const scope = yield* Effect.scope
+      const waiting = yield* Effect.forkChild(Scope.provide(connection.pin, scope), { startImmediately: true })
+      yield* Fiber.interrupt(waiting)
+      socket.push(emptyQueryResult)
+      yield* Fiber.join(first)
+      // The cancelled caller's scope is still open; it must not retain ownership.
+      yield* connection.query("SELECT 2").pipe(Effect.timeout("2 seconds"))
+    }))
+
   it.effect("uses distinct prepared statement names across connections", () =>
     Effect.gen(function*() {
       const writes: Array<Array<Buffer>> = []
