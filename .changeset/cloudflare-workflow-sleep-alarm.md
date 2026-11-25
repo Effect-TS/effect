@@ -2,4 +2,4 @@
 "@effect/platform-cloudflare": patch
 ---
 
-Reconcile the Cloudflare workflow Durable Object alarm after suspension and completion so durable sleeps are not woken early by an expired resume guard.
+Fix Cloudflare workflow Durable Objects firing an expired resume guard alarm before a `DurableClock.sleep` is due, and clear unused alarms on suspension and completion.

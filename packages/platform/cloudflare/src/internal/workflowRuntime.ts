@@ -140,19 +140,15 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     return true
   }
 
-  // Only the attempt that owns the handle releases it: an earlier attempt can
-  // still be settling after its successor has started.
+  // Only the owning attempt releases the handle; an earlier one may still be settling.
   const releaseInflight = (owner: Inflight["instance"] | undefined): void => {
     if (inflight?.instance !== owner) return
     inflight = undefined
     resumeRequested = undefined
   }
 
-  // The single alarm targets the earlier of the next clock and the resume
-  // guard. Deriving it from current state on every change means a write never
-  // carries a stale target, whatever order concurrent callers run in. The
-  // guard keeps its deadline until it fires or is no longer needed, so
-  // repeated resumes cannot postpone it.
+  // Derive the single alarm from current state so concurrent updates cannot
+  // write a stale target, and keep an armed guard deadline until it fires.
   const syncAlarm = (): Promise<void> => {
     const row = WorkflowStorage.loadExecution(sql)
     const complete = isComplete(row?.result)
