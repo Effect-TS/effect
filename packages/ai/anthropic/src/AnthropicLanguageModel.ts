@@ -1343,34 +1343,22 @@ const prepareToolResultContent = Effect.fnUntraced(function*(
 })
 
 const base64DataUrlPattern = /^data:[^,]*;base64,/i
-const httpUrlPattern = /^https?:\/\//i
 const textDecoder = new TextDecoder()
 
-const getRemoteUrl = (data: typeof Prompt.FilePart.Type["data"]): string | undefined => {
-  if (data instanceof URL) {
-    return data.protocol !== "data:" ? data.href : undefined
+const getBase64Data = (data: string | Uint8Array): string =>
+  typeof data === "string" ? data.replace(/^data:[^;]+;base64,/, "") : Base64.encode(data)
+
+const getTextDataUrlPayload = (data: typeof Prompt.FilePart.Type["data"]): string | undefined => {
+  const value = data instanceof URL ? data.href : data
+  if (typeof value !== "string") {
+    return undefined
   }
-  return typeof data === "string" && httpUrlPattern.test(data) ? data : undefined
+  const match = base64DataUrlPattern.exec(value)
+  return match === null ? undefined : value.slice(match[0].length)
 }
 
-const getBase64Data = (data: typeof Prompt.FilePart.Type["data"]): string => {
-  if (data instanceof Uint8Array) {
-    return Base64.encode(data)
-  }
-  const value = data instanceof URL ? data.href : data
-  return value.replace(base64DataUrlPattern, "")
-}
-
-const getTextData = Effect.fnUntraced(function*(data: typeof Prompt.FilePart.Type["data"]) {
-  if (data instanceof Uint8Array) {
-    return textDecoder.decode(data)
-  }
-  const value = data instanceof URL ? data.href : data
-  const dataUrl = base64DataUrlPattern.exec(value)
-  if (dataUrl === null) {
-    return value
-  }
-  return yield* Effect.fromResult(Base64.decode(value.slice(dataUrl[0].length))).pipe(
+const decodeTextBase64 = Effect.fnUntraced(function*(payload: string) {
+  return yield* Effect.fromResult(Base64.decode(payload)).pipe(
     Effect.map((bytes) => textDecoder.decode(bytes)),
     Effect.mapError((error) =>
       AiError.make({
@@ -1392,14 +1380,12 @@ const prepareFilePart = Effect.fnUntraced(function*(
   typeof Generated.BetaRequestImageBlock.Encoded | typeof Generated.BetaRequestDocumentBlock.Encoded,
   AiError.AiError
 > {
-  const url = getRemoteUrl(part.data)
-
   if (part.mediaType.startsWith("image/")) {
     const mediaType: typeof Generated.Base64ImageSource.Type["media_type"] =
       (part.mediaType === "image/*" ? "image/jpeg" : part.mediaType) as any
 
-    const source = url !== undefined
-      ? { type: "url", url } as const
+    const source = isUrlData(part.data)
+      ? { type: "url", url: getUrlString(part.data) } as const
       : { type: "base64", media_type: mediaType, data: getBase64Data(part.data) } as const
 
     return { type: "image", source, cache_control: cacheControl }
@@ -1411,14 +1397,27 @@ const prepareFilePart = Effect.fnUntraced(function*(
     const enableCitations = areCitationsEnabled(part)
     const documentOptions = getDocumentMetadata(part)
 
-    const source = url !== undefined
-      ? { type: "url", url } as const
+    const textDataUrlPayload = part.mediaType === "text/plain"
+      ? getTextDataUrlPayload(part.data)
+      : undefined
+
+    const source = textDataUrlPayload !== undefined
+      ? {
+        type: "text",
+        media_type: "text/plain",
+        data: yield* decodeTextBase64(textDataUrlPayload)
+      } as const
+      : isUrlData(part.data)
+      ? {
+        type: "url",
+        url: getUrlString(part.data)
+      } as const
       : part.mediaType === "application/pdf"
       ? { type: "base64", media_type: "application/pdf", data: getBase64Data(part.data) } as const
       : {
         type: "text",
         media_type: "text/plain",
-        data: yield* getTextData(part.data)
+        data: typeof part.data === "string" ? part.data : textDecoder.decode(part.data)
       } as const
 
     return {
@@ -2958,6 +2957,18 @@ const groupMessages = (prompt: Prompt.Prompt): Array<ContentGroup> => {
   }
   return messages
 }
+
+/**
+ * Checks whether data is a URL (either a URL object or a URL string).
+ */
+const isUrlData = (
+  data: typeof Prompt.FilePart.Type["data"]
+): data is URL => data instanceof URL || isUrlString(data)
+
+const isUrlString = (data: typeof Prompt.FilePart.Type["data"]): boolean =>
+  typeof data === "string" && /^https?:\/\//i.test(data)
+
+const getUrlString = (data: string | URL): string => data instanceof URL ? data.toString() : data
 
 const getCacheControl = (
   part:
