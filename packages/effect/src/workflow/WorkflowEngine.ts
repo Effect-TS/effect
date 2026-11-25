@@ -27,6 +27,7 @@ import * as Semaphore from "../Semaphore.ts"
 import type * as Activity from "./Activity.ts"
 import type { DurableClock } from "./DurableClock.ts"
 import type * as DurableDeferred from "./DurableDeferred.ts"
+import { RetryingExecution } from "./internal/retry.ts"
 import { reuseOrForkScope } from "./internal/scope.ts"
 import * as Workflow from "./Workflow.ts"
 
@@ -844,6 +845,8 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         // Deferred wakes interrupt only the body, so `intoResult` still reports `Suspended`.
         (effect) => deferredState.trackRun(instance, effect),
         Workflow.intoResult,
+        // Clear any retry region inherited from the caller or child fiber that started or woke this run.
+        Effect.provideService(RetryingExecution, undefined),
         Effect.provideService(WorkflowInstance, instance),
         Effect.provideService(WorkflowEngine, engine),
         Effect.tap((result) => {

@@ -31,6 +31,7 @@ import * as Semaphore from "../Semaphore.ts"
 import * as Activity from "../workflow/Activity.ts"
 import * as DurableClock from "../workflow/DurableClock.ts"
 import * as DurableDeferred from "../workflow/DurableDeferred.ts"
+import { RetryingExecution } from "../workflow/internal/retry.ts"
 import { markScopeAbandoned, reuseOrForkScope } from "../workflow/internal/scope.ts"
 import * as Workflow from "../workflow/Workflow.ts"
 import * as WorkflowEngine from "../workflow/WorkflowEngine.ts"
@@ -622,6 +623,7 @@ export const make = Effect.gen(function*() {
                 return entry.activity.executeEncoded.pipe(
                   Effect.provideContext(context),
                   Workflow.intoResult,
+                  Effect.provideService(RetryingExecution, Context.get(entry.context, RetryingExecution)),
                   Effect.tap((result) =>
                     Effect.sync(() => {
                       entry.result = result

@@ -25,7 +25,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Cause, Context, Deferred, Effect, Exit } from "effect"
 import { ClusterSchema, Entity } from "effect/cluster"
 import { Rpc } from "effect/rpc"
-import { DatabaseSync } from "node:sqlite"
+import { DatabaseSync, type SQLInputValue } from "node:sqlite"
 import { SqliteStorage } from "./fixtures/sqliteStorage.ts"
 
 class FakeSql {
@@ -213,6 +213,62 @@ describe("CloudflareDurableObjectPrograms", () => {
         const cold = yield* makeClusterWorkflowProgram(state)
         assert.strictEqual(yield* cold.poll(), JSON.stringify({ _tag: "Complete" }))
         assert.strictEqual(storage.alarm, null)
+      }))
+
+    it.effect("re-arms a pending clock on construction and indexes clock lookups over fired rows", () =>
+      Effect.gen(function*() {
+        const { state, storage } = yield* makeExportedState(encodeName("ClockScan", "c1"))
+        const database = storage.database
+        // Pre-existing storage without the pending-clock index.
+        database.exec(`CREATE TABLE workflow_clocks (
+          name TEXT PRIMARY KEY,
+          deferred_name TEXT NOT NULL,
+          wake_up INTEGER NOT NULL,
+          fired INTEGER NOT NULL DEFAULT 0
+        )`)
+        database.exec(`INSERT INTO workflow_clocks (name, deferred_name, wake_up, fired) VALUES
+          ('fired', 'DurableClock/fired', 1000, 1),
+          ('pending', 'DurableClock/pending', 100000, 0)`)
+
+        const queries: Array<{ readonly query: string; readonly bindings: Array<unknown> }> = []
+        const exec = storage.sql.exec
+        storage.sql.exec = ((query: string, ...bindings: Array<unknown>) => {
+          if (/^\s*SELECT\b/i.test(query) && query.includes("workflow_clocks")) {
+            queries.push({ query, bindings })
+          }
+          return exec.call(storage.sql, query, ...bindings)
+        }) as typeof storage.sql.exec
+
+        const program = yield* makeClusterWorkflowProgram(state)
+        assert.strictEqual(storage.alarm, 100_000)
+        const onConstruct = queries.length
+        assert.isAbove(onConstruct, 0)
+
+        yield* program.alarm()
+        assert.strictEqual(storage.alarm, 100_000)
+        assert.isAbove(queries.length, onConstruct)
+
+        const partialIndexes = new Set(
+          (database.prepare(
+            "SELECT name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'workflow_clocks' AND sql IS NOT NULL"
+          ).all() as Array<{ readonly name: string; readonly sql: string }>)
+            .filter((index) => /\bWHERE\b[\s\S]*\bfired\s*=\s*0\b/i.test(index.sql))
+            .map((index) => index.name)
+        )
+        assert.isAbove(partialIndexes.size, 0, "expected a partial index on pending workflow_clocks rows")
+
+        for (const { bindings, query } of queries) {
+          const plan = (database.prepare(`EXPLAIN QUERY PLAN ${query}`).all(
+            ...bindings as Array<SQLInputValue>
+          ) as Array<{ readonly detail: string }>).map((row) => row.detail)
+          assert.isTrue(
+            plan.some((detail) => {
+              const match = /USING (?:COVERING )?INDEX (\S+)/.exec(detail)
+              return match !== null && partialIndexes.has(match[1])
+            }),
+            `expected clock lookup to use a partial pending index, got: ${plan.join("; ")}`
+          )
+        }
       }))
   })
 

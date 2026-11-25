@@ -31,7 +31,9 @@ const ddl = [
     deferred_name TEXT NOT NULL,
     wake_up INTEGER NOT NULL,
     fired INTEGER NOT NULL DEFAULT 0
-  )`
+  )`,
+  `CREATE INDEX IF NOT EXISTS workflow_clocks_pending_idx
+    ON workflow_clocks (wake_up) WHERE fired = 0`
 ]
 
 /** @internal */
@@ -197,15 +199,18 @@ export const saveDeferred = (sql: SqlStorage, name: string, exit: string): boole
   return true
 }
 
-/** @internal */
-export const saveClock = (sql: SqlStorage, name: string, deferredName: string, wakeUp: number): void => {
+/**
+ * Returns whether the clock was newly saved.
+ *
+ * @internal
+ */
+export const saveClock = (sql: SqlStorage, name: string, deferredName: string, wakeUp: number): boolean =>
   sql.exec(
-    "INSERT OR IGNORE INTO workflow_clocks (name, deferred_name, wake_up, fired) VALUES (?, ?, ?, 0)",
+    "INSERT OR IGNORE INTO workflow_clocks (name, deferred_name, wake_up, fired) VALUES (?, ?, ?, 0) RETURNING 1",
     name,
     deferredName,
     wakeUp
-  )
-}
+  ).toArray().length > 0
 
 /** @internal */
 export const earliestClockWakeUp = (sql: SqlStorage): number | undefined => {

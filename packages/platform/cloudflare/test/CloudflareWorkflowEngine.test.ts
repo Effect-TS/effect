@@ -25,6 +25,7 @@ class FakeSql {
   readonly activities = new Map<string, string>()
   readonly deferreds = new Map<string, string>()
   readonly clocks = new Map<string, { deferredName: string; wakeUp: number; fired: boolean }>()
+  clockLookups = 0
 
   exec(query: string, ...bindings: Array<unknown>) {
     const rows = this.run(query, bindings)
@@ -32,7 +33,7 @@ class FakeSql {
   }
 
   private run(query: string, bindings: Array<unknown>): Array<Record<string, unknown>> {
-    if (query.startsWith("CREATE TABLE")) return []
+    if (query.startsWith("CREATE TABLE") || query.startsWith("CREATE INDEX")) return []
     if (query.includes("INSERT OR IGNORE INTO workflow_execution")) {
       this.execution ??= {
         workflow_name: bindings[0],
@@ -93,14 +94,17 @@ class FakeSql {
           wakeUp: Number(bindings[2]),
           fired: false
         })
+        return [{}]
       }
       return []
     }
     if (query.includes("min(wake_up)")) {
+      this.clockLookups++
       const pending = Array.from(this.clocks.values()).filter((clock) => !clock.fired).map((clock) => clock.wakeUp)
       return [{ wake_up: pending.length === 0 ? null : Math.min(...pending) }]
     }
     if (query.includes("wake_up <= ?")) {
+      this.clockLookups++
       return Array.from(this.clocks)
         .filter(([, clock]) => !clock.fired && clock.wakeUp <= Number(bindings[0]))
         .map(([name, clock]) => ({ name, deferred_name: clock.deferredName }))
@@ -120,12 +124,15 @@ class FakeSql {
 
 class FakeAlarm {
   current: number | null = null
+  writes = 0
 
   setAlarm(scheduledTime: number) {
+    this.writes++
     this.current = scheduledTime
     return Promise.resolve()
   }
   deleteAlarm() {
+    this.writes++
     this.current = null
     return Promise.resolve()
   }
@@ -508,6 +515,51 @@ describe("CloudflareWorkflowEngine", () => {
         yield* release.open
         yield* namespace.settle()
       }).pipe(Effect.ensuring(release.open), Effect.provide(layer))
+    }))
+
+  it.effect("does not re-scan clocks or rewrite the alarm when replaying existing sleeps", () =>
+    Effect.gen(function*() {
+      const namespace = new FakeWorkflowNamespace()
+      const Looping = Workflow.make("ReplaySleeps", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "loop"
+      })
+      const layer = Looping.toLayer(Effect.fnUntraced(function*() {
+        for (let step = 0; step < 3; step++) {
+          yield* DurableClock.sleep({ name: `step-${step}`, duration: "60 seconds" })
+        }
+        return "done"
+      })).pipe(Layer.provideMerge(namespace.layer))
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* Looping.execute({}, { discard: true })
+        const name = encodeName(Looping._tag, executionId)
+        yield* pollUntil(Looping, executionId, "Suspended")
+        yield* namespace.settle()
+        const store = namespace.store(name)
+
+        const wake = Effect.fnUntraced(function*() {
+          const clockLookups = store.sql.clockLookups
+          const alarmWrites = store.alarm.writes
+          yield* TestClock.adjust("60 seconds")
+          namespace.now += 60_000
+          yield* Effect.promise(() => namespace.getByName(name).runAlarm())
+          yield* namespace.settle()
+          return {
+            clockLookups: store.sql.clockLookups - clockLookups,
+            alarmWrites: store.alarm.writes - alarmWrites
+          }
+        })
+
+        const first = yield* wake()
+        const second = yield* wake()
+        assert.deepStrictEqual(second, first)
+
+        yield* wake()
+        const result = yield* pollUntil(Looping, executionId, "Complete")
+        assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.succeed("done") }))
+      }).pipe(Effect.provide(layer))
     }))
 
   it.effect("does not let a rejected alarm write from a settled attempt release its successor", () =>
@@ -1105,4 +1157,74 @@ describe("deferred self-completion", () => {
         }).pipe(Effect.provide(layer))
       }), 5_000)
   }
+
+  it.effect("retries a failing activity under SuspendOnFailure", () => {
+    class Failed extends Schema.TaggedError<Failed>()("Failed", {}) {}
+    const namespace = new FakeWorkflowNamespace()
+    const attempts: Array<number> = []
+    const workflow = Workflow.make("SuspendOnFailureRetry", {
+      payload: { id: Schema.String },
+      error: Failed,
+      idempotencyKey: ({ id }) => id
+    }).annotate(Workflow.SuspendOnFailure, true)
+    const layer = workflow.toLayer(() =>
+      Activity.make({
+        name: "step",
+        error: Failed,
+        execute: Effect.gen(function*() {
+          const attempt = yield* Activity.CurrentAttempt
+          attempts.push(attempt)
+          if (attempts.length <= 2) {
+            return yield* new Failed()
+          }
+        })
+      }).pipe(Activity.retry({ times: 3 }))
+    ).pipe(Layer.provideMerge(namespace.layer))
+
+    return Effect.gen(function*() {
+      const executionId = yield* workflow.execute({ id: "a" }, { discard: true })
+      const result = yield* pollUntil(workflow, executionId, "Complete")
+      assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.void }))
+      assert.deepStrictEqual(attempts, [1, 2, 3])
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect("parks an exhausted Activity.retry under SuspendOnFailure and replays stored failures on resume", () => {
+    class Failed extends Schema.TaggedError<Failed>()("Failed", {}) {}
+    const namespace = new FakeWorkflowNamespace()
+    let runs = 0
+    const attempts: Array<number> = []
+    const workflow = Workflow.make("SuspendOnFailureRetryExhausted", {
+      payload: { id: Schema.String },
+      error: Failed,
+      idempotencyKey: ({ id }) => id
+    }).annotate(Workflow.SuspendOnFailure, true)
+    const layer = workflow.toLayer(() => {
+      runs++
+      return Activity.make({
+        name: "step",
+        error: Failed,
+        execute: Effect.gen(function*() {
+          const attempt = yield* Activity.CurrentAttempt
+          attempts.push(attempt)
+          return yield* new Failed()
+        })
+      }).pipe(Activity.retry({ times: 2 }))
+    }).pipe(Layer.provideMerge(namespace.layer))
+
+    return Effect.gen(function*() {
+      const executionId = yield* workflow.execute({ id: "a" }, { discard: true })
+      const suspended = yield* pollUntil(workflow, executionId, "Suspended")
+      assert.isTrue(suspended._tag === "Suspended" && suspended.failed)
+      assert.strictEqual(runs, 1)
+      assert.deepStrictEqual(attempts, [1, 2, 3])
+
+      yield* workflow.resume(executionId)
+      yield* namespace.settle()
+      const replayed = yield* pollUntil(workflow, executionId, "Suspended")
+      assert.isTrue(replayed._tag === "Suspended" && replayed.failed)
+      assert.strictEqual(runs, 2)
+      assert.deepStrictEqual(attempts, [1, 2, 3])
+    }).pipe(Effect.provide(layer))
+  })
 })

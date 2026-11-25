@@ -402,10 +402,8 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
       .then(() => undefined)
   }
 
-  const scheduleClock = (clockName: string, deferredName: string, wakeUp: number): Promise<void> => {
-    WorkflowStorage.saveClock(sql, clockName, deferredName, wakeUp)
-    return syncAlarm()
-  }
+  const scheduleClock = (clockName: string, deferredName: string, wakeUp: number): Promise<void> =>
+    WorkflowStorage.saveClock(sql, clockName, deferredName, wakeUp) ? syncAlarm() : Promise.resolve()
 
   const runAlarm = (): Promise<void> =>
     voidExitText().then((voidExit) => {
