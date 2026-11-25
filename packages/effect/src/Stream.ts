@@ -12000,11 +12000,13 @@ export const toAsyncIterableWith: {
   ): AsyncIterable<A> => ({
     [Symbol.asyncIterator]() {
       const runPromise = Effect.runPromiseWith(context)
-      const runFork = Effect.runForkWith(context)
+      const runPromiseExit = Effect.runPromiseExitWith(context)
       const scope = Scope.makeUnsafe()
       let pull: Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E, void, R> | undefined
       let currentIter: Iterator<A> | undefined
-      let currentFiber: Fiber.Fiber<Arr.NonEmptyReadonlyArray<A>, E | Cause.Done<void>> | undefined
+      let currentFiber: Fiber.Fiber<unknown, unknown> | undefined
+      let reading = false
+      const queuedReads: Array<() => void> = []
       let closePromise: Promise<IteratorResult<A>> | undefined
       const close = (exit: Exit.Exit<unknown, unknown>): Promise<IteratorResult<A>> => {
         if (closePromise) return closePromise
@@ -12025,37 +12027,46 @@ export const toAsyncIterableWith: {
           await runPromise(Effect.logError("Suppressed error while closing Stream async iterator", error))
         }
       }
+      // Register the fiber before pulling so a reentrant close can interrupt it.
+      const pullChunk = Effect.withFiber((fiber) => {
+        currentFiber = fiber
+        return pull ??
+          Effect.flatMap(Channel.toPullScoped(self.channel, scope), (nextPull) => {
+            pull = nextPull
+            return nextPull
+          })
+      })
       return {
         async next(): Promise<IteratorResult<A>> {
-          if (closePromise) return closePromise
-          if (currentIter) {
-            const next = currentIter.next()
-            if (!next.done) return next
-            currentIter = undefined
+          if (reading) {
+            await new Promise<void>((resolve) => queuedReads.push(resolve))
           }
-          const fiber = runFork(
-            pull ??
-              Effect.flatMap(Channel.toPullScoped(self.channel, scope), (nextPull) => {
-                pull = nextPull
-                return nextPull
-              })
-          )
-          currentFiber = fiber
-          const exit = await runPromise(Fiber.await(fiber))
-          if (currentFiber === fiber) {
+          reading = true
+          try {
+            if (closePromise) return closePromise
+            if (currentIter) {
+              const next = currentIter.next()
+              if (!next.done) return next
+              currentIter = undefined
+            }
+            const exit = await runPromiseExit(pullChunk)
             currentFiber = undefined
+            if (Exit.isSuccess(exit)) {
+              currentIter = exit.value[Symbol.iterator]()
+              return currentIter.next()
+            } else if (Pull.isDoneCause(exit.cause)) {
+              return close(Exit.void)
+            }
+            if (closePromise && Cause.hasInterruptsOnly(exit.cause)) {
+              return closePromise
+            }
+            await closeAndReportError(exit)
+            throw Cause.squash(exit.cause)
+          } finally {
+            const resume = queuedReads.shift()
+            if (resume) resume()
+            else reading = false
           }
-          if (Exit.isSuccess(exit)) {
-            currentIter = exit.value[Symbol.iterator]()
-            return currentIter.next()
-          } else if (Pull.isDoneCause(exit.cause)) {
-            return close(Exit.void)
-          }
-          if (closePromise && Cause.hasInterruptsOnly(exit.cause)) {
-            return closePromise
-          }
-          await closeAndReportError(exit)
-          throw Cause.squash(exit.cause)
         },
         return() {
           return close(Exit.void)

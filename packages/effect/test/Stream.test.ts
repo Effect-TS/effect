@@ -310,6 +310,18 @@ describe("Stream", () => {
         })
     )
 
+    it.effect("toAsyncIterable - overlapping reads preserve buffered values", () =>
+      Effect.gen(function*() {
+        const iterator = Stream.toAsyncIterable(Stream.range(1, 6, 2))[Symbol.asyncIterator]()
+
+        const results = yield* Effect.promise(() => Promise.all([iterator.next(), iterator.next()]))
+
+        assert.deepStrictEqual(results, [
+          { done: false, value: 1 },
+          { done: false, value: 2 }
+        ])
+      }))
+
     it.effect("toAsyncIterable - return interrupts an in-flight pull", () =>
       Effect.gen(function*() {
         const started = yield* Deferred.make<void>()
