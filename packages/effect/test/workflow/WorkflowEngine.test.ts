@@ -1592,7 +1592,7 @@ describe("WorkflowEngine", () => {
         let runs = 0
         const runStarted = [yield* Latch.make(), yield* Latch.make()]
         let parentScope: Scope.Scope | undefined
-        let tempChild: Scope.Closeable | undefined
+        let fiber: Fiber.Fiber<never> | undefined
         let secondInstance: WorkflowEngine.WorkflowInstance["Service"] | undefined
         let thirdScope: Scope.Scope | undefined
         const finalized: Array<number | string> = []
@@ -1609,19 +1609,20 @@ describe("WorkflowEngine", () => {
               )
               assert.isDefined(scope.parent)
               parentScope = scope.parent
-              tempChild = yield* Scope.fork(parentScope)
+              fiber = yield* Effect.never.pipe(
+                Effect.onInterrupt(() =>
+                  Effect.sync(() => {
+                    finalized.push("fiber")
+                  })
+                ),
+                Effect.forkIn(parentScope, { startImmediately: true })
+              )
             } else if (run === 2) {
               runStarted[0].openUnsafe()
               secondInstance = yield* WorkflowEngine.WorkflowInstance
-              assert.isDefined(tempChild)
+              assert.isDefined(fiber)
               assert.isDefined(parentScope)
-              yield* Scope.close(tempChild, Exit.void)
-              yield* Scope.addFinalizer(
-                parentScope,
-                Effect.sync(() => {
-                  finalized.push("after2")
-                })
-              )
+              Fiber.runIn(fiber, parentScope)
             } else if (run === 3) {
               runStarted[1].openUnsafe()
               thirdScope = yield* Workflow.scope
@@ -1661,7 +1662,7 @@ describe("WorkflowEngine", () => {
           yield* workflow.interrupt(executionId)
           const result = yield* pollUntil(workflow, executionId, "Complete")
           assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit))
-          assert.deepStrictEqual(finalized, [3, "after2", 2, 1])
+          assert.deepStrictEqual(finalized, [3, "fiber", 2, 1])
         }).pipe(Effect.provide(layer))
       })
   )

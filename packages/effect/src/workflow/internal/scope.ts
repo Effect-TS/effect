@@ -22,27 +22,35 @@ const getParentState = (parent: Scope.Scope): ParentState => {
 }
 
 const stampKey = (key: object, parentState: ParentState): void => {
-  if (!entryOrders.has(key)) {
-    const order = parentState.nextOrder++
-    entryOrders.set(key, order)
-    if (order > parentState.maxOrder) parentState.maxOrder = order
-  }
+  const order = parentState.nextOrder++
+  entryOrders.set(key, order)
+  if (order > parentState.maxOrder) parentState.maxOrder = order
 }
 
-const ensureTracked = (parent: Scope.Scope, parentState: ParentState): void => {
+const ensureTracked = (parent: Scope.Scope, parentState: ParentState, skipKey?: object): void => {
   if (parent.state._tag !== "Open") return
-  if (parent.state.finalizerKey !== undefined) {
-    stampKey(parent.state.finalizerKey, parentState)
+  let finalizers = parent.state.finalizers
+  if (finalizers === undefined) {
+    if (parent.state.finalizerKey === undefined || parent.state.finalizer === undefined) return
+    finalizers = new Map([[parent.state.finalizerKey, parent.state.finalizer]])
+    parent.state.finalizers = finalizers
+    parent.state.finalizerKey = undefined
+    parent.state.finalizer = undefined
+  } else if (wrappedMaps.has(finalizers)) {
     return
   }
-  const finalizers = parent.state.finalizers
-  if (finalizers === undefined || wrappedMaps.has(finalizers)) return
   for (const key of finalizers.keys()) {
-    stampKey(key, parentState)
+    if (key !== skipKey) {
+      stampKey(key, parentState)
+    }
   }
   wrappedMaps.add(finalizers)
   finalizers.set = function(key, value) {
-    if (!forking) stampKey(key, parentState)
+    // Only stamp new or reinserted keys; updating an existing entry keeps its
+    // original insertion order.
+    if (!forking && !this.has(key)) {
+      stampKey(key, parentState)
+    }
     return Map.prototype.set.call(this, key, value)
   }
 }
@@ -84,7 +92,7 @@ export const withLazyScope = (
           forking = false
         }
         entryOrders.set(scope, order)
-        ensureTracked(parent, parentState)
+        ensureTracked(parent, parentState, scope)
         if (order < parentState.maxOrder && parent.state._tag === "Open" && parent.state.finalizers !== undefined) {
           const finalizer = parent.state.finalizers.get(scope)!
           parent.state.finalizers.delete(scope)
