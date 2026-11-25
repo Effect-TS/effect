@@ -3105,35 +3105,6 @@ export const catchTag: {
     | (A2 extends unassigned ? ExcludeTag<E, K extends Arr.NonEmptyReadonlyArray<string> ? K[number] : K> : never),
     R | R1 | R2
   >
-  <
-    Self extends Effect.Effect<any, any, any>,
-    const K extends Tags<Effect.Error<Self>> | Arr.NonEmptyReadonlyArray<Tags<Effect.Error<Self>>>,
-    R1,
-    E1,
-    A1,
-    A2 = unassigned,
-    E2 = never,
-    R2 = never
-  >(
-    self: Self,
-    k: K,
-    f: (
-      e: ExtractTag<Effect.Error<Self>, K extends Arr.NonEmptyReadonlyArray<string> ? K[number] : K>
-    ) => Effect.Effect<A1, E1, R1>,
-    orElse?:
-      | ((
-        e: ExcludeTag<Effect.Error<Self>, K extends Arr.NonEmptyReadonlyArray<string> ? K[number] : K>
-      ) => Effect.Effect<A2, E2, R2>)
-      | undefined
-  ): Effect.Effect<
-    Effect.Success<Self> | A1 | Exclude<A2, unassigned>,
-    | E1
-    | E2
-    | (A2 extends unassigned
-      ? ExcludeTag<Effect.Error<Self>, K extends Arr.NonEmptyReadonlyArray<string> ? K[number] : K>
-      : never),
-    Effect.Services<Self> | R1 | R2
-  >
 } = dual(
   (args) => isEffect(args[0]),
   <
