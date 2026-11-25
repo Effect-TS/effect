@@ -3135,6 +3135,7 @@ describe.concurrent("Sharding active teardowns", () => {
         const repliesHeld = yield* Latch.make()
         const releaseRepliesRead = yield* Latch.make()
         let workSaves = 0
+        let failNextStreamRead = false
         let firstMessage: Message.OutgoingRequest<any> | undefined
         let heldMessage: Message.OutgoingRequest<any> | undefined
 
@@ -3166,13 +3167,18 @@ describe.concurrent("Sharding active teardowns", () => {
                 })
               ),
             repliesFor: (messages) =>
-              baseStorage.repliesFor(messages).pipe(
-                Effect.tap((replies) =>
-                  mode === "duplicate-held-read" && replies.some((reply) => reply._tag === "WithExit")
-                    ? repliesHeld.open.pipe(Effect.andThen(releaseRepliesRead.await))
-                    : Effect.void
-                )
-              ),
+              failNextStreamRead && messages.some((message) => message.envelope.tag === "StreamWork")
+                ? Effect.suspend(() => {
+                  failNextStreamRead = false
+                  return Effect.fail(new ClusterError.PersistenceError({ cause: new Error("transient read failure") }))
+                })
+                : baseStorage.repliesFor(messages).pipe(
+                  Effect.tap((replies) =>
+                    mode === "duplicate-held-read" && replies.some((reply) => reply._tag === "WithExit")
+                      ? repliesHeld.open.pipe(Effect.andThen(releaseRepliesRead.await))
+                      : Effect.void
+                  )
+                ),
             unprocessedMessages: (shardIds, options) =>
               Effect.map(baseStorage.unprocessedMessages(shardIds, options), hideWork),
             unprocessedMessagesById: (ids) => Effect.map(baseStorage.unprocessedMessagesById(ids), hideWork)
@@ -3256,8 +3262,10 @@ describe.concurrent("Sharding active teardowns", () => {
             assert.isFalse(sharding.hasShardId(shardId))
             yield* TestClock.adjust(1000)
 
+            failNextStreamRead = true
             yield* releaseSaveAck.open
             for (let i = 0; i < 500 && joiner.pollUnsafe() === undefined; i++) yield* TestClock.adjust(10)
+            assert.isFalse(failNextStreamRead)
             assert.deepStrictEqual(joiner.pollUnsafe(), Exit.succeed(["a", "b"]))
             yield* TestClock.adjust(1000)
             const released = releases.length > 0

@@ -527,21 +527,21 @@ export const make: (
             waitingStorageRequests.delete(reply.requestId)
             foundRequests.add(entry)
           }
-        }
 
-        // Abandon waiting callers whose polled request had no stored reply
-        // after drain requested abandonment (or whose lookup failed).
-        for (let i = 0; i < polled.length; i++) {
-          const [requestId] = polled[i]
-          const entry = storageRequests.get(requestId)
-          if (!entry || foundRequests.has(entry)) continue
-          for (const msg of entry.messages) {
-            const wait = ClusterAbandon.replyWaits.get(msg)
-            if (wait?.commitAbandon === undefined || gen <= wait.abandonAfterGen) continue
-            const commit = wait.commitAbandon
-            wait.commitAbandon = undefined
-            commit()
-            ClusterAbandon.abandonWait(wait)
+          // Abandon waiting callers whose polled request had no stored reply
+          // after drain requested abandonment.
+          for (let i = 0; i < polled.length; i++) {
+            const [requestId] = polled[i]
+            const entry = storageRequests.get(requestId)
+            if (!entry || foundRequests.has(entry)) continue
+            for (const msg of entry.messages) {
+              const wait = ClusterAbandon.replyWaits.get(msg)
+              if (wait?.commitAbandon === undefined || gen <= wait.abandonAfterGen) continue
+              const commit = wait.commitAbandon
+              wait.commitAbandon = undefined
+              commit()
+              ClusterAbandon.abandonWait(wait)
+            }
           }
         }
 
