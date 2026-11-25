@@ -1,10 +1,11 @@
+import * as Arr from "effect/Array"
+import { identity } from "effect/Function"
+import * as Rec from "effect/Record"
 import type * as Schema from "effect/Schema"
-import type * as SchemaRepresentation from "effect/SchemaRepresentation"
+import * as SchemaRepresentation from "effect/SchemaRepresentation"
 
 type Representation = SchemaRepresentation.Representation
-
-/** @internal */
-export type StringFormats = "encoded" | "decoded"
+type Node = Exclude<Representation, SchemaRepresentation.Reference>
 
 /** @internal */
 export interface SchemaDocument {
@@ -12,306 +13,230 @@ export interface SchemaDocument {
   readonly references: SchemaRepresentation.References
 }
 
-interface FormatCodec {
-  readonly runtime: string
-  readonly Type: string
-  readonly importDeclarations: ReadonlyArray<string>
-}
-
-const bigIntFormat = (minimum: string, maximum: string): FormatCodec => ({
-  runtime:
-    `Schema.BigIntFromString.check(Schema.isBetweenBigInt({ minimum: globalThis.BigInt("${minimum}"), maximum: globalThis.BigInt("${maximum}") }))`,
-  Type: "bigint",
-  importDeclarations: []
+const declare = (
+  typeParameters: ReadonlyArray<Representation>,
+  toCode: (
+    ...typeParameters: ReadonlyArray<SchemaRepresentation.Code>
+  ) => SchemaRepresentation.Generation.DeclarationOutput,
+  annotations?: Schema.Annotations.Annotations
+): SchemaRepresentation.Declaration => ({
+  _tag: "Declaration",
+  typeParameters,
+  checks: [],
+  annotations: {
+    ...annotations,
+    toCode: (input: SchemaRepresentation.Generation.DeclarationInput) => toCode(...input.typeParameters)
+  }
 })
 
-const formatCodecs: ReadonlyMap<string, FormatCodec> = new Map([
-  ["date-time", {
-    runtime: "Schema.DateTimeUtcFromString",
-    Type: "DateTime.Utc",
-    importDeclarations: [`import type * as DateTime from "effect/DateTime"`]
-  }],
-  ["int64", bigIntFormat("-9223372036854775808", "9223372036854775807")],
-  ["uint64", bigIntFormat("0", "18446744073709551615")]
+const bigIntCodec = (minimum: string, maximum: string): Representation =>
+  declare([], () => ({
+    runtime:
+      `Schema.BigIntFromString.check(Schema.isBetweenBigInt({ minimum: globalThis.BigInt("${minimum}"), maximum: globalThis.BigInt("${maximum}") }))`,
+    Type: "bigint"
+  }))
+
+const codecs: ReadonlyMap<string, Representation> = new Map([
+  [
+    "date-time",
+    declare([], () => ({
+      runtime: "Schema.DateTimeUtcFromString",
+      Type: "DateTime.Utc",
+      importDeclarations: [`import type * as DateTime from "effect/DateTime"`]
+    }))
+  ],
+  ["int64", bigIntCodec("-9223372036854775808", "9223372036854775807")],
+  ["uint64", bigIntCodec("0", "18446744073709551615")]
 ])
 
-const getFormatCodec = (representation: Representation): FormatCodec | undefined => {
-  if (representation._tag === "Reference") return undefined
-  const format = representation.annotations?.format
-  return typeof format === "string" ? formatCodecs.get(format) : undefined
+const codecOf = (representation: Representation): Representation | undefined => {
+  const format = representation._tag === "Reference" ? undefined : representation.annotations?.format
+  return typeof format === "string" ? codecs.get(format) : undefined
 }
 
-const isStringLiteral = (representation: Representation): boolean =>
-  representation._tag === "Literal" && typeof representation.literal === "string"
+const decodeTo = (wire: Representation, decoded: Representation): Representation =>
+  declare([wire, decoded], (from, to) => ({
+    runtime: `${from.runtime}.pipe(Schema.decodeTo(${to.runtime}))`,
+    Type: to.Type
+  }))
 
-const isStringOnly = (representation: Representation): boolean =>
-  representation._tag === "String" || isStringLiteral(representation)
+const toEncoded = (reference: SchemaRepresentation.Reference): Representation =>
+  declare([reference], (schema) => ({
+    runtime: `Schema.toEncoded(${schema.runtime})`,
+    Type: `typeof ${schema.runtime}.Encoded`
+  }))
+
+const annotate = (
+  representation: Representation,
+  annotations: Schema.Annotations.Annotations | undefined
+): Representation =>
+  annotations === undefined
+    ? representation
+    : representation._tag === "Reference"
+    ? declare([representation], identity, annotations)
+    : { ...representation, annotations: { ...annotations, ...representation.annotations } }
+
+const isString = (representation: Representation): boolean =>
+  representation._tag === "String" ||
+  (representation._tag === "Literal" && typeof representation.literal === "string")
 
 const isUniqueCheck = (check: SchemaRepresentation.Check): boolean =>
   check._tag === "Filter"
-    ? check.representation?.id === "effect/schema/isUnique"
+    ? check.representation?.id === SchemaRepresentation.isUniqueReviver.id
     : check.checks.some(isUniqueCheck)
 
-const valueChildren = (representation: Representation): ReadonlyArray<Representation> => {
+// Maps the children of a node. Check schemas, record keys, template literal parts and suspended thunks
+// are `wire` children: they describe wire text, never decoded values.
+const mapChildren = (
+  representation: Node,
+  value: (child: Representation, segment: string | number) => Representation,
+  wire: (child: Representation) => Representation
+): Node => {
+  const mapCheck = (check: SchemaRepresentation.Check): SchemaRepresentation.Check => {
+    const representation = check.representation?.schemas === undefined
+      ? check.representation
+      : { ...check.representation, schemas: check.representation.schemas.map((schema) => wire(schema)) }
+    return check._tag === "Filter"
+      ? { ...check, representation }
+      : { ...check, representation, checks: Arr.map(check.checks, mapCheck) }
+  }
+  const checks = representation.checks.map(mapCheck)
   switch (representation._tag) {
     case "Declaration":
-      return representation.typeParameters
-    case "Arrays":
-      return [...representation.elements.map((element) => element.type), ...representation.rest]
-    case "Objects":
-      return [
-        ...representation.propertySignatures.map((property) => property.type),
-        ...representation.indexSignatures.map((signature) => signature.type)
-      ]
-    case "Union":
-      return representation.types
-    default:
-      return []
-  }
-}
-
-const checkSchemas = (check: SchemaRepresentation.Check): ReadonlyArray<Representation> => {
-  const own = check.representation?.schemas ?? []
-  return check._tag === "FilterGroup" ? [...own, ...check.checks.flatMap(checkSchemas)] : own
-}
-
-const allChildren = (representation: Representation): ReadonlyArray<Representation> => {
-  if (representation._tag === "Reference") return []
-  const fromChecks = representation.checks.flatMap(checkSchemas)
-  switch (representation._tag) {
+      return { ...representation, checks, typeParameters: representation.typeParameters.map(value) }
     case "Suspend":
-      return [representation.thunk]
-    case "String":
-      return representation.content?.schema === undefined
-        ? fromChecks
-        : [representation.content.schema, ...fromChecks]
+      return { ...representation, thunk: wire(representation.thunk) }
     case "TemplateLiteral":
-      return [...representation.parts, ...fromChecks]
+      return { ...representation, checks, parts: representation.parts.map((part) => wire(part)) }
+    case "Arrays":
+      return {
+        ...representation,
+        checks,
+        elements: representation.elements.map((element, index) => ({ ...element, type: value(element.type, index) })),
+        rest: representation.rest.map((item, index) => value(item, `rest/${index}`))
+      }
     case "Objects":
-      return [
-        ...valueChildren(representation),
-        ...representation.indexSignatures.map((signature) => signature.parameter),
-        ...fromChecks
-      ]
+      return {
+        ...representation,
+        checks,
+        propertySignatures: representation.propertySignatures.map((property) => ({
+          ...property,
+          type: value(property.type, String(property.name))
+        })),
+        indexSignatures: representation.indexSignatures.map((signature) => ({
+          parameter: wire(signature.parameter),
+          type: value(signature.type, "*")
+        }))
+      }
+    case "Union":
+      return { ...representation, checks, types: representation.types.map(value) }
     default:
-      return [...valueChildren(representation), ...fromChecks]
+      return { ...representation, checks }
   }
 }
 
-const collectReferences = (representation: Representation, into: Set<string>): void => {
+// Collects through `mapChildren`, which alone knows the shape of each node.
+const children = (representation: Representation, only?: "values"): ReadonlyArray<Representation> => {
+  const out: Array<Representation> = []
+  const collect = (child: Representation) => {
+    out.push(child)
+    return child
+  }
+  if (representation._tag !== "Reference") {
+    mapChildren(representation, collect, only === "values" ? identity : collect)
+  }
+  return out
+}
+
+const collectReferences = (representation: Representation, into = new Set<string>()): Set<string> => {
   if (representation._tag === "Reference") {
     into.add(representation.$ref)
-    return
+  } else {
+    for (const child of children(representation)) collectReferences(child, into)
   }
-  for (const child of allChildren(representation)) {
-    collectReferences(child, into)
-  }
+  return into
 }
 
 const findCyclicDefinitions = (references: SchemaRepresentation.References): ReadonlySet<string> => {
-  const edges = new Map<string, ReadonlySet<string>>()
-  for (const [$ref, definition] of Object.entries(references)) {
-    const deps = new Set<string>()
-    collectReferences(definition, deps)
-    edges.set($ref, deps)
-  }
-  const cyclic = new Set<string>()
-  for (const start of edges.keys()) {
-    const visited = new Set<string>()
-    const stack = [...(edges.get(start) ?? [])]
-    while (stack.length > 0) {
-      const current = stack.pop()!
-      if (current === start) {
-        cyclic.add(start)
-        break
-      }
-      if (visited.has(current)) continue
-      visited.add(current)
-      for (const next of edges.get(current) ?? []) {
-        stack.push(next)
-      }
+  const edges = new Map(
+    Object.entries(references).map(([$ref, definition]) => [$ref, collectReferences(definition)])
+  )
+  const reaches = (from: string, target: string, seen: Set<string>): boolean => {
+    for (const next of edges.get(from) ?? []) {
+      if (next === target || (!seen.has(next) && reaches(next, target, seen.add(next)))) return true
     }
+    return false
   }
-  return cyclic
-}
-
-const isNonRecursiveRefSuspend = (
-  representation: SchemaRepresentation.Suspend,
-  cyclic: ReadonlySet<string>
-): representation is SchemaRepresentation.Suspend & { readonly thunk: SchemaRepresentation.Reference } =>
-  representation.thunk._tag === "Reference" && !cyclic.has(representation.thunk.$ref)
-
-// Core Schema codegen types `Schema.suspend` as `Schema.Codec<T>`, which requires
-// decoded and encoded types to match. Definitions targeted by kept suspends keep wire types.
-const findSuspendedDefinitions = (
-  document: SchemaDocument,
-  cyclic: ReadonlySet<string>
-): ReadonlySet<string> => {
-  const suspended = new Set<string>()
-  const visit = (representation: Representation): void => {
-    if (representation._tag === "Suspend" && !isNonRecursiveRefSuspend(representation, cyclic)) {
-      collectReferences(representation.thunk, suspended)
-    }
-    for (const child of allChildren(representation)) {
-      visit(child)
-    }
-  }
-  for (const schema of Object.values(document.references)) visit(schema)
-  for (const schema of Object.values(document.schemas)) visit(schema)
-  return suspended
-}
-
-const wrapDecodeTo = (
-  wire: Representation,
-  codec: FormatCodec
-): SchemaRepresentation.Declaration => ({
-  _tag: "Declaration",
-  typeParameters: [wire],
-  checks: [],
-  annotations: {
-    toCode: ({ typeParameters: [schema] }: SchemaRepresentation.Generation.DeclarationInput) => ({
-      runtime: `${schema.runtime}.pipe(Schema.decodeTo(${codec.runtime}))`,
-      Type: codec.Type,
-      importDeclarations: codec.importDeclarations
-    })
-  }
-})
-
-const wrapWireThenDecode = (
-  wire: Representation,
-  decoded: Representation
-): SchemaRepresentation.Declaration => ({
-  _tag: "Declaration",
-  typeParameters: [wire, decoded],
-  checks: [],
-  annotations: {
-    toCode: ({ typeParameters: [wireCode, decodedCode] }: SchemaRepresentation.Generation.DeclarationInput) => ({
-      runtime: `${wireCode.runtime}.pipe(Schema.decodeTo(${decodedCode.runtime}))`,
-      Type: decodedCode.Type
-    })
-  }
-})
-
-const wrapToEncoded = (reference: SchemaRepresentation.Reference): SchemaRepresentation.Declaration => ({
-  _tag: "Declaration",
-  typeParameters: [reference],
-  checks: [],
-  annotations: {
-    toCode: ({ typeParameters: [schema] }: SchemaRepresentation.Generation.DeclarationInput) => ({
-      runtime: `Schema.toEncoded(${schema.runtime})`,
-      Type: `typeof ${schema.runtime}.Encoded`
-    })
-  }
-})
-
-const attachAnnotations = (
-  target: Representation,
-  annotations: Schema.Annotations.Annotations | undefined
-): Representation => {
-  if (annotations === undefined) return target
-  if (target._tag === "Reference") {
-    return {
-      _tag: "Declaration",
-      typeParameters: [target],
-      checks: [],
-      annotations: {
-        ...annotations,
-        toCode: ({ typeParameters: [schema] }: SchemaRepresentation.Generation.DeclarationInput) => ({
-          runtime: schema.runtime,
-          Type: schema.Type
-        })
-      }
-    }
-  }
-  return {
-    ...target,
-    annotations: { ...annotations, ...target.annotations }
-  }
-}
-
-// An inlined target is no longer the named definition, and the use-site format replaces its own.
-const omitTargetAnnotations = (
-  annotations: Schema.Annotations.Annotations | undefined
-): Schema.Annotations.Annotations | undefined => {
-  if (annotations === undefined) return undefined
-  const { identifier: _identifier, format: _format, ...rest } = annotations
-  return Object.keys(rest).length === 0 ? undefined : rest
+  return new Set(Object.keys(references).filter(($ref) => reaches($ref, $ref, new Set())))
 }
 
 /** @internal */
 export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
   const cyclic = findCyclicDefinitions(document.references)
-  const suspended = findSuspendedDefinitions(document, cyclic)
 
-  const isEligibleRef = ($ref: string): boolean =>
-    !suspended.has($ref) && !cyclic.has($ref) && Object.hasOwn(document.references, $ref)
+  // A `$ref` with sibling keywords is imported as a suspend carrying them. Unless the target is recursive,
+  // the suspend is only an alias and is replaced by its target.
+  const isAlias = (
+    representation: SchemaRepresentation.Suspend
+  ): representation is SchemaRepresentation.Suspend & { readonly thunk: SchemaRepresentation.Reference } =>
+    representation.thunk._tag === "Reference" && !cyclic.has(representation.thunk.$ref)
 
-  const isStringOnlySchema = (representation: Representation): boolean => {
-    if (isStringOnly(representation)) return true
-    if (representation._tag === "Reference") {
-      return isEligibleRef(representation.$ref) && isStringOnlySchema(document.references[representation.$ref])
+  // Core Schema codegen types `Schema.suspend` as `Schema.Codec<T>`, which requires decoded and encoded
+  // types to match. Definitions referenced from kept suspends keep wire types.
+  const suspended = new Set<string>()
+  const findSuspended = (representation: Representation): void => {
+    if (representation._tag === "Suspend" && !isAlias(representation)) {
+      collectReferences(representation.thunk, suspended)
     }
-    if (representation._tag === "Suspend" && isNonRecursiveRefSuspend(representation, cyclic)) {
-      return isStringOnlySchema(representation.thunk)
-    }
-    if (representation._tag === "Union") {
-      return representation.types.length > 0 && representation.types.every(isStringOnlySchema)
-    }
-    return false
+    children(representation).forEach(findSuspended)
+  }
+  Object.values(document.references).forEach(findSuspended)
+  Object.values(document.schemas).forEach(findSuspended)
+
+  // The target a use-site format can decode: a non-recursive definition, or the thunk of an alias.
+  const targetOf = (representation: Representation): Representation | undefined => {
+    if (representation._tag === "Suspend") return isAlias(representation) ? representation.thunk : undefined
+    if (representation._tag !== "Reference") return undefined
+    const $ref = representation.$ref
+    return !suspended.has($ref) && !cyclic.has($ref) && Object.hasOwn(document.references, $ref)
+      ? document.references[$ref]
+      : undefined
   }
 
-  const refOwnFormat = ($ref: string): FormatCodec | undefined => {
-    if (!isEligibleRef($ref)) return undefined
-    const def = document.references[$ref]
-    const own = getFormatCodec(def)
-    if (own !== undefined) return own
-    if (def._tag === "Reference") return refOwnFormat(def.$ref)
-    if (def._tag === "Suspend" && isNonRecursiveRefSuspend(def, cyclic)) {
-      return refOwnFormat(def.thunk.$ref)
+  const hasStrings = (quantifier: "some" | "every") => {
+    const go = (representation: Representation): boolean => {
+      if (isString(representation)) return true
+      if (representation._tag === "Union") {
+        return representation.types.length > 0 && representation.types[quantifier](go)
+      }
+      const target = targetOf(representation)
+      return target !== undefined && go(target)
     }
-    return undefined
+    return go
   }
+  const hasStringBranch = hasStrings("some")
+  const isStringOnly = hasStrings("every")
 
-  const hasStringBranch = (representation: Representation): boolean => {
-    switch (representation._tag) {
-      case "String":
-        return true
-      case "Literal":
-        return typeof representation.literal === "string"
-      case "Reference":
-        return isEligibleRef(representation.$ref) &&
-          hasStringBranch(document.references[representation.$ref])
-      case "Suspend":
-        return isNonRecursiveRefSuspend(representation, cyclic) &&
-          hasStringBranch(representation.thunk)
-      case "Union":
-        return representation.types.some(hasStringBranch)
-      default:
-        return false
-    }
+  const formatOf = (representation: Representation): Representation | undefined => {
+    const target = targetOf(representation)
+    return codecOf(representation) ?? (target && formatOf(target))
   }
 
   const decoding = new Set<string>()
-  const decodes = (representation: Representation, inherited?: FormatCodec): boolean => {
+  const decodes = (representation: Representation, inherited?: Representation): boolean => {
+    if (representation._tag === "Reference") {
+      return decoding.has(representation.$ref) || (inherited !== undefined && hasStringBranch(representation))
+    }
+    const codec = codecOf(representation) ?? inherited
     switch (representation._tag) {
-      case "Reference":
-        if (decoding.has(representation.$ref)) return true
-        return inherited !== undefined && isEligibleRef(representation.$ref) &&
-          hasStringBranch(document.references[representation.$ref])
       case "Suspend":
-        return isNonRecursiveRefSuspend(representation, cyclic) &&
-          decodes(representation.thunk, getFormatCodec(representation) ?? inherited)
-      case "String":
-        return (getFormatCodec(representation) ?? inherited) !== undefined
-      case "Literal":
-        return typeof representation.literal === "string" &&
-          (getFormatCodec(representation) ?? inherited) !== undefined
-      case "Union": {
-        const codec = getFormatCodec(representation) ?? inherited
+        return isAlias(representation) && decodes(representation.thunk, codec)
+      case "Union":
         return representation.types.some((type) => decodes(type, codec))
-      }
       default:
-        return valueChildren(representation).some((child) => decodes(child))
+        return isString(representation)
+          ? codec !== undefined
+          : children(representation, "values").some((child) => decodes(child))
     }
   }
 
@@ -325,62 +250,13 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
     }
   }
 
-  const rewriteCheck = (check: SchemaRepresentation.Check): SchemaRepresentation.Check => {
-    const representation = check.representation?.schemas === undefined
-      ? check.representation
-      : { ...check.representation, schemas: check.representation.schemas.map(rewriteWire) }
-    if (check._tag === "Filter") return { ...check, representation }
-    const [head, ...tail] = check.checks
-    return { ...check, representation, checks: [rewriteCheck(head), ...tail.map(rewriteCheck)] }
-  }
-
   const rewriteWire = (representation: Representation): Representation => {
     if (representation._tag === "Reference") {
-      return decoding.has(representation.$ref) ? wrapToEncoded(representation) : representation
+      return decoding.has(representation.$ref) ? toEncoded(representation) : representation
     }
-    const checks = representation.checks.map(rewriteCheck)
-    switch (representation._tag) {
-      case "Declaration":
-        return { ...representation, checks, typeParameters: representation.typeParameters.map(rewriteWire) }
-      case "Suspend":
-        return isNonRecursiveRefSuspend(representation, cyclic)
-          ? attachAnnotations(rewriteWire(representation.thunk), representation.annotations)
-          : { ...representation, thunk: rewriteWire(representation.thunk) }
-      case "String":
-        return representation.content?.schema === undefined
-          ? { ...representation, checks }
-          : {
-            ...representation,
-            checks,
-            content: { ...representation.content, schema: rewriteWire(representation.content.schema) }
-          }
-      case "TemplateLiteral":
-        return { ...representation, checks, parts: representation.parts.map(rewriteWire) }
-      case "Arrays":
-        return {
-          ...representation,
-          checks,
-          elements: representation.elements.map((element) => ({ ...element, type: rewriteWire(element.type) })),
-          rest: representation.rest.map(rewriteWire)
-        }
-      case "Objects":
-        return {
-          ...representation,
-          checks,
-          propertySignatures: representation.propertySignatures.map((property) => ({
-            ...property,
-            type: rewriteWire(property.type)
-          })),
-          indexSignatures: representation.indexSignatures.map((signature) => ({
-            parameter: rewriteWire(signature.parameter),
-            type: rewriteWire(signature.type)
-          }))
-        }
-      case "Union":
-        return { ...representation, checks, types: representation.types.map(rewriteWire) }
-      default:
-        return { ...representation, checks }
-    }
+    return representation._tag === "Suspend" && isAlias(representation)
+      ? annotate(rewriteWire(representation.thunk), representation.annotations)
+      : mapChildren(representation, rewriteWire, rewriteWire)
   }
 
   // `useSite` marks a format from a referencing use site, which takes precedence over
@@ -388,127 +264,71 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
   const rewriteValue = (
     representation: Representation,
     path: string,
-    inherited?: FormatCodec,
+    inherited?: Representation,
     useSite = false
   ): Representation => {
     if (representation._tag === "Reference") {
-      if (inherited === undefined || !isEligibleRef(representation.$ref)) return representation
-      const def = document.references[representation.$ref]
-      if (isStringOnlySchema(def)) {
-        if (decoding.has(representation.$ref)) {
-          return refOwnFormat(representation.$ref) === inherited
-            ? representation
-            : wrapDecodeTo(wrapToEncoded(representation), inherited)
-        }
-        return wrapDecodeTo(representation, inherited)
+      const target = targetOf(representation)
+      if (inherited === undefined || target === undefined || !hasStringBranch(target)) return representation
+      if (isStringOnly(target)) {
+        return formatOf(representation) === inherited
+          ? representation
+          : decodeTo(rewriteWire(representation), inherited)
       }
-      if (hasStringBranch(def)) {
-        const inlined = def._tag === "Reference"
-          ? def
-          : { ...def, annotations: omitTargetAnnotations(def.annotations) }
-        return rewriteValue(inlined, path, inherited, true)
-      }
-      return representation
+      // The target is inlined to keep its other branches. It is no longer the named definition, and the
+      // use-site format replaces its own.
+      if (target._tag === "Reference") return rewriteValue(target, path, inherited, true)
+      const { format: _format, identifier: _identifier, ...annotations } = target.annotations ?? {}
+      return rewriteValue({ ...target, annotations }, path, inherited, true)
     }
-    const codec = useSite ? inherited : getFormatCodec(representation) ?? inherited
-    if (codec !== undefined && isStringOnly(representation)) {
-      return wrapDecodeTo(rewriteWire(representation), codec)
+    const codec = useSite ? inherited : codecOf(representation) ?? inherited
+    const isUnion = representation._tag === "Union"
+    if (
+      codec !== undefined &&
+      (isString(representation) || (isUnion && representation.types.length > 0 && representation.types.every(isString)))
+    ) {
+      return decodeTo(rewriteWire(representation), codec)
     }
-    const checks = representation.checks.map(rewriteCheck)
     switch (representation._tag) {
-      case "Declaration":
-        return {
-          ...representation,
-          checks,
-          typeParameters: representation.typeParameters.map((type, index) => rewriteValue(type, `${path}/${index}`))
-        }
       case "Suspend":
-        if (isNonRecursiveRefSuspend(representation, cyclic)) {
-          return attachAnnotations(rewriteValue(representation.thunk, path, codec, useSite), representation.annotations)
-        }
-        return { ...representation, thunk: rewriteWire(representation.thunk) }
-      case "TemplateLiteral":
-        return rewriteWire(representation)
+        if (!isAlias(representation)) break
+        return annotate(rewriteValue(representation.thunk, path, codec, useSite), representation.annotations)
       case "Arrays": {
-        const elements = representation.elements.map((element, index) => ({
-          ...element,
-          type: rewriteValue(element.type, `${path}/${index}`)
-        }))
-        const rest = representation.rest.map((item, index) => rewriteValue(item, `${path}/rest/${index}`))
-        const hasUnique = representation.checks.some(isUniqueCheck)
-        if (hasUnique && valueChildren(representation).some((child) => decodes(child))) {
-          const uniqueChecks = representation.checks.filter(isUniqueCheck).map(rewriteCheck)
-          const otherChecks = representation.checks.filter((check) => !isUniqueCheck(check)).map(rewriteCheck)
-          const wireArray = rewriteWire({
-            ...representation,
-            annotations: undefined,
-            checks: uniqueChecks
-          })
-          const decodedArray: SchemaRepresentation.Arrays = {
-            ...representation,
-            checks: otherChecks,
-            elements,
-            rest
-          }
-          return wrapWireThenDecode(wireArray, decodedArray)
-        }
-        return { ...representation, checks, elements, rest }
+        const unique = representation.checks.filter(isUniqueCheck)
+        if (unique.length === 0 || !decodes(representation)) break
+        // Distinct wire items can decode to equal values, so uniqueness is checked before decoding.
+        return decodeTo(
+          rewriteWire({ ...representation, annotations: undefined, checks: unique }),
+          rewriteValue(
+            { ...representation, checks: representation.checks.filter((check) => !isUniqueCheck(check)) },
+            path
+          )
+        )
       }
-      case "Objects": {
+      case "Objects":
         if (
           representation.propertySignatures.length > 0 &&
           representation.indexSignatures.length > 0 &&
-          (
-            representation.propertySignatures.some((property) => decodes(property.type)) ||
-            representation.indexSignatures.some((signature) => decodes(signature.type))
-          )
+          decodes(representation)
         ) {
           throw new Error(
             `Cannot decode string formats at ${path}: objects combining named properties and additional properties ` +
               "cannot decode formatted strings"
           )
         }
-        return {
-          ...representation,
-          checks,
-          propertySignatures: representation.propertySignatures.map((property) => ({
-            ...property,
-            type: rewriteValue(property.type, `${path}/${String(property.name)}`)
-          })),
-          indexSignatures: representation.indexSignatures.map((signature) => ({
-            parameter: rewriteWire(signature.parameter),
-            type: rewriteValue(signature.type, `${path}/*`)
-          }))
-        }
-      }
-      case "Union": {
-        if (
-          codec !== undefined &&
-          representation.types.length > 0 &&
-          representation.types.every(isStringOnly)
-        ) {
-          return wrapDecodeTo(rewriteWire(representation), codec)
-        }
-        return {
-          ...representation,
-          checks,
-          types: representation.types.map((type, index) => rewriteValue(type, `${path}/${index}`, codec, useSite))
-        }
-      }
-      default:
-        return { ...representation, checks }
     }
+    return mapChildren(
+      representation,
+      (child, segment) => rewriteValue(child, `${path}/${segment}`, isUnion ? codec : undefined, isUnion && useSite),
+      rewriteWire
+    )
   }
 
   return {
-    schemas: Object.fromEntries(
-      Object.entries(document.schemas).map(([name, schema]) => [name, rewriteValue(schema, name)])
-    ),
-    references: Object.fromEntries(
-      Object.entries(document.references).map(([$ref, schema]) => [
-        $ref,
-        suspended.has($ref) ? rewriteWire(schema) : rewriteValue(schema, $ref)
-      ])
+    schemas: Rec.map(document.schemas, (schema, name) => rewriteValue(schema, name)),
+    references: Rec.map(
+      document.references,
+      (definition, $ref) => suspended.has($ref) ? rewriteWire(definition) : rewriteValue(definition, $ref)
     )
   }
 }

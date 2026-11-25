@@ -48,29 +48,19 @@ interface GroupRenderModel {
 export class HttpApiEndpointNameCollision extends Data.TaggedError("HttpApiEndpointNameCollision")<{
   readonly group: string
   readonly endpoint: string
-  readonly first: {
-    readonly method: ParsedOperation["method"]
-    readonly path: string
-    readonly operationId: string | undefined
-  }
-  readonly repeated: {
-    readonly method: ParsedOperation["method"]
-    readonly path: string
-    readonly operationId: string | undefined
-  }
+  readonly first: Route
+  readonly repeated: Route
 }> {
   override get message(): string {
-    return `${this.first.method.toUpperCase()} ${this.first.path} and ` +
-      `${this.repeated.method.toUpperCase()} ${this.repeated.path} both resolve to ` +
-      `endpoint ${JSON.stringify(this.endpoint)} in HttpApi group ${JSON.stringify(this.group)}.`
+    const format = (route: Route) => `${route.method.toUpperCase()} ${route.path}`
+    return `${format(this.first)} and ${format(this.repeated)} both resolve to endpoint ` +
+      `${JSON.stringify(this.endpoint)} in HttpApi group ${JSON.stringify(this.group)}.`
   }
 }
 
-const toRouteInfo = (operation: ParsedOperation) => ({
-  method: operation.method,
-  path: operation.path,
-  operationId: operation.operationId
-})
+type Route = Pick<ParsedOperation, "method" | "path" | "operationId">
+
+const toRoute = ({ method, path, operationId }: ParsedOperation): Route => ({ method, path, operationId })
 
 const resolveEndpointName = (
   group: { readonly identifier: string; readonly topLevel: boolean },
@@ -137,12 +127,8 @@ export const toImplementation = (
   parsed: ParsedOpenApi
 ): string => {
   const module = new Codegen.Module()
-  return Result.match(planImplementation(name, parsed, makeNameAllocator()), {
-    onFailure: (collision) => {
-      throw collision
-    },
-    onSuccess: (render) => module.finalize([render(parsed)]).roots[0]
-  })
+  const render = Result.getOrThrow(planImplementation(name, parsed, makeNameAllocator()))
+  return module.finalize([render(parsed)]).roots[0]
 }
 
 /** @internal */
@@ -163,26 +149,28 @@ const planImplementation = (
   allocateName: (name: string) => string
 ): Result.Result<(parsed: ParsedOpenApi) => Codegen.Fragment, HttpApiEndpointNameCollision> => {
   const security = buildSecurityRenderModel(parsed, allocateName)
-  return Result.map(groupOperations(parsed, allocateName), (groups) => {
-    const metadataAnnotations = renderApiAnnotations(parsed)
+  const grouped = groupOperations(parsed, allocateName)
+  if (Result.isFailure(grouped)) return Result.fail(grouped.failure)
+  const groups = grouped.success
+  const metadataAnnotations = renderApiAnnotations(parsed)
 
-    let apiValue = Codegen.code`export class ${name} extends ${HttpApi}.make(${JSON.stringify(name)})`
-    for (const annotation of metadataAnnotations) {
-      apiValue = Codegen.code`${apiValue}\n  .${annotation}`
-    }
-    if (groups.length > 0) {
-      apiValue = Codegen.code`${apiValue}\n  .add(${groups.map((group) => group.constName).join(", ")})`
-    }
-    apiValue = Codegen.code`${apiValue} {}`
+  let apiValue = Codegen.code`export class ${name} extends ${HttpApi}.make(${JSON.stringify(name)})`
+  for (const annotation of metadataAnnotations) {
+    apiValue = Codegen.code`${apiValue}\n  .${annotation}`
+  }
+  if (groups.length > 0) {
+    apiValue = Codegen.code`${apiValue}\n  .add(${groups.map((group) => group.constName).join(", ")})`
+  }
+  apiValue = Codegen.code`${apiValue} {}`
 
-    return (resolved) =>
-      Codegen.join([
-        ...security.securityDeclarations,
-        ...security.middlewareDeclarations,
-        ...groups.map((group) => renderGroup(group, resolved.operations, security.endpointMiddlewares)),
-        apiValue
-      ], "\n\n")
-  })
+  return Result.succeed((resolved) =>
+    Codegen.join([
+      ...security.securityDeclarations,
+      ...security.middlewareDeclarations,
+      ...groups.map((group) => renderGroup(group, resolved.operations, security.endpointMiddlewares)),
+      apiValue
+    ], "\n\n")
+  )
 }
 
 const groupOperations = (
@@ -229,8 +217,8 @@ const groupOperations = (
           new HttpApiEndpointNameCollision({
             group: group.identifier,
             endpoint,
-            first: toRouteInfo(parsed.operations[previous]),
-            repeated: toRouteInfo(operation)
+            first: toRoute(parsed.operations[previous]),
+            repeated: toRoute(operation)
           })
         )
       }
