@@ -937,6 +937,26 @@ export const mutate: {
   return makeZonedFromAdjusted(newAdjustedDate.getTime(), self.zone, options?.disambiguation ?? "compatible")
 })
 
+// Like `mutate`, but keeps the input's offset when it is still valid for the
+// new wall clock time, so the result stays in the same occurrence of a repeated hour
+const mutateWithOffset = (
+  self: DateTime.DateTime,
+  f: (date: Date) => void,
+  disambiguation: DateTime.Disambiguation = "compatible"
+): DateTime.DateTime => {
+  if (self._tag === "Utc" || self.zone._tag === "Offset") {
+    return mutate(self, f, { disambiguation })
+  }
+  const date = toDate(self)
+  const offset = date.getTime() - Math.trunc(self.epochMilliseconds)
+  f(date)
+  const adjustedMillis = date.getTime()
+  const result = makeZonedProto(adjustedMillis - offset, self.zone)
+  return zonedOffset(result) === offset
+    ? result
+    : makeZonedFromAdjusted(adjustedMillis, self.zone, disambiguation)
+}
+
 /** @internal */
 export const mutateUtc: {
   (f: (date: Date) => void): <A extends DateTime.DateTime>(self: A) => A
@@ -1085,35 +1105,15 @@ export const subtract: {
   return add(self, newParts)
 })
 
-const mutateWithOffset = (
-  self: DateTime.DateTime,
-  f: (date: Date) => void,
-  disambiguation: DateTime.Disambiguation = "compatible"
-): DateTime.DateTime => {
-  if (self._tag === "Utc" || self.zone._tag === "Offset") {
-    return mutate(self, f, { disambiguation })
-  }
-  const date = toDate(self)
-  const offset = date.getTime() - Math.trunc(self.epochMilliseconds)
-  f(date)
-  const adjustedMillis = date.getTime()
-  const result = makeZonedProto(adjustedMillis - offset, self.zone)
-  return zonedOffset(result) === offset
-    ? result
-    : makeZonedFromAdjusted(adjustedMillis, self.zone, disambiguation)
-}
-
 const mutateRounding = (
   self: DateTime.DateTime,
   part: DateTime.DateTime.UnitSingular,
   f: (date: Date) => void,
-  disambiguation: DateTime.Disambiguation = "compatible"
-): DateTime.DateTime => {
-  if (part === "day" || part === "week" || part === "month" || part === "year") {
-    return mutate(self, f, { disambiguation })
-  }
-  return mutateWithOffset(self, f, disambiguation)
-}
+  disambiguation?: DateTime.Disambiguation
+): DateTime.DateTime =>
+  part === "day" || part === "week" || part === "month" || part === "year"
+    ? mutate(self, f, { disambiguation })
+    : mutateWithOffset(self, f, disambiguation)
 
 const startOfDate = (date: Date, part: DateTime.DateTime.UnitSingular, options?: {
   readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
