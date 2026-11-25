@@ -10,9 +10,9 @@ import * as Module from "node:module"
 const worker = new URL("../src/internal/proxyProcessWorker.ts", import.meta.url)
 const output = new URL("../src/internal/proxyProcessSource.ts", import.meta.url)
 
-// Node's type stripper blanks types with spaces at the same offsets. Comparing
-// against the original text removes only the blanked spans and type-only lines,
-// leaving string literals and comments untouched.
+// Node's type stripper blanks types with spaces at the same offsets. Drop lines
+// that only held erased types (and the extra blank lines they leave), leaving
+// inline separators, comments, and string literals untouched.
 const stripTypes = (source: string): string => {
   const sourceLines = source.split("\n")
   const strippedLines = Module.stripTypeScriptTypes(source).split("\n")
@@ -29,30 +29,7 @@ const stripTypes = (source: string): string => {
       continue
     }
     droppedTypeLine = false
-    let line = ""
-    let j = 0
-    while (j < clean.length) {
-      if (clean[j] !== " ") {
-        line += clean[j++]
-        continue
-      }
-      let end = j
-      let hadStripped = false
-      while (end < clean.length && clean[end] === " ") {
-        if (original[end] !== " ") hadStripped = true
-        end++
-      }
-      if (!hadStripped) {
-        line += clean.slice(j, end)
-      } else {
-        const next = clean[end] ?? ""
-        if (next !== "" && (original[end - 1] === " " || (original[j] === " " && !/^[)\]},;.]/.test(next)))) {
-          line += " "
-        }
-      }
-      j = end
-    }
-    lines.push(line)
+    lines.push(clean)
   }
   return lines.join("\n")
 }
