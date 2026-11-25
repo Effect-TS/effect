@@ -552,7 +552,6 @@ describe("CloudflareWorkflowEngine", () => {
           }
         })
 
-        // Per-wake clock lookups and alarm writes must stay constant as replayed sleeps accumulate.
         const first = yield* wake()
         const second = yield* wake()
         assert.deepStrictEqual(second, first)

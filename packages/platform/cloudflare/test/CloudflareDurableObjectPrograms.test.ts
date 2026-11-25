@@ -219,7 +219,7 @@ describe("CloudflareDurableObjectPrograms", () => {
       Effect.gen(function*() {
         const { state, storage } = yield* makeExportedState(encodeName("ClockScan", "c1"))
         const database = storage.database
-        // Seed pre-existing storage without any secondary index on workflow_clocks.
+        // Pre-existing storage without the pending-clock index.
         database.exec(`CREATE TABLE workflow_clocks (
           name TEXT PRIMARY KEY,
           deferred_name TEXT NOT NULL,
