@@ -314,14 +314,22 @@ describe("Stream", () => {
       Effect.gen(function*() {
         const iterator = Stream.toAsyncIterable(Stream.range(1, 6, 2))[Symbol.asyncIterator]()
 
-        const first = yield* Effect.promise(() => Promise.all([iterator.next(), iterator.next()]))
+        const first = yield* Effect.promise(() => {
+          const read1 = iterator.next()
+          const read3 = Promise.resolve().then(() => iterator.next())
+          const read2 = iterator.next()
+          return Promise.all([read1, read2, read3])
+        })
         const rest = yield* Effect.promise(() =>
-          Promise.all([iterator.next(), iterator.next(), iterator.next(), iterator.next(), iterator.next()])
+          Promise.all([iterator.next(), iterator.next(), iterator.next(), iterator.next()])
         )
 
-        assert.deepStrictEqual(first, [{ done: false, value: 1 }, { done: false, value: 2 }])
+        assert.deepStrictEqual(first, [
+          { done: false, value: 1 },
+          { done: false, value: 2 },
+          { done: false, value: 3 }
+        ])
         assert.deepStrictEqual(rest, [
-          { done: false, value: 3 },
           { done: false, value: 4 },
           { done: false, value: 5 },
           { done: false, value: 6 },
