@@ -518,8 +518,8 @@ export const make = Effect.gen(function*() {
                 // Superseded instances retained by finalizers no longer need their wait sets.
                 currentRun?.instance.awaitedDeferreds.clear()
                 currentRun?.instance.completedDeferreds.clear()
-                // Fork lazily under the activation scope so unused runs retain nothing,
-                // while replays rebuild compensations and suspended runs keep theirs.
+                // Each run gets a fresh scope under the activation's parent, so
+                // replays rebuild compensations while suspended runs keep theirs.
                 const instance = withLazyScope(
                   WorkflowEngine.WorkflowInstance.initial(workflow, executionId),
                   pending.scope

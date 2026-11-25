@@ -818,10 +818,10 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         state.scope = Scope.makeUnsafe()
       }
       const executionScope = state.scope
+      // A superseded instance retained by a finalizer no longer needs its wait set.
       state.instance.awaitedDeferreds.clear()
-      state.instance.completedDeferreds.clear()
-      // Fork lazily under the execution scope so replays rebuild compensations
-      // without retaining unused child scopes.
+      // Like the cluster engine, each run gets a fresh scope, so replays rebuild
+      // compensations instead of registering them again.
       const instance = withLazyScope(
         WorkflowInstance.initial(state.instance.workflow, state.instance.executionId),
         executionScope
@@ -858,9 +858,9 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         Effect.onExit((exit) => {
           if (Exit.isSuccess(exit) && exit.value._tag === "Suspended") return Effect.void
           // The final run's scope closes with the real exit. Closing the parent
-          // then closes earlier scopes in reverse order with `Exit.void`, so their
-          // superseded compensations are skipped, which means their finalizers
-          // also observe success rather than the outcome.
+          // then closes earlier scopes in reverse order of first use with
+          // `Exit.void`, so their superseded compensations are skipped, which
+          // means their finalizers also observe success rather than the outcome.
           return Effect.andThen(
             Scope.close(executionScope, Exit.void),
             Exit.isSuccess(exit) && exit.value._tag === "Complete" ? Deferred.succeed(state.done, void 0) : Effect.void

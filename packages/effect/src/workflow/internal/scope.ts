@@ -21,6 +21,9 @@ export const markScopeAbandoned = (parent: Scope.Scope): void => {
  * read, not when the run starts, so `parent` closes run scopes in reverse
  * order of first use.
  *
+ * `scope` and `abandoned` are accessors, so copy the result field by field: a
+ * spread forks the scope and snapshots `abandoned`.
+ *
  * @internal
  */
 export const withLazyScope = (
