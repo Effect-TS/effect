@@ -4169,6 +4169,11 @@ export const scopedWith = <A, E, R>(
     return onExit(f(scope), (exit) => suspend(() => scopeCloseUnsafe(scope, exit) ?? void_))
   })
 
+const provideFinalizerContext = <A, E, R>(
+  self: Effect.Effect<A, E, R>,
+  context: Context.Context<R>
+): Effect.Effect<A, E> => effectIsExit(self) ? self : provideContext(scoped(self), context) as any
+
 /** @internal */
 export const acquireRelease = <A, E, R, R2>(
   acquire: Effect.Effect<A, E, R>,
@@ -4182,7 +4187,7 @@ export const acquireRelease = <A, E, R, R2>(
         (scope) =>
           tap(
             options?.interruptible ? restore(acquire) : acquire,
-            (a) => scopeAddFinalizerExit(scope, (exit) => provideContext(release(a, exit), context))
+            (a) => scopeAddFinalizerExit(scope, (exit) => provideFinalizerContext(release(a, exit), context))
           )
       )
     )
@@ -4196,7 +4201,7 @@ export const addFinalizer = <R>(
     scope,
     (scope) =>
       contextWith((context: Context.Context<R>) =>
-        scopeAddFinalizerExit(scope, (exit) => provideContext(finalizer(exit), context))
+        scopeAddFinalizerExit(scope, (exit) => provideFinalizerContext(finalizer(exit), context))
       )
   )
 

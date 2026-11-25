@@ -1,5 +1,5 @@
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Cause, Deferred, Duration, Effect, Exit, Fiber, Scope } from "effect"
+import { Cause, Context, Deferred, Duration, Effect, Exit, Fiber, Scope } from "effect"
 import { TestClock } from "effect/testing"
 
 describe("Scope", () => {
@@ -29,6 +29,66 @@ describe("Scope", () => {
       assert.deepStrictEqual(whileBlocked, [])
       assert.deepStrictEqual(order, ["release", "effect", "scope"])
     }))
+
+  describe("cleanup scope", () => {
+    const Tag = Context.Service<string>("ScopeTest/Tag")
+
+    it.effect("Effect.addFinalizer keeps resources acquired during cleanup alive until cleanup finishes", () =>
+      Effect.gen(function*() {
+        const events: Array<string> = []
+        yield* Effect.scoped(
+          Effect.gen(function*() {
+            yield* Effect.addFinalizer((exit) =>
+              Effect.gen(function*() {
+                const tag = yield* Tag
+                yield* Effect.acquireRelease(
+                  Effect.sync(() => {
+                    events.push("acquire")
+                  }),
+                  () =>
+                    Effect.sync(() => {
+                      events.push("release")
+                    })
+                )
+                events.push(`use:${tag}:${Exit.isFailure(exit) ? String(Cause.squash(exit.cause)) : "ok"}`)
+              })
+            ).pipe(Effect.provideService(Tag, "captured"))
+            return yield* Effect.fail("boom")
+          })
+        ).pipe(Effect.exit)
+        expect(events).toEqual(["acquire", "use:captured:boom", "release"])
+      }))
+
+    it.effect("Effect.acquireRelease keeps resources acquired during release alive until release finishes", () =>
+      Effect.gen(function*() {
+        const events: Array<string> = []
+        yield* Effect.scoped(
+          Effect.gen(function*() {
+            yield* Effect.acquireRelease(
+              Effect.succeed("resource"),
+              (resource, exit) =>
+                Effect.gen(function*() {
+                  const tag = yield* Tag
+                  yield* Effect.acquireRelease(
+                    Effect.sync(() => {
+                      events.push("acquire")
+                    }),
+                    () =>
+                      Effect.sync(() => {
+                        events.push("release")
+                      })
+                  )
+                  events.push(
+                    `use:${resource}:${tag}:${Exit.isFailure(exit) ? String(Cause.squash(exit.cause)) : "ok"}`
+                  )
+                })
+            ).pipe(Effect.provideService(Tag, "captured"))
+            return yield* Effect.fail("boom")
+          })
+        ).pipe(Effect.exit)
+        expect(events).toEqual(["acquire", "use:resource:captured:boom", "release"])
+      }))
+  })
 
   describe("parallel finalization", () => {
     it.effect("executes finalizers in parallel", () =>
