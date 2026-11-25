@@ -92,6 +92,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
 
   let inflight: Inflight | undefined
   let resumeRequested: WorkflowStorage.WakeMode | undefined
+  let guardAt: number | undefined
   // Parent of every attempt's scope. As in the memory engine, scopes of
   // attempts that suspended stay open under it, so their finalizers and
   // resources last until the execution completes or an attempt defects.
@@ -148,21 +149,26 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
 
   // Compute the single alarm target synchronously from current durable and
   // in-flight state so concurrent clock, guard, and settlement writes never
-  // overwrite a newer target from a stale `getAlarm()` read.
-  const syncAlarm = (): Promise<void> => {
+  // overwrite a newer target from a stale `getAlarm()` read. Keep an existing
+  // guard deadline until it fires or is no longer needed so repeated resumes
+  // cannot postpone it indefinitely.
+  const syncAlarm = (renewGuard = false): Promise<void> => {
     const row = WorkflowStorage.loadExecution(sql)
     const complete = isComplete(row?.result)
     const earliest = complete ? undefined : WorkflowStorage.earliestClockWakeUp(sql)
-    const guard = inflight !== undefined || (
+    const needsGuard = inflight !== undefined || (
       row !== undefined &&
       row.resumePending !== undefined &&
       (complete ? row.parent !== undefined : !isUnwakeable(row.result, row.resumePending))
     )
-      ? options.now() + resumeGuardMillis
-      : undefined
-    const target = earliest !== undefined && guard !== undefined
-      ? Math.min(earliest, guard)
-      : earliest ?? guard
+    if (!needsGuard) {
+      guardAt = undefined
+    } else if (guardAt === undefined || (renewGuard && guardAt <= options.now())) {
+      guardAt = options.now() + resumeGuardMillis
+    }
+    const target = earliest !== undefined && guardAt !== undefined
+      ? Math.min(earliest, guardAt)
+      : earliest ?? guardAt
     return target === undefined ? options.alarm.deleteAlarm() : options.alarm.setAlarm(target)
   }
 
@@ -446,7 +452,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
         const pending = mode !== undefined && !isUnwakeable(row?.result, mode)
         // A live attempt is not lost: only re-arm the guard. Requesting a wake
         // would replay the attempt once it suspends, for no reason.
-        return (pending && inflight === undefined ? resume(mode) : Promise.resolve()).then(syncAlarm)
+        return (pending && inflight === undefined ? resume(mode) : Promise.resolve()).then(() => syncAlarm(true))
       })
     }).then(() => Effect.runPromise(deliverParentWake)).then(() => undefined)
 

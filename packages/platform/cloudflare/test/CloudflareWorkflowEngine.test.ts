@@ -408,8 +408,8 @@ describe("CloudflareWorkflowEngine", () => {
       let runs = 0
       const Long = Workflow.make("LongAttempt", { payload: {}, idempotencyKey: () => "long" })
       const layer = Long.toLayer(Effect.fnUntraced(function*() {
-        runs++
-        yield* Activity.make({ name: "slow", execute: started.open.pipe(Effect.andThen(release.await)) })
+        const run = ++runs
+        yield* Activity.make({ name: `slow-${run}`, execute: started.open.pipe(Effect.andThen(release.await)) })
         yield* DurableDeferred.await(Gate)
       })).pipe(Layer.provideMerge(namespace.layer))
 
@@ -427,7 +427,26 @@ describe("CloudflareWorkflowEngine", () => {
         yield* namespace.settle()
         assert.strictEqual(runs, 1, "a guard alarm during a live attempt must not replay it")
         assert.strictEqual(namespace.store(name).alarm.current, null)
-      }).pipe(Effect.provide(layer))
+
+        yield* started.close
+        yield* release.close
+        namespace.now = 0
+        yield* Long.resume(executionId)
+        yield* started.await
+        assert.strictEqual(namespace.store(name).alarm.current, 60_000)
+
+        namespace.now = 50_000
+        yield* Long.resume(executionId)
+        assert.strictEqual(namespace.store(name).alarm.current, 60_000)
+
+        namespace.now = 60_000
+        yield* Effect.promise(() => namespace.getByName(name).runAlarm())
+        assert.strictEqual(namespace.store(name).alarm.current, 120_000)
+
+        yield* release.open
+        yield* namespace.settle()
+        assert.strictEqual(namespace.store(name).alarm.current, null)
+      }).pipe(Effect.ensuring(release.open), Effect.provide(layer))
     }))
 
   it.effect("targets the durable sleep deadline after suspension instead of the earlier resume guard", () =>
