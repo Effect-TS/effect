@@ -262,7 +262,7 @@ export const suite = (
               }
             })
 
-            yield* peer.wireClient["elicitation/create"](request)
+            yield* peer.reverseClient.elicit(Schema.decodeUnknownSync(McpSchema.Elicit.payloadSchema)(request))
 
             assert.strictEqual((yield* peer.takeRequest).method, "elicitation/create")
           }))
@@ -306,7 +306,9 @@ export const suite = (
               }
             })
 
-            const result = yield* peer.wireClient["elicitation/create"](request)
+            const result = yield* peer.reverseClient.elicit(
+              Schema.decodeUnknownSync(McpSchema.Elicit.payloadSchema)(request)
+            )
             const recorded = yield* peer.takeRequest
             const payload = yield* decodeElicitationRequest(recorded.payload)
 
