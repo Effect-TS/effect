@@ -82,7 +82,7 @@ describe("Equal.equals", () => {
       assert.isFalse(Equal.equals(p1, q1))
     })
 
-    it("compares differently unrolled plain cycles equal regardless of pre-hashing", () => {
+    it("keeps differently unrolled plain cycles consistent with Hash and HashMap", () => {
       const makeObjectPair = () => {
         const a: { self?: unknown } = {}
         a.self = a
@@ -105,8 +105,9 @@ describe("Equal.equals", () => {
           const [a, b] = make()
           if (prehash === "left" || prehash === "both") Hash.hash(a)
           if (prehash === "right" || prehash === "both") Hash.hash(b)
-          assert.isTrue(Equal.equals(a, b), prehash)
-          assert.isTrue(Equal.equals(b, a), prehash)
+          assert.isFalse(Equal.equals(a, b), prehash)
+          assert.isFalse(Equal.equals(b, a), prehash)
+          assert.isFalse(HashMap.has(HashMap.make([a, 1]), b), prehash)
         }
       }
     })
@@ -193,6 +194,13 @@ describe("Equal.equals", () => {
       })
       assert.isTrue(Equal.equals(make(), make()))
       assert.strictEqual(reads, 2)
+    })
+
+    it("does not equate plain objects with built-ins that override constructor", () => {
+      const record = { constructor: Object }
+      const set = Object.assign(new Set(), record)
+      assert.isFalse(Equal.equals(record, set))
+      assert.isFalse(Equal.equals(set, record))
     })
 
     // The protocol keys are strings, so data can carry them without implementing the protocols.
@@ -422,6 +430,25 @@ describe("Equal.equals", () => {
       const arr1 = [1, 2, 3]
       const arr2 = [1, 2]
       expect(Equal.equals(arr1, arr2)).toBe(false)
+    })
+
+    it("compares arrays by index consistently whether pre-hashed or not", () => {
+      const make = () =>
+        [
+          Object.assign([1], {
+            *[Symbol.iterator]() {
+              yield 2
+            }
+          }),
+          [1]
+        ] as const
+
+      const [freshA, freshB] = make()
+      assert.isTrue(Equal.equals(freshA, freshB))
+
+      const [hashedA, hashedB] = make()
+      assert.strictEqual(Hash.hash(hashedA), Hash.hash(hashedB))
+      assert.isTrue(Equal.equals(hashedA, hashedB))
     })
   })
 

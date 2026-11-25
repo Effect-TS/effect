@@ -146,11 +146,11 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
             h = random(self)
           } else if (isArrayBufferLike(self)) {
             const bytes = bufferBytes(self)
-            h = bytes === undefined ? random(self) : array(bytes)
+            h = bytes === undefined ? random(self) : hashIndexed(bytes)
           } else if (self instanceof DataView) {
-            h = array(viewBytes(self))
+            h = hashIndexed(viewBytes(self))
           } else if (Array.isArray(self) || ArrayBuffer.isView(self)) {
-            h = array(self as any)
+            h = hashIndexed(self as ArrayLike<unknown>)
           } else if (self instanceof Map) {
             h = hashMap(self)
           } else if (self instanceof Set) {
@@ -514,6 +514,14 @@ export const array = <A>(arr: Iterable<A>): number => {
   let h = 6151
   for (const element of arr) {
     h = combine(h, hash(element))
+  }
+  return optimize(h)
+}
+
+const hashIndexed = (arr: ArrayLike<unknown>): number => {
+  let h = 6151
+  for (let i = 0; i < arr.length; i++) {
+    h = combine(h, hash(arr[i]))
   }
   return optimize(h)
 }

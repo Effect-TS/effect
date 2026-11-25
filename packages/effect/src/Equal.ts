@@ -210,7 +210,10 @@ function compareObjects(self: object, that: object): boolean {
   const depth = pathLeft.length
   // A repeated pair closes a cycle under coinductive equality.
   for (let i = depth; i-- > 0;) {
-    if (pathLeft[i] === self && pathRight[i] === that) return true
+    if (pathLeft[i] === self && pathRight[i] === that) {
+      cycles++
+      return true
+    }
   }
   if (depth) return compareOnPath(self, that)
   // Only outermost results are independent of path assumptions.
@@ -222,10 +225,16 @@ function compareObjects(self: object, that: object): boolean {
 }
 
 function compareOnPath(self: object, that: object): boolean {
+  const seen = cycles
   pathLeft.push(self)
   pathRight.push(that)
   try {
-    return compareStructure(self, that)
+    const result = compareStructure(self, that)
+    // Preserve the Hash law (Equal.equals => equal Hash.hash) when a cycle was closed.
+    if (result && cycles !== seen && Hash.hash(self) !== Hash.hash(that)) {
+      return false
+    }
+    return result
   } finally {
     pathLeft.pop()
     pathRight.pop()
@@ -235,6 +244,7 @@ function compareOnPath(self: object, that: object): boolean {
 // The pairs on the current comparison's path (the coinductive assumptions).
 const pathLeft: Array<object> = []
 const pathRight: Array<object> = []
+let cycles = 0
 const results = new WeakMap<object, WeakMap<object, boolean>>()
 
 function compareStructure(self: object, that: object): boolean {
@@ -328,6 +338,18 @@ function compareRecords(
   self: Record<PropertyKey, unknown>,
   that: Record<PropertyKey, unknown>
 ): boolean {
+  if (
+    that instanceof Date ||
+    that instanceof RegExp ||
+    Array.isArray(that) ||
+    isArrayBufferLike(that) ||
+    ArrayBuffer.isView(that) ||
+    that instanceof Map ||
+    that instanceof Set
+  ) {
+    return false
+  }
+
   if (self.constructor === Object && that.constructor === Object) {
     const selfKeys = Reflect.ownKeys(self)
     if (selfKeys.length !== Reflect.ownKeys(that).length) {
@@ -340,18 +362,6 @@ function compareRecords(
       }
     }
     return true
-  }
-
-  if (
-    that instanceof Date ||
-    that instanceof RegExp ||
-    Array.isArray(that) ||
-    isArrayBufferLike(that) ||
-    ArrayBuffer.isView(that) ||
-    that instanceof Map ||
-    that instanceof Set
-  ) {
-    return false
   }
 
   const selfKeys = getAllObjectKeys(self)
