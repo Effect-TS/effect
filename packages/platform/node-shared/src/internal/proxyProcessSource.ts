@@ -25,36 +25,25 @@ export const tokenLength = 16
 /** @internal */
 export const headerLength = tokenLength + 8
 
-                                      
-                                                                      
- 
-
-                
-                     
-                          
-                                      
-                                                                                         
- 
-
 /** @internal */
-export const run = ()       => {
+export const run = () => {
   if (typeof process.send !== "function") {
     process.stderr.write("The proxy process must be started by NodeChildProcessSpawner.layerProxyProcess\\n")
     process.exitCode = 1
     return
   }
-  const send = (message        ) => {
+  const send = (message) => {
     if (process.connected) process.send?.(message)
   }
-  const serializeError = (error                       ) => ({
+  const serializeError = (error) => ({
     message: error.message,
     code: error.code,
     errno: error.errno,
     syscall: error.syscall,
     path: error.path
   })
-  const connect = (socketPath        , token        , id        , fd        ) =>
-    new Promise            ((resolve, reject) => {
+  const connect = (socketPath, token, id, fd) =>
+    new Promise((resolve, reject) => {
       const socket = Net.connect(socketPath)
       socket.pause()
       socket.once("error", reject)
@@ -66,7 +55,7 @@ export const run = ()       => {
         socket.write(header, (error) => error ? reject(error) : resolve(socket))
       })
     })
-  const spawn = async (socketPath        , token        , { args, command, id, options }         ) => {
+  const spawn = async (socketPath, token, { args, command, id, options }) => {
     const stdio = await Promise.allSettled(
       options.stdio.map((mode, fd) => mode === "pipe" ? connect(socketPath, token, id, fd) : mode)
     )
@@ -79,15 +68,15 @@ export const run = ()       => {
       // makes fds 0 to 2 blocking
       for (const socket of sockets) {
         // A socket that has lost its handle is rejected by \`spawn\`
-        const errno = (socket                    )._handle?.setBlocking(true)
+        const errno = (socket)._handle?.setBlocking(true)
         if (errno) throw new Error(\`setBlocking failed: \${Util.getSystemErrorName(errno)}\`)
       }
-      const child = ChildProcess.spawn(command, args, { ...options, stdio: values                                  })
+      const child = ChildProcess.spawn(command, args, { ...options, stdio: values })
       child.on("error", (error) => send({ _tag: "Error", id, error: serializeError(error) }))
       child.on("spawn", () => send({ _tag: "Spawned", id, pid: child.pid }))
       child.on("exit", (code, signal) => send({ _tag: "Exit", id, code, signal }))
     } catch (error) {
-      send({ _tag: "Error", id, error: serializeError(error                         ) })
+      send({ _tag: "Error", id, error: serializeError(error) })
     } finally {
       // The command holds its own copies of the sockets
       for (const socket of sockets) socket.destroy()
@@ -97,8 +86,8 @@ export const run = ()       => {
   // the proxy process exits when its commands have exited.
   process.on("SIGINT", () => {})
   process.on("SIGTERM", () => {})
-  process.once("message", ({ socketPath, token }                                                         ) => {
-    process.on("message", (request         ) => spawn(socketPath, token, request))
+  process.once("message", ({ socketPath, token }) => {
+    process.on("message", (request) => spawn(socketPath, token, request))
     send({ _tag: "Ready" })
   })
 }

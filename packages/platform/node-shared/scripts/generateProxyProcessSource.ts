@@ -10,10 +10,55 @@ import * as Module from "node:module"
 const worker = new URL("../src/internal/proxyProcessWorker.ts", import.meta.url)
 const output = new URL("../src/internal/proxyProcessSource.ts", import.meta.url)
 
-// The source text of the program, as an ES module that calls `run`. The type
-// stripper replaces types with spaces, which are kept, so that generating the
-// program changes nothing else in it, such as a string literal.
-const program = Module.stripTypeScriptTypes(Fs.readFileSync(worker, "utf8")) + "\nrun()\n"
+// Node's type stripper blanks types with spaces at the same offsets. Comparing
+// against the original text removes only the blanked spans and type-only lines,
+// leaving string literals and comments untouched.
+const stripTypes = (source: string): string => {
+  const sourceLines = source.split("\n")
+  const strippedLines = Module.stripTypeScriptTypes(source).split("\n")
+  const lines: Array<string> = []
+  let droppedTypeLine = false
+  for (let i = 0; i < sourceLines.length; i++) {
+    const original = sourceLines[i]
+    const clean = strippedLines[i]
+    if (original.trim().length > 0 && clean.trim().length === 0) {
+      droppedTypeLine = true
+      continue
+    }
+    if (droppedTypeLine && clean.length === 0 && (lines.length === 0 || lines.at(-1) === "")) {
+      continue
+    }
+    droppedTypeLine = false
+    let line = ""
+    let j = 0
+    while (j < clean.length) {
+      if (clean[j] !== " ") {
+        line += clean[j++]
+        continue
+      }
+      let end = j
+      let hadStripped = false
+      while (end < clean.length && clean[end] === " ") {
+        if (original[end] !== " ") hadStripped = true
+        end++
+      }
+      if (!hadStripped) {
+        line += clean.slice(j, end)
+      } else {
+        const next = clean[end] ?? ""
+        if (next !== "" && (original[end - 1] === " " || (original[j] === " " && !/^[)\]},;.]/.test(next)))) {
+          line += " "
+        }
+      }
+      j = end
+    }
+    lines.push(line)
+  }
+  return lines.join("\n")
+}
+
+// The source text of the program, as an ES module that calls `run`.
+const program = stripTypes(Fs.readFileSync(worker, "utf8")) + "\nrun()\n"
 
 const escape = (text: string) => text.replace(/[\\`]|\$\{/g, (match) => "\\" + match)
 
