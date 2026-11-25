@@ -17,9 +17,9 @@ export const markScopeAbandoned = (parent: Scope.Scope): void => {
  * Forks the run's scope from `parent` on first access, so a run that never
  * uses its scope leaves nothing attached to `parent`.
  *
- * Attachment happens on first read rather than at run start, so a scope first
- * read after a newer run has already forked closes in reverse first-use order
- * when `parent` closes.
+ * The scope takes its place among `parent`'s finalizers when it is first
+ * read, not when the run starts, so `parent` closes run scopes in reverse
+ * order of first use.
  *
  * @internal
  */
