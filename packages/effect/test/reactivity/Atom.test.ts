@@ -1973,13 +1973,12 @@ describe("Atom", { concurrent: false }, () => {
     unmount()
   })
 
-  it("SubscriptionRef/runtime", async () => {
+  it("SubscriptionRef/runtime", () => {
     const atom = counterRuntime.subscriptionRef(SubscriptionRef.make(0))
     const r = AtomRegistry.make()
     const unmount = r.mount(atom)
     assert.deepStrictEqual(r.get(atom), AsyncResult.success(0, { waiting: true }))
     r.set(atom, 1)
-    await new Promise((resolve) => resolve(null))
     assert.deepStrictEqual(r.get(atom), AsyncResult.success(1, { waiting: true }))
     unmount()
   })
