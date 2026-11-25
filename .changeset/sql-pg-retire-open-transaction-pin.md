@@ -2,4 +2,4 @@
 "@effect/sql-pg": patch
 ---
 
-Retire a pinned `PgConnection` session released with an open transaction it began so it is never returned to `PgPool` in transaction state.
+Close a pinned `PgConnection` session released inside a transaction it began so it is not returned to `PgPool`.

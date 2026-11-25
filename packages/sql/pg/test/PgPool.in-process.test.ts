@@ -518,13 +518,11 @@ describe("PgClient failed transaction cleanup", () => {
         }
       })
 
-      // A pin that closes its own transaction keeps the session.
       yield* Effect.scoped(
         Effect.flatMap(pool.reserve, (conn) => Effect.andThen(conn.query("BEGIN"), conn.query("COMMIT")))
       )
 
-      // A pin taken inside a caller's transaction leaves the session to the
-      // caller, whose `COMMIT` would fail on a retired one.
+      // Caller-owned transaction: COMMIT fails if the nested pin retired the session.
       yield* Effect.scoped(Effect.gen(function*() {
         const conn = yield* pool.get
         yield* conn.query("BEGIN")
@@ -533,7 +531,6 @@ describe("PgClient failed transaction cleanup", () => {
       }))
       assert.strictEqual(opened, 1)
 
-      // A pin released with its own transaction still open retires the session.
       yield* Effect.scoped(Effect.flatMap(pool.reserve, (conn) => conn.query("BEGIN")))
       yield* Effect.scoped(pool.get)
       assert.strictEqual(opened, 2)

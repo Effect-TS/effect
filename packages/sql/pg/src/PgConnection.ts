@@ -248,10 +248,9 @@ export interface PgConnection {
    *
    * After release, queries, streams and listeners through the returned
    * connection fail, and its `interrupt` does nothing. Releasing a pin with
-   * an in-flight statement or an open listener closes the session and fails
-   * any listener queues, as does leaving a transaction the pin began open or
-   * aborted. A transaction that was open before the pin belongs to its caller
-   * and is left as it is.
+   * an in-flight statement, an open listener, or an unfinished transaction it
+   * began closes the session and fails any listener queues. Transactions
+   * already open before the pin are left to the caller.
    */
   readonly pin: Effect.Effect<PgConnection, never, Scope.Scope>
   /**
@@ -865,9 +864,8 @@ class PgConnectionImpl implements PgConnection {
               "PgConnection: Pinned connection released with work outstanding"
             ))
           } else if (view.startedIdle && this.transactionStatus !== "I") {
-            // A transaction the pin left open or aborted, such as an abandoned
-            // `BEGIN` or a cancelled `ROLLBACK`, would leak into the next
-            // checkout. A transaction open before the pin is its caller's.
+            // An unfinished transaction the pin began would leak into the next
+            // checkout; transactions open before the pin belong to the caller.
             this.fatal(connectionQueryError(
               new Error("Pinned connection released inside a transaction"),
               "PgConnection: Pinned connection released inside a transaction"
