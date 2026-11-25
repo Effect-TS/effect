@@ -77,56 +77,7 @@ describe("LayerRef", () => {
       assert.deepStrictEqual(released, [1, 2])
     }))
 
-  it.effect("invalidate rebuilds while an earlier borrower holds its context", () =>
-    Effect.gen(function*() {
-      const acquired: Array<number> = []
-      const released: Array<number> = []
-      const ref = yield* LayerRef.make(makeLayer(acquired, released))
-
-      const borrowerScope = yield* Scope.make()
-      const borrowed = yield* ref.contextEffect.pipe(Scope.provide(borrowerScope))
-
-      yield* ref.invalidate
-      const fresh = yield* Effect.scoped(ref.contextEffect)
-      assert.strictEqual(Context.get(borrowed, Resource).id, 1)
-      assert.strictEqual(Context.get(fresh, Resource).id, 2)
-      assert.deepStrictEqual(acquired, [1, 2])
-      assert.deepStrictEqual(released, [2])
-
-      yield* Scope.close(borrowerScope, Exit.void)
-      assert.deepStrictEqual(released, [2, 1])
-    }))
-
-  it.effect("invalidate shares parent-memoized dependencies across rebuilds", () =>
-    Effect.gen(function*() {
-      let sharedBuilds = 0
-      let localBuilds = 0
-      class Shared extends Context.Service<Shared, { readonly id: number }>()("LayerRefTest/Shared") {}
-      const sharedLayer = Layer.effect(Shared)(Effect.sync(() => ({ id: ++sharedBuilds })))
-      const localLayer = Layer.effect(Resource)(
-        Effect.map(Shared, (shared) => ({ id: shared.id * 10 + ++localBuilds }))
-      ).pipe(Layer.provide(sharedLayer))
-
-      class ResourceRef extends LayerRef.Service<ResourceRef>()("LayerRefTest/SharedDepRef", {
-        layer: localLayer,
-        dependencies: [sharedLayer]
-      }) {}
-
-      yield* Effect.gen(function*() {
-        const borrowerScope = yield* Scope.make()
-        const first = yield* ResourceRef.contextEffect.pipe(Scope.provide(borrowerScope))
-
-        yield* ResourceRef.invalidate
-        const second = yield* Effect.scoped(ResourceRef.contextEffect)
-        assert.strictEqual(Context.get(first, Resource).id, 11)
-        assert.strictEqual(Context.get(second, Resource).id, 12)
-        assert.strictEqual(sharedBuilds, 1)
-
-        yield* Scope.close(borrowerScope, Exit.void)
-      }).pipe(Effect.provide(ResourceRef.layer))
-    }))
-
-  it.live("does not inherit a borrower memo map when created without a parent memo map", () =>
+  it.live("invalidate rebuilds while an earlier borrower holds its context", () =>
     Effect.gen(function*() {
       const acquired: Array<number> = []
       const released: Array<number> = []
@@ -136,14 +87,45 @@ describe("LayerRef", () => {
       const ids = yield* Effect.gen(function*() {
         const provided = yield* Resource
         const borrowerScope = yield* Scope.make()
-        const first = yield* ref.contextEffect.pipe(Scope.provide(borrowerScope))
+        const borrowed = yield* ref.contextEffect.pipe(Scope.provide(borrowerScope))
+
         yield* ref.invalidate
-        const second = yield* Effect.scoped(ref.contextEffect)
+        const fresh = yield* Effect.scoped(ref.contextEffect)
+        assert.deepStrictEqual(released, [3])
+
         yield* Scope.close(borrowerScope, Exit.void)
-        return [provided.id, Context.get(first, Resource).id, Context.get(second, Resource).id]
+        assert.deepStrictEqual(released, [3, 2])
+        return [provided.id, Context.get(borrowed, Resource).id, Context.get(fresh, Resource).id]
       }).pipe(Effect.provide(layer))
 
       assert.deepStrictEqual(ids, [1, 2, 3])
+      assert.deepStrictEqual(released, [3, 2, 1])
+    }))
+
+  it.effect("invalidate shares parent-memoized dependencies across rebuilds", () =>
+    Effect.gen(function*() {
+      let sharedBuilds = 0
+      const acquired: Array<number> = []
+      const released: Array<number> = []
+      const sharedLayer = Layer.effectDiscard(Effect.sync(() => {
+        sharedBuilds++
+      }))
+
+      class ResourceRef extends LayerRef.Service<ResourceRef>()("LayerRefTest/SharedDepRef", {
+        layer: makeLayer(acquired, released).pipe(Layer.provide(sharedLayer)),
+        dependencies: [sharedLayer]
+      }) {}
+
+      yield* Effect.gen(function*() {
+        const borrowerScope = yield* Scope.make()
+        const first = yield* ResourceRef.contextEffect.pipe(Scope.provide(borrowerScope))
+        yield* ResourceRef.invalidate
+        const second = yield* Effect.scoped(ResourceRef.contextEffect)
+        assert.strictEqual(Context.get(first, Resource).id, 1)
+        assert.strictEqual(Context.get(second, Resource).id, 2)
+        assert.strictEqual(sharedBuilds, 1)
+        yield* Scope.close(borrowerScope, Exit.void)
+      }).pipe(Effect.provide(ResourceRef.layer))
     }))
 
   it.effect("preload acquires the resource when the LayerRef is created", () =>
