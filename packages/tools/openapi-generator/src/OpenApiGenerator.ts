@@ -29,7 +29,6 @@ import SwaggerToOpenApi from "swagger2openapi"
 import * as HttpApiTransformer from "./HttpApiTransformer.ts"
 import * as HttpClientGenerator from "./internal/httpClient.ts"
 import * as InternalJsonPointer from "./internal/jsonPointer.ts"
-import type { StringFormats } from "./internal/stringFormats.ts"
 import * as JsonSchemaGenerator from "./JsonSchemaGenerator.ts"
 import * as ParsedOperation from "./ParsedOperation.ts"
 import * as Utils from "./Utils.ts"
@@ -158,17 +157,12 @@ export interface OpenApiGenerateOptions {
    */
   readonly format: OpenApiGeneratorFormat
   /**
-   * Decode string schemas with `date-time`, `int64`, or `uint64` formats as `DateTime.Utc` or `bigint`.
-   *
-   * **Details**
-   *
-   * The string's own checks still run on the wire text. A schema that a recursive reference points to, and all
-   * `httpclient-type-only` output, keep the wire types. An object that combines named properties with
-   * additional properties is refused when a named property decodes.
+   * Whether formatted strings (`date-time`, `int64`, `uint64`) remain wire strings (`"encoded"`)
+   * or decode to `DateTime.Utc` and range-checked `bigint` values (`"decoded"`) in schema-backed output.
    *
    * @default "encoded"
    */
-  readonly stringFormats?: StringFormats | undefined
+  readonly stringFormats?: "encoded" | "decoded" | undefined
   /**
    * Hook to transform each JSON Schema node before processing.
    */
@@ -271,27 +265,15 @@ export const make = Effect.gen(function*() {
           "encodeURIComponent"
         ]
       )
-      let registration: (parsed: ParsedOperation.ParsedOpenApi) => Codegen.Fragment
-      switch (options.format) {
-        case "httpapi":
-          registration = yield* Effect.fromResult(HttpApiTransformer.registerModule(
-            module,
-            importName,
-            options.name,
-            parsed
-          ))
-          break
-        case "httpclient":
-        case "httpclient-type-only":
-          registration = HttpClientGenerator.registerModule(
-            module,
-            importName,
-            options.name,
-            parsed,
-            options.format === "httpclient-type-only"
-          )
-          break
-      }
+      const registration = options.format === "httpapi"
+        ? yield* Effect.fromResult(HttpApiTransformer.registerModule(module, importName, options.name, parsed))
+        : HttpClientGenerator.registerModule(
+          module,
+          importName,
+          options.name,
+          parsed,
+          options.format === "httpclient-type-only"
+        )
       const schemas = JsonSchemaGenerator.compile(
         module,
         generator.schemas,
@@ -509,18 +491,12 @@ const parseOpenApi = (
         )
 
         const combinedParameterSchema = buildParameterSchema(validParameters, (parameter, added) => {
-          switch (parameter.in) {
-            case "header":
-              Utils.spreadElementsInto(added, op.headers)
-              break
-            case "query":
-              Utils.spreadElementsInto(added, op.urlParams)
-              break
-            case "cookie":
-              Utils.spreadElementsInto(added, op.cookies)
-              break
-            case "path":
-              break
+          if (parameter.in === "query") {
+            Utils.spreadElementsInto(added, op.urlParams)
+          } else if (parameter.in === "header") {
+            Utils.spreadElementsInto(added, op.headers)
+          } else if (parameter.in === "cookie") {
+            Utils.spreadElementsInto(added, op.cookies)
           }
         })
 
@@ -528,6 +504,7 @@ const parseOpenApi = (
           op.params = addSchema(`${schemaId}Params`, combinedParameterSchema.schema, op)
           op.paramsOptional = combinedParameterSchema.optional
         }
+
         if (pathSchema !== undefined) {
           op.pathSchema = addSchema(`${schemaId}PathParams`, pathSchema, op)
         }

@@ -39,10 +39,8 @@ interface GroupRenderModel {
   readonly constName: string
 }
 
-type OperationSource = Pick<ParsedOperation, "method" | "path" | "operationId">
-
 /**
- * Two OpenAPI operations resolve to the same endpoint name in one HttpApi group.
+ * Two OpenAPI operations resolve to the same local endpoint name within one HttpApi group.
  *
  * @category errors
  * @since 4.0.0
@@ -50,21 +48,42 @@ type OperationSource = Pick<ParsedOperation, "method" | "path" | "operationId">
 export class HttpApiEndpointNameCollision extends Data.TaggedError("HttpApiEndpointNameCollision")<{
   readonly group: string
   readonly endpoint: string
-  readonly first: OperationSource
-  readonly repeated: OperationSource
+  readonly first: {
+    readonly method: ParsedOperation["method"]
+    readonly path: string
+    readonly operationId: string | undefined
+  }
+  readonly repeated: {
+    readonly method: ParsedOperation["method"]
+    readonly path: string
+    readonly operationId: string | undefined
+  }
 }> {
   override get message(): string {
     return `${this.first.method.toUpperCase()} ${this.first.path} and ` +
-      `${this.repeated.method.toUpperCase()} ${this.repeated.path} both generate ` +
-      `the endpoint ${JSON.stringify(this.endpoint)} in HttpApi group ${JSON.stringify(this.group)}.`
+      `${this.repeated.method.toUpperCase()} ${this.repeated.path} both resolve to ` +
+      `endpoint ${JSON.stringify(this.endpoint)} in HttpApi group ${JSON.stringify(this.group)}.`
   }
 }
 
-const operationSource = ({ method, operationId, path }: ParsedOperation): OperationSource => ({
-  method,
-  operationId,
-  path
+const toRouteInfo = (operation: ParsedOperation) => ({
+  method: operation.method,
+  path: operation.path,
+  operationId: operation.operationId
 })
+
+const resolveEndpointName = (
+  group: { readonly identifier: string; readonly topLevel: boolean },
+  operation: ParsedOperation
+): string => {
+  if (!group.topLevel && operation.operationId !== undefined) {
+    const prefix = `${group.identifier}.`
+    if (operation.operationId.startsWith(prefix) && operation.operationId.length > prefix.length) {
+      return operation.operationId.slice(prefix.length)
+    }
+  }
+  return operation.id
+}
 
 interface SecurityRenderModel {
   readonly securityDeclarations: ReadonlyArray<Codegen.Fragment>
@@ -178,7 +197,8 @@ const groupOperations = (
     readonly positions: Array<number>
   }>()
 
-  for (const [position, operation] of parsed.operations.entries()) {
+  for (let position = 0; position < parsed.operations.length; position++) {
+    const operation = parsed.operations[position]
     const identifier = operation.tags[0] ?? fallbackGroupIdentifier
     const topLevel = operation.tags.length === 0
     const existing = byIdentifier.get(identifier)
@@ -200,25 +220,17 @@ const groupOperations = (
   const groups: Array<GroupRenderModel> = []
   for (const group of byIdentifier.values()) {
     const endpoints = new Map<string, number>()
-    const groupPrefix = `${group.identifier}.`
     for (const position of group.positions) {
       const operation = parsed.operations[position]
-      const operationId = operation.operationId
-      let endpoint = operation.id
-      if (
-        !group.topLevel && typeof operationId === "string" && operationId.length > groupPrefix.length &&
-        operationId.startsWith(groupPrefix)
-      ) {
-        endpoint = operationId.slice(groupPrefix.length)
-      }
-      const first = endpoints.get(endpoint)
-      if (typeof first === "number") {
+      const endpoint = resolveEndpointName(group, operation)
+      const previous = endpoints.get(endpoint)
+      if (previous !== undefined) {
         return Result.fail(
           new HttpApiEndpointNameCollision({
             group: group.identifier,
             endpoint,
-            first: operationSource(parsed.operations[first]),
-            repeated: operationSource(operation)
+            first: toRouteInfo(parsed.operations[previous]),
+            repeated: toRouteInfo(operation)
           })
         )
       }

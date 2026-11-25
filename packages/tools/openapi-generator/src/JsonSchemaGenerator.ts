@@ -119,9 +119,13 @@ export function compile(
 ): ReadonlyMap<string, Codegen.Binding> {
   const prepared = prepareSchemas(schemas, source, components, options)
   if (prepared === undefined) return new Map()
-  // Type-only output has no codecs to decode with, so it keeps the wire types.
-  const document = options?.stringFormats === "decoded" && !typeOnly ? decodeStringFormats(prepared) : prepared
-  return module.addSchemas(document.schemas, { references: document.references, typeOnly })
+  const document = options?.stringFormats === "decoded" && !typeOnly
+    ? decodeStringFormats(prepared)
+    : prepared
+  return module.addSchemas(document.schemas, {
+    references: document.references,
+    typeOnly
+  })
 }
 
 function prepareSchemas(

@@ -47,8 +47,8 @@ const patch = Flag.String("patch").pipe(
   Flag.between(0, Infinity)
 )
 
-const stringFormats = Flag.Literals("string-formats", ["encoded", "decoded"]).pipe(
-  Flag.withDescription("Emit wire strings or decode date-time, int64, and uint64 strings in schema-backed output"),
+const stringFormats = Flag.Literals("string-formats", ["encoded", "decoded"] as const).pipe(
+  Flag.withDescription("String format representation: encoded | decoded (default: encoded)"),
   Flag.withDefault("encoded")
 )
 
@@ -79,7 +79,9 @@ const root = Command.make("openapigen", { spec, format, name, patch, stringForma
       onWarning: (warning) => {
         warnings.push(warning)
       }
-    }).pipe(Effect.mapError((error) => new CliError.UserError({ cause: error })))
+    }).pipe(
+      Effect.mapError((error) => new CliError.UserError({ cause: error }))
+    )
     yield* Effect.forEach(
       warnings,
       (warning) => Console.error(OpenApiGenerator.formatWarning(warning)),
