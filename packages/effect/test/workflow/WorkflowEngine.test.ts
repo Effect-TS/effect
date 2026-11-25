@@ -1479,4 +1479,75 @@ describe("WorkflowEngine", () => {
         Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
       )
     }))
+
+  it.effect("layerMemory retries a failing activity under SuspendOnFailure", () =>
+    Effect.gen(function*() {
+      class Failed extends Schema.TaggedError<Failed>()("Failed", {}) {}
+      const attempts: Array<number> = []
+      const workflow = Workflow.make("WorkflowEngine/SuspendOnFailureRetry", {
+        payload: { id: Schema.String },
+        error: Failed,
+        idempotencyKey: ({ id }) => id
+      }).annotate(Workflow.SuspendOnFailure, true)
+      const layer = workflow.toLayer(() =>
+        Activity.make({
+          name: "step",
+          error: Failed,
+          execute: Effect.gen(function*() {
+            const attempt = yield* Activity.CurrentAttempt
+            attempts.push(attempt)
+            if (attempts.length <= 2) {
+              return yield* new Failed()
+            }
+          })
+        }).pipe(Activity.retry({ times: 3 }))
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.execute({ id: "a" }, { discard: true })
+        const result = yield* pollUntil(workflow, executionId, "Complete")
+        assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.void }))
+        assert.deepStrictEqual(attempts, [1, 2, 3])
+      }).pipe(Effect.provide(layer))
+    }))
+
+  it.effect("layerMemory parks an exhausted Activity.retry under SuspendOnFailure and replays stored failures on resume", () =>
+    Effect.gen(function*() {
+      class Failed extends Schema.TaggedError<Failed>()("Failed", {}) {}
+      const replayedRun = yield* Latch.make()
+      let runs = 0
+      const attempts: Array<number> = []
+      const workflow = Workflow.make("WorkflowEngine/SuspendOnFailureRetryExhausted", {
+        payload: { id: Schema.String },
+        error: Failed,
+        idempotencyKey: ({ id }) => id
+      }).annotate(Workflow.SuspendOnFailure, true)
+      const layer = workflow.toLayer(() => {
+        if (++runs === 2) replayedRun.openUnsafe()
+        return Activity.make({
+          name: "step",
+          error: Failed,
+          execute: Effect.gen(function*() {
+            const attempt = yield* Activity.CurrentAttempt
+            attempts.push(attempt)
+            return yield* new Failed()
+          })
+        }).pipe(Activity.retry({ times: 2 }))
+      }).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.execute({ id: "a" }, { discard: true })
+        const suspended = yield* pollUntil(workflow, executionId, "Suspended")
+        assert.isTrue(suspended._tag === "Suspended" && suspended.failed)
+        assert.strictEqual(runs, 1)
+        assert.deepStrictEqual(attempts, [1, 2, 3])
+
+        yield* workflow.resume(executionId)
+        yield* replayedRun.await
+        const replayed = yield* pollUntil(workflow, executionId, "Suspended")
+        assert.isTrue(replayed._tag === "Suspended" && replayed.failed)
+        assert.strictEqual(runs, 2)
+        assert.deepStrictEqual(attempts, [1, 2, 3])
+      }).pipe(Effect.provide(layer))
+    }))
 })

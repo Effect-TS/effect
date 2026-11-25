@@ -1105,4 +1105,74 @@ describe("deferred self-completion", () => {
         }).pipe(Effect.provide(layer))
       }), 5_000)
   }
+
+  it.effect("retries a failing activity under SuspendOnFailure", () => {
+    class Failed extends Schema.TaggedError<Failed>()("Failed", {}) {}
+    const namespace = new FakeWorkflowNamespace()
+    const attempts: Array<number> = []
+    const workflow = Workflow.make("SuspendOnFailureRetry", {
+      payload: { id: Schema.String },
+      error: Failed,
+      idempotencyKey: ({ id }) => id
+    }).annotate(Workflow.SuspendOnFailure, true)
+    const layer = workflow.toLayer(() =>
+      Activity.make({
+        name: "step",
+        error: Failed,
+        execute: Effect.gen(function*() {
+          const attempt = yield* Activity.CurrentAttempt
+          attempts.push(attempt)
+          if (attempts.length <= 2) {
+            return yield* new Failed()
+          }
+        })
+      }).pipe(Activity.retry({ times: 3 }))
+    ).pipe(Layer.provideMerge(namespace.layer))
+
+    return Effect.gen(function*() {
+      const executionId = yield* workflow.execute({ id: "a" }, { discard: true })
+      const result = yield* pollUntil(workflow, executionId, "Complete")
+      assert.deepStrictEqual(result, new Workflow.Complete({ exit: Exit.void }))
+      assert.deepStrictEqual(attempts, [1, 2, 3])
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect("parks an exhausted Activity.retry under SuspendOnFailure and replays stored failures on resume", () => {
+    class Failed extends Schema.TaggedError<Failed>()("Failed", {}) {}
+    const namespace = new FakeWorkflowNamespace()
+    let runs = 0
+    const attempts: Array<number> = []
+    const workflow = Workflow.make("SuspendOnFailureRetryExhausted", {
+      payload: { id: Schema.String },
+      error: Failed,
+      idempotencyKey: ({ id }) => id
+    }).annotate(Workflow.SuspendOnFailure, true)
+    const layer = workflow.toLayer(() => {
+      runs++
+      return Activity.make({
+        name: "step",
+        error: Failed,
+        execute: Effect.gen(function*() {
+          const attempt = yield* Activity.CurrentAttempt
+          attempts.push(attempt)
+          return yield* new Failed()
+        })
+      }).pipe(Activity.retry({ times: 2 }))
+    }).pipe(Layer.provideMerge(namespace.layer))
+
+    return Effect.gen(function*() {
+      const executionId = yield* workflow.execute({ id: "a" }, { discard: true })
+      const suspended = yield* pollUntil(workflow, executionId, "Suspended")
+      assert.isTrue(suspended._tag === "Suspended" && suspended.failed)
+      assert.strictEqual(runs, 1)
+      assert.deepStrictEqual(attempts, [1, 2, 3])
+
+      yield* workflow.resume(executionId)
+      yield* namespace.settle()
+      const replayed = yield* pollUntil(workflow, executionId, "Suspended")
+      assert.isTrue(replayed._tag === "Suspended" && replayed.failed)
+      assert.strictEqual(runs, 2)
+      assert.deepStrictEqual(attempts, [1, 2, 3])
+    }).pipe(Effect.provide(layer))
+  })
 })
