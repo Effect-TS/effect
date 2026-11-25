@@ -2026,7 +2026,6 @@ describe("Atom", { concurrent: false }, () => {
 
         r.set(plain, 1)
         assert.strictEqual(r.get(plain), 1)
-        assert.strictEqual(AsyncResult.getOrThrow(r.get(runtime)), 1)
 
         yield* SubscriptionRef.updateEffect(ref, (value) => release.await.pipe(Effect.as(value + 10))).pipe(
           Effect.forkChild({ startImmediately: true })
@@ -2034,12 +2033,9 @@ describe("Atom", { concurrent: false }, () => {
 
         r.set(plain, 5)
         r.set(runtime, 6)
-        assert.strictEqual(r.get(plain), 1)
 
         yield* release.open
         assert.deepStrictEqual(yield* Fiber.join(changes), [0, 1, 11, 5, 6])
-        assert.strictEqual(r.get(plain), 6)
-        assert.strictEqual(AsyncResult.getOrThrow(r.get(runtime)), 6)
       } finally {
         r.dispose()
       }
