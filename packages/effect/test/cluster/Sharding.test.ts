@@ -2992,6 +2992,87 @@ describe.concurrent("Sharding active teardowns", () => {
       }).pipe(Effect.provide(layer), Effect.scoped)
     }), { concurrent: false })
 
+  it.effect("persists cancellation of a delivered same-shard call during release outside active teardown", () =>
+    Effect.gen(function*() {
+      let dropRefresh = false
+      const cancel = yield* Latch.make()
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(RunnerStorage.makeMemory, (storage) =>
+          RunnerStorage.RunnerStorage.of({
+            ...storage,
+            refresh: (address, shardIds) => dropRefresh ? Effect.succeed([]) : storage.refresh(address, shardIds)
+          }))
+      )
+      const Caller = Entity.make("CancellingCaller", [
+        Rpc.make("Run").annotate(ClusterSchema.Persisted, false)
+      ])
+      const CallerLayer = Caller.toLayer(Effect.gen(function*() {
+        const receiver = yield* TestEntity.client
+        return Caller.of({
+          Run: () =>
+            Effect.gen(function*() {
+              const child = yield* receiver("target").Never().pipe(Effect.forkChild({ startImmediately: true }))
+              yield* cancel.await
+              yield* Fiber.interrupt(child)
+            })
+        })
+      }))
+      const layer = CallerLayer.pipe(
+        Layer.merge(TestEntityNoState),
+        Layer.provideMerge(Sharding.layer),
+        Layer.provide(runnerStorage),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provideMerge(TestEntityState.layer),
+        Layer.provide(Runners.layerNoop),
+        Layer.provideMerge(MessageStorage.layerMemory),
+        Layer.provide(Snowflake.layerGenerator),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+          shardsPerGroup: 1,
+          shardLockExpiration: 3000,
+          shardLockRefreshInterval: 100,
+          entityTerminationTimeout: 0,
+          entityMessagePollInterval: 1000,
+          refreshAssignmentsInterval: 1000,
+          sendRetryInterval: 10
+        }))
+      )
+
+      yield* Effect.gen(function*() {
+        const driver = yield* MessageStorage.MemoryDriver
+        const state = yield* TestEntityState
+        const sharding = yield* Sharding.Sharding
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        const callerAddress = EntityAddress.make({
+          shardId,
+          entityType: Caller.type,
+          entityId: EntityId.make("1")
+        })
+
+        const running = yield* (yield* Caller.client)("1").Run().pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust(1)
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+
+        // Losing the lock refresh moves the shard into releasingShards while
+        // the acquisition loop is still sleeping, before caller teardown starts.
+        dropRefresh = true
+        while (sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(100)
+        }
+        assert.isFalse(ActiveTeardown.isActive(callerAddress))
+
+        yield* cancel.open
+        yield* TestClock.adjust(1)
+        yield* Fiber.join(running)
+
+        assert.strictEqual(journalInterrupts(driver), 1)
+      }).pipe(Effect.provide(layer), Effect.scoped)
+    }), { concurrent: false })
+
   it.effect("treats node shutdown interrupts as transient via isShutdown", () =>
     Effect.gen(function*() {
       let driver!: MessageStorage.MemoryDriver["Service"]

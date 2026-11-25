@@ -1372,7 +1372,11 @@ const make = Effect.gen(function*() {
             // longer observe the reply, so interrupt the caller instead: the
             // request will be served under the next owner.
             ? message._tag === "OutgoingRequest"
-              ? ClusterAbandon.interrupt
+              ? Effect.suspend(() => {
+                const entry = clientRequests.get(message.envelope.requestId)
+                if (entry) entry.abandoned = true
+                return ClusterAbandon.interrupt
+              })
               : Effect.fail(error)
             : Effect.logWarning("Persisting outgoing message abandoned during shutdown", message.envelope.address)
         )
@@ -1644,6 +1648,7 @@ const make = Effect.gen(function*() {
     lastChunkId?: Snowflake.Snowflake
     // the runner a volatile request was last sent to
     runner?: RunnerAddress
+    abandoned?: boolean
   }
   const clientRequests = new Map<Snowflake.Snowflake, ClientRequestEntry>()
 
@@ -1666,6 +1671,7 @@ const make = Effect.gen(function*() {
           isDelivered(requestId) ||
           (!shutdown && !isHandoffCaller(entry.context, address))
         ) continue
+        entry.abandoned = true
         abandon.push(storage.unregisterReplyHandler(requestId, { interrupt: true }))
       }
       return Effect.all(abandon, { discard: true })
@@ -1778,9 +1784,9 @@ const make = Effect.gen(function*() {
               const caller = Context.getOption(entry.context, CurrentAddress).valueOrUndefined
               const singletonShard = Context.getOption(entry.context, SingletonShardTag).valueOrUndefined
               const isTransientInterrupt = MutableRef.get(isShutdown) ||
+                entry.abandoned === true ||
                 (caller !== undefined && ActiveTeardown.isActive(caller)) ||
-                (singletonShard !== undefined && ActiveTeardown.isShardActive(singletonShard)) ||
-                isHandoffCaller(entry.context, address)
+                (singletonShard !== undefined && ActiveTeardown.isShardActive(singletonShard))
               if (isTransientInterrupt && Context.get(entry.message.annotations, Persisted)) {
                 return Effect.void
               }
