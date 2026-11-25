@@ -159,6 +159,9 @@ export const make = Effect.fnUntraced(
     const context = yield* Effect.context<never>()
 
     const rcRef = yield* RcRef.make({
+      // Fork the creation-time memo map on each acquisition, so a rebuild
+      // never reuses a build that an earlier borrower still holds. Not
+      // `Layer.build`, which would pick up a memo map from the borrower's fiber.
       acquire: Effect.flatMap(
         Effect.scope,
         (scope) => Layer.buildWithMemoMap(layer, Layer.CurrentMemoMap.forkOrCreate(context), scope)
