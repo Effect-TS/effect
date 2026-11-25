@@ -43,7 +43,7 @@ import * as EntityId from "./EntityId.ts"
 import * as EntityType from "./EntityType.ts"
 import * as Envelope from "./Envelope.ts"
 import * as ClusterAbandon from "./internal/clusterAbandon.ts"
-import { CurrentActivationScope, CurrentRetirementLatch, ExitReplyWrites } from "./internal/entityActivation.ts"
+import { CurrentActivationScope, CurrentRetirementLatch } from "./internal/entityActivation.ts"
 import * as Message from "./Message.ts"
 import { MessageStorage } from "./MessageStorage.ts"
 import type { WithExitEncoded } from "./Reply.ts"
@@ -339,8 +339,7 @@ export const make = Effect.gen(function*() {
     }
     const reply = yield* replyForRequestId(requestId.value)
     if (Option.isNone(reply)) return
-    // Reset through storage, so a failure fails the child's reply transaction.
-    yield* storage.clearReplies(requestId.value, { expectedReplyId: Snowflake.Snowflake(reply.value.id) })
+    yield* sharding.reset(requestId.value, { expectedReplyId: Snowflake.Snowflake(reply.value.id) })
   })
 
   // Subscribe to the run's next reply before reading storage, so a reply
@@ -442,7 +441,6 @@ export const make = Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
             const activation = yield* CurrentActivationScope
-            const exitReplyWrites = yield* ExitReplyWrites
             let pending = pendingByActivation.get(activation)
             if (!pending) {
               const results = new Map<string, Exit.Exit<unknown, unknown>>()
@@ -529,7 +527,6 @@ export const make = Effect.gen(function*() {
                 })
                 const current = { request, instance, activityAwaits: new Map<string, number>(), completing: false }
                 currentRun = current
-                exitReplyWrites.delete(request.requestId)
                 const parent = (request.payload as any)[payloadParentKey] as
                   | (ParentRef & { readonly detached?: boolean })
                   | undefined
@@ -543,34 +540,19 @@ export const make = Effect.gen(function*() {
                     if (instance.abandoned) {
                       instance.suspended = false
                     }
-                    // The parent wakes are saved in the same storage transaction
-                    // as the run's terminal reply. A parent cannot replay before
-                    // the result is visible, and a runner that stops after the
-                    // commit leaves the wakes in storage. Abandoned runs never
-                    // wake parents; another owner replays them.
-                    const resumeParent = instance.abandoned ? Effect.void : Effect.sync(() => {
+                    // Abandoned runs never wake parents; another owner replays them.
+                    const resumeParent = instance.abandoned ? Effect.void : ensureSuccess(Effect.gen(function*() {
                       current.completing = true
-                      exitReplyWrites.set(
-                        request.requestId,
-                        Effect.gen(function*() {
-                          const parents = (yield* storage.requestsForAddress({ address, tag: "parent" }))
-                            .map((request) => request.payload as ParentRef)
-                          // Registrations are unique by parent; only an older caller's payload parent can repeat one.
-                          if (parent && !parent.detached && !parents.some((ref) => sameParent(ref, parent))) {
-                            parents.push(parent)
-                          }
-                          for (const ref of parents) {
-                            yield* sendResumeParent(ref, executionId)
-                          }
-                        }).pipe(
-                          // A storage failure fails the transaction, which the
-                          // manager retries; a send failure cannot succeed on retry.
-                          Effect.catch((error) =>
-                            error._tag === "PersistenceError" ? Effect.fail(error) : Effect.die(error)
-                          )
-                        )
-                      )
-                    })
+                      const parents = (yield* storage.requestsForAddress({ address, tag: "parent" }))
+                        .map((request) => request.payload as ParentRef)
+                      // Registrations are unique by parent; only an older caller's payload parent can repeat one.
+                      if (parent && !parent.detached && !parents.some((ref) => sameParent(ref, parent))) {
+                        parents.push(parent)
+                      }
+                      for (const ref of parents) {
+                        yield* sendResumeParent(ref, executionId)
+                      }
+                    }))
                     if (
                       !instance.suspended &&
                       !instance.abandoned &&
