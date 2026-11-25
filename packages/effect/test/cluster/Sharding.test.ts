@@ -3075,7 +3075,16 @@ describe.concurrent("Sharding active teardowns", () => {
       }).pipe(Effect.provide(layer), Effect.scoped)
     }), { concurrent: false })
 
-  for (const mode of ["duplicate", "duplicate-completed", "fresh"] as const) {
+  for (
+    const mode of [
+      "duplicate",
+      "duplicate-completed",
+      "duplicate-held-read",
+      "stream-ordered",
+      "fresh",
+      "fresh-unanswered"
+    ] as const
+  ) {
     it.effect(`handles delayed saveRequest ack during shard release (${mode})`, () =>
       Effect.gen(function*() {
         const WorkRpc = Rpc.make("Work", {
@@ -3083,11 +3092,21 @@ describe.concurrent("Sharding active teardowns", () => {
           primaryKey: ({ id }) => id,
           success: Schema.String
         }).annotate(ClusterSchema.Persisted, true)
+        const StreamWorkRpc = Rpc.make("StreamWork", {
+          payload: { id: Schema.String },
+          primaryKey: ({ id }) => id,
+          success: Schema.String,
+          stream: true
+        }).annotate(ClusterSchema.Persisted, true).annotate(ClusterSchema.Uninterruptible, "client")
         const CallRpc = Rpc.make("Call", {
           payload: { id: Schema.String },
           success: Schema.String
         }).annotate(ClusterSchema.Persisted, false)
-        const Peer = Entity.make(`DelayedAckPeer/${mode}`, [WorkRpc, CallRpc])
+        const CallStreamRpc = Rpc.make("CallStream", {
+          payload: { id: Schema.String },
+          success: Schema.Array(Schema.String)
+        }).annotate(ClusterSchema.Persisted, false)
+        const Peer = Entity.make(`DelayedAckPeer/${mode}`, [WorkRpc, StreamWorkRpc, CallRpc, CallStreamRpc])
 
         let assignSelf = true
         const releases: Array<ShardId.ShardId> = []
@@ -3110,15 +3129,22 @@ describe.concurrent("Sharding active teardowns", () => {
 
         const targetStarted = yield* Latch.make()
         const releaseTarget = yield* Latch.make()
+        const firstSaved = yield* Latch.make()
         const saveHeld = yield* Latch.make()
         const releaseSaveAck = yield* Latch.make()
+        const repliesHeld = yield* Latch.make()
+        const releaseRepliesRead = yield* Latch.make()
         let workSaves = 0
+        let firstMessage: Message.OutgoingRequest<any> | undefined
         let heldMessage: Message.OutgoingRequest<any> | undefined
 
+        const isFresh = mode === "fresh" || mode === "fresh-unanswered"
         const baseStorage = yield* makeSharedMemoryStorage
         const hideWork = (messages: Array<Message.Incoming<any>>) =>
-          mode === "fresh"
-            ? messages.filter((m) => !(m.envelope._tag === "Request" && m.envelope.tag === "Work"))
+          isFresh || mode === "stream-ordered"
+            ? messages.filter((m) =>
+              !(m.envelope._tag === "Request" && (m.envelope.tag === "Work" || m.envelope.tag === "StreamWork"))
+            )
             : messages
         const messageStorage = Layer.succeed(
           MessageStorage.MessageStorage,
@@ -3127,13 +3153,25 @@ describe.concurrent("Sharding active teardowns", () => {
             saveRequest: (message) =>
               baseStorage.saveRequest(message).pipe(
                 Effect.tap(() => {
-                  if (message.envelope.tag !== "Work") return Effect.void
+                  if (message.envelope.tag !== "Work" && message.envelope.tag !== "StreamWork") return Effect.void
                   workSaves++
-                  const shouldHold = mode === "fresh" ? workSaves === 1 : workSaves === 2
+                  if (workSaves === 1) {
+                    firstMessage = message
+                    firstSaved.openUnsafe()
+                  }
+                  const shouldHold = isFresh ? workSaves === 1 : workSaves === 2
                   if (!shouldHold) return Effect.void
                   heldMessage = message
                   return saveHeld.open.pipe(Effect.andThen(releaseSaveAck.await))
                 })
+              ),
+            repliesFor: (messages) =>
+              baseStorage.repliesFor(messages).pipe(
+                Effect.tap((replies) =>
+                  mode === "duplicate-held-read" && replies.some((reply) => reply._tag === "WithExit")
+                    ? repliesHeld.open.pipe(Effect.andThen(releaseRepliesRead.await))
+                    : Effect.void
+                )
               ),
             unprocessedMessages: (shardIds, options) =>
               Effect.map(baseStorage.unprocessedMessages(shardIds, options), hideWork),
@@ -3149,8 +3187,12 @@ describe.concurrent("Sharding active teardowns", () => {
               yield* releaseTarget.await
               return "done"
             }),
+            StreamWork: () => Stream.fromIterable(["a", "b"]),
             Call: Effect.fnUntraced(function*({ payload: { id } }) {
               return yield* self("1").Work({ id })
+            }),
+            CallStream: Effect.fnUntraced(function*({ payload: { id } }) {
+              return yield* Stream.runCollect(self("1").StreamWork({ id }))
             })
           })
         }), { concurrency: "unbounded" })
@@ -3182,7 +3224,46 @@ describe.concurrent("Sharding active teardowns", () => {
 
           const client = (yield* Peer.client)("1")
 
-          if (mode !== "fresh") {
+          if (mode === "stream-ordered") {
+            const original = yield* Stream.runDrain(client.StreamWork({ id: "stream" })).pipe(
+              Effect.forkScoped({ startImmediately: true })
+            )
+            for (let i = 0; i < 500 && !firstSaved.isOpen(); i++) yield* TestClock.adjust(10)
+            assert.isDefined(firstMessage)
+            yield* Fiber.interrupt(original)
+
+            const joiner = yield* client.CallStream({ id: "stream" }).pipe(
+              Effect.forkScoped({ startImmediately: true })
+            )
+            for (let i = 0; i < 500 && !saveHeld.isOpen(); i++) yield* TestClock.adjust(10)
+            assert.isTrue(saveHeld.isOpen())
+
+            const requestId = firstMessage.envelope.requestId
+            for (
+              const reply of [
+                new Reply.Chunk({ id: yield* sharding.getSnowflake, requestId, sequence: 0, values: ["a"] }),
+                new Reply.Chunk({ id: yield* sharding.getSnowflake, requestId, sequence: 1, values: ["b"] }),
+                new Reply.WithExit({ id: yield* sharding.getSnowflake, requestId, exit: Exit.void })
+              ]
+            ) {
+              yield* baseStorage.saveReply(
+                new Reply.ReplyWithContext({ reply, rpc: StreamWorkRpc as any, context: Context.empty() })
+              )
+            }
+
+            assignSelf = false
+            for (let i = 0; i < 500 && sharding.hasShardId(shardId); i++) yield* TestClock.adjust(10)
+            assert.isFalse(sharding.hasShardId(shardId))
+            yield* TestClock.adjust(1000)
+
+            yield* releaseSaveAck.open
+            for (let i = 0; i < 500 && joiner.pollUnsafe() === undefined; i++) yield* TestClock.adjust(10)
+            assert.deepStrictEqual(joiner.pollUnsafe(), Exit.succeed(["a", "b"]))
+            yield* TestClock.adjust(1000)
+            const released = releases.length > 0
+            if (!released) yield* TestClock.adjust("90 seconds")
+            assert.isTrue(released, "shard must release promptly after ordered stream replies complete")
+          } else if (!isFresh) {
             const original = yield* client.Work({ id: "dup" }).pipe(Effect.forkScoped({ startImmediately: true }))
             for (let i = 0; i < 500 && !targetStarted.isOpen(); i++) yield* TestClock.adjust(10)
             assert.isTrue(targetStarted.isOpen())
@@ -3191,20 +3272,36 @@ describe.concurrent("Sharding active teardowns", () => {
             for (let i = 0; i < 500 && !saveHeld.isOpen(); i++) yield* TestClock.adjust(10)
             assert.isTrue(saveHeld.isOpen())
 
-            if (mode === "duplicate-completed") {
+            if (mode === "duplicate-held-read") {
+              yield* releaseSaveAck.open
+              yield* releaseTarget.open
+              for (
+                let i = 0;
+                i < 500 && (original.pollUnsafe() === undefined || !repliesHeld.isOpen());
+                i++
+              ) {
+                yield* TestClock.adjust(10)
+              }
+              assert.deepStrictEqual(original.pollUnsafe(), Exit.succeed("done"))
+              assert.isTrue(repliesHeld.isOpen())
+            } else if (mode === "duplicate-completed") {
               yield* releaseTarget.open
               for (let i = 0; i < 500 && original.pollUnsafe() === undefined; i++) yield* TestClock.adjust(10)
               assert.deepStrictEqual(original.pollUnsafe(), Exit.succeed("done"))
             }
 
-            // Reassign the shard so abandonUndelivered runs while the duplicate save ack is pending.
+            // Reassign the shard so abandonUndelivered runs before the joiner finishes reading.
             assignSelf = false
             for (let i = 0; i < 500 && sharding.hasShardId(shardId); i++) yield* TestClock.adjust(10)
             assert.isFalse(sharding.hasShardId(shardId))
             yield* TestClock.adjust(1000)
 
-            yield* releaseSaveAck.open
-            if (mode === "duplicate") yield* releaseTarget.open
+            if (mode === "duplicate-held-read") {
+              yield* releaseRepliesRead.open
+            } else {
+              yield* releaseSaveAck.open
+              if (mode === "duplicate") yield* releaseTarget.open
+            }
             for (
               let i = 0;
               i < 500 && (original.pollUnsafe() === undefined || joiner.pollUnsafe() === undefined);
@@ -3237,27 +3334,33 @@ describe.concurrent("Sharding active teardowns", () => {
             assert.isFalse(sharding.hasShardId(shardId))
             yield* TestClock.adjust(1000)
 
-            yield* baseStorage.saveReply(
-              new Reply.ReplyWithContext({
-                reply: new Reply.WithExit({
-                  id: yield* sharding.getSnowflake,
-                  requestId: heldMessage.envelope.requestId,
-                  exit: Exit.succeed("done")
-                }),
-                rpc: WorkRpc as any,
-                context: Context.empty()
-              })
-            )
-            yield* TestClock.adjust(1)
+            if (mode === "fresh") {
+              yield* baseStorage.saveReply(
+                new Reply.ReplyWithContext({
+                  reply: new Reply.WithExit({
+                    id: yield* sharding.getSnowflake,
+                    requestId: heldMessage.envelope.requestId,
+                    exit: Exit.succeed("done")
+                  }),
+                  rpc: WorkRpc as any,
+                  context: Context.empty()
+                })
+              )
+              yield* TestClock.adjust(1)
+            }
 
             yield* releaseSaveAck.open
             yield* TestClock.adjust(1000)
             const released = releases.length > 0
             if (!released) yield* TestClock.adjust("90 seconds")
-            assert.isTrue(otherReplied, "drain must not unregister another waiter on the pending save")
-            assert.deepStrictEqual(otherWaiter.pollUnsafe(), Exit.void)
             assert.isTrue(released, "shard must release promptly once the delayed save ack returns")
-            assert.isDefined(caller.pollUnsafe())
+            if (mode === "fresh") {
+              assert.isTrue(otherReplied, "drain must not unregister another waiter on the pending save")
+              assert.deepStrictEqual(otherWaiter.pollUnsafe(), Exit.void)
+              assert.deepStrictEqual(caller.pollUnsafe(), Exit.succeed("done"))
+            } else {
+              assert.isTrue(Exit.hasInterrupts(caller.pollUnsafe()!))
+            }
           }
         }).pipe(Effect.provide(layer), Effect.scoped)
       }), { concurrent: false })

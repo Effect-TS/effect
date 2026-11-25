@@ -1675,8 +1675,7 @@ const make = Effect.gen(function*() {
         if (wait.persistedId !== undefined) {
           const commit = checkUndelivered(wait.persistedId)
           if (commit !== undefined) {
-            commit()
-            ClusterAbandon.abandonWait(wait)
+            ClusterAbandon.requestAbandon(wait, commit)
           }
         } else {
           // Defer the delivery check until saveRequest resolves the persisted ID.
@@ -1749,7 +1748,15 @@ const make = Effect.gen(function*() {
                 )
               }
               const wait: ClusterAbandon.ReplyWait | undefined = Context.get(message.annotations, Persisted)
-                ? { persistedId: undefined, abandoned: false, onPersisted: undefined, fiber }
+                ? {
+                  persistedId: undefined,
+                  abandoned: false,
+                  commitAbandon: undefined,
+                  abandonAfterGen: 0,
+                  onPersisted: undefined,
+                  onAbandon: undefined,
+                  fiber
+                }
                 : undefined
               if (wait !== undefined) {
                 ClusterAbandon.replyWaits.set(message, wait)

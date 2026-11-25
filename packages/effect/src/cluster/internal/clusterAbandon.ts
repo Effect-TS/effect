@@ -8,7 +8,10 @@ import type * as Snowflake from "../Snowflake.ts"
 export interface ReplyWait {
   persistedId: Snowflake.Snowflake | undefined
   abandoned: boolean
+  commitAbandon: (() => void) | undefined
+  abandonAfterGen: number
   onPersisted: ((persistedId: Snowflake.Snowflake) => (() => void) | undefined) | undefined
+  onAbandon: (() => void) | undefined
   readonly fiber: Fiber.Fiber<any, any>
 }
 
@@ -21,6 +24,12 @@ export const interrupt: Effect.Effect<never> = Effect.withFiber((fiber) => {
   fiber.interruptUnsafe(fiber.id, Abandon.annotation)
   return Effect.interruptible(Effect.never)
 })
+
+export const requestAbandon = (wait: ReplyWait, commit: () => void): void => {
+  if (wait.commitAbandon !== undefined) return
+  wait.commitAbandon = commit
+  wait.onAbandon?.()
+}
 
 export const abandonWait = (wait: ReplyWait): void => {
   wait.abandoned = true
