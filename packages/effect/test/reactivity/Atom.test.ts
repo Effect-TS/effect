@@ -5,6 +5,7 @@ import {
   Context,
   Deferred,
   Effect,
+  Fiber,
   Hash,
   Latch,
   Layer,
@@ -1972,13 +1973,12 @@ describe("Atom", { concurrent: false }, () => {
     unmount()
   })
 
-  it("SubscriptionRef/runtime", async () => {
+  it("SubscriptionRef/runtime", () => {
     const atom = counterRuntime.subscriptionRef(SubscriptionRef.make(0))
     const r = AtomRegistry.make()
     const unmount = r.mount(atom)
     assert.deepStrictEqual(r.get(atom), AsyncResult.success(0, { waiting: true }))
     r.set(atom, 1)
-    await new Promise((resolve) => resolve(null))
     assert.deepStrictEqual(r.get(atom), AsyncResult.success(1, { waiting: true }))
     unmount()
   })
@@ -2006,6 +2006,39 @@ describe("Atom", { concurrent: false }, () => {
     await Effect.runPromise(Effect.yieldNow)
     assert.strictEqual(finalized, true)
   })
+
+  it.effect("SubscriptionRef queues contended writes", () =>
+    Effect.gen(function*() {
+      const ref = yield* SubscriptionRef.make(0)
+      const plain = Atom.subscriptionRef(ref)
+      const runtime = counterRuntime.subscriptionRef(Effect.succeed(ref))
+      const r = AtomRegistry.make()
+      const release = yield* Latch.make()
+      try {
+        r.mount(plain)
+        r.mount(runtime)
+        const changes = yield* SubscriptionRef.changes(ref).pipe(
+          Stream.take(5),
+          Stream.runCollect,
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        r.set(plain, 1)
+        assert.strictEqual(r.get(plain), 1)
+
+        yield* SubscriptionRef.updateEffect(ref, (value) => release.await.pipe(Effect.as(value + 10))).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        r.set(plain, 5)
+        r.set(runtime, 6)
+
+        yield* release.open
+        assert.deepStrictEqual(yield* Fiber.join(changes), [0, 1, 11, 5, 6])
+      } finally {
+        r.dispose()
+      }
+    }))
 
   it("setLazy(true)", async () => {
     const count = Atom.make(0).pipe(Atom.keepAlive)
