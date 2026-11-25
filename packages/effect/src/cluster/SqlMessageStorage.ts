@@ -1077,7 +1077,11 @@ export const migrations = (options?: {
   const messagesTable = table("messages")
   const repliesTable = table("replies")
 
-  const ensureMessagesIndex = Effect.fnUntraced(function*(name: string, columnList: string) {
+  const ensureMessagesIndex = Effect.fnUntraced(function*(
+    name: string,
+    columnList: string,
+    mysqlColumnList = columnList
+  ) {
     const sql = (yield* SqlClient.SqlClient).withoutTransforms()
     const messagesTableSql = sql(messagesTable)
     const index = `${messagesTable}_${name}`
@@ -1096,7 +1100,7 @@ export const migrations = (options?: {
           Effect.flatMap((rows) =>
             rows.length > 0
               ? Effect.void
-              : sql`CREATE INDEX ${sql(index)} ON ${messagesTableSql} (${columns})`.unprepared
+              : sql`CREATE INDEX ${sql(index)} ON ${messagesTableSql} (${sql.literal(mysqlColumnList)})`.unprepared
           )
         ),
       orElse: () => sql`CREATE INDEX IF NOT EXISTS ${sql(index)} ON ${messagesTableSql} (${columns})`
@@ -1413,8 +1417,14 @@ export const migrations = (options?: {
     // Serves deleteProcessed's lookup by entity type and final reply id
     "0005_retention_index": ensureMessagesIndex("retention_idx", "entity_type, processed, last_reply_id"),
 
-    // Serves requestsForAddress and clearAddress
-    "0006_address_index": ensureMessagesIndex("address_idx", "entity_type, entity_id, tag")
+    // Serves requestsForAddress and clearAddress. On MySQL, a prefix of
+    // entity_id keeps the utf8mb4 key within 1,536 bytes (8 KiB pages);
+    // lookups still compare the full column.
+    "0006_address_index": ensureMessagesIndex(
+      "address_idx",
+      "entity_type, entity_id, tag",
+      "entity_type, entity_id(128), tag"
+    )
   })
 }
 

@@ -1143,7 +1143,7 @@ describe("WorkflowEngine", () => {
       }).pipe(Effect.provide(layer))
     }))
 
-  it.effect("layerMemory closes every suspended run scope when a finalizer dies", () =>
+  it.effect("layerMemory closes every suspended run scope and wakes its parent when a finalizer dies", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("WorkflowEngine/SuspendedScopeDefect/Gate")
       const finalized: Array<number> = []
@@ -1152,17 +1152,24 @@ describe("WorkflowEngine", () => {
         payload: {},
         idempotencyKey: () => "one"
       })
-      const layer = Suspends.toLayer(() =>
-        Effect.gen(function*() {
-          const run = ++runs
-          yield* Workflow.addFinalizer(() =>
-            Effect.gen(function*() {
-              finalized.push(run)
-              if (run === 2) return yield* Effect.die("finalizer defect")
-            })
-          )
-          yield* DurableDeferred.await(gate)
-        })
+      const Parent = Workflow.make("WorkflowEngine/SuspendedScopeDefect/Parent", {
+        payload: {},
+        idempotencyKey: () => "parent"
+      })
+      const layer = Layer.mergeAll(
+        Suspends.toLayer(() =>
+          Effect.gen(function*() {
+            const run = ++runs
+            yield* Workflow.addFinalizer(() =>
+              Effect.gen(function*() {
+                finalized.push(run)
+                if (run === 2) return yield* Effect.die("finalizer defect")
+              })
+            )
+            yield* DurableDeferred.await(gate)
+          })
+        ),
+        Parent.toLayer(() => Suspends.execute({}))
       ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
 
       yield* Effect.gen(function*() {
@@ -1171,6 +1178,12 @@ describe("WorkflowEngine", () => {
         while (Option.isNone(result) || result.value._tag !== "Suspended") {
           yield* Effect.yieldNow
           result = yield* Suspends.poll(executionId)
+        }
+        const parentId = yield* Parent.execute({}, { discard: true })
+        let parent = yield* Parent.poll(parentId)
+        while (Option.isNone(parent) || parent.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          parent = yield* Parent.poll(parentId)
         }
 
         yield* Suspends.resume(executionId)
@@ -1192,6 +1205,15 @@ describe("WorkflowEngine", () => {
         assert.strictEqual(runs, 3)
         assert(Exit.hasDies(exit))
         assert.deepStrictEqual(finalized, [3, 2, 1])
+
+        // The parent is woken despite the dying finalizer and observes the defect.
+        parent = yield* Parent.poll(parentId)
+        for (let i = 0; i < 100 && (Option.isNone(parent) || parent.value._tag !== "Complete"); i++) {
+          yield* Effect.yieldNow
+          parent = yield* Parent.poll(parentId)
+        }
+        assert(Option.isSome(parent) && parent.value._tag === "Complete", "the parent must be woken")
+        assert(Exit.hasDies(parent.value.exit))
       }).pipe(Effect.provide(layer))
     }))
 

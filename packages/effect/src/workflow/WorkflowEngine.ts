@@ -870,7 +870,8 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
             )
           return close.pipe(
             Effect.andThen(Deferred.succeed(state.done, void 0)),
-            Effect.andThen(Effect.withFiber(wakeParents))
+            // A dying finalizer must not strand parents; they observe the defect.
+            Effect.ensuring(Effect.withFiber(wakeParents))
           )
         }),
         Effect.forkIn(entry.scope)
