@@ -2993,87 +2993,91 @@ describe.concurrent("Sharding active teardowns", () => {
       }).pipe(Effect.provide(layer), Effect.scoped)
     }), { concurrent: false })
 
-  it.effect("persists cancellation of a delivered call but not a handoff-abandoned call during release", () =>
-    Effect.gen(function*() {
-      let dropRefresh = false
-      const cancel = yield* Latch.make()
-      const runnerStorage = Layer.effect(
-        RunnerStorage.RunnerStorage,
-        Effect.map(RunnerStorage.makeMemory, (storage) =>
-          RunnerStorage.RunnerStorage.of({
-            ...storage,
-            refresh: (address, shardIds) => dropRefresh ? Effect.succeed([]) : storage.refresh(address, shardIds)
-          }))
-      )
-      const Caller = Entity.make("CancellingCaller", [
-        Rpc.make("Run").annotate(ClusterSchema.Persisted, false)
-      ])
-      const CallerLayer = Caller.toLayer(Effect.gen(function*() {
-        const receiver = yield* TestEntity.client
-        return Caller.of({
-          Run: Effect.fnUntraced(function*() {
-            const child = yield* receiver("target").Never().pipe(Effect.forkChild({ startImmediately: true }))
-            yield* cancel.await
-            yield* Fiber.interrupt(child)
-            yield* receiver("handoff").Never()
+  it.effect(
+    "persists cancellation of a delivered call but not a handoff-abandoned call during release",
+    () =>
+      Effect.gen(function*() {
+        let dropRefresh = false
+        const cancel = yield* Latch.make()
+        const runnerStorage = Layer.effect(
+          RunnerStorage.RunnerStorage,
+          Effect.map(RunnerStorage.makeMemory, (storage) =>
+            RunnerStorage.RunnerStorage.of({
+              ...storage,
+              refresh: (address, shardIds) => dropRefresh ? Effect.succeed([]) : storage.refresh(address, shardIds)
+            }))
+        )
+        const Caller = Entity.make("CancellingCaller", [
+          Rpc.make("Run").annotate(ClusterSchema.Persisted, false)
+        ])
+        const CallerLayer = Caller.toLayer(Effect.gen(function*() {
+          const receiver = yield* TestEntity.client
+          return Caller.of({
+            Run: Effect.fnUntraced(function*() {
+              const child = yield* receiver("target").Never().pipe(Effect.forkChild({ startImmediately: true }))
+              yield* cancel.await
+              yield* Fiber.interrupt(child)
+              yield* receiver("handoff").Never().pipe(Effect.orDie)
+            })
           })
-        })
-      }))
-      const layer = CallerLayer.pipe(
-        Layer.merge(TestEntityNoState),
-        Layer.provideMerge(Sharding.layer),
-        Layer.provide(runnerStorage),
-        Layer.provide(RunnerHealth.layerNoop),
-        Layer.provideMerge(TestEntityState.layer),
-        Layer.provide(Runners.layerNoop),
-        Layer.provideMerge(MessageStorage.layerMemory),
-        Layer.provide(Snowflake.layerGenerator),
-        Layer.provide(ShardingConfig.layer({
-          runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
-          shardsPerGroup: 1,
-          shardLockExpiration: 3000,
-          shardLockRefreshInterval: 100,
-          entityTerminationTimeout: 0,
-          entityMessagePollInterval: 1000,
-          refreshAssignmentsInterval: 1000,
-          sendRetryInterval: 10
         }))
-      )
+        const layer = CallerLayer.pipe(
+          Layer.merge(TestEntityNoState),
+          Layer.provideMerge(Sharding.layer),
+          Layer.provide(runnerStorage),
+          Layer.provide(RunnerHealth.layerNoop),
+          Layer.provideMerge(TestEntityState.layer),
+          Layer.provide(Runners.layerNoop),
+          Layer.provideMerge(MessageStorage.layerMemory),
+          Layer.provide(Snowflake.layerGenerator),
+          Layer.provide(ShardingConfig.layer({
+            runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+            shardsPerGroup: 1,
+            shardLockExpiration: 3000,
+            shardLockRefreshInterval: 100,
+            entityTerminationTimeout: 0,
+            entityMessagePollInterval: 1000,
+            refreshAssignmentsInterval: 1000,
+            sendRetryInterval: 10
+          }))
+        )
 
-      yield* Effect.gen(function*() {
-        const driver = yield* MessageStorage.MemoryDriver
-        const state = yield* TestEntityState
-        const sharding = yield* Sharding.Sharding
-        const shardId = sharding.getShardId(EntityId.make("1"), "default")
-        while (!sharding.hasShardId(shardId)) {
-          yield* TestClock.adjust(10)
-        }
-        const callerAddress = EntityAddress.make({
-          shardId,
-          entityType: Caller.type,
-          entityId: EntityId.make("1")
-        })
+        yield* Effect.gen(function*() {
+          const driver = yield* MessageStorage.MemoryDriver
+          const state = yield* TestEntityState
+          const sharding = yield* Sharding.Sharding
+          const shardId = sharding.getShardId(EntityId.make("1"), "default")
+          while (!sharding.hasShardId(shardId)) {
+            yield* TestClock.adjust(10)
+          }
+          const callerAddress = EntityAddress.make({
+            shardId,
+            entityType: Caller.type,
+            entityId: EntityId.make("1")
+          })
 
-        const running = yield* (yield* Caller.client)("1").Run().pipe(Effect.forkChild({ startImmediately: true }))
-        yield* TestClock.adjust(1)
-        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+          const running = yield* (yield* Caller.client)("1").Run().pipe(Effect.forkChild({ startImmediately: true }))
+          yield* TestClock.adjust(1)
+          assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
 
-        // Losing the lock refresh moves the shard into releasingShards while
-        // the acquisition loop is still sleeping, before caller teardown starts.
-        dropRefresh = true
-        while (sharding.hasShardId(shardId)) {
-          yield* TestClock.adjust(100)
-        }
-        assert.isFalse(ActiveTeardown.isActive(callerAddress))
+          // Losing the lock refresh moves the shard into releasingShards while
+          // the acquisition loop is still sleeping, before caller teardown starts.
+          dropRefresh = true
+          while (sharding.hasShardId(shardId)) {
+            yield* TestClock.adjust(100)
+          }
+          assert.isFalse(ActiveTeardown.isActive(callerAddress))
 
-        yield* cancel.open
-        yield* TestClock.adjust(1)
-        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(running)))
+          yield* cancel.open
+          yield* TestClock.adjust(1)
+          assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(running)))
 
-        assert.strictEqual(driver.journal.filter((envelope) => envelope._tag === "Request").length, 2)
-        assert.strictEqual(journalInterrupts(driver), 1)
-      }).pipe(Effect.provide(layer), Effect.scoped)
-    }), { concurrent: false })
+          assert.strictEqual(driver.journal.filter((envelope) => envelope._tag === "Request").length, 2)
+          assert.strictEqual(journalInterrupts(driver), 1)
+        }).pipe(Effect.provide(layer), Effect.scoped)
+      }),
+    { concurrent: false }
+  )
 
   for (
     const mode of [
@@ -3167,7 +3171,8 @@ describe.concurrent("Sharding active teardowns", () => {
                 })
               ),
             repliesFor: (messages) =>
-              failNextStreamRead && messages.some((message) => message.envelope.tag === "StreamWork")
+              failNextStreamRead &&
+                Array.fromIterable(messages).some((message) => message.envelope.tag === "StreamWork")
                 ? Effect.suspend(() => {
                   failNextStreamRead = false
                   return Effect.fail(new ClusterError.PersistenceError({ cause: new Error("transient read failure") }))
@@ -3185,23 +3190,26 @@ describe.concurrent("Sharding active teardowns", () => {
           })
         )
 
-        const PeerLayer = Peer.toLayer(Effect.gen(function*() {
-          const self = yield* Peer.client
-          return Peer.of({
-            Work: Effect.fnUntraced(function*() {
-              yield* targetStarted.open
-              yield* releaseTarget.await
-              return "done"
-            }),
-            StreamWork: () => Stream.fromIterable(["a", "b"]),
-            Call: Effect.fnUntraced(function*({ payload: { id } }) {
-              return yield* self("1").Work({ id })
-            }),
-            CallStream: Effect.fnUntraced(function*({ payload: { id } }) {
-              return yield* Stream.runCollect(self("1").StreamWork({ id }))
+        const PeerLayer = Peer.toLayer(
+          Effect.gen(function*() {
+            const self = yield* Peer.client
+            return Peer.of({
+              Work: Effect.fnUntraced(function*() {
+                yield* targetStarted.open
+                yield* releaseTarget.await
+                return "done"
+              }),
+              StreamWork: () => Stream.fromIterable(["a", "b"]),
+              Call: Effect.fnUntraced(function*({ payload: { id } }) {
+                return yield* self("1").Work({ id }).pipe(Effect.orDie)
+              }),
+              CallStream: Effect.fnUntraced(function*({ payload: { id } }) {
+                return yield* Stream.runCollect(self("1").StreamWork({ id })).pipe(Effect.orDie)
+              })
             })
-          })
-        }), { concurrency: "unbounded" })
+          }),
+          { concurrency: "unbounded" }
+        )
 
         const layer = PeerLayer.pipe(
           Layer.provideMerge(Sharding.layer),
@@ -3245,15 +3253,14 @@ describe.concurrent("Sharding active teardowns", () => {
             assert.isTrue(saveHeld.isOpen())
 
             const requestId = firstMessage.envelope.requestId
-            for (
-              const reply of [
-                new Reply.Chunk({ id: yield* sharding.getSnowflake, requestId, sequence: 0, values: ["a"] }),
-                new Reply.Chunk({ id: yield* sharding.getSnowflake, requestId, sequence: 1, values: ["b"] }),
-                new Reply.WithExit({ id: yield* sharding.getSnowflake, requestId, exit: Exit.void })
-              ]
-            ) {
+            const streamReplies: Array<Reply.Reply<typeof StreamWorkRpc>> = [
+              new Reply.Chunk({ id: yield* sharding.getSnowflake, requestId, sequence: 0, values: ["a"] }),
+              new Reply.Chunk({ id: yield* sharding.getSnowflake, requestId, sequence: 1, values: ["b"] }),
+              new Reply.WithExit({ id: yield* sharding.getSnowflake, requestId, exit: Exit.void })
+            ]
+            for (const reply of streamReplies) {
               yield* baseStorage.saveReply(
-                new Reply.ReplyWithContext({ reply, rpc: StreamWorkRpc as any, context: Context.empty() })
+                new Reply.ReplyWithContext({ reply, rpc: StreamWorkRpc, context: Context.empty() })
               )
             }
 
@@ -3345,12 +3352,12 @@ describe.concurrent("Sharding active teardowns", () => {
             if (mode === "fresh") {
               yield* baseStorage.saveReply(
                 new Reply.ReplyWithContext({
-                  reply: new Reply.WithExit({
+                  reply: new Reply.WithExit<typeof WorkRpc>({
                     id: yield* sharding.getSnowflake,
                     requestId: heldMessage.envelope.requestId,
                     exit: Exit.succeed("done")
                   }),
-                  rpc: WorkRpc as any,
+                  rpc: WorkRpc,
                   context: Context.empty()
                 })
               )
