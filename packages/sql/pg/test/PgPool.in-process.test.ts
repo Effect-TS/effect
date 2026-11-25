@@ -494,12 +494,14 @@ describe("PgClient failed transaction cleanup", () => {
   it.effect("retires a session left in a pin-owned transaction without retiring closed or caller-owned ones", () =>
     Effect.scoped(Effect.gen(function*() {
       let opened = 0
+      let status = "I"
       const pool = yield* PgPool.make({
         username: "test",
         maxConnections: 1,
         prepare: false,
         stream: () => {
           opened++
+          status = "I"
           let startup = true
           const socket = new Duplex({
             read() {},
@@ -508,8 +510,8 @@ describe("PgClient failed transaction cleanup", () => {
                 startup = false
                 queueMicrotask(() => socket.push(ready))
               } else if (chunk[0] === 0x50) {
-                const response = chunk.includes("BEGIN") ? completed("BEGIN", "T") : completed("COMMIT", "I")
-                queueMicrotask(() => socket.push(response))
+                status = chunk.includes("BEGIN") ? "T" : "I"
+                queueMicrotask(() => socket.push(completed(status === "T" ? "BEGIN" : "COMMIT", status)))
               }
               callback()
             }
@@ -522,11 +524,12 @@ describe("PgClient failed transaction cleanup", () => {
         Effect.flatMap(pool.reserve, (conn) => Effect.andThen(conn.query("BEGIN"), conn.query("COMMIT")))
       )
 
-      // Caller-owned transaction: COMMIT fails if the nested pin retired the session.
+      // Caller-owned transaction: status stays T and COMMIT fails if the pin retired the session.
       yield* Effect.scoped(Effect.gen(function*() {
         const conn = yield* pool.get
         yield* conn.query("BEGIN")
         yield* Effect.scoped(conn.pin)
+        assert.strictEqual(status, "T")
         yield* conn.query("COMMIT")
       }))
       assert.strictEqual(opened, 1)
@@ -534,6 +537,7 @@ describe("PgClient failed transaction cleanup", () => {
       yield* Effect.scoped(Effect.flatMap(pool.reserve, (conn) => conn.query("BEGIN")))
       yield* Effect.scoped(pool.get)
       assert.strictEqual(opened, 2)
+      assert.strictEqual(status, "I")
     })))
 })
 
