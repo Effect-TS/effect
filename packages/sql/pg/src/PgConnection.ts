@@ -1299,12 +1299,10 @@ const encodeBatch = (
   encodeBind: BindEncoder
 ): Plan => {
   const chunks: Array<Uint8Array> = []
-  let count = 0
   for (const statement of statements) {
     const { parameterTypes, parameters } = inferParameters(statement.params ?? emptyParams, registry)
     const [parse, bind] = encodeUnnamedParseBind(statement.sql, parameters, parameterTypes, encodeBind)
     chunks.push(parse, bind, describeExecute)
-    count++
   }
   chunks.push(sync)
   return {
@@ -1315,7 +1313,7 @@ const encodeBatch = (
     prepared: undefined,
     description: undefined,
     stale: false,
-    statements: count
+    statements: statements.length
   }
 }
 
