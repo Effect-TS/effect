@@ -1569,4 +1569,36 @@ describe("WorkflowEngine", () => {
       20_000
     )
   }
+
+  it.effect("layerMemory keeps a captured Workflow.scope open across suspension for late finalizers", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("WorkflowEngine/CapturedScopeLateFinalizer/Gate")
+      const workflow = Workflow.make("WorkflowEngine/CapturedScopeLateFinalizer", {
+        payload: {},
+        idempotencyKey: () => "one"
+      })
+      let captured: Scope.Scope | undefined
+      let finalized = 0
+      const layer = workflow.toLayer(() =>
+        Effect.gen(function*() {
+          captured ??= yield* Workflow.scope
+          yield* DurableDeferred.await(gate)
+        })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.execute({}, { discard: true })
+        yield* pollUntil(workflow, executionId, "Suspended")
+        assert.isDefined(captured)
+        yield* Scope.addFinalizer(captured, Effect.sync(() => {
+          finalized++
+        }))
+        assert.strictEqual(finalized, 0, "late finalizer must not run while suspended")
+
+        yield* workflow.interrupt(executionId)
+        const result = yield* pollUntil(workflow, executionId, "Complete")
+        assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit))
+        assert.strictEqual(finalized, 1, "late finalizer must run once on cancellation")
+      }).pipe(Effect.provide(layer))
+    }))
 })

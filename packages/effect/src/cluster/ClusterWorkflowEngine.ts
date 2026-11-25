@@ -31,6 +31,7 @@ import * as Semaphore from "../Semaphore.ts"
 import * as Activity from "../workflow/Activity.ts"
 import * as DurableClock from "../workflow/DurableClock.ts"
 import * as DurableDeferred from "../workflow/DurableDeferred.ts"
+import { canReleaseSuspendedScope } from "../workflow/internal/scope.ts"
 import * as Workflow from "../workflow/Workflow.ts"
 import * as WorkflowEngine from "../workflow/WorkflowEngine.ts"
 import * as ClusterSchema from "./ClusterSchema.ts"
@@ -595,7 +596,7 @@ export const make = Effect.gen(function*() {
                   Workflow.intoResult,
                   Effect.onExit((exit) => {
                     if (Exit.isSuccess(exit) && exit.value._tag === "Suspended") {
-                      if (instance.scope.state._tag === "Empty") {
+                      if (canReleaseSuspendedScope(instance.scope)) {
                         pending.instances.delete(instance)
                         return Scope.close(instance.scope, Exit.void)
                       }
