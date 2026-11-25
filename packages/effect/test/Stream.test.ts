@@ -373,6 +373,39 @@ describe("Stream", () => {
         assert.isTrue(interrupted)
       }))
 
+    it.effect("toAsyncIterable - reentrant return interrupts the active pull and settles queued reads", () =>
+      Effect.gen(function*() {
+        let interrupted = false
+        let closed: Promise<IteratorResult<number>> | undefined
+        const iterator = Stream.toAsyncIterable(
+          Stream.concat(
+            Stream.make(1),
+            Stream.fromEffect(
+              Effect.promise<number>(() => {
+                closed = iterator.return!(undefined)
+                return new Promise<number>(() => {})
+              }).pipe(
+                Effect.onInterrupt(() =>
+                  Effect.sync(() => {
+                    interrupted = true
+                  })
+                )
+              )
+            )
+          )
+        )[Symbol.asyncIterator]()
+
+        const results = yield* Effect.promise(() => Promise.all([iterator.next(), iterator.next(), iterator.next()]))
+
+        assert.deepStrictEqual(results, [
+          { done: false, value: 1 },
+          { done: true, value: undefined },
+          { done: true, value: undefined }
+        ])
+        assert.deepStrictEqual(yield* Effect.promise(() => closed!), { done: true, value: undefined })
+        assert.isTrue(interrupted)
+      }))
+
     it.effect("toAsyncIterable - return does not reject an unawaited in-flight next", () =>
       Effect.gen(function*() {
         let interrupted = false

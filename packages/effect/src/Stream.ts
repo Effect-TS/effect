@@ -12004,7 +12004,7 @@ export const toAsyncIterableWith: {
       const scope = Scope.makeUnsafe()
       let pull: Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E, void, R> | undefined
       let currentIter: Iterator<A> | undefined
-      let currentFiber: Fiber.Fiber<Arr.NonEmptyReadonlyArray<A>, E | Cause.Done<void>> | undefined
+      let currentFiber: Fiber.Fiber<unknown, unknown> | undefined
       let pending: Promise<void> | undefined
       let closePromise: Promise<IteratorResult<A>> | undefined
       const close = (exit: Exit.Exit<unknown, unknown>): Promise<IteratorResult<A>> => {
@@ -12035,13 +12035,15 @@ export const toAsyncIterableWith: {
           currentIter = undefined
         }
         const fiber = runFork(
-          pull ??
-            Effect.flatMap(Channel.toPullScoped(self.channel, scope), (nextPull) => {
-              pull = nextPull
-              return nextPull
-            })
+          Effect.withFiber((fiber) => {
+            currentFiber = fiber
+            return pull ??
+              Effect.flatMap(Channel.toPullScoped(self.channel, scope), (nextPull) => {
+                pull = nextPull
+                return nextPull
+              })
+          })
         )
-        currentFiber = fiber
         const exit = await runPromise(Fiber.await(fiber))
         if (currentFiber === fiber) {
           currentFiber = undefined
