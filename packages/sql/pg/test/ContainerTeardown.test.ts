@@ -48,13 +48,12 @@ describe("PostgreSQL container lifecycle", () => {
       steps.push("remove")
       assert.strictEqual(url.searchParams.get("force"), "true")
       assert.strictEqual(url.searchParams.get("v"), "true")
-      const attempt = steps.filter((step) => step === "remove").length
       if (id === "remove-hangs") return void response.flushHeaders()
       if (id === "already-gone") {
         response.writeHead(404).end(JSON.stringify({ message: `No such container: ${id}` }))
         return
       }
-      if (id === "always-interrupted" || (id === "retry-succeeds" && attempt === 1)) {
+      if (id === "always-interrupted" || (id === "retry-succeeds" && steps.length === 1)) {
         // Close after a partial body, deterministically exercising docker-modem's
         // aborted-response path, not a probabilistic keep-alive reuse race.
         response.flushHeaders()
@@ -112,7 +111,7 @@ describe("PostgreSQL container lifecycle", () => {
 
   const container = (id: string) => {
     requests.set(id, [])
-    return { getId: () => id }
+    return id
   }
 
   it.live("retries an interrupted remove response", () =>

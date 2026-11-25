@@ -72,18 +72,12 @@ const instrumentClient = <A, E, R>(
     inner.pipe(Layer.tap(() => Effect.addFinalizer(() => marker(containerId, `${name} disposal start`))))
   )
 
-const isContainerNotFound = (error: unknown): boolean =>
-  typeof error === "object" && error !== null && "statusCode" in error && error.statusCode === 404
-
 // Shared with the regression tests so they exercise the real container finalizer.
 export const releasePgContainer = Effect.fnUntraced(
-  function*(container: {
-    getId(): string
-  }, options?: {
-    // Lets the regression tests exhaust the retries without waiting 15 seconds.
+  function*(id: string, options?: {
+    // Lets the regression tests exhaust the retries quickly.
     readonly removeTimeout?: Duration.Input | undefined
   }) {
-    const id = container.getId()
     lifecycleLog(id, "container-release", "start", 0)
     const client = yield* Effect.promise(() => lifecycle(id, "runtime-client", () => getContainerRuntimeClient()))
     const handle = client.container.getById(id)
@@ -95,14 +89,10 @@ export const releasePgContainer = Effect.fnUntraced(
       lifecycle(
         id,
         "remove",
-        async () => {
-          try {
-            await handle.remove({ force: true, v: true, abortSignal: signal })
-          } catch (error) {
-            if (isContainerNotFound(error)) return
-            throw error
-          }
-        },
+        () =>
+          handle.remove({ force: true, v: true, abortSignal: signal }).catch((error) => {
+            if (error?.statusCode !== 404) throw error
+          }),
         signal
       )
     ).pipe(
@@ -136,7 +126,7 @@ export class PgContainer extends Context.Service<PgContainer>()("test/PgContaine
         ),
       catch: (cause) => new ContainerError({ cause })
     }).pipe(Effect.tap((container) => marker(container.getId(), "container-started"))),
-    (container) => releasePgContainer(container)
+    (container) => releasePgContainer(container.getId())
   )
 }) {
   static readonly layer = Layer.effect(this)(this.make)
