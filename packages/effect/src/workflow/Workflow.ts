@@ -31,6 +31,7 @@ import * as SchemaParser from "../SchemaParser.ts"
 import * as Tranformation from "../SchemaTransformation.ts"
 import * as Scope from "../Scope.ts"
 import { makeHashDigest } from "./internal/crypto.ts"
+import { RetryingExecution } from "./internal/retry.ts"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.ts"
 
 const TypeId = "~effect/workflow/Workflow"
@@ -714,7 +715,9 @@ export const intoResult = <A, E, R>(
   Effect.contextWith((context: Context.Context<WorkflowInstance>) => {
     const instance = Context.get(context, InstanceTag)
     const captureDefects = Context.get(instance.workflow.annotations, CaptureDefects)
-    const suspendOnFailure = Context.get(instance.workflow.annotations, SuspendOnFailure)
+    // Inside `Activity.retry` a failure goes to the retry policy instead.
+    const suspendOnFailure = Context.get(instance.workflow.annotations, SuspendOnFailure) &&
+      Context.get(context, RetryingExecution) !== instance.executionId
     return effect.pipe(
       Effect.forkChild({ startImmediately: true }),
       // The outer uninterruptible region protects the fork and cancellation hook.
@@ -1035,7 +1038,12 @@ export const CaptureDefects = Context.Reference<boolean>(
  *
  * **Details**
  *
- * The suspended execution can later be resumed with the workflow's `resume` method, for example `MyWorkflow.resume(executionId)`.
+ * The suspended execution can later be resumed with the workflow's `resume`
+ * method, for example `MyWorkflow.resume(executionId)`.
+ *
+ * Inside `Activity.retry`, failed attempts reach the retry policy instead of
+ * suspending immediately; if the policy is exhausted and the error escapes,
+ * the workflow suspends and `resume` replays the stored failures.
  *
  * @stability unstable
  * @category services
