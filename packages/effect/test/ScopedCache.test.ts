@@ -1486,13 +1486,7 @@ describe("ScopedCache", () => {
 
       it.effect("reloading an expired entry makes it most recently used", () =>
         Effect.gen(function*() {
-          const released: Array<string> = []
-          const cache = yield* ScopedCache.make({
-            capacity: 2,
-            timeToLive: "1 second",
-            lookup: (key: string) =>
-              Effect.acquireRelease(Effect.succeed(key), () => Effect.sync(() => released.push(key)))
-          })
+          const { cache, cleanupTracker } = yield* makeManagedResourceCache(2, "1 second")
 
           yield* ScopedCache.get(cache, "a")
           yield* TestClock.adjust("500 millis")
@@ -1501,8 +1495,8 @@ describe("ScopedCache", () => {
           yield* ScopedCache.get(cache, "a")
           yield* ScopedCache.get(cache, "c")
 
-          assert.deepStrictEqual(Array.from(yield* ScopedCache.keys(cache)), ["a", "c"])
-          assert.deepStrictEqual(released, ["a", "b"])
+          assert.deepStrictEqual(yield* ScopedCache.keys(cache), ["a", "c"])
+          assert.deepStrictEqual(cleanupTracker.cleanedUp, ["a", "b"])
         }))
 
       it.effect("capacity of 1", () =>
