@@ -144,8 +144,8 @@ const registerAwait = (instance: WorkflowInstance["Service"], name: string) => {
 
 const releaseAwaits = (instance: WorkflowInstance["Service"], names: Array<string>) => {
   for (const name of names) {
-    const count = (instance.awaitedDeferreds.get(name) ?? 0) - 1
-    if (count <= 0) {
+    const count = instance.awaitedDeferreds.get(name)! - 1
+    if (count === 0) {
       instance.awaitedDeferreds.delete(name)
     } else {
       instance.awaitedDeferreds.set(name, count)
@@ -315,7 +315,8 @@ const recordHeld = Effect.fnUntraced(function*<A, E, R>(
       // `effect` counts on its own activity state, so a durable await inside
       // it waits for its own siblings and not for the hold above. The copy
       // starts unsuspended: a parked arm of an enclosing race leaves that
-      // copy marked suspended while only interrupting its own fiber.
+      // copy marked suspended while only interrupting its own fiber. A spread
+      // would fork the run's scope and snapshot `abandoned`.
       const local: WorkflowInstance["Service"] = {
         executionId: instance.executionId,
         workflow: instance.workflow,

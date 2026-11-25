@@ -31,7 +31,7 @@ import * as Semaphore from "../Semaphore.ts"
 import * as Activity from "../workflow/Activity.ts"
 import * as DurableClock from "../workflow/DurableClock.ts"
 import * as DurableDeferred from "../workflow/DurableDeferred.ts"
-import { attachLazyScope, markScopeAbandoned } from "../workflow/internal/scope.ts"
+import { markScopeAbandoned, withLazyScope } from "../workflow/internal/scope.ts"
 import * as Workflow from "../workflow/Workflow.ts"
 import * as WorkflowEngine from "../workflow/WorkflowEngine.ts"
 import * as ClusterSchema from "./ClusterSchema.ts"
@@ -515,17 +515,14 @@ export const make = Effect.gen(function*() {
               )
             return {
               run: (request: Entity.Request<any>) => {
-                // Release superseded deferred/activity tracking atomically with
-                // installing the new run so automatic wakes always consult the
-                // current run.
-                if (currentRun) {
-                  currentRun.instance.awaitedDeferreds.clear()
-                  currentRun.instance.completedDeferreds.clear()
-                  currentRun.activityAwaits.clear()
-                }
-                // Each run gets a fresh lazy scope under the activation's parent, so
-                // replays rebuild compensations without retaining unused scopes or instances.
-                const instance = attachLazyScope(
+                // A finalizer can keep the superseded instance reachable, so drop
+                // the waits it tracked.
+                currentRun?.instance.awaitedDeferreds.clear()
+                currentRun?.instance.completedDeferreds.clear()
+                // Each run forks its scope under the activation's parent on first
+                // use, so replays rebuild compensations while suspended runs keep
+                // theirs.
+                const instance = withLazyScope(
                   WorkflowEngine.WorkflowInstance.initial(workflow, executionId),
                   pending.scope
                 )

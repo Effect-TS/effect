@@ -394,9 +394,12 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           yield* pollUntil(workflow, executionId, "Suspended")
           const scope = access === "WorkflowInstance.scope after suspend" ? savedInstance?.scope : captured
           assert.isDefined(scope)
-          yield* Scope.addFinalizer(scope, Effect.sync(() => {
-            finalized++
-          }))
+          yield* Scope.addFinalizer(
+            scope,
+            Effect.sync(() => {
+              finalized++
+            })
+          )
           assert.strictEqual(finalized, 0, "late finalizer must not run while suspended")
 
           yield* workflow.interrupt(executionId)
@@ -430,9 +433,12 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.isDefined(savedInstance)
       let ownerLocal = 0
       let durable = 0
-      yield* Scope.addFinalizer(savedInstance.scope, Effect.sync(() => {
-        ownerLocal++
-      }))
+      yield* Scope.addFinalizer(
+        savedInstance.scope,
+        Effect.sync(() => {
+          ownerLocal++
+        })
+      )
       yield* Workflow.addFinalizer(() =>
         Effect.sync(() => {
           durable++

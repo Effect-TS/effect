@@ -31,7 +31,6 @@ import * as SchemaParser from "../SchemaParser.ts"
 import * as Tranformation from "../SchemaTransformation.ts"
 import * as Scope from "../Scope.ts"
 import { makeHashDigest } from "./internal/crypto.ts"
-import { closeInstanceScope } from "./internal/scope.ts"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.ts"
 
 const TypeId = "~effect/workflow/Workflow"
@@ -769,14 +768,14 @@ export const intoResult = <A, E, R>(
       (eff) =>
         Effect.onExitPrimitive(
           eff,
-          (exit) => Exit.isFailure(exit) ? closeInstanceScope(instance, exit) : undefined,
+          (exit) => Exit.isFailure(exit) ? Scope.close(instance.scope, exit) : undefined,
           true
         ),
       Effect.flatMap((result): Effect.Effect<Result<A, E>> => {
         if (result._tag !== "Complete") {
           return Effect.succeed(result)
         }
-        const close = Effect.as(closeInstanceScope(instance, result.exit), result)
+        const close = Effect.as(Scope.close(instance.scope, result.exit), result)
         return captureDefects
           ? Effect.catchCauseIf(close, Cause.hasDies, (closeCause) =>
             Effect.succeed(

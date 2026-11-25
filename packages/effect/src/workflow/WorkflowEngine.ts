@@ -27,7 +27,7 @@ import * as Semaphore from "../Semaphore.ts"
 import type * as Activity from "./Activity.ts"
 import type { DurableClock } from "./DurableClock.ts"
 import type * as DurableDeferred from "./DurableDeferred.ts"
-import { attachLazyScope } from "./internal/scope.ts"
+import { withLazyScope } from "./internal/scope.ts"
 import * as Workflow from "./Workflow.ts"
 
 /**
@@ -823,7 +823,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       // Like the cluster engine, each run gets a fresh lazy scope under the
       // execution scope, so replays rebuild compensations without retaining
       // unused child scopes.
-      const instance = attachLazyScope(
+      const instance = withLazyScope(
         WorkflowInstance.initial(state.instance.workflow, state.instance.executionId),
         executionScope
       )

@@ -1611,9 +1611,12 @@ describe("WorkflowEngine", () => {
           yield* pollUntil(workflow, executionId, "Suspended")
           const scope = access === "WorkflowInstance.scope after suspend" ? savedInstance?.scope : captured
           assert.isDefined(scope)
-          yield* Scope.addFinalizer(scope, Effect.sync(() => {
-            finalized++
-          }))
+          yield* Scope.addFinalizer(
+            scope,
+            Effect.sync(() => {
+              finalized++
+            })
+          )
           assert.strictEqual(finalized, 0, "late finalizer must not run while suspended")
 
           yield* workflow.interrupt(executionId)
