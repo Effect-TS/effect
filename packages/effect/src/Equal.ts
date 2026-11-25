@@ -225,6 +225,28 @@ function compareBoth(self: unknown, that: unknown): boolean {
 
 function compareObjects(self: object, that: object): boolean {
   const depth = pathLeft.length
+  if (depth === 0) {
+    // Only outermost results are independent of path assumptions.
+    let known = results.get(self)
+    if (!known) results.set(self, known = new WeakMap())
+    let result = known.get(that)
+    if (result === undefined) {
+      try {
+        result = compareOnPath(self, that)
+      } finally {
+        if (seenPair.size > 0) seenPair.clear()
+        if (seenPairMulti.size > 0) seenPairMulti.clear()
+      }
+      known.set(that, result)
+    }
+    return result
+  }
+  const first = seenPair.get(self)
+  if (first !== undefined) {
+    if (first === that) return true
+    const multi = seenPairMulti.get(self)
+    if (multi !== undefined && multi.has(that)) return true
+  }
   let sideRevisit = false
   // A repeated pair closes a cycle under coinductive equality.
   for (let i = depth; i-- > 0;) {
@@ -241,24 +263,32 @@ function compareObjects(self: object, that: object): boolean {
     cycles++
     if (Hash.hash(self) !== Hash.hash(that)) return false
   }
-  if (depth) return compareOnPath(self, that)
-  // Only outermost results are independent of path assumptions.
-  let known = results.get(self)
-  if (!known) results.set(self, known = new WeakMap())
-  let result = known.get(that)
-  if (result === undefined) known.set(that, result = compareOnPath(self, that))
-  return result
+  return compareOnPath(self, that)
 }
 
 function compareOnPath(self: object, that: object): boolean {
+  const depth = pathLeft.length
   const seen = cycles
   pathLeft.push(self)
   pathRight.push(that)
   try {
     const result = compareStructure(self, that)
     // Preserve the Hash law (Equal.equals => equal Hash.hash) when a cycle was closed.
-    if (result && cycles !== seen && Hash.hash(self) !== Hash.hash(that)) {
-      return false
+    if (result && cycles !== seen) {
+      return Hash.hash(self) === Hash.hash(that)
+    }
+    if (result && depth > 0) {
+      const first = seenPair.get(self)
+      if (first === undefined) {
+        seenPair.set(self, that)
+      } else if (first !== that) {
+        let multi = seenPairMulti.get(self)
+        if (multi === undefined) {
+          multi = new Set<object>()
+          seenPairMulti.set(self, multi)
+        }
+        multi.add(that)
+      }
     }
     return result
   } finally {
@@ -271,6 +301,8 @@ function compareOnPath(self: object, that: object): boolean {
 const pathLeft: Array<object> = []
 const pathRight: Array<object> = []
 let cycles = 0
+const seenPair = new Map<object, object>()
+const seenPairMulti = new Map<object, Set<object>>()
 const results = new WeakMap<object, WeakMap<object, boolean>>()
 
 function compareStructure(self: object, that: object): boolean {

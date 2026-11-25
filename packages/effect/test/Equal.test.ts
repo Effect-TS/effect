@@ -211,6 +211,26 @@ describe("Equal.equals", () => {
       assert.strictEqual(reads, 2)
     })
 
+    it("avoids exponential traversal on shared acyclic graphs", () => {
+      let reads = 0
+      const make = (tag: number) => {
+        let graph: object = {
+          get value() {
+            reads++
+            return 1
+          }
+        }
+        for (let i = 0; i < 14; i++) graph = { left: graph, right: graph }
+        return { graph, tag }
+      }
+      assert.isFalse(Equal.equals(make(0), make(1)))
+      assert.strictEqual(reads, 2)
+
+      reads = 0
+      assert.isTrue(Equal.equals(make(0), make(0)))
+      assert.strictEqual(reads, 2)
+    })
+
     it("does not equate plain objects with built-ins that override constructor", () => {
       const record = { constructor: Object }
       const set = Object.assign(new Set(), record)
