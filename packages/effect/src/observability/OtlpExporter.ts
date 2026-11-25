@@ -269,20 +269,15 @@ export const make: (
   const isStopped = () => closed || isDisabled()
 
   // Progress is counted in items, or in snapshots when `exportsEmpty` is set:
-  // `requested` is how far callers asked to drain, `started` is how far batches
-  // dequeued so far reach, and `inFlight` tracks each active batch's starting
-  // offset so out-of-order completion never advances the settled watermark past
-  // an earlier in-flight batch.
+  // `requested` is how far callers asked to drain and `started` is how far the
+  // batches dequeued so far reach. `inFlight` maps each working fiber to the
+  // offset its batch starts at. Offsets only grow and a `Map` keeps insertion
+  // order, so its first entry is the earliest export in flight and everything
+  // before it has settled, even when batches complete out of order.
   let requested = 0
   let started = 0
-  const inFlight = new Set<{ readonly start: number }>()
-  const settledWatermark = () => {
-    let min = started
-    for (const batch of inFlight) {
-      if (batch.start < min) min = batch.start
-    }
-    return min
-  }
+  const inFlight = new Map<Fiber.Fiber<unknown, unknown>, number>()
+  const settled = () => closed ? Infinity : inFlight.values().next().value ?? started
 
   interface Waiter {
     readonly target: number
@@ -290,9 +285,9 @@ export const make: (
   }
   const waiters = new Set<Waiter>()
   const notifyWaiters = () => {
-    const settled = closed ? started : settledWatermark()
+    const reached = settled()
     for (const waiter of waiters) {
-      if (closed || settled >= waiter.target) {
+      if (reached >= waiter.target) {
         waiters.delete(waiter)
         waiter.resume(Effect.void)
       }
@@ -300,7 +295,7 @@ export const make: (
   }
   const awaitSettled = (target: number): Effect.Effect<void> =>
     Effect.callback((resume) => {
-      if (closed || settledWatermark() >= target) return resume(Effect.void)
+      if (settled() >= target) return resume(Effect.void)
       const waiter: Waiter = { target, resume }
       waiters.add(waiter)
       return Effect.sync(() => {
@@ -328,14 +323,11 @@ export const make: (
     }).pipe(
       Effect.catchCause((cause) => {
         MutableList.clear(queue)
-        // Discarded queued/requested work will never start; advance `started`
-        // past it so waiters still await healthy in-flight batches without
-        // hanging on discarded items.
-        started = Math.max(started, requested)
-        requested = started
-        const now = clock.currentTimeMillisUnsafe()
-        if (disabledUntil !== undefined && now < disabledUntil) return Effect.void
-        disabledUntil = now + 60_000
+        // Nothing queued or requested will start now. Count it as started so
+        // waiters only wait for the exports still in flight.
+        requested = started = Math.max(started, requested)
+        if (isDisabled()) return Effect.void
+        disabledUntil = clock.currentTimeMillisUnsafe() + 60_000
         return Effect.logWarning("Disabling exporter for 60 seconds", cause)
       }),
       Effect.annotateLogs({
@@ -346,43 +338,32 @@ export const make: (
 
   // Up to `concurrency` workers run on demand while there is work. The
   // exporter owns them, so interrupting a flush never cancels a request.
-  const hasWork = () => !isStopped() && (requested > started || queue.length >= batchLimit)
-  const workerLoop: Effect.Effect<void> = Effect.suspend(() => {
-    if (!hasWork()) return Effect.void
+  const canStart = () =>
+    inFlight.size < concurrency && !isStopped() && (requested > started || queue.length >= batchLimit)
+  const workerLoop: Effect.Effect<void> = Effect.withFiber((fiber) => {
+    if (!canStart()) return Effect.void
     const items = MutableList.takeN(queue, batchLimit)
-    const batch = { start: started }
+    inFlight.set(fiber, started)
     started += exportsEmpty ? 1 : items.length
-    inFlight.add(batch)
     // `exit` keeps the worker alive if the failure handler itself dies, for
     // example when a logger throws.
     return Effect.exit(exportBatch(items)).pipe(
       Effect.ensuring(Effect.sync(() => {
-        inFlight.delete(batch)
+        inFlight.delete(fiber)
+        if (inFlight.size === 0 && !exportsEmpty && queue.length === 0 && armed.closeUnsafe()) {
+          wake.openUnsafe()
+        }
         notifyWaiters()
       })),
       Effect.andThen(workerLoop)
     )
   })
-  const runWorker = workerLoop.pipe(
-    Effect.ensuring(Effect.sync(() => {
-      activeWorkers--
-      if (activeWorkers === 0 && !exportsEmpty && queue.length === 0 && armed.closeUnsafe()) {
-        wake.openUnsafe()
-      }
-      notifyWaiters()
-    }))
-  )
   const runFork = Effect.runForkWith(services)
-  let activeWorkers = 0
-  const workers = new Set<Fiber.Fiber<void, never>>()
+  // A worker normally claims its batch before `runFork` returns. Stop when it
+  // has not, so a scheduler that yields first cannot make this loop spin.
   const startWorkers = () => {
-    while (activeWorkers < concurrency && hasWork()) {
-      activeWorkers++
-      const fiber = runFork(runWorker)
-      workers.add(fiber)
-      fiber.addObserver(() => {
-        workers.delete(fiber)
-      })
+    while (canStart() && inFlight.has(runFork(workerLoop))) {
+      // keep starting workers
     }
   }
 
@@ -390,8 +371,7 @@ export const make: (
   // it to settle together with every export already in flight. During cooldown,
   // no new export starts, but any surviving in-flight export is still awaited.
   const drain: Effect.Effect<void> = Effect.suspend(() => {
-    if (closed) return Effect.void
-    if (isDisabled()) return awaitSettled(started)
+    if (isStopped()) return awaitSettled(started)
     const target = started + (exportsEmpty ? 1 : queue.length)
     requested = Math.max(requested, target)
     startWorkers()
@@ -427,7 +407,7 @@ export const make: (
           closed = true
           MutableList.clear(queue)
           notifyWaiters()
-          for (const fiber of workers) {
+          for (const fiber of inFlight.keys()) {
             fiber.interruptUnsafe()
           }
         }))
