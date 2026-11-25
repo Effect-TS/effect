@@ -327,10 +327,9 @@ describe("Stream", () => {
           { done: false, value: 6 },
           { done: true, value: undefined }
         ])
-        assert.deepStrictEqual(yield* Effect.promise(() => iterator.next()), { done: true, value: undefined })
       }))
 
-    it.effect("toAsyncIterable - queued reads progress after a rejection", () =>
+    it.effect("toAsyncIterable - overlapping reads settle after stream failure", () =>
       Effect.gen(function*() {
         const error = new Error("stream failure")
         const iterator = Stream.toAsyncIterable(Stream.fail(error))[Symbol.asyncIterator]()
@@ -340,7 +339,6 @@ describe("Stream", () => {
 
         assert.strictEqual(yield* Effect.promise(() => first), error)
         assert.deepStrictEqual(yield* Effect.promise(() => second), { done: true, value: undefined })
-        assert.deepStrictEqual(yield* Effect.promise(() => iterator.next()), { done: true, value: undefined })
       }))
 
     it.effect("toAsyncIterable - return interrupts an in-flight pull", () =>

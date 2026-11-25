@@ -12005,10 +12005,11 @@ export const toAsyncIterableWith: {
       let pull: Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E, void, R> | undefined
       let currentIter: Iterator<A> | undefined
       let currentFiber: Fiber.Fiber<Arr.NonEmptyReadonlyArray<A>, E | Cause.Done<void>> | undefined
-      let pendingRead: Promise<void> | undefined
+      let pending: Promise<void> | undefined
       let closePromise: Promise<IteratorResult<A>> | undefined
       const close = (exit: Exit.Exit<unknown, unknown>): Promise<IteratorResult<A>> => {
         if (closePromise) return closePromise
+        currentIter = undefined
         const fiber = currentFiber
         closePromise = runPromise(Effect.as(
           Effect.andThen(
@@ -12026,7 +12027,7 @@ export const toAsyncIterableWith: {
           await runPromise(Effect.logError("Suppressed error while closing Stream async iterator", error))
         }
       }
-      const readNext = async (): Promise<IteratorResult<A>> => {
+      const read = async (): Promise<IteratorResult<A>> => {
         if (closePromise) return closePromise
         if (currentIter) {
           const next = currentIter.next()
@@ -12046,6 +12047,7 @@ export const toAsyncIterableWith: {
           currentFiber = undefined
         }
         if (Exit.isSuccess(exit)) {
+          if (closePromise) return closePromise
           currentIter = exit.value[Symbol.iterator]()
           return currentIter.next()
         } else if (Pull.isDoneCause(exit.cause)) {
@@ -12058,26 +12060,29 @@ export const toAsyncIterableWith: {
         throw Cause.squash(exit.cause)
       }
       return {
-        async next() {
-          if (!pendingRead && !closePromise && currentIter) {
-            const result = currentIter.next()
-            if (!result.done) return result
-            currentIter = undefined
-          }
-          const previous = pendingRead
-          let finish = constVoid
-          const current = new Promise<void>((resolve) => {
-            finish = resolve
-          })
-          pendingRead = current
-          try {
-            if (previous) await previous
-            return await readNext()
-          } finally {
-            if (pendingRead === current) {
-              pendingRead = undefined
+        async next(): Promise<IteratorResult<A>> {
+          if (pending === undefined) {
+            if (closePromise) return closePromise
+            if (currentIter) {
+              const next = currentIter.next()
+              if (!next.done) return next
+              currentIter = undefined
             }
-            finish()
+          }
+          const previous = pending
+          let release!: () => void
+          const current = new Promise<void>((resolve) => {
+            release = resolve
+          })
+          pending = current
+          try {
+            if (previous !== undefined) await previous
+            return await read()
+          } finally {
+            if (pending === current) {
+              pending = undefined
+            }
+            release()
           }
         },
         return() {
