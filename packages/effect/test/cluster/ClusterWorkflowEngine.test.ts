@@ -418,49 +418,131 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       })
   )
 
-  it.effect("skips late durable finalizers and compensations but runs late owner-local cleanup after owner teardown", () =>
+  it.effect("skips durable finalizers and compensations on a shared scope during active handoff and after teardown", () =>
     Effect.gen(function*() {
+      const otherRunner = Runner.make({
+        address: RunnerAddress.make("localhost", 9998),
+        groups: ["default"],
+        weight: 1
+      })
+      let assignSelf = true
+      const releases: Array<ShardId.ShardId> = []
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(RunnerStorage.makeMemory, (storage) =>
+          RunnerStorage.RunnerStorage.of({
+            ...storage,
+            getRunners: Effect.map(
+              storage.getRunners,
+              (runners) =>
+                assignSelf ? runners : [...runners.map(([runner]) => [runner, false] as const), [otherRunner, true]]
+            ),
+            release: (_address, shardId) =>
+              Effect.sync(() => {
+                releases.push(shardId)
+              })
+          }))
+      )
       const gate = DurableDeferred.make("AbandonedLateFinalizer/Gate")
       const workflow = Workflow.make("AbandonedLateFinalizer", {
         payload: {},
         idempotencyKey: () => "one"
+      })
+      const started = yield* Latch.make()
+      const release = yield* Latch.make()
+      const slow = Activity.make({
+        name: "slow",
+        execute: started.open.pipe(Effect.andThen(release.await))
+      })
+      const after = Activity.make({
+        name: "after",
+        execute: Effect.void
       })
       let savedInstance: WorkflowInstance["Service"] | undefined
       const layer = workflow.toLayer(() =>
         Effect.gen(function*() {
           savedInstance ??= yield* WorkflowInstance
           yield* DurableDeferred.await(gate)
+          yield* slow
+          yield* after
         })
-      ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+      ).pipe(
+        Layer.provideMerge(makeTestWorkflowEngine({
+          shardingLayer: Sharding.layer.pipe(Layer.provide(runnerStorage)),
+          config: {
+            shardsPerGroup: 1,
+            availableShardGroups: ["default"],
+            assignedShardGroups: ["default"],
+            entityTerminationTimeout: Duration.seconds(90),
+            entityMessagePollInterval: 10,
+            refreshAssignmentsInterval: 10
+          }
+        }))
+      )
 
+      const cleanup: Array<string> = []
       yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const shardId = ShardId.make("default", 1)
+        yield* advanceUntil(() => sharding.hasShardId(shardId), "runner must acquire the shard", 10, 500)
+
         const executionId = yield* workflow.execute({}, { discard: true })
         yield* pollUntil(workflow, executionId, "Suspended")
+        assert.isDefined(savedInstance)
+
+        yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+          value: undefined
+        })
+        yield* advanceUntil(() => started.isOpen(), "run 2 slow activity must start", 10, 500)
+
+        yield* Scope.addFinalizer(
+          savedInstance.scope,
+          Effect.sync(() => {
+            cleanup.push("local")
+          })
+        )
+        yield* Workflow.addFinalizer(() =>
+          Effect.sync(() => {
+            cleanup.push("durable")
+          })
+        ).pipe(Effect.provideService(WorkflowInstance, savedInstance))
+        yield* Workflow.withCompensation(Effect.void, () =>
+          Effect.sync(() => {
+            cleanup.push("comp")
+          })).pipe(
+            Effect.provideService(WorkflowInstance, savedInstance),
+            Scope.provide(savedInstance.scope)
+          )
+
+        assignSelf = false
+        yield* advanceUntil(() => !sharding.hasShardId(shardId), "runner must drop the moved shard", 10, 500)
+        yield* release.open
+        yield* advanceUntil(() => releases.length > 0, "shard must be released", 10, 500)
+
+        assert.deepStrictEqual(cleanup, ["local"])
       }).pipe(Effect.provide(layer))
 
       assert.isDefined(savedInstance)
-      let ownerLocal = 0
-      let durable = 0
       yield* Scope.addFinalizer(
         savedInstance.scope,
         Effect.sync(() => {
-          ownerLocal++
+          cleanup.push("late-local")
         })
       )
       yield* Workflow.addFinalizer(() =>
         Effect.sync(() => {
-          durable++
+          cleanup.push("late-durable")
         })
       ).pipe(Effect.provideService(WorkflowInstance, savedInstance))
       yield* Workflow.withCompensation(Effect.void, () =>
         Effect.sync(() => {
-          durable++
+          cleanup.push("late-comp")
         })).pipe(
           Effect.provideService(WorkflowInstance, savedInstance),
           Scope.provide(savedInstance.scope)
         )
-      assert.strictEqual(ownerLocal, 1, "late owner-local cleanup must run after teardown")
-      assert.strictEqual(durable, 0, "late durable finalizer and compensation must be skipped after teardown")
+      assert.deepStrictEqual(cleanup, ["local", "late-local"])
     }))
 
   it.effect("wakes an activity deferred completed before a parallel sibling lets the workflow suspend", () =>

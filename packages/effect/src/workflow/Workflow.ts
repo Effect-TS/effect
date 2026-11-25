@@ -31,7 +31,7 @@ import * as SchemaParser from "../SchemaParser.ts"
 import * as Tranformation from "../SchemaTransformation.ts"
 import * as Scope from "../Scope.ts"
 import { makeHashDigest } from "./internal/crypto.ts"
-import { isScopeAbandoned } from "./internal/scope.ts"
+import { isScopeAbandoned, markScopeAbandoned } from "./internal/scope.ts"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.ts"
 
 const TypeId = "~effect/workflow/Workflow"
@@ -749,6 +749,9 @@ export const intoResult = <A, E, R>(
           const filtered = reasons.length === 0 ? cause : Cause.fromReasons(reasons)
           const abandoned = instance.abandoned && !instance.interrupted && hasInterruptsOnly
           instance.abandoned = abandoned
+          if (abandoned) {
+            markScopeAbandoned(instance.scope)
+          }
           if (instance.suspended && hasInterruptsOnly && !abandoned) {
             return Effect.succeed(
               new Suspended(instance.failed ? { cause: instance.cause, failed: true } : { cause: instance.cause })
