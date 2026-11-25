@@ -862,6 +862,8 @@ describe("OpenApiGenerator", () => {
                     format: "int64"
                   },
                   plainDigits: { $ref: "#/components/schemas/Digits" },
+                  unsignedRef: { $ref: "#/components/schemas/Signed", format: "uint64" },
+                  signed: { $ref: "#/components/schemas/Signed" },
                   tier: { type: "string", format: "int64", enum: ["1", "2"] },
                   amounts: { type: "array", items: { type: "string", format: "int64" }, uniqueItems: true },
                   count: { type: "string", format: "uint64" },
@@ -880,6 +882,8 @@ describe("OpenApiGenerator", () => {
                   "refInt",
                   "nullableRefInt",
                   "plainDigits",
+                  "unsignedRef",
+                  "signed",
                   "tier",
                   "amounts",
                   "count",
@@ -891,6 +895,7 @@ describe("OpenApiGenerator", () => {
               },
               Balance: { type: "string", format: "int64", pattern: "^-?[1-9][0-9]*$" },
               Digits: { type: "string", pattern: "^[0-9]+$" },
+              Signed: { type: ["string", "null"], format: "int64" },
               Node: {
                 type: "object",
                 properties: {
@@ -915,6 +920,8 @@ describe("OpenApiGenerator", () => {
           refInt: "01",
           nullableRefInt: "01",
           plainDigits: "01",
+          unsignedRef: "18446744073709551615",
+          signed: "-1",
           tier: "1",
           amounts: ["01", "1"],
           count: "18446744073709551615",
@@ -934,6 +941,8 @@ describe("OpenApiGenerator", () => {
               refInt: 1n,
               nullableRefInt: 1n,
               plainDigits: "01",
+              unsignedRef: 18446744073709551615n,
+              signed: -1n,
               tier: 1n,
               amounts: [1n, 1n],
               count: 18446744073709551615n,
@@ -943,11 +952,12 @@ describe("OpenApiGenerator", () => {
             }
             assert.deepStrictEqual(decode(wire), Exit.succeed(decoded))
             assert.deepStrictEqual(
-              decode({ ...wire, deletedAt: "2026-06-01T00:00:00.000Z", nullableRefInt: null }),
+              decode({ ...wire, deletedAt: "2026-06-01T00:00:00.000Z", nullableRefInt: null, unsignedRef: null }),
               Exit.succeed({
                 ...decoded,
                 deletedAt: DateTime.makeUnsafe("2026-06-01T00:00:00.000Z"),
-                nullableRefInt: null
+                nullableRefInt: null,
+                unsignedRef: null
               })
             )
             assert.deepStrictEqual(
@@ -967,6 +977,7 @@ describe("OpenApiGenerator", () => {
             assert.isTrue(Exit.isFailure(decode({ ...wire, refInt: "-1" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, refInt: "9223372036854775808" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, nullableRefInt: "-1" })))
+            assert.isTrue(Exit.isFailure(decode({ ...wire, unsignedRef: "-1" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, tier: "01" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, tier: "3" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, amounts: ["1", "1"] })))

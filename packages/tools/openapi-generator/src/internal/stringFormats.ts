@@ -229,11 +229,12 @@ const attachAnnotations = (
   }
 }
 
-const omitIdentifier = (
+// An inlined target is no longer the named definition, and the use-site format replaces its own.
+const omitTargetAnnotations = (
   annotations: Schema.Annotations.Annotations | undefined
 ): Schema.Annotations.Annotations | undefined => {
-  if (annotations === undefined || !Object.hasOwn(annotations, "identifier")) return annotations
-  const { identifier: _, ...rest } = annotations
+  if (annotations === undefined) return undefined
+  const { identifier: _identifier, format: _format, ...rest } = annotations
   return Object.keys(rest).length === 0 ? undefined : rest
 }
 
@@ -382,10 +383,13 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
     }
   }
 
+  // `useSite` marks a format from a referencing use site, which takes precedence over
+  // formats inside the inlined target.
   const rewriteValue = (
     representation: Representation,
     path: string,
-    inherited?: FormatCodec
+    inherited?: FormatCodec,
+    useSite = false
   ): Representation => {
     if (representation._tag === "Reference") {
       if (inherited === undefined || !isEligibleRef(representation.$ref)) return representation
@@ -401,12 +405,12 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
       if (hasStringBranch(def)) {
         const inlined = def._tag === "Reference"
           ? def
-          : { ...def, annotations: omitIdentifier(def.annotations) }
-        return rewriteValue(inlined, path, inherited)
+          : { ...def, annotations: omitTargetAnnotations(def.annotations) }
+        return rewriteValue(inlined, path, inherited, true)
       }
       return representation
     }
-    const codec = getFormatCodec(representation) ?? inherited
+    const codec = useSite ? inherited : getFormatCodec(representation) ?? inherited
     if (codec !== undefined && isStringOnly(representation)) {
       return wrapDecodeTo(rewriteWire(representation), codec)
     }
@@ -420,7 +424,7 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
         }
       case "Suspend":
         if (isNonRecursiveRefSuspend(representation, cyclic)) {
-          return attachAnnotations(rewriteValue(representation.thunk, path, codec), representation.annotations)
+          return attachAnnotations(rewriteValue(representation.thunk, path, codec, useSite), representation.annotations)
         }
         return { ...representation, thunk: rewriteWire(representation.thunk) }
       case "TemplateLiteral":
@@ -488,7 +492,7 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
         return {
           ...representation,
           checks,
-          types: representation.types.map((type, index) => rewriteValue(type, `${path}/${index}`, codec))
+          types: representation.types.map((type, index) => rewriteValue(type, `${path}/${index}`, codec, useSite))
         }
       }
       default:
