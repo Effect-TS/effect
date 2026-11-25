@@ -105,9 +105,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             assert.instanceOf(error, McpSchema.McpReverseOperationError)
             assert.strictEqual(error.operation, "roots/list")
-            assert.isObject(error.cause)
-            assert.propertyVal(error.cause, "code", McpSchema.INTERNAL_ERROR_CODE)
-            assert.propertyVal(error.cause, "message", "Roots unavailable")
+            assert.deepInclude(error.cause, { code: McpSchema.INTERNAL_ERROR_CODE, message: "Roots unavailable" })
           }))
       })
     })

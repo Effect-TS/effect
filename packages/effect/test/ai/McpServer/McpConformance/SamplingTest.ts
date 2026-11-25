@@ -360,9 +360,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             assert.instanceOf(error, McpSchema.McpReverseOperationError)
             assert.strictEqual(error.operation, "sampling/createMessage")
-            assert.isObject(error.cause)
-            assert.propertyVal(error.cause, "code", McpSchema.INTERNAL_ERROR_CODE)
-            assert.propertyVal(error.cause, "message", "Sampling failed")
+            assert.deepInclude(error.cause, { code: McpSchema.INTERNAL_ERROR_CODE, message: "Sampling failed" })
           }))
 
         it.effect.skipIf(protocol.protocolVersion !== "2025-11-25")(

@@ -1,9 +1,8 @@
-import { NodeFileSystem } from "@effect/platform-node"
+import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { Effect, FileSystem, Layer } from "effect"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import { PersistedQueue } from "effect/persistence"
-import { Reactivity } from "effect/reactivity"
 
 const ClientLayer = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -13,7 +12,7 @@ const ClientLayer = Effect.gen(function*() {
   })
 }).pipe(
   Layer.unwrap,
-  Layer.provide([NodeFileSystem.layer, Reactivity.layer])
+  Layer.provide(NodeFileSystem.layer)
 )
 
 PersistedQueueTest.suite(
