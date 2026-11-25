@@ -516,6 +516,14 @@ export const make = Effect.gen(function*() {
               )
             return {
               run: (request: Entity.Request<any>) => {
+                // Release superseded deferred/activity tracking atomically with
+                // installing the new run so automatic wakes always consult the
+                // current run.
+                if (currentRun) {
+                  currentRun.instance.awaitedDeferreds.clear()
+                  currentRun.instance.completedDeferreds.clear()
+                  currentRun.activityAwaits.clear()
+                }
                 // Each run gets a fresh scope under the activation's parent, so
                 // replays rebuild compensations while suspended runs keep theirs.
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
@@ -585,11 +593,16 @@ export const make = Effect.gen(function*() {
                   // Deferred wakes interrupt only the body, so `intoResult` still reports `Suspended`.
                   (effect) => deferredState.trackRun(instance, effect),
                   Workflow.intoResult,
-                  Effect.onExit((exit) =>
-                    Exit.isSuccess(exit) && exit.value._tag === "Suspended"
-                      ? Effect.void
-                      : closeRuns(pending, instance.abandoned)
-                  ),
+                  Effect.onExit((exit) => {
+                    if (Exit.isSuccess(exit) && exit.value._tag === "Suspended") {
+                      if (instance.scope.state._tag === "Empty") {
+                        pending.instances.delete(instance)
+                        return Scope.close(instance.scope, Exit.void)
+                      }
+                      return Effect.void
+                    }
+                    return closeRuns(pending, instance.abandoned)
+                  }),
                   Effect.provideService(WorkflowEngine.WorkflowInstance, instance),
                   // Request middleware and local callers may carry another entity's context.
                   Effect.provideService(CurrentActivationScope, activation)

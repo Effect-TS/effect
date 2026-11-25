@@ -144,8 +144,8 @@ const registerAwait = (instance: WorkflowInstance["Service"], name: string) => {
 
 const releaseAwaits = (instance: WorkflowInstance["Service"], names: Array<string>) => {
   for (const name of names) {
-    const count = instance.awaitedDeferreds.get(name)! - 1
-    if (count === 0) {
+    const count = (instance.awaitedDeferreds.get(name) ?? 0) - 1
+    if (count <= 0) {
       instance.awaitedDeferreds.delete(name)
     } else {
       instance.awaitedDeferreds.set(name, count)

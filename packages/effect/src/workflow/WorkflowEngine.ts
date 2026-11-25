@@ -817,6 +817,8 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         state.scope = Scope.makeUnsafe()
       }
       const executionScope = state.scope
+      state.instance.awaitedDeferreds.clear()
+      state.instance.completedDeferreds.clear()
       // Like the cluster engine, each run gets a fresh scope, so replays rebuild
       // compensations instead of registering them again.
       const instance = WorkflowInstance.initial(state.instance.workflow, state.instance.executionId, {
@@ -852,7 +854,11 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           return Effect.forkIn(resume(state.parent, "automatic"), scope)
         }),
         Effect.onExit((exit) => {
-          if (Exit.isSuccess(exit) && exit.value._tag === "Suspended") return Effect.void
+          if (Exit.isSuccess(exit) && exit.value._tag === "Suspended") {
+            return instance.scope.state._tag === "Empty"
+              ? Scope.close(instance.scope, Exit.void)
+              : Effect.void
+          }
           // The final run's scope closes with the real exit. Closing the parent
           // then closes earlier scopes in reverse order with `Exit.void`, so their
           // superseded compensations are skipped, which means their finalizers
