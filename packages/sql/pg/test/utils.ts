@@ -1,6 +1,6 @@
 import { PgClient, type PgConnection } from "@effect/sql-pg"
 import { PostgreSqlContainer } from "@testcontainers/postgresql"
-import { Clock, Context, Data, type Duration, Effect, Layer, Redacted, type Scope, String } from "effect"
+import { Clock, Context, Data, type Duration, Effect, Layer, Redacted, Schedule, type Scope, String } from "effect"
 import * as Fs from "node:fs"
 import { inspect } from "node:util"
 import { getContainerRuntimeClient, Wait } from "testcontainers"
@@ -72,31 +72,47 @@ const instrumentClient = <A, E, R>(
     inner.pipe(Layer.tap(() => Effect.addFinalizer(() => marker(containerId, `${name} disposal start`))))
   )
 
+const isContainerNotFound = (error: unknown): boolean =>
+  typeof error === "object" && error !== null && "statusCode" in error && error.statusCode === 404
+
 // Shared with the regression tests so they exercise the real container finalizer.
 export const releasePgContainer = Effect.fnUntraced(
   function*(container: {
     getId(): string
-    stop(options: { remove: boolean }): Promise<unknown>
   }, options?: {
     // Lets the regression tests exhaust the retries without waiting 15 seconds.
-    readonly waitTimeout?: Duration.Input | undefined
+    readonly removeTimeout?: Duration.Input | undefined
   }) {
     const id = container.getId()
     lifecycleLog(id, "container-release", "start", 0)
-    yield* Effect.promise(() => lifecycle(id, "stop", () => container.stop({ remove: false })))
     const client = yield* Effect.promise(() => lifecycle(id, "runtime-client", () => getContainerRuntimeClient()))
-    const handle = client.container.getById(container.getId())
-    // Stop can return before the daemon processes the exit event; wait before removing.
-    // docker-modem can leave an aborted response pending forever. Abort each
-    // timed-out request and retry this read-only wait, never the whole release.
+    const handle = client.container.getById(id)
+    // A forced removal kills and removes the container in one request, and a
+    // retry after a dropped or timed-out response is safe because 404 means
+    // the container is already gone. Space retries so an overlapping Docker
+    // 409 ("removal already in progress") has time to settle.
     yield* Effect.tryPromise((signal) =>
-      lifecycle(id, "wait-not-running", () => handle.wait({ condition: "not-running", abortSignal: signal }), signal)
-    ).pipe(Effect.timeout(options?.waitTimeout ?? "5 seconds"), Effect.retry({ times: 2 }))
-    yield* Effect.promise(() => lifecycle(id, "remove", () => client.container.remove(handle, { removeVolumes: true })))
+      lifecycle(
+        id,
+        "remove",
+        async () => {
+          try {
+            await handle.remove({ force: true, v: true, abortSignal: signal })
+          } catch (error) {
+            if (isContainerNotFound(error)) return
+            throw error
+          }
+        },
+        signal
+      )
+    ).pipe(
+      Effect.timeout(options?.removeTimeout ?? "5 seconds"),
+      Effect.retry({ times: 2, schedule: Schedule.spaced("500 millis") })
+    )
     lifecycleLog(id, "container-release", "done", 0)
   },
-  // Bound the entire release below the existing 30s hook limit, including
-  // stop and removal. Exhausted retries and timeouts remain visible defects.
+  // Bound the entire release below the existing 30s hook limit. Exhausted
+  // retries and timeouts remain visible defects.
   Effect.timeout("20 seconds"),
   (_) => Effect.orDie(_),
   // Fixture finalizers inherit TestClock from it.layer; cleanup must use real deadlines.

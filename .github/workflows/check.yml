@@ -200,10 +200,10 @@ jobs:
           deno-version: ${{ matrix.deno }}
           bun-version: ${{ matrix.bun }}
       - name: Test
-        if: matrix.runtime != 'Deno'
+        if: matrix.runtime != 'Deno' && matrix.runtime != 'Bun'
         run: ${{ matrix.command }}
       - name: Test with PostgreSQL lifecycle capture
-        if: matrix.runtime == 'Deno'
+        if: matrix.runtime == 'Deno' || matrix.runtime == 'Bun'
         shell: bash
         env:
           PG_LIFECYCLE_DIAGNOSTICS: "1"
@@ -227,10 +227,10 @@ jobs:
           trap 'exit 143' TERM
           ${{ matrix.command }} 2>&1 | tee "$capture_dir/tests.log"
       - name: Upload PostgreSQL lifecycle diagnostics
-        if: always() && matrix.runtime == 'Deno' && (failure() || cancelled())
+        if: always() && (matrix.runtime == 'Deno' || matrix.runtime == 'Bun') && (failure() || cancelled())
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: deno-pg-lifecycle-${{ github.run_attempt }}
+          name: ${{ matrix.runtime == 'Deno' && 'deno' || 'bun' }}-pg-lifecycle-${{ github.run_attempt }}
           path: ${{ runner.temp }}/pg-lifecycle
           if-no-files-found: warn
 
