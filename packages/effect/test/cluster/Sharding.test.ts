@@ -2992,7 +2992,7 @@ describe.concurrent("Sharding active teardowns", () => {
       }).pipe(Effect.provide(layer), Effect.scoped)
     }), { concurrent: false })
 
-  it.effect("persists cancellation of a delivered same-shard call during shard release", () =>
+  it.effect("persists cancellation of a delivered call but not a handoff-abandoned call during release", () =>
     Effect.gen(function*() {
       let dropRefresh = false
       const cancel = yield* Latch.make()
@@ -3014,6 +3014,7 @@ describe.concurrent("Sharding active teardowns", () => {
             const child = yield* receiver("target").Never().pipe(Effect.forkChild({ startImmediately: true }))
             yield* cancel.await
             yield* Fiber.interrupt(child)
+            yield* receiver("handoff").Never()
           })
         })
       }))
@@ -3066,8 +3067,9 @@ describe.concurrent("Sharding active teardowns", () => {
 
         yield* cancel.open
         yield* TestClock.adjust(1)
-        yield* Fiber.join(running)
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(running)))
 
+        assert.strictEqual(driver.journal.filter((envelope) => envelope._tag === "Request").length, 2)
         assert.strictEqual(journalInterrupts(driver), 1)
       }).pipe(Effect.provide(layer), Effect.scoped)
     }), { concurrent: false })
