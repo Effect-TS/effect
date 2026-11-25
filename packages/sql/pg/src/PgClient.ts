@@ -100,14 +100,14 @@ export interface PgClient extends Client.Base {
    * const program = Effect.gen(function*() {
    *   const sql = yield* PgClient.PgClient
    *   const result = yield* sql.withTransaction(
-   *     sql.queryText("SELECT now() AS at, $1::numeric AS amount", ["1.50"])
+   *     sql.queryTextValues("SELECT now() AS at, $1::numeric AS amount", ["1.50"])
    *   )
    *   // result.fields: [{ name: "at", dataTypeId: 1184 }, { name: "amount", dataTypeId: 1700 }]
-   *   // result.rows: [["2026-11-24 12:00:00.123456+00", "1.50"]]
+   *   // result.values: [["2026-11-24 12:00:00.123456+00", "1.50"]]
    * })
    * ```
    */
-  readonly queryText: (
+  readonly queryTextValues: (
     sql: string,
     params?: ReadonlyArray<unknown>
   ) => Effect.Effect<PgConnection.TextResult, SqlError>
@@ -397,18 +397,17 @@ const makeImpl = Effect.fnUntraced(function*<R>(
   }
 
   // Traced as a statement is, without the connection wait time.
-  const queryText = (sql: string, params?: ReadonlyArray<unknown>) =>
+  const queryTextValues = (sql: string, params?: ReadonlyArray<unknown>) =>
     Effect.useSpan(Statement.spanName(spanAttributes), { kind: "client" }, (span) => {
       for (const [key, value] of spanAttributes) {
         span.attribute(key, value)
       }
-      span.attribute(ATTR_SQL_METHOD, "executeText")
+      span.attribute(ATTR_SQL_METHOD, "executeTextValues")
       span.attribute(ATTR_DB_QUERY_TEXT, sql)
-      const run = withConnection((connection) => connection.queryText(sql, params))
-      return Effect.gen(function*() {
-        const propagate = yield* Statement.SpanPropagationEnabled
-        return yield* (propagate ? Effect.provideService(run, Tracer.ParentSpan, span) : run)
-      })
+      const run = withConnection((connection) => connection.queryTextValues(sql, params))
+      return Effect.withFiber((fiber) =>
+        fiber.getRef(Statement.SpanPropagationEnabled) ? Effect.provideService(run, Tracer.ParentSpan, span) : run
+      )
     })
 
   return Object.assign(
@@ -419,7 +418,7 @@ const makeImpl = Effect.fnUntraced(function*<R>(
       poolStats: options.poolStats,
       json: (_: unknown) => Statement.fragment([PgJson(_)]),
       listen,
-      queryText,
+      queryTextValues,
       notify: (channel: string, payload: string) => {
         const channelError = validateChannelName(channel, "notify")
         return channelError !== undefined ?

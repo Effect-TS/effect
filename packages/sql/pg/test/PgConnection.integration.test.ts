@@ -318,7 +318,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       assert.deepStrictEqual(rows, [[BigInt(7), "value"]])
     }))
 
-  it.effect("returns queryText values as the server's text beside binary runs of the same statement", () =>
+  it.effect("returns queryTextValues as the server's text beside binary runs of the same statement", () =>
     Effect.gen(function*() {
       const sql = "SELECT $1::timestamptz AS at, $2::numeric AS amount, NULL::int4 AS missing"
       const params = ["2026-01-02 03:04:05.123456+00", "123456789012345678901234567890.5"]
@@ -331,7 +331,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
           { name: "amount", dataTypeId: PgTypes.OID.numeric },
           { name: "missing", dataTypeId: PgTypes.OID.int4 }
         ],
-        rows: [["2026-01-02 03:04:05.123456+00", "123456789012345678901234567890.5", null]]
+        values: [["2026-01-02 03:04:05.123456+00", "123456789012345678901234567890.5", null]]
       }
       for (const multiplex of [false, true]) {
         const connection = yield* makeConnection({ multiplex })
@@ -340,8 +340,8 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
         for (let run = 0; run < 2; run++) {
           const [binary, text, unprepared] = yield* Effect.all([
             connection.query(sql, params),
-            connection.queryText(sql, params),
-            connection.queryText(sql, params, false)
+            connection.queryTextValues(sql, params),
+            connection.queryTextValues(sql, params, false)
           ], { concurrency: "unbounded" })
           assert.deepStrictEqual(binary.rows[0].at, new Date("2026-01-02T03:04:05.123Z"))
           assert.deepStrictEqual(text, expected)

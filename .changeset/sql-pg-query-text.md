@@ -2,4 +2,4 @@
 "@effect/sql-pg": patch
 ---
 
-Add `queryText` to `PgClient` and `PgConnection`, which returns positional rows with each value as the server's text.
+Add `queryTextValues` to `PgClient` and `PgConnection`, returning field metadata and positional rows with each value as the server's text.

@@ -200,7 +200,7 @@ export interface Result {
 }
 
 /**
- * The result of `queryText`: positional rows holding each value as the
+ * The result of `queryTextValues`: positional rows holding each value as the
  * server's text, or `null` for SQL `NULL`.
  *
  * @stability unstable
@@ -212,7 +212,7 @@ export interface TextResult {
   readonly rowCount: number
   readonly oid: number | null
   readonly fields: ReadonlyArray<Field>
-  readonly rows: ReadonlyArray<ReadonlyArray<string | null>>
+  readonly values: ReadonlyArray<ReadonlyArray<string | null>>
 }
 
 /**
@@ -285,7 +285,7 @@ export interface PgConnection {
    * those of `Config.types`. Pass `false` to skip the prepared statement
    * cache. Interruption behaves as for `query`.
    */
-  readonly queryText: (
+  readonly queryTextValues: (
     sql: string,
     params?: ReadonlyArray<unknown>,
     prepare?: boolean
@@ -898,7 +898,7 @@ class PgConnectionImpl implements PgConnection {
   ): Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError> =>
     Effect.map(this.run(sql, params ?? emptyParams, "values", prepare), takeValues)
 
-  readonly queryText = (
+  readonly queryTextValues = (
     sql: string,
     params?: ReadonlyArray<unknown>,
     prepare = true
@@ -974,7 +974,7 @@ class PinnedPgConnection implements PgConnection {
   ): Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError> =>
     Effect.map(this.cycle(sql, params ?? emptyParams, "values", prepare), takeValues)
 
-  readonly queryText = (
+  readonly queryTextValues = (
     sql: string,
     params?: ReadonlyArray<unknown>,
     prepare = true
@@ -1111,7 +1111,7 @@ const takeText = ({ result, values }: QueryOutput): TextResult => ({
   rowCount: result.rowCount,
   oid: result.oid,
   fields: result.fields,
-  rows: values as ReadonlyArray<ReadonlyArray<string | null>>
+  values: values as ReadonlyArray<ReadonlyArray<string | null>>
 })
 
 /**
@@ -1761,8 +1761,25 @@ const textDecoder = new TextDecoder("utf-8", { fatal: true })
 const readText: PgProtocol.FieldReader<string | null> = (bytes, offset, size) =>
   size < 0 ? null : textDecoder.decode(bytes.subarray(offset, offset + size))
 
+const makeTextReader = (
+  fields: ReadonlyArray<PgProtocol.FieldDescription>
+): EffectResult.Result<PgProtocol.FieldReader<string | null>, PgTypes.CodecError> => {
+  for (let index = 0; index < fields.length; index++) {
+    if (fields[index].format !== 0) {
+      return EffectResult.fail(
+        new PgTypes.CodecError({
+          message: `Only the text format is supported, column ${index} has format ${fields[index].format}`
+        })
+      )
+    }
+  }
+  return EffectResult.succeed(readText)
+}
+
 /** Turns one decoded row into an object keyed by column name. */
 type RowBuilder = (rowValues: ReadonlyArray<unknown>) => Row
+
+const emptyRowBuilder: RowBuilder = () => ({})
 
 /** Everything a query needs from one `RowDescription`. */
 interface Description {
@@ -1779,7 +1796,7 @@ const describe = (
   registry: PgTypes.Registry | undefined,
   textResults = false
 ): EffectResult.Result<Description, PgTypes.CodecError> => {
-  const reader = textResults ? EffectResult.succeed(readText) : PgTypes.makeFieldReader(fields, registry)
+  const reader = textResults ? makeTextReader(fields) : PgTypes.makeFieldReader(fields, registry)
   if (EffectResult.isFailure(reader)) return EffectResult.fail(reader.failure)
   const resultFields: Array<Field> = new Array(fields.length)
   for (let index = 0; index < fields.length; index++) {
@@ -1787,7 +1804,7 @@ const describe = (
   }
   return EffectResult.succeed({
     readField: reader.success,
-    rowBuilder: makeRowBuilder(fields),
+    rowBuilder: textResults ? emptyRowBuilder : makeRowBuilder(fields),
     resultFields
   })
 }

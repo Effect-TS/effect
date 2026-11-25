@@ -106,7 +106,7 @@ The error names the column, its type OID, and its table OID and attribute
 number when the column comes from a table. It fails only the query that read
 the row: the rest of the result is discarded and the connection stays usable.
 Register a codec for these types, cast the column to `text` in the query, or
-read it with [`queryText`](#values-as-text).
+read it with [`queryTextValues`](#values-as-text).
 
 A binary layout with no zero bytes at all, such as `ltree`, still decodes as
 garbled text without any error.
@@ -165,7 +165,7 @@ OIDs of user-defined types are assigned per database, so look them up in
 ## Values as text
 
 A library that decodes values itself can read them as the server's text with
-`queryText`. No codec runs, the client's `types` included, so every type reads:
+`queryTextValues`. No codec runs, the client's `types` included, so every type reads:
 
 ```ts
 import { PgClient } from "@effect/sql-pg"
@@ -173,9 +173,9 @@ import { Effect } from "effect"
 
 const program = Effect.gen(function*() {
   const sql = yield* PgClient.PgClient
-  const result = yield* sql.queryText("SELECT now() AS at, 'infinity'::timestamptz AS until")
+  const result = yield* sql.queryTextValues("SELECT now() AS at, 'infinity'::timestamptz AS until")
   // result.fields: [{ name: "at", dataTypeId: 1184 }, { name: "until", dataTypeId: 1184 }]
-  // result.rows: [["2026-11-24 22:31:05.123456+00", "infinity"]]
+  // result.values: [["2026-11-24 22:31:05.123456+00", "infinity"]]
 })
 ```
 
