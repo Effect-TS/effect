@@ -249,7 +249,9 @@ export interface PgConnection {
    * After release, queries, streams and listeners through the returned
    * connection fail, and its `interrupt` does nothing. Releasing a pin with
    * an in-flight statement or an open listener closes the session and fails
-   * any listener queues, as does leaving a transaction the pin began aborted.
+   * any listener queues, as does leaving a transaction the pin began open or
+   * aborted. A transaction that was open before the pin belongs to its caller
+   * and is left as it is.
    */
   readonly pin: Effect.Effect<PgConnection, never, Scope.Scope>
   /**
@@ -862,12 +864,14 @@ class PgConnectionImpl implements PgConnection {
               new Error("Pinned connection released with work outstanding"),
               "PgConnection: Pinned connection released with work outstanding"
             ))
-          } else if (view.startedIdle && this.transactionStatus === "E") {
-            // A failed cleanup, such as a cancelled `ROLLBACK`, leaves every later
-            // statement failing. A transaction open before the pin is its caller's.
+          } else if (view.startedIdle && this.transactionStatus !== "I") {
+            // A transaction the pin left open or aborted, such as one missing its
+            // `COMMIT` or with a cancelled `ROLLBACK`, would leak into the next
+            // checkout. A transaction open before the pin is its caller's.
+            const state = this.transactionStatus === "E" ? "an aborted" : "an open"
             this.fatal(connectionQueryError(
-              new Error("Pinned connection released in an aborted transaction"),
-              "PgConnection: Pinned connection released in an aborted transaction"
+              new Error(`Pinned connection released in ${state} transaction`),
+              `PgConnection: Pinned connection released in ${state} transaction`
             ))
           }
           return idle ? Effect.andThen(this.wire.release(1), this.owner.release(1)) : this.owner.release(1)

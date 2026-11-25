@@ -490,6 +490,106 @@ describe("PgClient failed transaction cleanup", () => {
       Effect.scoped,
       Effect.provide(Reactivity.layer)
     ))
+
+  interface Session {
+    readonly socket: Duplex
+    readonly statements: Array<string>
+    status: string
+  }
+
+  // A backend that tracks its own transaction state, so a session left inside
+  // `BEGIN` keeps reporting status `T` to whoever borrows it next.
+  const transactionalBackend = (sessions: Array<Session>) => () => {
+    let startup = true
+    const socket = new Duplex({
+      read() {},
+      write(chunk: Buffer, _encoding, callback) {
+        if (startup) {
+          startup = false
+          queueMicrotask(() => socket.push(ready))
+        } else if (chunk[0] === 0x50) {
+          const statement = chunk.includes("BEGIN") ? "BEGIN" : chunk.includes("COMMIT") ? "COMMIT" : "SELECT"
+          session.statements.push(statement)
+          if (statement === "BEGIN") session.status = "T"
+          else if (statement === "COMMIT") session.status = "I"
+          const tag = statement === "SELECT" ? "SELECT 0" : statement
+          queueMicrotask(() => socket.push(completed(tag, session.status)))
+        }
+        callback()
+      }
+    })
+    const session: Session = { socket, statements: [], status: "I" }
+    sessions.push(session)
+    return socket
+  }
+
+  it.effect("does not reuse a session left in an open transaction", () =>
+    Effect.gen(function*() {
+      const sessions: Array<Session> = []
+      const pool = yield* PgPool.make({
+        username: "test",
+        maxConnections: 1,
+        prepare: false,
+        stream: transactionalBackend(sessions)
+      })
+
+      yield* Effect.scoped(Effect.flatMap(pool.reserve, (connection) => connection.query("BEGIN")))
+      const next = yield* pool.get
+      yield* next.query("SELECT 1")
+
+      assert.strictEqual(sessions.length, 2)
+      assert.isTrue(sessions[0].socket.destroyed)
+      assert.deepStrictEqual(sessions[0].statements, ["BEGIN"])
+      assert.deepStrictEqual(sessions[1].statements, ["SELECT"])
+      assert.strictEqual(sessions[1].status, "I")
+    }).pipe(Effect.scoped))
+
+  it.effect("keeps a session whose pin closed the transaction it began", () =>
+    Effect.gen(function*() {
+      const sessions: Array<Session> = []
+      const pool = yield* PgPool.make({
+        username: "test",
+        maxConnections: 1,
+        prepare: false,
+        stream: transactionalBackend(sessions)
+      })
+
+      yield* Effect.scoped(Effect.flatMap(pool.reserve, (connection) =>
+        Effect.andThen(connection.query("BEGIN"), connection.query("COMMIT"))))
+      const next = yield* pool.get
+      yield* next.query("SELECT 1")
+
+      assert.strictEqual(sessions.length, 1)
+      assert.deepStrictEqual(sessions[0].statements, ["BEGIN", "COMMIT", "SELECT"])
+    }).pipe(Effect.scoped))
+
+  it.effect("keeps a session whose pin started inside its caller's transaction", () =>
+    Effect.gen(function*() {
+      const sessions: Array<Session> = []
+      const pool = yield* PgPool.make({
+        username: "test",
+        maxConnections: 1,
+        prepare: false,
+        stream: transactionalBackend(sessions)
+      })
+
+      yield* Effect.scoped(Effect.gen(function*() {
+        const connection = yield* pool.get
+        yield* connection.query("BEGIN")
+        // The transaction was open before the pin, so releasing the pin leaves it to its caller.
+        yield* Effect.scoped(Effect.flatMap(connection.pin, (pinned) => pinned.query("SELECT 1")))
+        assert.isFalse(sessions[0].socket.destroyed)
+        assert.strictEqual(sessions[0].status, "T")
+        yield* connection.query("COMMIT")
+      }))
+      const next = yield* pool.get
+      yield* next.query("SELECT 1")
+
+      assert.strictEqual(sessions.length, 1)
+      assert.isFalse(sessions[0].socket.destroyed)
+      assert.deepStrictEqual(sessions[0].statements, ["BEGIN", "SELECT", "COMMIT", "SELECT"])
+      assert.strictEqual(sessions[0].status, "I")
+    }).pipe(Effect.scoped))
 })
 
 const readyStream = () => {
