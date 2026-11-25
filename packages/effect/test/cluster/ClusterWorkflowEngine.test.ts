@@ -1,7 +1,6 @@
 import { assert, describe, expect, it } from "@effect/vitest"
 import {
   Cause,
-  Clock,
   Context,
   DateTime,
   Duration,
@@ -26,7 +25,6 @@ import {
   EntityAddress,
   EntityId,
   EntityType,
-  MachineId,
   type Message,
   MessageStorage,
   Runner,
@@ -548,33 +546,23 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           groups: ["default"],
           weight: 1
         })
-        const state = {
-          assignSelf: true,
-          runner: undefined as Runner.Runner | undefined,
-          releases: [] as Array<ShardId.ShardId>
-        }
-        const runnerStorageLayer = Layer.succeed(
+        let assignSelf = true
+        const releases: Array<ShardId.ShardId> = []
+        const runnerStorage = Layer.effect(
           RunnerStorage.RunnerStorage,
-          RunnerStorage.RunnerStorage.of({
-            getRunners: Effect.sync(() => {
-              if (!state.runner) return []
-              return state.assignSelf ? [[state.runner, true]] : [[state.runner, false], [otherRunner, true]]
-            }),
-            register: (runner) =>
-              Effect.sync(() => {
-                state.runner = runner
-                return MachineId.make(1)
-              }),
-            unregister: () => Effect.void,
-            setRunnerHealth: () => Effect.void,
-            acquire: (_address, shardIds) => Effect.sync(() => Array.from(shardIds)),
-            refresh: (_address, shardIds) => Effect.sync(() => Array.from(shardIds)),
-            release: (_address, shardId) =>
-              Effect.sync(() => {
-                state.releases.push(shardId)
-              }),
-            releaseAll: () => Effect.void
-          })
+          Effect.map(RunnerStorage.makeMemory, (storage) =>
+            RunnerStorage.RunnerStorage.of({
+              ...storage,
+              getRunners: Effect.map(
+                storage.getRunners,
+                (runners) =>
+                  assignSelf ? runners : [...runners.map(([runner]) => [runner, false] as const), [otherRunner, true]]
+              ),
+              release: (_address, shardId) =>
+                Effect.sync(() => {
+                  releases.push(shardId)
+                })
+            }))
         )
         const storage = yield* makeSharedStorage
         const queuedSaved = yield* Latch.make()
@@ -583,6 +571,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           envelope._tag === "Request" &&
           envelope.tag === "activity" &&
           (envelope.payload as { readonly name?: string }).name === "queued"
+        const visible = (messages: Array<Message.Incoming<any>>) =>
+          hideQueued ? messages.filter((message) => !isQueuedActivity(message.envelope)) : messages
         const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
           ...storage,
           saveRequest: (message) =>
@@ -591,15 +581,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
               () => isQueuedActivity(message.envelope) ? queuedSaved.open : Effect.void
             ),
           unprocessedMessages: (shardIds, options) =>
-            Effect.map(
-              storage.unprocessedMessages(shardIds, options),
-              (messages) => hideQueued ? messages.filter((m) => !isQueuedActivity(m.envelope)) : messages
-            ),
-          unprocessedMessagesById: (ids) =>
-            Effect.map(
-              storage.unprocessedMessagesById(ids),
-              (messages) => hideQueued ? messages.filter((m) => !isQueuedActivity(m.envelope)) : messages
-            )
+            Effect.map(storage.unprocessedMessages(shardIds, options), visible),
+          unprocessedMessagesById: (ids) => Effect.map(storage.unprocessedMessagesById(ids), visible)
         })
         const workflow = Workflow.make(`RebalanceHandoff/${mode}`, {
           payload: {},
@@ -639,27 +622,21 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           })
         ).pipe(
           Layer.provideMerge(makeTestWorkflowEngine({
-            runnerStorageLayer,
+            shardingLayer: Sharding.layer.pipe(Layer.provide(runnerStorage)),
             storageLayer,
             config: {
-              runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
               shardsPerGroup: 1,
               availableShardGroups: ["default"],
               assignedShardGroups: ["default"],
-              shardLockExpiration: 3000,
-              shardLockRefreshInterval: 100,
               entityTerminationTimeout: Duration.seconds(90),
               entityMessagePollInterval: 10,
-              entityReplyPollInterval: 10,
-              refreshAssignmentsInterval: 10,
-              sendRetryInterval: 10
+              refreshAssignmentsInterval: 10
             }
           }))
         )
 
         yield* Effect.gen(function*() {
           const sharding = yield* Sharding.Sharding
-          const clock = yield* Clock.Clock
           const shardId = ShardId.make("default", 1)
           yield* advanceUntil(() => sharding.hasShardId(shardId), "runner must acquire the shard", 10, 500)
 
@@ -671,20 +648,20 @@ describe.concurrent("ClusterWorkflowEngine", () => {
             500
           )
 
-          state.assignSelf = false
+          assignSelf = false
           yield* advanceUntil(() => !sharding.hasShardId(shardId), "runner must drop the moved shard", 10, 500)
           yield* TestClock.adjust(1000)
-          assert.strictEqual(state.releases.length, 0, "shard release must wait for the in-flight activity")
+          assert.strictEqual(releases.length, 0, "shard release must wait for the in-flight activity")
 
-          const t0 = clock.currentTimeMillisUnsafe()
           yield* release.open
-          for (let i = 0; i < 100 && state.releases.length === 0; i++) yield* TestClock.adjust(10)
-          for (let i = 0; i < 120 && state.releases.length === 0; i++) yield* TestClock.adjust(1000)
-          const waited = clock.currentTimeMillisUnsafe() - t0
-          assert.isBelow(waited, 5000, "shard must be released promptly without waiting for entityTerminationTimeout")
+          yield* TestClock.adjust(1000)
+          const released = releases.length > 0
+          // A stalled release also stalls teardown, so let it time out before failing.
+          if (!released) yield* TestClock.adjust(Duration.seconds(90))
+          assert.isTrue(released, "shard must be released promptly without waiting for entityTerminationTimeout")
           assert.deepStrictEqual(runs, { slow: 1, after: 0, queued: 0 })
 
-          state.assignSelf = true
+          assignSelf = true
           hideQueued = false
           yield* advanceUntil(() => sharding.hasShardId(shardId), "runner must reacquire the shard", 10, 500)
           assert.deepStrictEqual(
@@ -3813,7 +3790,6 @@ const activityReply = Effect.fnUntraced(
 const makeTestWorkflowEngine = <Storage = MessageStorage.MemoryDriver>(options?: {
   readonly config?: Partial<ShardingConfig.ShardingConfig["Service"]> | undefined
   readonly shardingLayer?: typeof Sharding.layer | undefined
-  readonly runnerStorageLayer?: Layer.Layer<RunnerStorage.RunnerStorage> | undefined
   readonly storageLayer?:
     | Layer.Layer<MessageStorage.MessageStorage | Storage, never, ShardingConfig.ShardingConfig>
     | undefined
@@ -3828,7 +3804,7 @@ const makeTestWorkflowEngine = <Storage = MessageStorage.MemoryDriver>(options?:
         ShardingConfig.ShardingConfig
       >
     ),
-    Layer.provide(options?.runnerStorageLayer ?? RunnerStorage.layerMemory),
+    Layer.provide(RunnerStorage.layerMemory),
     Layer.provide(RunnerHealth.layerNoop),
     Layer.provide(ShardingConfig.layer({
       shardsPerGroup: 300,

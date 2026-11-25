@@ -1334,8 +1334,8 @@ const make = Effect.gen(function*() {
   const isHandoffCaller = (caller: Context.Context<never>, target: EntityAddress): boolean => {
     const address = Context.getOption(caller, CurrentAddress).valueOrUndefined
     return address !== undefined &&
-      MutableHashSet.has(releasingShards, address.shardId) &&
-      Equal.equals(address.shardId, target.shardId)
+      Equal.equals(address.shardId, target.shardId) &&
+      MutableHashSet.has(releasingShards, target.shardId)
   }
 
   function sendOutgoing(
@@ -1373,8 +1373,9 @@ const make = Effect.gen(function*() {
             // request will be served under the next owner.
             ? message._tag === "OutgoingRequest"
               ? Effect.suspend(() => {
-                const entry = clientRequests.get(message.envelope.requestId)
-                if (entry) entry.abandoned = true
+                // Without its entry, the abandoned caller's interrupt is not
+                // sent to the request the next owner will serve.
+                clientRequests.delete(message.envelope.requestId)
                 return ClusterAbandon.interrupt
               })
               : Effect.fail(error)
@@ -1383,7 +1384,7 @@ const make = Effect.gen(function*() {
       )
     }
     const isHandoff = () =>
-      isPersisted && message._tag === "OutgoingRequest" &&
+      shouldFail && isPersisted && message._tag === "OutgoingRequest" &&
       isHandoffCaller(message.context, message.envelope.address)
     return Effect.catchFilter(
       Effect.suspend(() => {
@@ -1424,7 +1425,7 @@ const make = Effect.gen(function*() {
           const targetManager = entityManagers.get(message.envelope.address.entityType)
           const cannotRecover = MutableRef.get(isShutdown) ||
             (targetManager !== undefined && targetManager.status !== "alive") ||
-            (shouldFail && isHandoff())
+            isHandoff()
           if (cannotRecover) {
             return abandon(error)
           }
@@ -1648,7 +1649,6 @@ const make = Effect.gen(function*() {
     lastChunkId?: Snowflake.Snowflake
     // the runner a volatile request was last sent to
     runner?: RunnerAddress
-    abandoned?: boolean
   }
   const clientRequests = new Map<Snowflake.Snowflake, ClientRequestEntry>()
 
@@ -1671,7 +1671,8 @@ const make = Effect.gen(function*() {
           isDelivered(requestId) ||
           (!shutdown && !isHandoffCaller(entry.context, address))
         ) continue
-        entry.abandoned = true
+        // the caller's interrupt must not reach the request left for the next owner
+        clientRequests.delete(requestId)
         abandon.push(storage.unregisterReplyHandler(requestId, { interrupt: true }))
       }
       return Effect.all(abandon, { discard: true })
@@ -1784,7 +1785,6 @@ const make = Effect.gen(function*() {
               const caller = Context.getOption(entry.context, CurrentAddress).valueOrUndefined
               const singletonShard = Context.getOption(entry.context, SingletonShardTag).valueOrUndefined
               const isTransientInterrupt = MutableRef.get(isShutdown) ||
-                entry.abandoned === true ||
                 (caller !== undefined && ActiveTeardown.isActive(caller)) ||
                 (singletonShard !== undefined && ActiveTeardown.isShardActive(singletonShard))
               if (isTransientInterrupt && Context.get(entry.message.annotations, Persisted)) {

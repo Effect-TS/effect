@@ -2992,7 +2992,7 @@ describe.concurrent("Sharding active teardowns", () => {
       }).pipe(Effect.provide(layer), Effect.scoped)
     }), { concurrent: false })
 
-  it.effect("persists cancellation of a delivered same-shard call during release outside active teardown", () =>
+  it.effect("persists cancellation of a delivered same-shard call during shard release", () =>
     Effect.gen(function*() {
       let dropRefresh = false
       const cancel = yield* Latch.make()
@@ -3010,12 +3010,11 @@ describe.concurrent("Sharding active teardowns", () => {
       const CallerLayer = Caller.toLayer(Effect.gen(function*() {
         const receiver = yield* TestEntity.client
         return Caller.of({
-          Run: () =>
-            Effect.gen(function*() {
-              const child = yield* receiver("target").Never().pipe(Effect.forkChild({ startImmediately: true }))
-              yield* cancel.await
-              yield* Fiber.interrupt(child)
-            })
+          Run: Effect.fnUntraced(function*() {
+            const child = yield* receiver("target").Never().pipe(Effect.forkChild({ startImmediately: true }))
+            yield* cancel.await
+            yield* Fiber.interrupt(child)
+          })
         })
       }))
       const layer = CallerLayer.pipe(
