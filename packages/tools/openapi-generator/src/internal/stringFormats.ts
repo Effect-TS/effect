@@ -1,3 +1,4 @@
+import type * as Schema from "effect/Schema"
 import type * as SchemaRepresentation from "effect/SchemaRepresentation"
 
 type Representation = SchemaRepresentation.Representation
@@ -107,12 +108,48 @@ const collectReferences = (representation: Representation, into: Set<string>): v
   }
 }
 
+const findCyclicDefinitions = (references: SchemaRepresentation.References): ReadonlySet<string> => {
+  const edges = new Map<string, ReadonlySet<string>>()
+  for (const [$ref, definition] of Object.entries(references)) {
+    const deps = new Set<string>()
+    collectReferences(definition, deps)
+    edges.set($ref, deps)
+  }
+  const cyclic = new Set<string>()
+  for (const start of edges.keys()) {
+    const visited = new Set<string>()
+    const stack = [...(edges.get(start) ?? [])]
+    while (stack.length > 0) {
+      const current = stack.pop()!
+      if (current === start) {
+        cyclic.add(start)
+        break
+      }
+      if (visited.has(current)) continue
+      visited.add(current)
+      for (const next of edges.get(current) ?? []) {
+        stack.push(next)
+      }
+    }
+  }
+  return cyclic
+}
+
+const isNonRecursiveRefSuspend = (
+  representation: SchemaRepresentation.Suspend,
+  cyclic: ReadonlySet<string>
+): representation is SchemaRepresentation.Suspend & { readonly thunk: SchemaRepresentation.Reference } =>
+  representation.thunk._tag === "Reference" && !cyclic.has(representation.thunk.$ref)
+
 // Core Schema codegen types `Schema.suspend` as `Schema.Codec<T>`, which requires
-// decoded and encoded types to match. Definitions targeted by a suspend keep wire types.
-const findSuspendedDefinitions = (document: SchemaDocument): ReadonlySet<string> => {
+// decoded and encoded types to match. Definitions targeted by kept suspends keep wire types.
+const findSuspendedDefinitions = (
+  document: SchemaDocument,
+  cyclic: ReadonlySet<string>
+): ReadonlySet<string> => {
   const suspended = new Set<string>()
   const visit = (representation: Representation): void => {
-    if (representation._tag === "Suspend") {
+    if (representation._tag === "Suspend" && !isNonRecursiveRefSuspend(representation, cyclic)) {
       collectReferences(representation.thunk, suspended)
     }
     for (const child of allChildren(representation)) {
@@ -124,48 +161,10 @@ const findSuspendedDefinitions = (document: SchemaDocument): ReadonlySet<string>
   return suspended
 }
 
-const makeDecodes = (decoding: ReadonlySet<string>) => {
-  const decodes = (representation: Representation, inherited?: FormatCodec): boolean => {
-    switch (representation._tag) {
-      case "Reference":
-        return decoding.has(representation.$ref)
-      case "Suspend":
-        return false
-      case "String":
-        return (getFormatCodec(representation) ?? inherited) !== undefined
-      case "Literal":
-        return typeof representation.literal === "string" &&
-          (getFormatCodec(representation) ?? inherited) !== undefined
-      case "Union": {
-        const codec = getFormatCodec(representation) ?? inherited
-        return representation.types.some((type) => decodes(type, codec))
-      }
-      default:
-        return valueChildren(representation).some((child) => decodes(child))
-    }
-  }
-  return decodes
-}
-
-const findDecodingDefinitions = (
-  document: SchemaDocument,
-  suspended: ReadonlySet<string>
-): ReadonlySet<string> => {
-  const decoding = new Set<string>()
-  const decodes = makeDecodes(decoding)
-  let changed = true
-  while (changed) {
-    changed = false
-    for (const [$ref, definition] of Object.entries(document.references)) {
-      if (suspended.has($ref) || decoding.has($ref) || !decodes(definition)) continue
-      decoding.add($ref)
-      changed = true
-    }
-  }
-  return decoding
-}
-
-const wrapDecodeTo = (wire: Representation, codec: FormatCodec): SchemaRepresentation.Declaration => ({
+const wrapDecodeTo = (
+  wire: Representation,
+  codec: FormatCodec
+): SchemaRepresentation.Declaration => ({
   _tag: "Declaration",
   typeParameters: [wire],
   checks: [],
@@ -205,11 +204,125 @@ const wrapToEncoded = (reference: SchemaRepresentation.Reference): SchemaReprese
   }
 })
 
+const attachAnnotations = (
+  target: Representation,
+  annotations: Schema.Annotations.Annotations | undefined
+): Representation => {
+  if (annotations === undefined) return target
+  if (target._tag === "Reference") {
+    return {
+      _tag: "Declaration",
+      typeParameters: [target],
+      checks: [],
+      annotations: {
+        ...annotations,
+        toCode: ({ typeParameters: [schema] }: SchemaRepresentation.Generation.DeclarationInput) => ({
+          runtime: schema.runtime,
+          Type: schema.Type
+        })
+      }
+    }
+  }
+  return {
+    ...target,
+    annotations: { ...annotations, ...target.annotations }
+  }
+}
+
+const omitIdentifier = (
+  annotations: Schema.Annotations.Annotations | undefined
+): Schema.Annotations.Annotations | undefined => {
+  if (annotations === undefined || !Object.hasOwn(annotations, "identifier")) return annotations
+  const { identifier: _, ...rest } = annotations
+  return Object.keys(rest).length === 0 ? undefined : rest
+}
+
 /** @internal */
 export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
-  const suspended = findSuspendedDefinitions(document)
-  const decoding = findDecodingDefinitions(document, suspended)
-  const decodes = makeDecodes(decoding)
+  const cyclic = findCyclicDefinitions(document.references)
+  const suspended = findSuspendedDefinitions(document, cyclic)
+
+  const isEligibleRef = ($ref: string): boolean =>
+    !suspended.has($ref) && !cyclic.has($ref) && Object.hasOwn(document.references, $ref)
+
+  const isStringOnlySchema = (representation: Representation): boolean => {
+    if (isStringOnly(representation)) return true
+    if (representation._tag === "Reference") {
+      return isEligibleRef(representation.$ref) && isStringOnlySchema(document.references[representation.$ref])
+    }
+    if (representation._tag === "Suspend" && isNonRecursiveRefSuspend(representation, cyclic)) {
+      return isStringOnlySchema(representation.thunk)
+    }
+    if (representation._tag === "Union") {
+      return representation.types.length > 0 && representation.types.every(isStringOnlySchema)
+    }
+    return false
+  }
+
+  const refOwnFormat = ($ref: string): FormatCodec | undefined => {
+    if (!isEligibleRef($ref)) return undefined
+    const def = document.references[$ref]
+    const own = getFormatCodec(def)
+    if (own !== undefined) return own
+    if (def._tag === "Reference") return refOwnFormat(def.$ref)
+    if (def._tag === "Suspend" && isNonRecursiveRefSuspend(def, cyclic)) {
+      return refOwnFormat(def.thunk.$ref)
+    }
+    return undefined
+  }
+
+  const hasStringBranch = (representation: Representation): boolean => {
+    switch (representation._tag) {
+      case "String":
+        return true
+      case "Literal":
+        return typeof representation.literal === "string"
+      case "Reference":
+        return isEligibleRef(representation.$ref) &&
+          hasStringBranch(document.references[representation.$ref])
+      case "Suspend":
+        return isNonRecursiveRefSuspend(representation, cyclic) &&
+          hasStringBranch(representation.thunk)
+      case "Union":
+        return representation.types.some(hasStringBranch)
+      default:
+        return false
+    }
+  }
+
+  const decoding = new Set<string>()
+  const decodes = (representation: Representation, inherited?: FormatCodec): boolean => {
+    switch (representation._tag) {
+      case "Reference":
+        if (decoding.has(representation.$ref)) return true
+        return inherited !== undefined && isEligibleRef(representation.$ref) &&
+          hasStringBranch(document.references[representation.$ref])
+      case "Suspend":
+        return isNonRecursiveRefSuspend(representation, cyclic) &&
+          decodes(representation.thunk, getFormatCodec(representation) ?? inherited)
+      case "String":
+        return (getFormatCodec(representation) ?? inherited) !== undefined
+      case "Literal":
+        return typeof representation.literal === "string" &&
+          (getFormatCodec(representation) ?? inherited) !== undefined
+      case "Union": {
+        const codec = getFormatCodec(representation) ?? inherited
+        return representation.types.some((type) => decodes(type, codec))
+      }
+      default:
+        return valueChildren(representation).some((child) => decodes(child))
+    }
+  }
+
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const [$ref, definition] of Object.entries(document.references)) {
+      if (suspended.has($ref) || decoding.has($ref) || !decodes(definition)) continue
+      decoding.add($ref)
+      changed = true
+    }
+  }
 
   const rewriteCheck = (check: SchemaRepresentation.Check): SchemaRepresentation.Check => {
     const representation = check.representation?.schemas === undefined
@@ -229,7 +342,9 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
       case "Declaration":
         return { ...representation, checks, typeParameters: representation.typeParameters.map(rewriteWire) }
       case "Suspend":
-        return { ...representation, thunk: rewriteWire(representation.thunk) }
+        return isNonRecursiveRefSuspend(representation, cyclic)
+          ? attachAnnotations(rewriteWire(representation.thunk), representation.annotations)
+          : { ...representation, thunk: rewriteWire(representation.thunk) }
       case "String":
         return representation.content?.schema === undefined
           ? { ...representation, checks }
@@ -272,7 +387,25 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
     path: string,
     inherited?: FormatCodec
   ): Representation => {
-    if (representation._tag === "Reference") return representation
+    if (representation._tag === "Reference") {
+      if (inherited === undefined || !isEligibleRef(representation.$ref)) return representation
+      const def = document.references[representation.$ref]
+      if (isStringOnlySchema(def)) {
+        if (decoding.has(representation.$ref)) {
+          return refOwnFormat(representation.$ref) === inherited
+            ? representation
+            : wrapDecodeTo(wrapToEncoded(representation), inherited)
+        }
+        return wrapDecodeTo(representation, inherited)
+      }
+      if (hasStringBranch(def)) {
+        const inlined = def._tag === "Reference"
+          ? def
+          : { ...def, annotations: omitIdentifier(def.annotations) }
+        return rewriteValue(inlined, path, inherited)
+      }
+      return representation
+    }
     const codec = getFormatCodec(representation) ?? inherited
     if (codec !== undefined && isStringOnly(representation)) {
       return wrapDecodeTo(rewriteWire(representation), codec)
@@ -286,6 +419,9 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
           typeParameters: representation.typeParameters.map((type, index) => rewriteValue(type, `${path}/${index}`))
         }
       case "Suspend":
+        if (isNonRecursiveRefSuspend(representation, cyclic)) {
+          return attachAnnotations(rewriteValue(representation.thunk, path, codec), representation.annotations)
+        }
         return { ...representation, thunk: rewriteWire(representation.thunk) }
       case "TemplateLiteral":
         return rewriteWire(representation)

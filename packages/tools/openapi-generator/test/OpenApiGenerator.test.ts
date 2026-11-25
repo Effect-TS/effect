@@ -856,6 +856,12 @@ describe("OpenApiGenerator", () => {
                   changed: { type: "string", format: "date-time" },
                   deletedAt: { type: ["string", "null"], format: "date-time" },
                   balance: { $ref: "#/components/schemas/Balance" },
+                  refInt: { $ref: "#/components/schemas/Digits", format: "int64" },
+                  nullableRefInt: {
+                    oneOf: [{ $ref: "#/components/schemas/Digits" }, { type: "null" }],
+                    format: "int64"
+                  },
+                  plainDigits: { $ref: "#/components/schemas/Digits" },
                   tier: { type: "string", format: "int64", enum: ["1", "2"] },
                   amounts: { type: "array", items: { type: "string", format: "int64" }, uniqueItems: true },
                   count: { type: "string", format: "uint64" },
@@ -867,10 +873,24 @@ describe("OpenApiGenerator", () => {
                   node: { $ref: "#/components/schemas/Node" },
                   label: { type: "string" }
                 },
-                required: ["changed", "deletedAt", "balance", "tier", "amounts", "count", "labels", "node", "label"],
+                required: [
+                  "changed",
+                  "deletedAt",
+                  "balance",
+                  "refInt",
+                  "nullableRefInt",
+                  "plainDigits",
+                  "tier",
+                  "amounts",
+                  "count",
+                  "labels",
+                  "node",
+                  "label"
+                ],
                 additionalProperties: false
               },
               Balance: { type: "string", format: "int64", pattern: "^-?[1-9][0-9]*$" },
+              Digits: { type: "string", pattern: "^[0-9]+$" },
               Node: {
                 type: "object",
                 properties: {
@@ -892,6 +912,9 @@ describe("OpenApiGenerator", () => {
           changed: "2026-06-01T01:00:00.000+01:00",
           deletedAt: null,
           balance: "9007199254740993",
+          refInt: "01",
+          nullableRefInt: "01",
+          plainDigits: "01",
           tier: "1",
           amounts: ["01", "1"],
           count: "18446744073709551615",
@@ -908,6 +931,9 @@ describe("OpenApiGenerator", () => {
               changed: DateTime.makeUnsafe("2026-06-01T00:00:00.000Z"),
               deletedAt: null,
               balance: 9007199254740993n,
+              refInt: 1n,
+              nullableRefInt: 1n,
+              plainDigits: "01",
               tier: 1n,
               amounts: [1n, 1n],
               count: 18446744073709551615n,
@@ -917,17 +943,30 @@ describe("OpenApiGenerator", () => {
             }
             assert.deepStrictEqual(decode(wire), Exit.succeed(decoded))
             assert.deepStrictEqual(
-              decode({ ...wire, deletedAt: "2026-06-01T00:00:00.000Z" }),
-              Exit.succeed({ ...decoded, deletedAt: DateTime.makeUnsafe("2026-06-01T00:00:00.000Z") })
+              decode({ ...wire, deletedAt: "2026-06-01T00:00:00.000Z", nullableRefInt: null }),
+              Exit.succeed({
+                ...decoded,
+                deletedAt: DateTime.makeUnsafe("2026-06-01T00:00:00.000Z"),
+                nullableRefInt: null
+              })
             )
             assert.deepStrictEqual(
               Schema.encodeUnknownExit(LedgerReading)({ ...decoded, amounts: [1n, 2n] }),
-              Exit.succeed({ ...wire, changed: "2026-06-01T00:00:00.000Z", amounts: ["1", "2"] })
+              Exit.succeed({
+                ...wire,
+                changed: "2026-06-01T00:00:00.000Z",
+                refInt: "1",
+                nullableRefInt: "1",
+                amounts: ["1", "2"]
+              })
             )
             assert.isTrue(Exit.isFailure(decode({ ...wire, changed: "not a date" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, balance: "007" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, balance: "9223372036854775808" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, balance: "-9223372036854775809" })))
+            assert.isTrue(Exit.isFailure(decode({ ...wire, refInt: "-1" })))
+            assert.isTrue(Exit.isFailure(decode({ ...wire, refInt: "9223372036854775808" })))
+            assert.isTrue(Exit.isFailure(decode({ ...wire, nullableRefInt: "-1" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, tier: "01" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, tier: "3" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, amounts: ["1", "1"] })))
