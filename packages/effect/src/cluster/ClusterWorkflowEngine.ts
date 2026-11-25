@@ -32,6 +32,7 @@ import * as Activity from "../workflow/Activity.ts"
 import * as DurableClock from "../workflow/DurableClock.ts"
 import * as DurableDeferred from "../workflow/DurableDeferred.ts"
 import { RetryingExecution } from "../workflow/internal/retry.ts"
+import { markScopeAbandoned, reuseOrForkScope } from "../workflow/internal/scope.ts"
 import * as Workflow from "../workflow/Workflow.ts"
 import * as WorkflowEngine from "../workflow/WorkflowEngine.ts"
 import * as ClusterSchema from "./ClusterSchema.ts"
@@ -144,9 +145,8 @@ export const make = Effect.gen(function*() {
     Effect.suspend(() => {
       const scope = state.scope
       if (abandoned) {
-        for (const instance of state.instances) instance.abandoned = true
+        markScopeAbandoned(scope)
       }
-      state.instances.clear()
       state.scope = Scope.makeUnsafe()
       return Scope.close(scope, Exit.void)
     })
@@ -478,7 +478,6 @@ export const make = Effect.gen(function*() {
                 workflowName: workflow._tag,
                 executionId,
                 results,
-                instances: new Set(),
                 scope: Scope.makeUnsafe(),
                 retired,
                 idle: Latch.makeUnsafe(true),
@@ -517,12 +516,12 @@ export const make = Effect.gen(function*() {
               )
             return {
               run: (request: Entity.Request<any>) => {
-                // Each run gets a fresh scope under the activation's parent, so
-                // replays rebuild compensations while suspended runs keep theirs.
+                // A superseded instance retained by a finalizer no longer needs its wait sets.
+                currentRun?.instance.awaitedDeferreds.clear()
+                currentRun?.instance.completedDeferreds.clear()
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
-                  scope: Scope.forkUnsafe(pending.scope)
+                  scope: reuseOrForkScope(currentRun?.instance.scope, pending.scope)
                 })
-                pending.instances.add(instance)
                 currentRun = { request, instance, activityAwaits: new Map() }
                 const parent = (request.payload as any)[payloadParentKey] as
                   | { workflowName: string; executionId: string; detached?: boolean }
@@ -1018,10 +1017,9 @@ interface ActivationState {
   readonly workflowName: string
   readonly executionId: string
   readonly results: Map<string, Exit.Exit<unknown, unknown>>
-  // Every run forks its scope from here, so runs that suspended keep their
-  // resources and durable finalizers until the execution finishes.
+  // Parent of every run's scope, so runs that suspended keep their resources
+  // and durable finalizers until the execution finishes.
   scope: Scope.Closeable
-  readonly instances: Set<WorkflowEngine.WorkflowInstance["Service"]>
   // Opens when this activation retires; paired with `idle` so in-flight
   // activities finish before any waiting run hands off to the next owner.
   readonly retired: Latch.Latch | undefined

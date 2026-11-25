@@ -32,6 +32,7 @@ import * as Tranformation from "../SchemaTransformation.ts"
 import * as Scope from "../Scope.ts"
 import { makeHashDigest } from "./internal/crypto.ts"
 import { RetryingExecution } from "./internal/retry.ts"
+import { isScopeAbandoned, markScopeAbandoned } from "./internal/scope.ts"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.ts"
 
 const TypeId = "~effect/workflow/Workflow"
@@ -751,6 +752,11 @@ export const intoResult = <A, E, R>(
           const filtered = reasons.length === 0 ? cause : Cause.fromReasons(reasons)
           const abandoned = instance.abandoned && !instance.interrupted && hasInterruptsOnly
           instance.abandoned = abandoned
+          if (abandoned) {
+            // Superseded instances can share this scope, which closes before
+            // the engine marks its parent.
+            markScopeAbandoned(instance.scope)
+          }
           if (instance.suspended && hasInterruptsOnly && !abandoned) {
             return Effect.succeed(
               new Suspended(instance.failed ? { cause: instance.cause, failed: true } : { cause: instance.cause })
@@ -955,7 +961,10 @@ export const addFinalizer: <R>(
   const services = yield* Effect.context<R>()
   yield* Scope.addFinalizerExit(
     instance.scope,
-    (exit) => instance.abandoned ? Effect.void : Effect.provideContext(f(exit), services)
+    (exit) =>
+      instance.abandoned || isScopeAbandoned(instance.scope)
+        ? Effect.void
+        : Effect.provideContext(f(exit), services)
   )
 })
 

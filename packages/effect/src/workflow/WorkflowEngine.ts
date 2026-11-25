@@ -28,6 +28,7 @@ import type * as Activity from "./Activity.ts"
 import type { DurableClock } from "./DurableClock.ts"
 import type * as DurableDeferred from "./DurableDeferred.ts"
 import { RetryingExecution } from "./internal/retry.ts"
+import { reuseOrForkScope } from "./internal/scope.ts"
 import * as Workflow from "./Workflow.ts"
 
 /**
@@ -818,10 +819,10 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         state.scope = Scope.makeUnsafe()
       }
       const executionScope = state.scope
-      // Like the cluster engine, each run gets a fresh scope, so replays rebuild
-      // compensations instead of registering them again.
+      // A superseded instance retained by a finalizer no longer needs its wait set.
+      state.instance.awaitedDeferreds.clear()
       const instance = WorkflowInstance.initial(state.instance.workflow, state.instance.executionId, {
-        scope: Scope.forkUnsafe(executionScope)
+        scope: reuseOrForkScope(state.instance.scope, executionScope)
       })
       state.instance = instance
       state.fiber = yield* state.execute(state.payload, state.instance.executionId).pipe(
