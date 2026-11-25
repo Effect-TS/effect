@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Report `effect/jose` crypto backend failures other than rejected keys as `JoseError` reason `CryptoFailed` instead of `InvalidKey`.
+Add `JoseError.CryptoFailed` for non-key crypto backend failures in `effect/jose`, keeping `InvalidKey` for rejected keys.

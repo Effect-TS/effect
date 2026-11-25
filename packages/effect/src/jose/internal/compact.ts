@@ -24,10 +24,9 @@ export const invalidArgument = (description: string, cause?: unknown) =>
   fail(new JoseError.InvalidArgument({ description, cause }))
 
 /**
- * Maps a failure of an operation on secret material, such as signing or
- * private-key import, to a fixed description. A rejected key stays
- * `InvalidKey`; other failures become `CryptoFailed`. Backend messages and
- * causes may describe the secret, so they are dropped.
+ * Maps a backend failure without exposing its message or cause, which may
+ * describe secret material. `InvalidKey` stays `InvalidKey`; other reasons
+ * become `CryptoFailed`.
  *
  * @internal
  */
