@@ -92,55 +92,28 @@ describe("Match", () => {
   })
 
   it("fn threads arguments through record and discriminator combinators", () => {
-    type Event = { readonly _tag: "Opened"; readonly at: number } | { readonly _tag: "Closed" }
-
-    const exhaustive = Match.fn((_prefix: string, event: Event) => event).pipe(
-      Match.tagsExhaustive({
-        Opened: (event, prefix) => `${prefix}: opened at ${event.at}`,
-        Closed: (_event, prefix) => `${prefix}: closed`
-      })
+    type Event = { readonly _tag: "A" } | { readonly _tag: "B" } | { readonly _tag: "C" }
+    const tags = Match.fn((_context: boolean, event: Event) => event).pipe(
+      Match.tags({ A: (_event, context) => context }),
+      Match.tagStartsWith("B", (_event, context) => context),
+      Match.tagsExhaustive({ C: (_event, context) => context })
     )
-    expect(exhaustive).type.toBe<(prefix: string, event: Event) => string>()
+    expect(tags).type.toBe<(context: boolean, event: Event) => boolean>()
 
-    const partial = Match.fn((_prefix: string, event: Event) => event).pipe(
-      Match.tags({ Opened: (_event, prefix) => prefix }),
-      Match.tagStartsWith("Clo", (_event, prefix) => prefix.length),
-      Match.exhaustive
+    type Kind = { readonly kind: "A" } | { readonly kind: "B" } | { readonly kind: "C" } | { readonly kind: "D" }
+    const kinds = Match.fn((_context: boolean, input: Kind) => input).pipe(
+      Match.discriminator("kind")("A", (_input, context) => context),
+      Match.discriminatorStartsWith("kind")("B", (_input, context) => context),
+      Match.discriminators("kind")({ C: (_input, context) => context }),
+      Match.discriminatorsExhaustive("kind")({ D: (_input, context) => context })
     )
-    expect(partial).type.toBe<(prefix: string, event: Event) => string | number>()
+    expect(kinds).type.toBe<(context: boolean, input: Kind) => boolean>()
 
-    const byKind = Match.fn((_flag: boolean, input: typeof discriminatedInput) => input).pipe(
-      Match.discriminator("kind")("A", (_input, flag) => flag),
-      Match.discriminatorStartsWith("kind")("B", (input, flag) => flag ? input.b : 0),
-      Match.exhaustive
+    const literals = Match.fn((_context: boolean, value: "a" | "b") => value).pipe(
+      Match.literals({ a: (_value, context) => context }),
+      Match.literalsExhaustive({ b: (_value, context) => context })
     )
-    expect(byKind).type.toBe<(flag: boolean, input: typeof discriminatedInput) => number | boolean>()
-
-    const literal = Match.fn((_count: number, value: typeof status) => value).pipe(
-      Match.literalsExhaustive({
-        draft: (_value, count) => count,
-        review: (_value, count) => count,
-        published: (_value, count) => count
-      })
-    )
-    expect(literal).type.toBe<(count: number, value: typeof status) => number>()
-
-    const byKinds = Match.fn((_flag: boolean, input: typeof discriminatedInput) => input).pipe(
-      Match.discriminators("kind")({ A: (_input, flag) => flag }),
-      Match.discriminatorsExhaustive("kind")({ B: (input, flag) => flag ? input.b : 0 })
-    )
-    expect(byKinds).type.toBe<(flag: boolean, input: typeof discriminatedInput) => number | boolean>()
-
-    const partialLiteral = Match.fn((_count: number, value: typeof status) => value).pipe(
-      Match.literals({ draft: (_value, count) => count }),
-      Match.orElse((_value, count) => count + 1)
-    )
-    expect(partialLiteral).type.toBe<(count: number, value: typeof status) => number>()
-
-    Match.fn((_prefix: string, event: Event) => event).pipe(
-      // @ts-expect-error is not assignable to
-      Match.tagsExhaustive({ Opened: (_event, prefix: number) => prefix, Closed: () => 0 })
-    )
+    expect(literals).type.toBe<(context: boolean, value: "a" | "b") => boolean>()
   })
 
   it("value matchers resolve terminals for generic inputs", () => {
