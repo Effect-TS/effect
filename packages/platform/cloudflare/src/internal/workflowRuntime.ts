@@ -46,6 +46,12 @@ const mergeWake = (
   mode: WorkflowStorage.WakeMode
 ): WorkflowStorage.WakeMode => current === "explicit" ? current : mode
 
+const parseResult = (result: string) => JSON.parse(result) as { readonly _tag?: unknown; readonly failed?: unknown }
+
+/** @internal */
+export const isCompleteResult = (result: string | undefined): boolean =>
+  result !== undefined && parseResult(result)._tag === "Complete"
+
 /** @internal */
 export type WorkflowAlarm = Pick<DurableObjectStorage, "deleteAlarm" | "setAlarm">
 
@@ -113,11 +119,6 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     options.waitUntil(promise.then(() => undefined, () => undefined))
   }
 
-  const parseResult = (result: string) => JSON.parse(result) as { readonly _tag?: unknown; readonly failed?: unknown }
-
-  const isComplete = (result: string | undefined): boolean =>
-    result !== undefined && parseResult(result)._tag === "Complete"
-
   // As in the memory engine, only an explicit wake replays a failure suspension.
   const isUnwakeable = (result: string | undefined, mode: WorkflowStorage.WakeMode): boolean => {
     if (result === undefined) return false
@@ -132,7 +133,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
    */
   const requestWake = (mode: WorkflowStorage.WakeMode): boolean => {
     const row = WorkflowStorage.loadExecution(sql)
-    if (row === undefined || isComplete(row.result)) return false
+    if (row === undefined || isCompleteResult(row.result)) return false
     if (inflight === undefined && isUnwakeable(row.result, mode)) return false
     const pending = mergeWake(row.resumePending, mode)
     if (pending !== row.resumePending) WorkflowStorage.setResumePending(sql, pending)
@@ -151,7 +152,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
   // write a stale target, and keep an armed guard deadline until it fires.
   const syncAlarm = (): Promise<void> => {
     const row = WorkflowStorage.loadExecution(sql)
-    const complete = isComplete(row?.result)
+    const complete = isCompleteResult(row?.result)
     const earliest = complete ? undefined : WorkflowStorage.earliestClockWakeUp(sql)
     const needsGuard = inflight !== undefined || (
       row?.resumePending !== undefined &&
@@ -173,7 +174,12 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
 
   const deliverParentWake = Effect.suspend(() => {
     const row = WorkflowStorage.loadExecution(sql)
-    if (row === undefined || row.resumePending === undefined || !isComplete(row.result) || row.parent === undefined) {
+    if (
+      row === undefined ||
+      row.resumePending === undefined ||
+      !isCompleteResult(row.result) ||
+      row.parent === undefined
+    ) {
       return Effect.void
     }
     // Re-arm before sending so a crash or exhausted retries leave another attempt.
@@ -382,7 +388,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
 
   const interrupt = (): Promise<void> => {
     const row = WorkflowStorage.loadExecution(sql)
-    if (row === undefined || isComplete(row.result)) return Promise.resolve()
+    if (row === undefined || isCompleteResult(row.result)) return Promise.resolve()
     return voidExitText().then((exitText) => completeDeferred(InterruptSignalName, exitText, "explicit"))
   }
 

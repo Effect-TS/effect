@@ -18,6 +18,7 @@ import { registerSingleton } from "@effect/platform-cloudflare/internal/singleto
 import {
   createExecution,
   ensureWorkflowStorage,
+  saveClock,
   saveCompletion
 } from "@effect/platform-cloudflare/internal/workflowStorage"
 import { assert, describe, it } from "@effect/vitest"
@@ -189,6 +190,29 @@ describe("CloudflareDurableObjectPrograms", () => {
         yield* alarm
         assert.strictEqual(runs, 1)
         assert.strictEqual(fake.deletedAlarms, 1)
+      }))
+  })
+
+  describe("makeClusterWorkflowProgram", () => {
+    it.effect("skips leftover clock restoration after completion without clearing a pending parent guard", () =>
+      Effect.gen(function*() {
+        const { called, state, storage } = yield* makeExportedState(encodeName("Child", "c1"))
+        ensureWorkflowStorage(storage.sql)
+        createExecution(storage.sql, "Child", "c1", "{}", { workflowName: "Parent", executionId: "p1" })
+        saveClock(storage.sql, "long", "long/deferred", 180_000)
+        saveCompletion(storage.sql, JSON.stringify({ _tag: "Complete" }), true)
+        storage.alarm = 60_000
+
+        const program = yield* makeClusterWorkflowProgram(state)
+        assert.strictEqual(storage.alarm, 60_000)
+
+        yield* program.alarm()
+        yield* called
+        assert.strictEqual(storage.alarm, null)
+
+        const cold = yield* makeClusterWorkflowProgram(state)
+        assert.strictEqual(yield* cold.poll(), JSON.stringify({ _tag: "Complete" }))
+        assert.strictEqual(storage.alarm, null)
       }))
   })
 
