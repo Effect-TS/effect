@@ -802,10 +802,13 @@ export const make = Effect.fnUntraced(function*<
                 if (server.keepAliveRequestId === message.envelope.requestId) return Effect.void
                 if (server.keepAliveRequestId !== undefined) return reply
                 server.keepAliveRequestId = message.envelope.requestId
-                return server.keepAliveLatch.whenOpen(Effect.suspend(() => {
+                // Re-check: the latch may close again before this fiber runs.
+                const release: Effect.Effect<void> = server.keepAliveLatch.whenOpen(Effect.suspend(() => {
+                  if (!server.keepAliveLatch.isOpen()) return release
                   server.keepAliveRequestId = undefined
                   return reply
-                })).pipe(
+                }))
+                return release.pipe(
                   Effect.forkIn(server.scope, { startImmediately: true }),
                   Effect.asVoid
                 )
