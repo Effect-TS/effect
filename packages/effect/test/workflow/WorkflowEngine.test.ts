@@ -1586,8 +1586,8 @@ describe("WorkflowEngine", () => {
           DurableDeferred.make("WorkflowEngine/CapturedScopeLateFinalizer/Third")
         ]
         const workflow = Workflow.make("WorkflowEngine/CapturedScopeLateFinalizer", {
-          payload: {},
-          idempotencyKey: () => "one"
+          payload: { id: Schema.String },
+          idempotencyKey: ({ id }) => id
         })
         let runs = 0
         const runStarted = [yield* Latch.make(), yield* Latch.make()]
@@ -1596,8 +1596,16 @@ describe("WorkflowEngine", () => {
         let secondInstance: WorkflowEngine.WorkflowInstance["Service"] | undefined
         let thirdScope: Scope.Scope | undefined
         const finalized: Array<number | string> = []
-        const layer = workflow.toLayer(() =>
+        const layer = workflow.toLayer(({ id }) =>
           Effect.gen(function*() {
+            if (id === "b") {
+              const scope = yield* Workflow.scope
+              assert.isDefined(scope.parent)
+              assert.isDefined(fiber)
+              Fiber.runIn(fiber, scope.parent)
+              yield* DurableDeferred.await(gates[0])
+              return
+            }
             const run = ++runs
             if (run === 1) {
               const scope = yield* Workflow.scope
@@ -1632,7 +1640,7 @@ describe("WorkflowEngine", () => {
         ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
 
         yield* Effect.gen(function*() {
-          const executionId = yield* workflow.execute({}, { discard: true })
+          const executionId = yield* workflow.execute({ id: "a" }, { discard: true })
           yield* pollUntil(workflow, executionId, "Suspended")
           for (const [index, gate] of gates.slice(0, 2).entries()) {
             yield* DurableDeferred.succeed(gate, {
@@ -1642,6 +1650,9 @@ describe("WorkflowEngine", () => {
             yield* runStarted[index].await
             yield* pollUntil(workflow, executionId, "Suspended")
           }
+
+          const otherExecutionId = yield* workflow.execute({ id: "b" }, { discard: true })
+          yield* pollUntil(workflow, otherExecutionId, "Suspended")
 
           assert.isDefined(secondInstance)
           assert.isDefined(thirdScope)

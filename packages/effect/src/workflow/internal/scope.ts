@@ -5,17 +5,17 @@ interface ParentState {
   nextOrder: number
   maxOrder: number
   abandoned: boolean
+  readonly entryOrders: WeakMap<object, number>
 }
 
 const parentStates = new WeakMap<Scope.Scope, ParentState>()
-const entryOrders = new WeakMap<object, number>()
 const wrappedMaps = new WeakSet<Map<object, unknown>>()
 let forking = false
 
 const getParentState = (parent: Scope.Scope): ParentState => {
   let state = parentStates.get(parent)
   if (state === undefined) {
-    state = { nextOrder: 0, maxOrder: -1, abandoned: false }
+    state = { nextOrder: 0, maxOrder: -1, abandoned: false, entryOrders: new WeakMap() }
     parentStates.set(parent, state)
   }
   return state
@@ -23,7 +23,7 @@ const getParentState = (parent: Scope.Scope): ParentState => {
 
 const stampKey = (key: object, parentState: ParentState): void => {
   const order = parentState.nextOrder++
-  entryOrders.set(key, order)
+  parentState.entryOrders.set(key, order)
   if (order > parentState.maxOrder) parentState.maxOrder = order
 }
 
@@ -91,7 +91,7 @@ export const withLazyScope = (
         } finally {
           forking = false
         }
-        entryOrders.set(scope, order)
+        parentState.entryOrders.set(scope, order)
         ensureTracked(parent, parentState, scope)
         if (order < parentState.maxOrder && parent.state._tag === "Open" && parent.state.finalizers !== undefined) {
           const finalizer = parent.state.finalizers.get(scope)!
@@ -100,7 +100,7 @@ export const withLazyScope = (
           parent.state.finalizers.clear()
           let inserted = false
           for (const [key, fn] of entries) {
-            if (!inserted && (entryOrders.get(key) ?? -1) > order) {
+            if (!inserted && (parentState.entryOrders.get(key) ?? -1) > order) {
               Map.prototype.set.call(parent.state.finalizers, scope, finalizer)
               inserted = true
             }
