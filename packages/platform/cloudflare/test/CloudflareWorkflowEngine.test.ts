@@ -121,9 +121,6 @@ class FakeSql {
 class FakeAlarm {
   current: number | null = null
 
-  getAlarm() {
-    return Promise.resolve(this.current)
-  }
   setAlarm(scheduledTime: number) {
     this.current = scheduledTime
     return Promise.resolve()
