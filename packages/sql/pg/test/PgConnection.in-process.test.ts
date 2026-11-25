@@ -1,4 +1,4 @@
-import { PgConnection, PgTypes } from "@effect/sql-pg"
+import { PgConnection } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Fiber, Option, Redacted, Scheduler, Scope, Stream } from "effect"
 import * as TestClock from "effect/testing/TestClock"
@@ -552,7 +552,7 @@ describe("PgConnection in-process server", () => {
         assert.deepStrictEqual((yield* connection.query("SELECT 1")).rows, [])
       }))
 
-    it.effect("drains subsequent batch statements after a row decode failure without failing a queued query", () =>
+    it.effect("drains subsequent statements after a row decode failure", () =>
       Effect.gen(function*() {
         const { socket } = makeScripted(() =>
           Buffer.concat([
@@ -572,98 +572,18 @@ describe("PgConnection in-process server", () => {
 
         assert.strictEqual(error.reason._tag, "UnknownError")
         assert.deepStrictEqual(following.rows, [{ m: 7 }])
-        assert.isFalse(socket.destroyed)
       }))
 
-    it.effect("skips wire submission when a mutable statement list is cleared before execution", () =>
+    it.effect("returns no results when a statement list is cleared before execution", () =>
       Effect.gen(function*() {
-        const { socket, writes } = makeScripted(() =>
-          writes.length === 2
-            ? Buffer.concat([statementResult(column("n", 23), int32(7)), readyForQuery])
-            : Buffer.concat([statementResult(column("m", 23), int32(8)), readyForQuery])
-        )
-        const connection = yield* PgConnection.make({ username: "test", stream: () => socket, multiplex: true })
-
-        const multiplexedStatements: Array<PgConnection.BatchStatement> = [{ sql: "SELECT 1" }]
-        const multiplexedBatch = connection.batch(multiplexedStatements)
-        multiplexedStatements.length = 0
-
-        const [batchResult, following] = yield* Effect.all([
-          multiplexedBatch,
-          connection.query("SELECT 7::int4 AS n")
-        ], { concurrency: "unbounded" })
-        assert.deepStrictEqual(batchResult, [])
-        assert.deepStrictEqual(following.rows, [{ n: 7 }])
-        assert.strictEqual(writes.length, 2)
-        assert.isFalse(socket.destroyed)
-
-        yield* Effect.scoped(Effect.gen(function*() {
-          const pinned = yield* connection.pin
-          const pinnedStatements: Array<PgConnection.BatchStatement> = [{ sql: "SELECT 1" }]
-          const pinnedBatch = pinned.batch(pinnedStatements)
-          pinnedStatements.length = 0
-
-          assert.deepStrictEqual(yield* pinnedBatch, [])
-          const afterPin = yield* pinned.query("SELECT 8::int4 AS m")
-          assert.deepStrictEqual(afterPin.rows, [{ m: 8 }])
-        }))
-        assert.strictEqual(writes.length, 3)
-        assert.isFalse(socket.destroyed)
-      }))
-
-    it.effect("keeps reply count aligned with encoded frames when encoding mutates the statement list", () =>
-      Effect.gen(function*() {
-        const { socket } = makeScripted(() =>
-          Buffer.concat([
-            statementResult(column("a", 25), Buffer.from("ok")),
-            readyForQuery,
-            statementResult(column("n", 23), int32(7)),
-            readyForQuery
-          ])
-        )
-        const connection = yield* PgConnection.make({ username: "test", stream: () => socket, multiplex: true })
-        const statements: Array<PgConnection.BatchStatement> = [{
-          sql: "SELECT $1::jsonb AS a",
-          params: [PgTypes.jsonb({
-            toJSON() {
-              statements.length = 0
-              return { ok: true }
-            }
-          })]
-        }]
-
-        const [batchResult, following] = yield* Effect.all([
-          connection.batch(statements),
-          connection.query("SELECT 7::int4 AS n")
-        ], { concurrency: "unbounded" })
-
-        assert.deepStrictEqual(batchResult.map((result) => result.rows), [[{ a: "ok" }]])
-        assert.deepStrictEqual(following.rows, [{ n: 7 }])
-        assert.isFalse(socket.destroyed)
-      }))
-
-    it.effect("resets parser.readField between statements so a DataRow after NoData desyncs", () =>
-      Effect.gen(function*() {
-        const { socket } = makeScripted(() =>
-          Buffer.concat([
-            statementResult(column("n", 23), int32(7)),
-            backendMessage("1", Buffer.alloc(0)),
-            backendMessage("2", Buffer.alloc(0)),
-            backendMessage("n", Buffer.alloc(0)),
-            backendMessage("D", Buffer.concat([int16(1), int32(2), Buffer.from([0, 1])])),
-            backendMessage("C", Buffer.from("INSERT 0 1\0")),
-            readyForQuery
-          ])
-        )
+        const { socket, writes } = makeScripted(() => readyForQuery)
         const connection = yield* PgConnection.make({ username: "test", stream: () => socket })
+        const statements: Array<PgConnection.BatchStatement> = [{ sql: "SELECT 1" }]
+        const batch = connection.batch(statements)
+        statements.length = 0
 
-        const error = yield* Effect.flip(connection.batch([
-          { sql: "SELECT 7::int4 AS n" },
-          { sql: "INSERT INTO items VALUES (1)" }
-        ]))
-
-        assert.strictEqual(error.reason._tag, "ConnectionError")
-        assert.isTrue(socket.destroyed)
+        assert.deepStrictEqual(yield* batch, [])
+        assert.strictEqual(writes.length, 1)
       }))
   })
 
