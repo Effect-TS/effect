@@ -125,8 +125,8 @@ export class MessageStorage extends Context.Service<MessageStorage, {
    * **Details**
    *
    * The entity type, entity id and tag must match exactly, including case. The
-   * shard id is ignored, as in `clearAddress` and `resetAddresses`, so requests
-   * saved before a shard reassignment are still returned.
+   * shard id is ignored, as in `clearAddress`, so requests saved before a shard
+   * reassignment are still returned.
    */
   readonly requestsForAddress: (
     options: {
@@ -442,8 +442,8 @@ export type Encoded = {
    * **Details**
    *
    * The entity type, entity id and tag must match exactly, including case. The
-   * shard id is ignored, as in `clearAddress` and `resetAddresses`, so requests
-   * saved before a shard reassignment are still returned.
+   * shard id is ignored, as in `clearAddress`, so requests saved before a shard
+   * reassignment are still returned.
    */
   readonly requestsForAddress: (
     options: {

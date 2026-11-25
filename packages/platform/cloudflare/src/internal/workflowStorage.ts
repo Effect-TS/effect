@@ -7,6 +7,8 @@
  */
 import type { SqlStorage } from "@cloudflare/workers-types"
 
+// `parent_name` and `parent_execution_id` are legacy: nothing writes them, and
+// `ensureWorkflowStorage` moves any stored value into `workflow_parents`.
 const ddl = [
   `CREATE TABLE IF NOT EXISTS workflow_execution (
     id INTEGER PRIMARY KEY CHECK (id = 0),

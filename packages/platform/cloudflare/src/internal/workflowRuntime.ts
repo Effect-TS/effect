@@ -169,8 +169,7 @@ export const makeWorkflowRuntime = (options: WorkflowRuntimeOptions): WorkflowRu
     Effect.logError("Workflow parent resume failed", cause)
 
   const deliverParentWake = Effect.suspend(() => {
-    const row = WorkflowStorage.loadExecution(sql)
-    if (row === undefined || !WorkflowStorage.isComplete(row.result)) return Effect.void
+    if (!WorkflowStorage.isComplete(WorkflowStorage.loadExecution(sql)?.result)) return Effect.void
     const parents = WorkflowStorage.loadParents(sql)
     if (parents.length === 0) return Effect.void
     // Re-arm before sending so a crash or exhausted retries leave another attempt.

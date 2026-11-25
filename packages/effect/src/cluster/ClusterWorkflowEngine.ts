@@ -190,16 +190,16 @@ export const make = Effect.gen(function*() {
     readonly payload: unknown
   }) {
     const payload = (options.rpc.payloadSchema as any).make(options.payload)
-    const span = Option.getOrUndefined(yield* Effect.option(Effect.currentSpan))
+    const span = yield* Effect.orDie(Effect.currentSpan)
     const envelope = Envelope.makeRequest<any>({
       requestId: yield* sharding.getSnowflake,
       address: options.address,
       tag: options.rpc._tag as any,
       payload,
       headers: Headers.empty,
-      traceId: span?.traceId,
-      spanId: span?.spanId,
-      sampled: span?.sampled
+      traceId: span.traceId,
+      spanId: span.spanId,
+      sampled: span.sampled
     })
     yield* sharding.sendOutgoing(
       new Message.OutgoingRequest({
@@ -481,8 +481,8 @@ export const make = Effect.gen(function*() {
               readonly instance: WorkflowEngine.WorkflowInstance["Service"]
               // Activity awaits must wake the run after suspension without preempting it.
               readonly activityAwaits: Map<string, number>
-              // Set once the terminal reply carries the parent wakes, so a
-              // concurrent `parent` registration waits for the reply and wakes.
+              // Set once the exiting run starts listing its parents, so a later
+              // `parent` registration waits for the reply and wakes its own parent.
               completing: boolean
             } | undefined
             // Concurrent automatic wakes share one wait for the current run to
@@ -544,7 +544,7 @@ export const make = Effect.gen(function*() {
                     const resumeParent = instance.abandoned ? Effect.void : ensureSuccess(Effect.gen(function*() {
                       current.completing = true
                       const parents = (yield* storage.requestsForAddress({ address, tag: "parent" }))
-                        .map((request) => request.payload as ParentRef)
+                        .map((registration) => registration.payload as ParentRef)
                       // Registrations are unique by parent; only an older caller's payload parent can repeat one.
                       if (parent && !parent.detached && !parents.some((ref) => sameParent(ref, parent))) {
                         parents.push(parent)
@@ -690,8 +690,8 @@ export const make = Effect.gen(function*() {
 
               parent: (request: Entity.Request<any>) => {
                 const ref = request.payload as ParentRef
-                // The exiting run's reply transaction may have scanned parents
-                // before this registration; wait for the reply, then wake.
+                // The exiting run may have listed parents before this
+                // registration; wait for its reply, then wake.
                 if (currentRun?.completing) {
                   return forkReply(
                     ensureSuccess(
@@ -707,8 +707,8 @@ export const make = Effect.gen(function*() {
               }
             }
           }),
-          // Alongside the run, let deferred handlers briefly acquire a permit to
-          // fork their wake and return an asynchronous reply.
+          // Alongside the run, let deferred and `parent` handlers briefly acquire a
+          // permit to fork their wake and return an asynchronous reply.
           { concurrency: 2, maxIdleTime: entityMaxIdleTime }
         ) as Effect.Effect<void, never, Scope.Scope>
         if (existing === undefined || existing === workflow) return registration
