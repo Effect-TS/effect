@@ -719,12 +719,12 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
           }
           yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
         })
+        const spawnProcess = yield* prepareSpawn
         // The input feeders run in a standalone scope, so a failed spawn leaves
         // nothing behind in the caller's scope. It is closed concurrently with
         // process termination, since either may wait on the other: Bun does not
         // settle a destroyed, backpressured stdin while the child is alive, and
         // a child may wait for stdin EOF before exiting.
-        const spawnProcess = yield* prepareSpawn
         const inputScope = Scope.makeUnsafe()
         const [childProcess, exitSignal] = yield* Effect.acquireRelease(
           spawn(spawnProcess, cmd, buildSpawnOptions(cmd.options, { cwd, env, stdio }, process.platform)),
@@ -1053,7 +1053,7 @@ export const layerProxyProcess = (options?: {
           executable: options?.executable,
           args: options?.args,
           env: options?.env,
-          responseTimeoutMillis: Duration.toMillis(Duration.fromInputUnsafe(options?.responseTimeout ?? "10 seconds"))
+          responseTimeoutMillis: Duration.toMillis(options?.responseTimeout ?? "10 seconds")
         })
       ),
       (proxy) => proxy.close

@@ -1,4 +1,6 @@
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
 import * as PlatformError from "effect/PlatformError"
 import { ProcessId } from "effect/process/ChildProcessSpawner"
@@ -41,8 +43,6 @@ export interface ProxiedProcessOwner {
 export class ProxiedProcess extends EventEmitter implements SpawnedProcess {
   pid: number | undefined = undefined
   lost = false
-  /** The request has been sent to the proxy process, which may have started the command. */
-  dispatched = false
   exitCode: number | null = null
   signalCode: NodeJS.Signals | null = null
   readonly stdio: Array<Net.Socket | null>
@@ -166,6 +166,9 @@ export class ProxiedProcess extends EventEmitter implements SpawnedProcess {
   }
 }
 
+// Owns a spawn that was refused, which no proxy process hears of
+const noOwner: ProxiedProcessOwner = { ref() {}, unref() {}, release() {} }
+
 // Commands run with the credentials of the proxy process, which are fixed when
 // it starts
 const credentials = (): string => {
@@ -194,7 +197,8 @@ class Proxy implements ProxiedProcessOwner {
   ready = false
   exited = false
   retired = false
-  private failure: Error | undefined = undefined
+  /** Done once the proxy process is ready, or fails with the error that stopped it first. */
+  readonly started = Deferred.makeUnsafe<void, Error>()
   private readonly options: Options
   private readonly token = Crypto.randomBytes(tokenLength)
   private nextId = 0
@@ -205,7 +209,6 @@ class Proxy implements ProxiedProcessOwner {
   private child: NodeChildProcess.ChildProcess | undefined
   // Bounds the wait for `Ready`, and for the reply to each sent request
   private readonly timers = new Map<number | "ready", ReturnType<typeof setTimeout>>()
-  private readonly readyCallbacks = new Set<(error: Error | undefined) => void>()
 
   constructor(options: Options) {
     this.options = options
@@ -251,12 +254,17 @@ class Proxy implements ProxiedProcessOwner {
   }
 
   /**
-   * Sends a spawn request at once. Requests are never queued, so a spawn that
-   * is interrupted while it waits for a proxy process to be ready has nothing
-   * to withdraw. A proxy process that is no longer ready to take spawns, or
-   * whose credentials are out of date, fails the spawn without sending it.
+   * Sends a spawn request, at most once. A proxy process that is no longer
+   * ready to take spawns, or whose credentials are out of date, fails the
+   * spawn without sending it, so every command it holds has been sent.
    */
   spawn(command: string, args: ReadonlyArray<string>, options: NodeChildProcess.SpawnOptions): ProxiedProcess {
+    if (!this.ready || this.exited || this.retired || this.credentials !== credentials()) {
+      const refused = new ProxiedProcess(noOwner, 0, [])
+      const error = new Error("The proxy process stopped taking spawns before the command was sent to it")
+      globalThis.process.nextTick(() => refused.onError(error))
+      return refused
+    }
     const id = this.nextId
     this.nextId = (this.nextId + 1) % 0x1_0000_0000
     const stdio = (options.stdio as ReadonlyArray<NodeChildProcess.IOType | undefined>).map((mode) =>
@@ -264,12 +272,6 @@ class Proxy implements ProxiedProcessOwner {
     )
     const child = new ProxiedProcess(this, id, stdio.map((mode) => mode === "pipe"))
     this.commands.set(id, child)
-    if (!this.ready || this.exited || this.retired || this.credentials !== credentials()) {
-      const error = new Error("The proxy process stopped taking spawns before the command was sent to it")
-      globalThis.process.nextTick(() => child.onError(error))
-      return child
-    }
-    child.dispatched = true
     this.startTimer(id)
     this.send({
       id,
@@ -285,19 +287,6 @@ class Proxy implements ProxiedProcessOwner {
       }
     })
     return child
-  }
-
-  /**
-   * Calls back once the proxy process is ready, or with the error that stopped
-   * it. Returns a function that removes the callback.
-   */
-  whenReady(callback: (error: Error | undefined) => void): () => void {
-    if (this.ready || this.exited) {
-      callback(this.ready ? undefined : this.failure)
-      return () => {}
-    }
-    this.readyCallbacks.add(callback)
-    return () => this.readyCallbacks.delete(callback)
   }
 
   ref(): void {
@@ -414,8 +403,9 @@ class Proxy implements ProxiedProcessOwner {
     this.ready = true
     this.stopTimer("ready")
     this.unref()
-    this.notifyReady(undefined)
+    Deferred.doneUnsafe(this.started, Exit.void)
   }
+
   private accept(socket: Net.Socket): void {
     // Errors are reported to the readers and writers of the stdio streams
     socket.on("error", () => {})
@@ -456,13 +446,9 @@ class Proxy implements ProxiedProcessOwner {
   private end(cause: Error): void {
     if (this.exited) return
     this.exited = true
-    this.failure = cause
     for (const timer of this.timers.values()) clearTimeout(timer)
     this.timers.clear()
     if (!this.ready) this.unref()
-    const notSent = new Error("The proxy process stopped before the command was sent to it, so it was not started", {
-      cause
-    })
     const unacknowledged = new Error(
       "The proxy process stopped after the command was sent to it but before it replied, so the command may have started",
       { cause }
@@ -471,37 +457,23 @@ class Proxy implements ProxiedProcessOwner {
     // Every command is marked lost before anything else can run
     const reports = Array.from(
       this.commands.values(),
-      (command) => command.onLost(command.pid !== undefined ? lost : command.dispatched ? unacknowledged : notSent)
+      (command) => command.onLost(command.pid !== undefined ? lost : unacknowledged)
     )
     this.disconnect()
     for (const report of reports) report()
-    if (!this.ready) this.notifyReady(cause)
-  }
-
-  private notifyReady(error: Error | undefined): void {
-    const callbacks = [...this.readyCallbacks]
-    this.readyCallbacks.clear()
-    for (const callback of callbacks) callback(error)
+    // Has no effect on a proxy process that was ready
+    Deferred.doneUnsafe(this.started, Exit.fail(cause))
   }
 }
 
 const toStartError = (options: Options) => (error: NodeJS.ErrnoException): PlatformError.PlatformError => {
   const executable = options.executable ?? globalThis.process.execPath
-  if (error.code === "ETIMEDOUT") {
-    return PlatformError.systemError({
-      _tag: "TimedOut",
-      module: "ChildProcess",
-      method: "layerProxyProcess",
-      description: error.message,
-      pathOrDescriptor: executable,
-      cause: error
-    })
-  }
-  if (error.syscall !== undefined) {
+  const timedOut = error.code === "ETIMEDOUT"
+  if (!timedOut && error.syscall !== undefined) {
     return handleErrnoException("ChildProcess", "layerProxyProcess")(error, [executable])
   }
   return PlatformError.systemError({
-    _tag: "Unknown",
+    _tag: timedOut ? "TimedOut" : "Unknown",
     module: "ChildProcess",
     method: "layerProxyProcess",
     description: error.message,
@@ -550,15 +522,11 @@ export const make = (options: Options) => {
       }))
     }
     const proxy = get()
-    if (proxy.ready) return Effect.succeed(proxy)
-    return Effect.callback<Proxy, PlatformError.PlatformError>((resume) => {
-      const remove = proxy.whenReady((error) => {
-        if (error === undefined) return resume(Effect.succeed(proxy))
-        // Retired by a credential change while starting, so wait for its replacement
-        resume(proxy.retired ? ready : Effect.fail(toError(error)))
-      })
-      return Effect.sync(remove)
-    })
+    return Deferred.await(proxy.started).pipe(
+      Effect.as(proxy),
+      // Retired by a credential change while starting, so wait for its replacement
+      Effect.catch((error) => proxy.retired ? ready : Effect.fail(toError(error)))
+    )
   })
   return {
     prepareSpawn: Effect.map(
@@ -566,9 +534,7 @@ export const make = (options: Options) => {
       (proxy): SpawnProcess => (command, args, options) => proxy.spawn(command, args, options)
     ),
     /** Waits for the first proxy process to be ready. */
-    ready: Effect.callback<void, PlatformError.PlatformError>((resume) => {
-      current.whenReady((error) => resume(error === undefined ? Effect.void : Effect.fail(toError(error))))
-    }),
+    ready: Effect.suspend(() => Effect.mapError(Deferred.await(current.started), toError)),
     currentPid: Effect.sync(() =>
       !closed && current.ready && !current.exited && current.pid !== undefined
         ? Option.some(ProcessId(current.pid))

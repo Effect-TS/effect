@@ -10,19 +10,12 @@ import * as Module from "node:module"
 const worker = new URL("../src/internal/proxyProcessWorker.ts", import.meta.url)
 const output = new URL("../src/internal/proxyProcessSource.ts", import.meta.url)
 
-// The source text of the program, as an ES module that calls `run`
-const generate = (workerSource: string): string =>
-  Module.stripTypeScriptTypes(workerSource)
-    // Type annotations are replaced with spaces
-    .replace(/(?<=\S) {2,}(?=[(),])/g, "")
-    .replace(/(?<=\S) {2,}/g, " ")
-    .replace(/[ \t]+$/gm, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim() + "\n\nrun()\n"
+// The source text of the program, as an ES module that calls `run`. The type
+// stripper replaces types with spaces, which are kept, so that generating the
+// program changes nothing else in it, such as a string literal.
+const program = Module.stripTypeScriptTypes(Fs.readFileSync(worker, "utf8")) + "\nrun()\n"
 
 const escape = (text: string) => text.replace(/[\\`]|\$\{/g, (match) => "\\" + match)
-
-const program = generate(Fs.readFileSync(worker, "utf8"))
 
 if (process.argv.includes("--check")) {
   const { source } = await import(output.href)

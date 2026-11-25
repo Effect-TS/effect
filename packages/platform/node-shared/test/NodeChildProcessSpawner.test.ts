@@ -56,11 +56,14 @@ describe("shared suite", { concurrent: false }, () => {
 })
 
 describe.skipIf(process.platform === "win32")("layerProxyProcess", { concurrent: false }, () => {
-  // Commands are launched by the proxy process, so their parent is the proxy
-  const proxyPid = Effect.gen(function*() {
+  // Commands are launched by the proxy process, so their parent is the proxy.
+  // The tag is the last argument of the spawn request.
+  const tagged = Effect.fnUntraced(function*(...tag: ReadonlyArray<string>) {
     const spawner = yield* ChildProcessSpawner
-    return Number((yield* spawner.string(ChildProcess.make("sh", ["-c", "echo $PPID"]))).trim())
+    return Number((yield* spawner.string(ChildProcess.make("sh", ["-c", "echo $PPID", ...tag]))).trim())
   })
+
+  const proxyPid = tagged()
 
   const isAlive = (pid: number) => {
     try {
@@ -89,9 +92,28 @@ process.send = (message, ...rest) => {
 }
 ${proxyProcessSource}`
 
-  const tagged = (tag: string) =>
-    Effect.flatMap(ChildProcessSpawner, (spawner) => spawner.string(ChildProcess.make("sh", ["-c", "echo $PPID", tag])))
-      .pipe(Effect.map((output) => Number(output.trim())))
+  // A layer whose proxy processes run the held program
+  const heldProxy = Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    const directory = yield* fs.makeTempDirectoryScoped()
+    const hold = join(directory, "hold")
+    const requests = join(directory, "requests")
+    const layer = proxyServices({ args: ["--input-type=module", "-e", heldProxyProgram(hold, requests)] })
+    return { fs, hold, requests, layer }
+  })
+
+  // Each call makes the application appear to have changed its user ID
+  const credentialChanges = Effect.gen(function*() {
+    const uid = process.getuid!()
+    const getuid = yield* Effect.acquireRelease(
+      Effect.sync(() => vi.spyOn(process, "getuid")),
+      (spy) => Effect.sync(() => spy.mockRestore())
+    )
+    let changes = 0
+    return () => {
+      getuid.mockReturnValue(uid + ++changes)
+    }
+  })
 
   it.live("stops the proxy process when the layer scope closes", () =>
     Effect.gen(function*() {
@@ -110,10 +132,7 @@ ${proxyProcessSource}`
 
   it.live("never sends a spawn that is interrupted while a replacement proxy process starts", () =>
     Effect.gen(function*() {
-      const fs = yield* FileSystem.FileSystem
-      const directory = yield* fs.makeTempDirectoryScoped()
-      const hold = join(directory, "hold")
-      const requests = join(directory, "requests")
+      const { fs, hold, layer, requests } = yield* heldProxy
       yield* Effect.gen(function*() {
         const first = Option.getOrThrow(yield* currentPid)
         yield* fs.writeFileString(hold, "")
@@ -132,28 +151,21 @@ ${proxyProcessSource}`
         assert.notStrictEqual(pid, first)
         assert.deepStrictEqual(yield* currentPid, Option.some(pid))
         assert.strictEqual(yield* fs.readFileString(requests), "survivor\n")
-      }).pipe(Effect.provide(proxyServices({ args: ["--input-type=module", "-e", heldProxyProgram(hold, requests)] })))
+      }).pipe(Effect.provide(layer))
     }).pipe(Effect.provide(NodeFileSystem.layer), Effect.scoped))
 
   it.live("sends spawns waiting on a proxy process retired while starting to its replacement", () =>
     Effect.gen(function*() {
-      const fs = yield* FileSystem.FileSystem
-      const directory = yield* fs.makeTempDirectoryScoped()
-      const hold = join(directory, "hold")
-      const requests = join(directory, "requests")
-      const uid = process.getuid!()
-      const getuid = yield* Effect.acquireRelease(
-        Effect.sync(() => vi.spyOn(process, "getuid")),
-        (spy) => Effect.sync(() => spy.mockRestore())
-      )
+      const { fs, hold, layer, requests } = yield* heldProxy
+      const changeCredentials = yield* credentialChanges
       yield* Effect.gen(function*() {
         yield* fs.writeFileString(hold, "")
         // Retires the ready proxy process, and starts one that is held
-        getuid.mockReturnValue(uid + 1)
+        changeCredentials()
         const waiting = yield* Effect.forkChild(tagged("waiting"))
         yield* Effect.sleep("100 millis")
         // Retires the held one while it starts, and starts another
-        getuid.mockReturnValue(uid + 2)
+        changeCredentials()
         const latest = yield* Effect.forkChild(tagged("latest"))
         yield* Effect.sleep("100 millis")
         yield* fs.remove(hold)
@@ -162,7 +174,7 @@ ${proxyProcessSource}`
         assert.strictEqual(yield* Fiber.join(waiting), pid)
         assert.deepStrictEqual(yield* currentPid, Option.some(pid))
         assert.deepStrictEqual((yield* fs.readFileString(requests)).split("\n").sort(), ["", "latest", "waiting"])
-      }).pipe(Effect.provide(proxyServices({ args: ["--input-type=module", "-e", heldProxyProgram(hold, requests)] })))
+      }).pipe(Effect.provide(layer))
     }).pipe(Effect.provide(NodeFileSystem.layer), Effect.scoped))
 
   it.live("fails to build when the proxy process cannot start or does not answer", () =>
@@ -335,15 +347,7 @@ ${proxyProcessSource}`
   it.live("retires proxy processes when credentials change even when socket directory removal fails", () =>
     Effect.gen(function*() {
       const denied = yield* denySocketDirectoryRemoval
-      const uid = process.getuid!()
-      const getuid = yield* Effect.acquireRelease(
-        Effect.sync(() => vi.spyOn(process, "getuid")),
-        (spy) => Effect.sync(() => spy.mockRestore())
-      )
-      let changes = 0
-      const changeCredentials = () => {
-        getuid.mockReturnValue(uid + ++changes)
-      }
+      const changeCredentials = yield* credentialChanges
 
       // A busy retired proxy process still reports its command's exit
       const first = yield* proxyPid
