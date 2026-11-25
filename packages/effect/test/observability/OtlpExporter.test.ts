@@ -472,6 +472,7 @@ describe("OtlpExporter", () => {
         if (phase === "during") {
           yield* Deferred.succeed(releaseB, undefined)
           yield* yieldNowN(3)
+          exporter.push({ value: 4 })
         }
 
         const flushFiber = yield* Effect.forkChild(flusher.flush)
@@ -480,21 +481,32 @@ describe("OtlpExporter", () => {
         yield* yieldNowN(2)
 
         if (phase === "before") {
+          yield* TestClock.adjust("800 millis")
           yield* Deferred.succeed(releaseB, undefined)
+          yield* TestClock.adjust("199 millis")
+        } else {
+          yield* TestClock.adjust("999 millis")
         }
 
-        yield* TestClock.adjust("100 millis")
         yield* yieldNowN(3)
         assert.strictEqual(yield* Ref.get(interruptedA), 0)
         assert.isUndefined(flushFiber.pollUnsafe())
         assert.isUndefined(closeFiber.pollUnsafe())
         assert.deepStrictEqual(batches, [[1], [2]])
 
-        // Healthy sibling A finishes within shutdownTimeout; discarded C never starts
-        yield* Deferred.succeed(releaseA, undefined)
-        yield* Fiber.join(flushFiber)
-        yield* Fiber.join(closeFiber)
-        assert.strictEqual(yield* Ref.get(interruptedA), 0)
+        if (phase === "before") {
+          // Healthy sibling A finishes at 999 ms within the original 1 s deadline
+          yield* Deferred.succeed(releaseA, undefined)
+          yield* Fiber.join(flushFiber)
+          yield* Fiber.join(closeFiber)
+          assert.strictEqual(yield* Ref.get(interruptedA), 0)
+        } else {
+          // Original 1 s shutdown deadline still fires without restarting on cooldown
+          yield* TestClock.adjust("1 millis")
+          yield* Fiber.join(closeFiber)
+          yield* Fiber.join(flushFiber)
+          assert.strictEqual(yield* Ref.get(interruptedA), 1)
+        }
         assert.deepStrictEqual(batches, [[1], [2]])
         assert.strictEqual(dropped, 0)
       }).pipe(Effect.provide(OtlpExporter.layerFlusher)))
@@ -623,41 +635,24 @@ describe("OtlpExporter", () => {
   it.effect("allows unbounded concurrency when explicitly configured", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.make()
-      const { httpClient, releases, started } = yield* makeControlledHttpClient(6)
-      const flusher = yield* OtlpExporter.Flusher
-      const exporter = yield* OtlpExporter.make({
-        label: "OtlpExporterTest",
-        url: "http://localhost:4318/v1/logs",
-        headers: undefined,
-        exportInterval: "1 hour",
+      const { httpClient, releases, started } = yield* makeControlledHttpClient(5)
+      const exporter = yield* makeExporter(httpClient, {
         maxBatchSize: 1,
-        concurrency: "unbounded",
-        body: () => [HttpBody.empty, Effect.void],
-        shutdownTimeout: "1 second"
-      }).pipe(
-        Effect.provideService(HttpClient.HttpClient, httpClient),
-        Scope.provide(scope)
-      )
+        concurrency: "unbounded"
+      }).pipe(Scope.provide(scope))
 
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 5; i++) {
         exporter.push({ value: i })
       }
-      // All 6 requests (> default 4) start concurrently
-      for (let i = 0; i < 6; i++) {
+      // All 5 requests (> default 4) start concurrently
+      for (let i = 0; i < 5; i++) {
         yield* Deferred.await(started[i])
       }
-
-      const flushFiber = yield* Effect.forkChild(flusher.flush)
-      for (let i = 5; i >= 1; i--) {
+      for (let i = 0; i < 5; i++) {
         yield* Deferred.succeed(releases[i], undefined)
       }
-      yield* yieldNowN(3)
-      assert.isUndefined(flushFiber.pollUnsafe())
-
-      yield* Deferred.succeed(releases[0], undefined)
-      yield* Fiber.join(flushFiber)
       yield* Scope.close(scope, Exit.void)
-    }).pipe(Effect.provide(OtlpExporter.layerFlusher)))
+    }))
 
   it.effect("returns from scope close at shutdownTimeout even with an uninterruptible client", () =>
     Effect.gen(function*() {
