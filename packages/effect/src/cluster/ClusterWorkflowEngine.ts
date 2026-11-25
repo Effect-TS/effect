@@ -31,7 +31,7 @@ import * as Semaphore from "../Semaphore.ts"
 import * as Activity from "../workflow/Activity.ts"
 import * as DurableClock from "../workflow/DurableClock.ts"
 import * as DurableDeferred from "../workflow/DurableDeferred.ts"
-import { markScopeAbandoned, withLazyScope } from "../workflow/internal/scope.ts"
+import { markScopeAbandoned, reuseOrForkScope } from "../workflow/internal/scope.ts"
 import * as Workflow from "../workflow/Workflow.ts"
 import * as WorkflowEngine from "../workflow/WorkflowEngine.ts"
 import * as ClusterSchema from "./ClusterSchema.ts"
@@ -518,12 +518,11 @@ export const make = Effect.gen(function*() {
                 // Superseded instances retained by finalizers no longer need their wait sets.
                 currentRun?.instance.awaitedDeferreds.clear()
                 currentRun?.instance.completedDeferreds.clear()
-                // Each run gets a fresh scope under the activation's parent, so
-                // replays rebuild compensations while suspended runs keep theirs.
-                const instance = withLazyScope(
-                  WorkflowEngine.WorkflowInstance.initial(workflow, executionId),
-                  pending.scope
-                )
+                // Reuse the previous run's scope when empty so unused replays do not
+                // grow `pending.scope`; otherwise fork so superseded compensations stay isolated.
+                const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
+                  scope: reuseOrForkScope(currentRun?.instance.scope, pending.scope)
+                })
                 currentRun = { request, instance, activityAwaits: new Map() }
                 const parent = (request.payload as any)[payloadParentKey] as
                   | { workflowName: string; executionId: string; detached?: boolean }

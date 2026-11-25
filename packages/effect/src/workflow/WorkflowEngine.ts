@@ -27,7 +27,7 @@ import * as Semaphore from "../Semaphore.ts"
 import type * as Activity from "./Activity.ts"
 import type { DurableClock } from "./DurableClock.ts"
 import type * as DurableDeferred from "./DurableDeferred.ts"
-import { withLazyScope } from "./internal/scope.ts"
+import { reuseOrForkScope } from "./internal/scope.ts"
 import * as Workflow from "./Workflow.ts"
 
 /**
@@ -820,12 +820,11 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       const executionScope = state.scope
       // A superseded instance retained by a finalizer no longer needs its wait set.
       state.instance.awaitedDeferreds.clear()
-      // Like the cluster engine, each run gets a fresh scope, so replays rebuild
-      // compensations instead of registering them again.
-      const instance = withLazyScope(
-        WorkflowInstance.initial(state.instance.workflow, state.instance.executionId),
-        executionScope
-      )
+      // Reuse the previous run's scope when empty so unused replays do not grow
+      // `executionScope`; otherwise fork so superseded compensations stay isolated.
+      const instance = WorkflowInstance.initial(state.instance.workflow, state.instance.executionId, {
+        scope: reuseOrForkScope(state.instance.scope, executionScope)
+      })
       state.instance = instance
       state.fiber = yield* state.execute(state.payload, state.instance.executionId).pipe(
         Effect.onExit((exit) => {
@@ -858,9 +857,9 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         Effect.onExit((exit) => {
           if (Exit.isSuccess(exit) && exit.value._tag === "Suspended") return Effect.void
           // The final run's scope closes with the real exit. Closing the parent
-          // then closes earlier scopes in reverse order of first use with
-          // `Exit.void`, so their superseded compensations are skipped, which
-          // means their finalizers also observe success rather than the outcome.
+          // then closes earlier scopes in reverse order with `Exit.void`, so their
+          // superseded compensations are skipped, which means their finalizers
+          // also observe success rather than the outcome.
           return Effect.andThen(
             Scope.close(executionScope, Exit.void),
             Exit.isSuccess(exit) && exit.value._tag === "Complete" ? Deferred.succeed(state.done, void 0) : Effect.void

@@ -293,33 +293,6 @@ const recordExit = (
 }
 
 /**
- * Copies `instance` for the body of a `recordHeld`, with its own activity
- * state. `scope` and `abandoned` stay live, where a spread would fork the
- * run's scope and snapshot `abandoned`. Kept at module level so the accessors
- * retain only `instance`, not the body's fiber.
- */
-const heldInstance = (instance: WorkflowInstance["Service"]): WorkflowInstance["Service"] => ({
-  executionId: instance.executionId,
-  workflow: instance.workflow,
-  get scope() {
-    return instance.scope
-  },
-  suspended: false,
-  interrupted: instance.interrupted,
-  get abandoned() {
-    return instance.abandoned
-  },
-  set abandoned(value: boolean) {
-    instance.abandoned = value
-  },
-  cause: instance.cause,
-  failed: instance.failed,
-  awaitedDeferreds: instance.awaitedDeferreds,
-  completedDeferreds: instance.completedDeferreds,
-  activityState: { count: 0, latch: Latch.makeUnsafe() }
-})
-
-/**
  * Runs `effect` as one activity of the enclosing workflow and records its exit
  * into `self`, returning a previously recorded exit instead when `checkCache`
  * is set. The hold spans the lookup, `effect` and the write, so a parked
@@ -343,7 +316,11 @@ const recordHeld = Effect.fnUntraced(function*<A, E, R>(
       // it waits for its own siblings and not for the hold above. The copy
       // starts unsuspended: a parked arm of an enclosing race leaves that
       // copy marked suspended while only interrupting its own fiber.
-      const local = heldInstance(instance)
+      const local: WorkflowInstance["Service"] = {
+        ...instance,
+        suspended: false,
+        activityState: { count: 0, latch: Latch.makeUnsafe() }
+      }
       // A losing branch parked on a durable wait has already exited when the
       // race settles, so this body owns the waits registered beneath it.
       const owned: Array<string> = []

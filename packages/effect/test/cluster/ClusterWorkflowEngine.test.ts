@@ -330,7 +330,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
   )
 
   it.effect(
-    "clears superseded deferred tracking and closes late-read scopes in reverse first-use order",
+    "clears superseded deferred tracking and keeps late finalizers on superseded handles until termination",
     () =>
       Effect.gen(function*() {
         const gates = [
@@ -346,7 +346,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         let firstAwaits: Map<string, number> | undefined
         let secondInstance: WorkflowInstance["Service"] | undefined
         let thirdScope: Scope.Scope | undefined
-        const finalized: Array<number> = []
+        const finalized: Array<number | string> = []
+        let lateExit: Exit.Exit<unknown, unknown> | undefined
         const layer = workflow.toLayer(() =>
           Effect.gen(function*() {
             const run = ++runs
@@ -386,12 +387,19 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
           assert.isDefined(secondInstance)
           assert.isDefined(thirdScope)
-          yield* Scope.addFinalizer(
-            secondInstance.scope,
+          yield* Workflow.addFinalizer((exit) =>
             Effect.sync(() => {
+              lateExit = exit
               finalized.push(2)
             })
-          )
+          ).pipe(Effect.provideService(WorkflowInstance, secondInstance))
+          yield* Workflow.withCompensation(Effect.void, () =>
+            Effect.sync(() => {
+              finalized.push("comp")
+            })).pipe(
+              Effect.provideService(WorkflowInstance, secondInstance),
+              Scope.provide(secondInstance.scope)
+            )
           yield* Scope.addFinalizer(
             thirdScope,
             Effect.sync(() => {
@@ -400,20 +408,17 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           )
           assert.isEmpty(finalized, "late finalizers must not run while suspended")
 
-          yield* DurableDeferred.succeed(gates[2], {
-            token: DurableDeferred.tokenFromExecutionId(gates[2], { workflow, executionId }),
-            value: undefined
-          })
-          assert.deepStrictEqual(
-            yield* pollUntil(workflow, executionId, "Complete"),
-            new Workflow.Complete({ exit: Exit.void })
-          )
-          assert.deepStrictEqual(finalized, [2, 3, 1])
+          yield* workflow.interrupt(executionId)
+          const result = yield* pollUntil(workflow, executionId, "Complete")
+          assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit))
+          assert.isDefined(lateExit)
+          assert.isTrue(Exit.isSuccess(lateExit))
+          assert.deepStrictEqual(finalized, [3, 2, 1])
         }).pipe(Effect.provide(layer))
       })
   )
 
-  it.effect("skips late durable finalizers but runs late owner-local cleanup after owner teardown", () =>
+  it.effect("skips late durable finalizers and compensations but runs late owner-local cleanup after owner teardown", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("AbandonedLateFinalizer/Gate")
       const workflow = Workflow.make("AbandonedLateFinalizer", {
@@ -447,8 +452,15 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           durable++
         })
       ).pipe(Effect.provideService(WorkflowInstance, savedInstance))
+      yield* Workflow.withCompensation(Effect.void, () =>
+        Effect.sync(() => {
+          durable++
+        })).pipe(
+          Effect.provideService(WorkflowInstance, savedInstance),
+          Scope.provide(savedInstance.scope)
+        )
       assert.strictEqual(ownerLocal, 1, "late owner-local cleanup must run after teardown")
-      assert.strictEqual(durable, 0, "late durable finalizer must be skipped after teardown")
+      assert.strictEqual(durable, 0, "late durable finalizer and compensation must be skipped after teardown")
     }))
 
   it.effect("wakes an activity deferred completed before a parallel sibling lets the workflow suspend", () =>

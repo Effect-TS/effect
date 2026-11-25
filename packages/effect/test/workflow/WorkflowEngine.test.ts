@@ -1547,7 +1547,7 @@ describe("WorkflowEngine", () => {
   )
 
   it.effect(
-    "layerMemory clears superseded deferred tracking and closes late-read scopes in reverse first-use order",
+    "layerMemory clears superseded deferred tracking and keeps late finalizers on superseded handles until termination",
     () =>
       Effect.gen(function*() {
         const gates = [
@@ -1564,7 +1564,8 @@ describe("WorkflowEngine", () => {
         let firstAwaits: Map<string, number> | undefined
         let secondInstance: WorkflowEngine.WorkflowInstance["Service"] | undefined
         let thirdScope: Scope.Scope | undefined
-        const finalized: Array<number> = []
+        const finalized: Array<number | string> = []
+        let lateExit: Exit.Exit<unknown, unknown> | undefined
         const layer = workflow.toLayer(() =>
           Effect.gen(function*() {
             const run = ++runs
@@ -1606,12 +1607,19 @@ describe("WorkflowEngine", () => {
 
           assert.isDefined(secondInstance)
           assert.isDefined(thirdScope)
-          yield* Scope.addFinalizer(
-            secondInstance.scope,
+          yield* Workflow.addFinalizer((exit) =>
             Effect.sync(() => {
+              lateExit = exit
               finalized.push(2)
             })
-          )
+          ).pipe(Effect.provideService(WorkflowEngine.WorkflowInstance, secondInstance))
+          yield* Workflow.withCompensation(Effect.void, () =>
+            Effect.sync(() => {
+              finalized.push("comp")
+            })).pipe(
+              Effect.provideService(WorkflowEngine.WorkflowInstance, secondInstance),
+              Scope.provide(secondInstance.scope)
+            )
           yield* Scope.addFinalizer(
             thirdScope,
             Effect.sync(() => {
@@ -1620,15 +1628,12 @@ describe("WorkflowEngine", () => {
           )
           assert.isEmpty(finalized, "late finalizers must not run while suspended")
 
-          yield* DurableDeferred.succeed(gates[2], {
-            token: DurableDeferred.tokenFromExecutionId(gates[2], { workflow, executionId }),
-            value: undefined
-          })
-          assert.deepStrictEqual(
-            yield* pollUntil(workflow, executionId, "Complete"),
-            new Workflow.Complete({ exit: Exit.void })
-          )
-          assert.deepStrictEqual(finalized, [2, 3, 1])
+          yield* workflow.interrupt(executionId)
+          const result = yield* pollUntil(workflow, executionId, "Complete")
+          assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit))
+          assert.isDefined(lateExit)
+          assert.isTrue(Exit.isSuccess(lateExit))
+          assert.deepStrictEqual(finalized, [3, 2, 1])
         }).pipe(Effect.provide(layer))
       })
   )

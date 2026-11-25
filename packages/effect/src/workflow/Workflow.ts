@@ -31,6 +31,7 @@ import * as SchemaParser from "../SchemaParser.ts"
 import * as Tranformation from "../SchemaTransformation.ts"
 import * as Scope from "../Scope.ts"
 import { makeHashDigest } from "./internal/crypto.ts"
+import { isScopeAbandoned } from "./internal/scope.ts"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.ts"
 
 const TypeId = "~effect/workflow/Workflow"
@@ -952,7 +953,10 @@ export const addFinalizer: <R>(
   const services = yield* Effect.context<R>()
   yield* Scope.addFinalizerExit(
     instance.scope,
-    (exit) => instance.abandoned ? Effect.void : Effect.provideContext(f(exit), services)
+    (exit) =>
+      instance.abandoned || isScopeAbandoned(instance.scope)
+        ? Effect.void
+        : Effect.provideContext(f(exit), services)
   )
 })
 

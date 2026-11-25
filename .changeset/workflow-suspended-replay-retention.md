@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix memory retention across suspended workflow replays in `ClusterWorkflowEngine` and `WorkflowEngine.layerMemory`; workflow scopes of earlier runs now close in reverse order of first use instead of reverse run order.
+Fix memory retention across suspended workflow replays in `ClusterWorkflowEngine` and `WorkflowEngine.layerMemory` by reusing an empty previous run scope, clearing superseded deferred wait tracking, and tracking cluster abandonment by parent scope.

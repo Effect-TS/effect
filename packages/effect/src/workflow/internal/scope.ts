@@ -1,5 +1,4 @@
 import * as Scope from "../../Scope.ts"
-import type { WorkflowInstance } from "../WorkflowEngine.ts"
 
 const abandonedScopes = new WeakSet<Scope.Scope>()
 
@@ -14,34 +13,23 @@ export const markScopeAbandoned = (parent: Scope.Scope): void => {
 }
 
 /**
- * Forks the run's scope from `parent` on first access, so a run that never
- * uses its scope leaves nothing attached to `parent`.
- *
- * The scope takes its place among `parent`'s finalizers when it is first
- * read, not when the run starts, so `parent` closes run scopes in reverse
- * order of first use.
- *
- * `scope` and `abandoned` are accessors, so copy the result field by field: a
- * spread forks the scope and snapshots `abandoned`.
+ * Reports whether `scope` or its parent scope was marked abandoned.
  *
  * @internal
  */
-export const withLazyScope = (
-  instance: WorkflowInstance["Service"],
+export const isScopeAbandoned = (scope: Scope.Scope): boolean =>
+  abandonedScopes.has(scope) || (scope.parent !== undefined && abandonedScopes.has(scope.parent))
+
+/**
+ * Reuses `prev` when it is still an empty child of `parent`, otherwise forks a
+ * fresh child scope from `parent`.
+ *
+ * @internal
+ */
+export const reuseOrForkScope = (
+  prev: Scope.Closeable | undefined,
   parent: Scope.Scope
-): WorkflowInstance["Service"] => {
-  let scope: Scope.Closeable | undefined
-  let abandoned = instance.abandoned
-  return {
-    ...instance,
-    get scope() {
-      return scope ??= Scope.forkUnsafe(parent)
-    },
-    get abandoned() {
-      return abandoned || abandonedScopes.has(parent)
-    },
-    set abandoned(value) {
-      abandoned = value
-    }
-  }
-}
+): Scope.Closeable =>
+  prev !== undefined && prev.parent === parent && prev.state._tag === "Empty"
+    ? prev
+    : Scope.forkUnsafe(parent)
