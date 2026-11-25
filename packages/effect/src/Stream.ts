@@ -12027,8 +12027,7 @@ export const toAsyncIterableWith: {
           await runPromise(Effect.logError("Suppressed error while closing Stream async iterator", error))
         }
       }
-      // Registers the fiber before the pull runs, so that a close during the
-      // pull can interrupt it.
+      // Register the fiber before pulling so a reentrant close can interrupt it.
       const pullChunk = Effect.withFiber((fiber) => {
         currentFiber = fiber
         return pull ??
