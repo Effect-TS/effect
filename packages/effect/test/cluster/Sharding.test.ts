@@ -3075,7 +3075,7 @@ describe.concurrent("Sharding active teardowns", () => {
       }).pipe(Effect.provide(layer), Effect.scoped)
     }), { concurrent: false })
 
-  for (const mode of ["duplicate", "fresh"] as const) {
+  for (const mode of ["duplicate", "duplicate-completed", "fresh"] as const) {
     it.effect(`handles delayed saveRequest ack during shard release (${mode})`, () =>
       Effect.gen(function*() {
         const WorkRpc = Rpc.make("Work", {
@@ -3129,7 +3129,7 @@ describe.concurrent("Sharding active teardowns", () => {
                 Effect.tap(() => {
                   if (message.envelope.tag !== "Work") return Effect.void
                   workSaves++
-                  const shouldHold = mode === "duplicate" ? workSaves === 2 : workSaves === 1
+                  const shouldHold = mode === "fresh" ? workSaves === 1 : workSaves === 2
                   if (!shouldHold) return Effect.void
                   heldMessage = message
                   return saveHeld.open.pipe(Effect.andThen(releaseSaveAck.await))
@@ -3182,7 +3182,7 @@ describe.concurrent("Sharding active teardowns", () => {
 
           const client = (yield* Peer.client)("1")
 
-          if (mode === "duplicate") {
+          if (mode !== "fresh") {
             const original = yield* client.Work({ id: "dup" }).pipe(Effect.forkScoped({ startImmediately: true }))
             for (let i = 0; i < 500 && !targetStarted.isOpen(); i++) yield* TestClock.adjust(10)
             assert.isTrue(targetStarted.isOpen())
@@ -3191,6 +3191,12 @@ describe.concurrent("Sharding active teardowns", () => {
             for (let i = 0; i < 500 && !saveHeld.isOpen(); i++) yield* TestClock.adjust(10)
             assert.isTrue(saveHeld.isOpen())
 
+            if (mode === "duplicate-completed") {
+              yield* releaseTarget.open
+              for (let i = 0; i < 500 && original.pollUnsafe() === undefined; i++) yield* TestClock.adjust(10)
+              assert.deepStrictEqual(original.pollUnsafe(), Exit.succeed("done"))
+            }
+
             // Reassign the shard so abandonUndelivered runs while the duplicate save ack is pending.
             assignSelf = false
             for (let i = 0; i < 500 && sharding.hasShardId(shardId); i++) yield* TestClock.adjust(10)
@@ -3198,7 +3204,7 @@ describe.concurrent("Sharding active teardowns", () => {
             yield* TestClock.adjust(1000)
 
             yield* releaseSaveAck.open
-            yield* releaseTarget.open
+            if (mode === "duplicate") yield* releaseTarget.open
             for (
               let i = 0;
               i < 500 && (original.pollUnsafe() === undefined || joiner.pollUnsafe() === undefined);

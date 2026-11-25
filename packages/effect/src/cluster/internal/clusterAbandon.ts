@@ -8,7 +8,7 @@ import type * as Snowflake from "../Snowflake.ts"
 export interface ReplyWait {
   persistedId: Snowflake.Snowflake | undefined
   abandoned: boolean
-  onPersisted: ((persistedId: Snowflake.Snowflake) => boolean) | undefined
+  onPersisted: ((persistedId: Snowflake.Snowflake) => (() => void) | undefined) | undefined
   readonly fiber: Fiber.Fiber<any, any>
 }
 

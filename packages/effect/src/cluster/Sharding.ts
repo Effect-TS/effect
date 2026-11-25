@@ -1665,19 +1665,22 @@ const make = Effect.gen(function*() {
           !Equal.equals(entry.message.envelope.address, address) ||
           (!shutdown && !isHandoffCaller(entry.context, address))
         ) continue
-        const abandonIfUndelivered = (persistedId: Snowflake.Snowflake): boolean => {
-          if (isDelivered(persistedId)) return false
-          // Drop the entry so abandoning the caller does not cancel the request.
-          clientRequests.delete(requestId)
-          return true
-        }
+        const checkUndelivered = (persistedId: Snowflake.Snowflake): (() => void) | undefined =>
+          isDelivered(persistedId)
+            ? undefined
+            : () => {
+              // Drop the entry so abandoning the caller does not cancel the request.
+              clientRequests.delete(requestId)
+            }
         if (wait.persistedId !== undefined) {
-          if (abandonIfUndelivered(wait.persistedId)) {
+          const commit = checkUndelivered(wait.persistedId)
+          if (commit !== undefined) {
+            commit()
             ClusterAbandon.abandonWait(wait)
           }
         } else {
           // Defer the delivery check until saveRequest resolves the persisted ID.
-          wait.onPersisted = abandonIfUndelivered
+          wait.onPersisted = checkUndelivered
         }
       }
     })

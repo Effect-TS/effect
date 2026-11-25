@@ -234,10 +234,23 @@ export const make: (
         wait.persistedId = outgoing.envelope.requestId
         const onPersisted = wait.onPersisted
         wait.onPersisted = undefined
-        if (onPersisted?.(wait.persistedId)) {
-          wait.abandoned = true
-          if (duplicate) requestIdRewrites.delete(message.envelope.requestId)
-          return ClusterAbandon.interrupt
+        const commitAbandon = onPersisted?.(wait.persistedId)
+        if (commitAbandon !== undefined) {
+          // A target that completed before drain left activeRequests; deliver
+          // any terminal reply already in storage before abandoning.
+          return Effect.flatMap(
+            Effect.orElseSucceed(storage.repliesFor([outgoing]), () => [] as ReadonlyArray<Reply.Reply<any>>),
+            (replies) => {
+              const terminal = replies.find((reply) => reply._tag === "WithExit")
+              if (terminal !== undefined) {
+                return outgoing.respond(terminal)
+              }
+              commitAbandon()
+              wait.abandoned = true
+              if (duplicate) requestIdRewrites.delete(message.envelope.requestId)
+              return ClusterAbandon.interrupt
+            }
+          )
         }
       }
       const effect = afterPersist(outgoing, duplicate)
