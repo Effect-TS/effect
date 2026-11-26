@@ -23,7 +23,7 @@ import * as Stream from "../Stream.ts"
 import { nativeTracer } from "../Tracer.ts"
 import * as HttpBody from "./HttpBody.ts"
 import { type HttpMiddleware, isTracerDisabledUnsafe, tracer } from "./HttpMiddleware.ts"
-import { causeResponse, ClientAbort, HttpServerError, InternalError } from "./HttpServerError.ts"
+import { causeResponse, ClientAbort, HttpServerError, InternalError, reportableCause } from "./HttpServerError.ts"
 import { HttpServerRequest } from "./HttpServerRequest.ts"
 import * as Request from "./HttpServerRequest.ts"
 import type { HttpServerResponse } from "./HttpServerResponse.ts"
@@ -63,7 +63,7 @@ export const toHandled = <E, R, EH, RH>(
     const request = frame.request
     return Effect.flatMapEager(causeResponse(cause), ([response, cause]) => {
       const fiber = Fiber.getCurrent()!
-      reportCauseUnsafe(fiber, cause)
+      reportHandlerCauseUnsafe(fiber, cause)
       const handler = frame.preResponseHandler
       const cont = cause.reasons.length === 0 ? Effect.succeed(response) : Effect.failCause(cause)
       if (handler === undefined) {
@@ -122,7 +122,7 @@ export const toHandled = <E, R, EH, RH>(
       responded :
       Effect.matchCauseEffect(tracer(middleware(responded)), {
         onFailure(cause): Effect.Effect<void, EH, RH> {
-          reportCauseUnsafe(Fiber.getCurrent()!, cause)
+          reportHandlerCauseUnsafe(Fiber.getCurrent()!, cause)
           if (handledSymbol in request) return Effect.void
           return Effect.matchCauseEffectEager(causeResponse(cause), {
             onFailure(_) {
@@ -226,6 +226,11 @@ export const toHandled = <E, R, EH, RH>(
 }
 
 const handledSymbol = Symbol.for("effect/http/HttpEffect/handled")
+
+const reportHandlerCauseUnsafe = (fiber: Fiber.Fiber<unknown, unknown>, cause: Cause.Cause<unknown>) => {
+  const reportable = reportableCause(cause)
+  if (reportable !== undefined) reportCauseUnsafe(fiber, reportable)
+}
 
 /**
  * Disables automatic closing for an HTTP request scope.
