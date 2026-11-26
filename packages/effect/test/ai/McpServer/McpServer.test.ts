@@ -787,6 +787,12 @@ describe("McpServer", () => {
             "mcp-protocol-version": "2025-03-26"
           })
           assert.strictEqual(response.status, 400)
+          const body = (yield* Effect.promise(() => response.json())) as { error: { code: number; message: string } }
+          assert.strictEqual(body.error.code, -32600)
+          assert.strictEqual(
+            body.error.message,
+            "JSON-RPC batches are not accepted here; send each message in its own POST request"
+          )
         }
         assert.strictEqual(yield* Ref.get(calls), 0)
       }))
@@ -3054,7 +3060,7 @@ describe("McpServer", () => {
       assert.deepInclude(yield* unsupportedResponse.json, {
         error: {
           code: -32022,
-          message: "Unsupported protocol version '9999-01-01'",
+          message: "Unsupported protocol version '9999-01-01'. Supported versions: 2025-06-18",
           data: { supported: ["2025-06-18"], requested: "9999-01-01" }
         }
       })

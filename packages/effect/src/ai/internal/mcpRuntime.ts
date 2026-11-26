@@ -97,11 +97,11 @@ type HttpProtocolSelection =
   | {
     readonly _tag: "Rejected"
     readonly status: 400 | 404
-    readonly error?: {
+    readonly error: {
       readonly code: number
       readonly message: string
       readonly data?: unknown
-    } | undefined
+    }
   }
 
 /**
@@ -241,15 +241,24 @@ export const make = Effect.fnUntraced(function*(
   const sessionTerminationListeners = new Set<(binding: RequestBinding) => Effect.Effect<void>>()
   const unsupportedProtocolVersion = (requested: string) => ({
     code: PublicMcpSchema.UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE,
-    message: `Unsupported protocol version '${requested}'`,
+    message: `Unsupported protocol version '${requested}'. Supported versions: ${protocolVersions.join(", ")}`,
     data: { supported: protocolVersions, requested }
   })
   const selectHttpSession = (headers: Headers.Headers, isInitialize: boolean): HttpProtocolSelection => {
     const protocolVersion = headers[MCP_PROTOCOL_VERSION_HEADER]
     const sessionId = headers[MCP_SESSION_ID_HEADER]
     const binding = sessionId === undefined ? undefined : stateful?.resolveSessionId(sessionId)
+    // An unknown session is 404, and the client must initialize again (2025-11-25, Session Management).
     if (sessionId !== undefined && binding === undefined) {
-      return { _tag: "Rejected", status: 404 }
+      return {
+        _tag: "Rejected",
+        status: 404,
+        error: {
+          code: PublicMcpSchema.INVALID_REQUEST_ERROR_CODE,
+          message:
+            "Session not found: this MCP-Session-Id is unknown or has expired. Start a new session by sending initialize without an MCP-Session-Id header"
+        }
+      }
     }
     if (!isInitialize && protocolVersion !== undefined) {
       if (!protocolVersions.includes(protocolVersion)) {
@@ -403,9 +412,9 @@ export const make = Effect.fnUntraced(function*(
           return reject(400, unsupportedProtocolVersion(version))
         }
         const admission = selectHttpProtocol(headers, undefined)
-        // Session and protocol-header errors take precedence over parse errors.
+        // Session and protocol-header errors do not depend on the body, so they take precedence over parse errors.
         return admission._tag === "Rejected" &&
-            (admission.error === undefined || admission.error.code === PublicMcpSchema.HEADER_MISMATCH_ERROR_CODE)
+            (admission.status === 404 || admission.error.code === PublicMcpSchema.HEADER_MISMATCH_ERROR_CODE)
           ? reject(admission.status, admission.error)
           : reject(200, new PublicMcpSchema.ParseError({ message: "Parse error" }))
       }
@@ -415,13 +424,21 @@ export const make = Effect.fnUntraced(function*(
           return reject(400, new PublicMcpSchema.InvalidRequest({ message: "Invalid Request" }))
         }
         const admission = selectHttpProtocol(headers, input)
+        // A batch rejected while selecting its session or version keeps that rejection.
+        if (admission._tag === "Rejected") {
+          return reject(admission.status, admission.error)
+        }
         if (
-          admission._tag === "Rejected" ||
           input.some(hasRequestProtocolVersion) ||
           input.some((message) => Predicate.hasProperty(message, "method") && message.method === "initialize") ||
           admission.binding?.protocol.runtime.transport.jsonRpc.acceptsBatches !== true
         ) {
-          return reject(400)
+          return reject(
+            400,
+            new PublicMcpSchema.InvalidRequest({
+              message: "JSON-RPC batches are not accepted here; send each message in its own POST request"
+            })
+          )
         }
         return {
           _tag: "Accepted",

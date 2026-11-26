@@ -27,6 +27,17 @@ const httpTransportSuiteName = (protocol: McpProtocol.ProtocolAdapter) =>
     ? "Single-endpoint HTTP compatibility extension"
     : "Streamable HTTP"
 
+// A transport rejection made before the message is read is a JSON-RPC error without an ID that
+// says what to change, so a client can show more than the status.
+const assertTransportRejection = Effect.fnUntraced(function*(response: Response, status: number, message: string) {
+  const test = yield* McpConformance
+  assert.strictEqual(response.status, status)
+  const error = yield* test.decodeError(response)
+  assert.isNull(error.id)
+  assert.strictEqual(error.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
+  assert.include(error.error.message, message)
+})
+
 export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Transports", () => {
@@ -161,7 +172,10 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
                 const test = yield* McpConformance
                 const response = yield* test.post([test.initializeRequest()])
 
-                assert.isAtLeast(response.status, 400)
+                assert.strictEqual(response.status, 400)
+                const error = yield* test.decodeError(response)
+                assert.strictEqual(error.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
+                assert.include(error.error.message, "send each message in its own POST request")
               })
           )
 
@@ -226,7 +240,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
                 const response = yield* test.request(jsonRequest("POST", test.initializeRequest(), {
                   "content-type": contentType
                 }))
-                assert.strictEqual(response.status, 415)
+                yield* assertTransportRejection(response, 415, "Content-Type: application/json")
               }
             }))
 
@@ -252,7 +266,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
                 ]
               ) {
                 const response = yield* test.request(jsonRequest("POST", test.initializeRequest(), { accept }))
-                assert.strictEqual(response.status, 406)
+                yield* assertTransportRejection(response, 406, "application/json and text/event-stream")
               }
             }))
 
@@ -348,6 +362,9 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }))
 
               assert.strictEqual(response.status, 404)
+              const error = yield* test.decodeError(response)
+              assert.strictEqual(error.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
+              assert.include(error.error.message, "sending initialize without an MCP-Session-Id header")
             }))
           it.effect("SCENARIO declines client session termination without invalidating the session", () =>
             Effect.gen(function*() {
@@ -460,6 +477,9 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
                   { origin: "https://attacker.example" }
                 ))
                 assert.strictEqual(response.status, 403)
+                if (method === "POST") {
+                  yield* assertTransportRejection(response, 403, "Origin 'https://attacker.example'")
+                }
               }
             }))
         })
@@ -569,11 +589,11 @@ export const statelessModernSuite = (
               ...headers(),
               "content-type": contentType
             }))
-            assert.strictEqual(response.status, 415)
+            yield* assertTransportRejection(response, 415, "Content-Type: application/json")
           }
           for (const accept of ["application/json", "text/event-stream", "*/*", ""]) {
             const response = yield* test.request(jsonRequest("POST", body, { ...headers(), accept }))
-            assert.strictEqual(response.status, 406)
+            yield* assertTransportRejection(response, 406, "application/json and text/event-stream")
           }
         }))
 
@@ -609,6 +629,9 @@ export const statelessModernSuite = (
               { ...headers(), origin: "https://attacker.example" }
             ))
             assert.strictEqual(response.status, 403)
+            if (method === "POST") {
+              yield* assertTransportRejection(response, 403, "Origin 'https://attacker.example'")
+            }
           }
         }))
     })
