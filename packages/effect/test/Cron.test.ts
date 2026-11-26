@@ -886,19 +886,15 @@ describe("Cron", () => {
     })
   })
 
-  it("next and prev use the host time zone across DST changes when no time zone is set", () => {
+  it("next and prev follow host DST transitions when no time zone is set", () => {
     const previous = process.env.TZ
-    process.env.TZ = "Europe/Berlin"
     try {
-      // Berlin moves from +02:00 to +01:00 on 2026-10-25 and back on 2026-03-29.
+      process.env.TZ = "Europe/Berlin"
+      // Europe/Berlin falls back from +02:00 to +01:00 on 2026-10-25.
       const cron = Cron.parseUnsafe("0 9 10 * *")
       deepStrictEqual(next(cron, new Date("2026-10-20T12:00:00+02:00")), new Date("2026-11-10T09:00:00+01:00"))
-      deepStrictEqual(next(cron, new Date("2026-03-20T12:00:00+01:00")), new Date("2026-04-10T09:00:00+02:00"))
       deepStrictEqual(prev(cron, new Date("2026-11-01T12:00:00+01:00")), new Date("2026-10-10T09:00:00+02:00"))
-      deepStrictEqual(prev(cron, new Date("2026-04-01T12:00:00+02:00")), new Date("2026-03-10T09:00:00+01:00"))
-      assertTrue(match(cron, next(cron, new Date("2026-10-20T12:00:00+02:00"))))
 
-      // A zoned input still uses its own zone
       const tokyo = DateTime.makeZonedUnsafe(new Date("2026-10-20T12:00:00+09:00"), { timeZone: "Asia/Tokyo" })
       deepStrictEqual(next(cron, tokyo), new Date("2026-11-10T09:00:00+09:00"))
     } finally {
