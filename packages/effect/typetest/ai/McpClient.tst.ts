@@ -70,9 +70,11 @@ describe("McpClient", () => {
 
   it("should accept only client-supported protocol adapters", () => {
     type Protocol = Parameters<typeof McpClient.http>[0]["protocol"]
+    expect<typeof McpProtocol.v2025_03_26>().type.toBeAssignableTo<Protocol>()
+    expect<typeof McpProtocol.v2025_06_18>().type.toBeAssignableTo<Protocol>()
     expect<typeof McpProtocol.v2025_11_25>().type.toBeAssignableTo<Protocol>()
     expect<typeof McpProtocol.v2026_07_28>().type.toBeAssignableTo<Protocol>()
-    expect<typeof McpProtocol.v2025_06_18>().type.not.toBeAssignableTo<Protocol>()
+    expect<typeof McpProtocol.v2024_11_05>().type.not.toBeAssignableTo<Protocol>()
   })
 
   it("should infer result and error types when toolkit modes are selected or omitted", () => {

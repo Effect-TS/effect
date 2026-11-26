@@ -67,7 +67,7 @@ import * as Toolkit from "./Toolkit.ts"
  * @category models
  * @since 4.0.6
  */
-export type ProtocolVersion = "2025-11-25" | "2026-07-28"
+export type ProtocolVersion = "2025-03-26" | "2025-06-18" | "2025-11-25" | "2026-07-28"
 
 /**
  * Service tag for applications that provide one default MCP connection.
