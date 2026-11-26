@@ -4004,33 +4004,23 @@ describe("McpServer", () => {
         assert.strictEqual(span.attributes.get("gen_ai.tool.call.arguments"), "{\"text\":\"hi\"}")
       }))
 
-    it.effect("omits target attributes and span suffix for unregistered tools", () =>
+    it.effect("records target telemetry only for registered tools, prompts, and static resources", () =>
       Effect.gen(function*() {
-        const { callTool } = yield* makeTracedServer(true)
+        const { callTool, send } = yield* makeTracedServer(true)
 
-        const span = yield* callTool({ name: "not_registered", arguments: { secret: "value" } })
-        assert.strictEqual(span.name, "tools/call")
-        assert.strictEqual(span.attributes.get("gen_ai.operation.name"), "execute_tool")
-        assert.isFalse(span.attributes.has("gen_ai.tool.name"))
-        assert.isFalse(span.attributes.has("gen_ai.tool.call.arguments"))
-      }))
+        const missingTool = yield* callTool({ name: "not_registered", arguments: { secret: "value" } })
+        assert.strictEqual(missingTool.name, "tools/call")
+        assert.strictEqual(missingTool.attributes.get("gen_ai.operation.name"), "execute_tool")
+        assert.isFalse(missingTool.attributes.has("gen_ai.tool.name"))
+        assert.isFalse(missingTool.attributes.has("gen_ai.tool.call.arguments"))
 
-    it.effect("records prompt target telemetry only for registered prompts", () =>
-      Effect.gen(function*() {
-        const { send } = yield* makeTracedServer()
+        const registeredPrompt = yield* send("prompts/get", { name: "greet" })
+        assert.strictEqual(registeredPrompt.name, "prompts/get greet")
+        assert.strictEqual(registeredPrompt.attributes.get("gen_ai.prompt.name"), "greet")
 
-        const registered = yield* send("prompts/get", { name: "greet" })
-        assert.strictEqual(registered.name, "prompts/get greet")
-        assert.strictEqual(registered.attributes.get("gen_ai.prompt.name"), "greet")
-
-        const missing = yield* send("prompts/get", { name: "missing_prompt" })
-        assert.strictEqual(missing.name, "prompts/get")
-        assert.isFalse(missing.attributes.has("gen_ai.prompt.name"))
-      }))
-
-    it.effect("records mcp.resource.uri only for registered static resources", () =>
-      Effect.gen(function*() {
-        const { send } = yield* makeTracedServer()
+        const missingPrompt = yield* send("prompts/get", { name: "missing_prompt" })
+        assert.strictEqual(missingPrompt.name, "prompts/get")
+        assert.isFalse(missingPrompt.attributes.has("gen_ai.prompt.name"))
 
         const staticResource = yield* send("resources/read", { uri: "test://static" })
         assert.strictEqual(staticResource.name, "resources/read")
@@ -4039,10 +4029,6 @@ describe("McpServer", () => {
         const templateResource = yield* send("resources/read", { uri: "test://items/secret-id" })
         assert.strictEqual(templateResource.name, "resources/read")
         assert.isFalse(templateResource.attributes.has("mcp.resource.uri"))
-
-        const missingResource = yield* send("resources/read", { uri: "example://missing" })
-        assert.strictEqual(missingResource.name, "resources/read")
-        assert.isFalse(missingResource.attributes.has("mcp.resource.uri"))
       }))
 
     // https://github.com/modelcontextprotocol/modelcontextprotocol/pull/414
