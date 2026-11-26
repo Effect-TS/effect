@@ -428,7 +428,10 @@ export const make = Effect.fnUntraced(function*(
         if (admission._tag === "Rejected") {
           return reject(admission.status, admission.error)
         }
+        const isStatelessVersion = statelessProtocol !== undefined &&
+          headers[MCP_PROTOCOL_VERSION_HEADER] === statelessProtocol.protocolVersion
         if (
+          isStatelessVersion ||
           input.some(hasRequestProtocolVersion) ||
           input.some((message) => Predicate.hasProperty(message, "method") && message.method === "initialize") ||
           admission.binding?.protocol.runtime.transport.jsonRpc.acceptsBatches !== true
