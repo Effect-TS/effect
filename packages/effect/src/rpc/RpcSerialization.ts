@@ -606,6 +606,8 @@ type JsonRpcMessage = JsonRpcRequest | JsonRpcResponse
 
 const defaultSchemaBinaryMaxFrameSize = 16 * 1024 * 1024
 
+const schemaBinaryTextEncoder = new TextEncoder()
+
 const makeSchemaBinary = (
   schemaBinary: typeof SchemaBinary,
   options?: {
@@ -620,7 +622,6 @@ const makeSchemaBinary = (
     ? (schema) => schemaBinary.toCodecDirect(schema, { fingerprint: true })
     : schemaBinary.toCodecDirect
   const envelopeOptions = { fingerprint: true } as const
-  const textEncoder = new TextEncoder()
   return RpcSerialization.of({
     contentType: "application/vnd.effect.rpc+schema-binary",
     includesFraming: true,
@@ -629,7 +630,7 @@ const makeSchemaBinary = (
       const parser = schemaBinary.parser(RpcMessage.EncodedSchema, { ...envelopeOptions, maxFrameSize })
       const encoder = schemaBinary.encoder(RpcMessage.EncodedSchema, envelopeOptions)
       return {
-        decode: (data) => parser.feedSync(typeof data === "string" ? textEncoder.encode(data) : data),
+        decode: (data) => parser.feedSync(typeof data === "string" ? schemaBinaryTextEncoder.encode(data) : data),
         encode: (response) => {
           if (!Array.isArray(response)) {
             return encoder.encode(response)
@@ -728,8 +729,7 @@ export const layerSchemaBinary = (options?: {
   readonly fingerprintPayloads?: boolean | undefined
 }): Layer.Layer<RpcSerialization> =>
   Layer.effect(RpcSerialization)(
-    Effect.map(
-      Effect.promise(() => import("../encoding/SchemaBinary.ts")),
-      (schemaBinary) => makeSchemaBinary(schemaBinary, options)
+    Effect.promise(() =>
+      import("../encoding/SchemaBinary.ts").then((schemaBinary) => makeSchemaBinary(schemaBinary, options))
     )
   )
