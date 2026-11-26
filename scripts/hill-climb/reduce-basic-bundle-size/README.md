@@ -62,5 +62,8 @@ Gotchas:
   flat and overlay `Context.get`, `Equal.equals` on `Cause` and `Context`, `Formatter.format`
   and `Predicate.hasProperty` in two copies of effect. On a shared machine the ratios move
   by up to about 50% between runs, so run it several times and in both argument orders.
+- `context-get-bench.mjs <dist> <flat|overlay|both> [label]`: times `Context.get` in a
+  separate process per copy and mode; `both` reads a flat and an overlay context from one
+  call site, which is where a dispatch regression shows. Alternate base and current runs.
 - `equality-parity.mjs <base dist> <current dist>`: checks that `Context` and `Cause` equality
   and `Cause` hashes match between two copies of effect.
