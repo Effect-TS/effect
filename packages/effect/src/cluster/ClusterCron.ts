@@ -21,6 +21,7 @@ import * as Cron from "../Cron.ts"
 import * as DateTime from "../DateTime.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import * as Fiber from "../Fiber.ts"
 import * as Layer from "../Layer.ts"
 import * as PrimaryKey from "../PrimaryKey.ts"
 import * as Rpc from "../rpc/Rpc.ts"
@@ -172,17 +173,23 @@ export const make = <E, R>(options: {
     { shardGroup: options.shardGroup }
   )
 
-  const execute = Effect.fnUntraced(function*(dateTime: DateTime.Utc) {
-    const now = yield* DateTime.now
-    if (DateTime.isLessThan(dateTime, DateTime.subtractDuration(now, cronSchedule.skipIfOlderThan))) {
-      return
-    }
-    // each attempt gets its own scope, closed with its exit before any retry
-    return yield* Effect.scoped(Effect.provideContext(
-      options.execute,
-      Context.add(scheduleContext, CurrentScheduledTime, dateTime)
-    ))
-  }, Effect.orDie)
+  const execute = Effect.fnUntraced(
+    function*(dateTime: DateTime.Utc) {
+      const now = yield* DateTime.now
+      if (DateTime.isLessThan(dateTime, DateTime.subtractDuration(now, cronSchedule.skipIfOlderThan))) {
+        return
+      }
+      // each attempt runs in its own fiber and scope, so its child fibers and
+      // finalizers have finished before it is retried
+      const fiber = yield* Effect.forkChild(
+        Effect.provideContext(options.execute, Context.add(scheduleContext, CurrentScheduledTime, dateTime)),
+        { uninterruptible: "inherit" }
+      )
+      return yield* Fiber.join(fiber).pipe(Effect.onInterrupt(() => Fiber.interrupt(fiber)))
+    },
+    Effect.scoped,
+    Effect.orDie
+  )
 
   const EntityLayer = CronEntity.toLayer(Effect.gen(function*() {
     const address = yield* Entity.CurrentAddress

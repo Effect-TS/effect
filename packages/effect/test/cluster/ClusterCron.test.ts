@@ -228,6 +228,10 @@ describe("ClusterCron", { concurrent: false }, () => {
           attempts.push(DateTime.formatIso(yield* ClusterCron.CurrentScheduledTime))
           if (attempts.length === 1) {
             yield* Effect.addFinalizer((exit) => Effect.sync(() => attempts.push(exit._tag)))
+            yield* Effect.forkChild(
+              Effect.never.pipe(Effect.onInterrupt(() => Effect.sync(() => attempts.push("child interrupted")))),
+              { startImmediately: true }
+            )
             return yield* Effect.fail("boom")
           }
         })
@@ -235,8 +239,9 @@ describe("ClusterCron", { concurrent: false }, () => {
 
       yield* deploy(cron, 3500)
 
-      // the failed attempt's scope is closed before it is retried
-      const [first, finalized, ...rest] = attempts
+      // the failed attempt's children and scope are closed before it is retried
+      const [first, interrupted, finalized, ...rest] = attempts
+      assert.strictEqual(interrupted, "child interrupted")
       assert.strictEqual(finalized, "Failure")
       assert.isAbove(rest.length, 1)
       assert.strictEqual(rest[0], first)
