@@ -401,20 +401,26 @@ describe("EntityManager", () => {
       const delivery = { deliverAt: Date.now() + 60_000, primaryKey: "Mailbox/waiters/Add/same" }
       const firstRequestId = nextRequestId()
       const secondRequestId = nextRequestId()
+      const secondEnvelope = envelope("Add", { operationId: "same" }, secondRequestId)
       const first = yield* Effect.forkChild(
         manager.invoke(envelope("Add", { operationId: "same" }, firstRequestId), false, delivery),
         { startImmediately: true }
       )
       const second = yield* Effect.forkChild(
-        manager.invoke(envelope("Add", { operationId: "same" }, secondRequestId), false, delivery),
+        manager.invoke(secondEnvelope, false, delivery),
         { startImmediately: true }
       )
-      // Wait for both delayed asks to be admitted and register their waiters.
+      const secondRetry = yield* Effect.forkChild(
+        manager.invoke(secondEnvelope, false, delivery),
+        { startImmediately: true }
+      )
+      // Wait for all delayed asks to be admitted and register their waiters.
       yield* manager.invoke(envelope("Get"), false).pipe(Effect.timeout("1 second"), TestClock.withLive)
 
       // Before `invoke` returns, the Worker still knows only the duplicate's own id.
       yield* manager.interrupt(secondRequestId, secondRequestId)
       yield* Fiber.await(second).pipe(Effect.timeout("1 second"), TestClock.withLive)
+      yield* Fiber.await(secondRetry).pipe(Effect.timeout("1 second"), TestClock.withLive)
 
       assert.isUndefined(first.pollUnsafe(), "Interrupting the duplicate also ended the original waiter")
       yield* manager.interrupt(firstRequestId)
@@ -555,6 +561,73 @@ describe("EntityManager", () => {
       assert.deepStrictEqual(exitOf(writeResult.replies[0]), { _tag: "Success", value: "written" })
       const reply = yield* loadNextReply(storage.sql, holdRequestId)
       assert.strictEqual(exitOf(reply!.reply)._tag, "Failure")
+    }))
+
+  it.effect("keeps ownership when an interrupt during persisted startup fails its terminal write", () =>
+    Effect.gen(function*() {
+      const inStart = yield* Deferred.make<void>()
+      const releaseStart = yield* Deferred.make<void>()
+      const { envelope, exitOf, manager, storage } = yield* makeMailbox("failed-startup-cancel")
+      const getAlarm = storage.getAlarm.bind(storage)
+      storage.getAlarm = () => {
+        storage.getAlarm = getAlarm
+        Deferred.doneUnsafe(inStart, Effect.void)
+        return Effect.runPromise(Effect.andThen(Deferred.await(releaseStart), Effect.promise(getAlarm)))
+      }
+      const requestId = nextRequestId()
+      const first = yield* Effect.forkChild(
+        manager.invoke(envelope("Add", { operationId: "fail-write" }, requestId), false),
+        { startImmediately: true }
+      )
+      yield* Deferred.await(inStart)
+      yield* manager.interrupt(requestId)
+
+      // Fail only the transaction saving the interrupt reply.
+      const transactionSync = storage.transactionSync.bind(storage)
+      storage.transactionSync = () => {
+        storage.transactionSync = transactionSync
+        throw new Error("terminal write failed")
+      }
+      yield* Deferred.succeed(releaseStart, undefined)
+      const exit = yield* Fiber.await(first).pipe(Effect.timeout("1 second"), TestClock.withLive)
+      assert.isTrue(Exit.isFailure(exit))
+
+      const get = yield* manager.invoke(envelope("Get"), false)
+      assert(get._tag === "Success")
+      assert.deepStrictEqual(exitOf(get.replies[0]), { _tag: "Success", value: 0 })
+      assert.isUndefined(counts.get("failed-startup-cancel"))
+    }))
+
+  it.effect("decrements in-flight persisted count when interrupted before the handler fiber starts", () =>
+    Effect.gen(function*() {
+      const { entity, release, started } = yield* makeGatedAsk("PreStartInterrupt")
+      const { envelope, manager, storage, waitUntilFibers } = yield* makeMailbox("pre-start", entity.type)
+      const firstRequestId = nextRequestId()
+      let interrupting: Fiber.Fiber<void> | undefined
+      const push = waitUntilFibers.push.bind(waitUntilFibers)
+      waitUntilFibers.push = (...items) => {
+        waitUntilFibers.push = push
+        // `waitUntil` is called right after `session` is published, before the
+        // deferred handler fiber gets its first turn.
+        interrupting = Effect.runFork(manager.interrupt(firstRequestId))
+        return push(...items)
+      }
+
+      const first = yield* manager.invoke(envelope("Add", { operationId: "first" }, firstRequestId), false).pipe(
+        Effect.timeout("1 second"),
+        TestClock.withLive
+      )
+      assert.deepStrictEqual(first, { _tag: "Success", requestId: firstRequestId, replies: [] })
+      assert.isDefined(interrupting)
+      yield* Fiber.join(interrupting!).pipe(Effect.timeout("1 second"), TestClock.withLive)
+      assert.isNull(storage.alarm, "In-flight persisted count leaked after pre-start interrupt")
+
+      // The next persisted ask must transition 0 -> 1 and arm a recovery heartbeat.
+      const second = yield* Effect.forkChild(manager.invoke(envelope("Add", { operationId: "second" }), false))
+      yield* Deferred.await(started)
+      assert.isNotNull(storage.alarm, "Next persisted ask skipped arming its recovery heartbeat")
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(second)
     }))
 
   it.effect("lets an Rpc.uninterruptible handler finish after an interrupt", () =>

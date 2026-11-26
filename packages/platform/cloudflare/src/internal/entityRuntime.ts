@@ -470,6 +470,7 @@ interface Session {
   readonly queue: Queue.Queue<SessionReply, Cause.Done>
   readonly completeInterrupt: Effect.Effect<void>
   readonly persisted: boolean
+  persistedPending: boolean
   // `ClusterSchema.Uninterruptible` is `true` or `"server"`: an interrupt is
   // ignored and the handler runs to completion.
   readonly uninterruptible: boolean
@@ -782,21 +783,39 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       (targets) => pushScheduledReply(reply, targets)
     )
 
+  const releasePersisted = (session: Session): Effect.Effect<void> =>
+    Effect.suspend(() => {
+      if (!session.persistedPending) return Effect.void
+      session.persistedPending = false
+      return finishPersisted
+    })
+
+  const completeCancelUnderPermit = (storageRequestId: string, session: Session): Effect.Effect<void> =>
+    Effect.andThen(
+      session.completeInterrupt,
+      Effect.sync(() => {
+        if (sessions.get(storageRequestId) === session) sessions.delete(storageRequestId)
+      })
+    ).pipe(
+      Effect.ensuring(
+        Effect.suspend(() => {
+          signalSaved(session)
+          return session.persistedPending
+            ? releasePersisted(session)
+            : inFlightPersisted === 0
+            ? rearm
+            : Effect.void
+        })
+      )
+    )
+
   const finishCancel = (storageRequestId: string, session: Session): Effect.Effect<void> =>
     Effect.andThen(
       session.fiber === undefined ? Effect.void : Fiber.interrupt(session.fiber),
       session.persisted
-        ? Semaphore.withPermit(
-          semaphore,
-          Effect.andThen(
-            session.completeInterrupt,
-            Effect.suspend(() => {
-              if (sessions.get(storageRequestId) === session) sessions.delete(storageRequestId)
-              return inFlightPersisted === 0 ? rearm : Effect.void
-            })
-          )
-        )
+        ? Semaphore.withPermit(semaphore, completeCancelUnderPermit(storageRequestId, session))
         : Effect.sync(() => {
+          signalSaved(session)
           if (sessions.get(storageRequestId) === session) sessions.delete(storageRequestId)
         })
     )
@@ -907,18 +926,23 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       queue,
       completeInterrupt,
       persisted,
+      persistedPending: false,
       uninterruptible,
       cancelling: false,
       ack: undefined,
       fiber: undefined,
       saved: undefined
     }
-    if (persisted) yield* startPersisted
+    if (persisted) {
+      yield* startPersisted
+      session.persistedPending = true
+    }
     const cancelledBeforeFork = yield* Effect.sync(() => earlyInterrupts.delete(requestId) && !uninterruptible)
     if (cancelledBeforeFork) {
       if (persisted) {
-        yield* completeInterrupt
-        yield* finishPersisted
+        session.cancelling = true
+        sessions.set(requestId, session)
+        yield* completeCancelUnderPermit(requestId, session)
       }
       return Effect.succeed([])
     }
@@ -953,7 +977,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
             signalSaved(session)
           })
           return persisted
-            ? Semaphore.withPermit(semaphore, Effect.andThen(cleanup, finishPersisted))
+            ? Semaphore.withPermit(semaphore, Effect.andThen(cleanup, releasePersisted(session)))
             : cleanup
         })
       )
@@ -1084,6 +1108,10 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     if (discard || replyTo !== undefined) return Effect.succeed(success(storageRequestId, []))
     if (earlyInterrupts.delete(clientRequestId) && !uninterruptible) {
       return Effect.succeed(success(storageRequestId, []))
+    }
+    const existing = clientWaiters.get(clientRequestId)
+    if (existing !== undefined) {
+      return Deferred.await(existing.deferred)
     }
     const deferred = Deferred.makeUnsafe<EntityInvokeResult>()
     const waiter: WorkerWaiter = { storageRequestId, clientRequestId, deferred }
