@@ -77,12 +77,14 @@ export class ConfigError {
   readonly _tag = "ConfigError"
   readonly name: string = "ConfigError"
   readonly cause: SourceError | Schema.SchemaError
-  readonly message: string
+  declare readonly message: string
   constructor(cause: SourceError | Schema.SchemaError) {
     this.cause = cause
-    // Computed once: code that copies or replaces `cause`, as test runners do
-    // when they serialize an error, must not change or break the message.
-    this.message = cause.toString()
+    Object.defineProperty(this, "message", {
+      value: cause.toString(),
+      enumerable: false,
+      configurable: true
+    })
   }
   toString() {
     return `ConfigError(${this.message})`
