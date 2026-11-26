@@ -402,6 +402,63 @@ describe("AnthropicLanguageModel", () => {
         )
       }))
 
+    it.effect("decodes a refusal whose stop details omit the fallback fields", () =>
+      Effect.gen(function*() {
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(sseResponse(request, [
+                {
+                  type: "message_start",
+                  message: {
+                    id: "msg_test_1",
+                    type: "message",
+                    role: "assistant",
+                    model: "claude-sonnet-4-20250514",
+                    content: [],
+                    stop_reason: null,
+                    stop_sequence: null,
+                    usage: {
+                      cache_creation: null,
+                      cache_creation_input_tokens: null,
+                      cache_read_input_tokens: null,
+                      input_tokens: 10,
+                      output_tokens: 0,
+                      service_tier: null
+                    }
+                  }
+                },
+                {
+                  type: "message_delta",
+                  delta: {
+                    stop_reason: "refusal",
+                    stop_sequence: null,
+                    stop_details: { type: "refusal", category: null, explanation: null }
+                  },
+                  usage: {
+                    cache_creation_input_tokens: null,
+                    cache_read_input_tokens: null,
+                    input_tokens: null,
+                    output_tokens: 0
+                  }
+                },
+                { type: "message_stop" }
+              ]))
+            )
+          ))
+        )
+
+        const parts = yield* LanguageModel.streamText({ prompt: "Hello" }).pipe(
+          Stream.runCollect,
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(layer)
+        )
+        const finish = globalThis.Array.from(parts).find((part) => part.type === "finish")
+        assertDefined(finish)
+        assert.strictEqual(finish.reason, "content-filter")
+      }))
+
     it.effect("decodes tool call params in content_block_stop", () =>
       Effect.gen(function*() {
         const toolParams = { pattern: "*.ts" }
