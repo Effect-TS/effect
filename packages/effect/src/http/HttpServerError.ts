@@ -18,9 +18,9 @@ import * as Effect from "../Effect.ts"
 import * as ErrorReporter from "../ErrorReporter.ts"
 import type * as Exit from "../Exit.ts"
 import { constUndefined } from "../Function.ts"
+import * as SchemaError from "../internal/schemaError.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
-import * as Schema from "../Schema.ts"
 import type * as Request from "./HttpServerRequest.ts"
 import * as Respondable from "./HttpServerRespondable.ts"
 import * as Response from "./HttpServerResponse.ts"
@@ -300,7 +300,7 @@ const formatRequestMessage = (reason: string, description: string | undefined, i
 export const reportableCause = <E>(cause: Cause.Cause<E>): Cause.Cause<E> | undefined => {
   const reasons = cause.reasons.filter((reason) =>
     reason._tag !== "Fail" || Respondable.isRespondable(reason.error) ||
-    !(Schema.isSchemaError(reason.error) || Cause.isNoSuchElementError(reason.error))
+    !(SchemaError.isSchemaError(reason.error) || Cause.isNoSuchElementError(reason.error))
   )
   return reasons.length === cause.reasons.length ? cause : reasons.length === 0 ? undefined : Cause.fromReasons(reasons)
 }
