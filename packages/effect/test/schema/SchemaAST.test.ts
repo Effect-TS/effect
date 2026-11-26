@@ -331,6 +331,12 @@ describe("SchemaAST", () => {
         ),
         "encoded"
       )
+
+      const flipped = Schema.flip(Schema.make<Schema.Codec<string>>(ast))
+      const wire = Schema.toType(flipped)
+      assert.strictEqual(Schema.decodeUnknownSync(wire)("input"), "encoded")
+      assert.strictEqual(Schema.decodeUnknownSync(Schema.toEncoded(flipped))("input"), "decoded")
+      assert.strictEqual(Schema.toEncoded(wire).ast, wire.ast)
     })
 
     it("projects the type parameter of a contextual declaration", () => {
@@ -571,16 +577,18 @@ describe("SchemaAST", () => {
     })
 
     it("decodes shallow input through a deeply nested encoded suspended field", () => {
-      let payload: Schema.Codec<unknown> = Schema.Number
-      // Project each level as it is built, so only resolving the suspended field can overflow.
-      for (let i = 0; i < 5_000; i++) {
-        payload = Schema.toEncoded(Schema.Array(payload))
-      }
-      const kids = Schema.toEncoded(Schema.Array(Schema.suspend(() => payload)))
-      const schema = Schema.toEncoded(Schema.Struct({ kids }))
-      const input = { kids: [[]] }
+      for (const project of [Schema.toType, Schema.toEncoded]) {
+        let payload: Schema.Codec<unknown> = Schema.Number
+        // Project each level as it is built, so only resolving the suspended field can overflow.
+        for (let i = 0; i < 5_000; i++) {
+          payload = project(Schema.Array(payload))
+        }
+        const kids = Schema.toEncoded(Schema.Array(Schema.suspend(() => payload)))
+        const schema = Schema.toEncoded(Schema.Struct({ kids }))
+        const input = { kids: [[]] }
 
-      deepStrictEqual(Schema.decodeUnknownSync(schema)(input), input)
+        deepStrictEqual(Schema.decodeUnknownSync(schema)(input), input)
+      }
     })
 
     it("bounds property reads when many encoded suspended fields share one schema", () => {

@@ -717,6 +717,14 @@ abstract class ASTNodeImpl implements ASTNode {
   }
 }
 
+function flipChecks<A extends Declaration | Arrays | Objects | Union>(ast: A): A {
+  return ast.checks === ast.encodingChecks ? ast : copy(ast, {
+    checks: ast.encodingChecks,
+    encodingChecks: ast.checks,
+    encoding: undefined
+  })
+}
+
 type DeclarationRun = (
   typeParameters: ReadonlyArray<AST>
 ) => (input: unknown, self: Declaration, options: ParseOptions) => Effect.Effect<any, SchemaIssue.Issue>
@@ -823,26 +831,19 @@ export const Declaration: new(
       }
     }
   }
-  private _rebuild(
-    recur: (ast: AST) => AST,
-    checks: Checks | undefined,
-    encodingChecks: Checks | undefined,
-    run: DeclarationRun,
-    encodingRun: DeclarationRun | undefined
-  ) {
-    const tps = mapOrSame(this.typeParameters, recur)
-    return tps === this.typeParameters && checks === this.checks && encodingChecks === this.encodingChecks &&
-        run === this.run && encodingRun === this.encodingRun ?
-      this :
-      new Declaration(tps, run, this.annotations, checks, undefined, this.context, encodingChecks, encodingRun)
+  /** @internal */
+  recur(recur: (ast: AST) => AST): Declaration {
+    const typeParameters = mapOrSame(this.typeParameters, recur)
+    return typeParameters === this.typeParameters ? this : copy(this, { typeParameters, encoding: undefined })
   }
   /** @internal */
-  recur(recur: (ast: AST) => AST) {
-    return this._rebuild(recur, this.checks, this.encodingChecks, this.run, this.encodingRun)
-  }
-  /** @internal */
-  flip(recur: (ast: AST) => AST) {
-    return this._rebuild(recur, this.encodingChecks, this.checks, this.encodingRun ?? this.run, this.run)
+  flip(recur: (ast: AST) => AST): Declaration {
+    const out = flipChecks(this.recur(recur))
+    return this.run === this.encodingRun ? out : copy(out, {
+      run: this.encodingRun ?? this.run,
+      encodingRun: this.run,
+      encoding: undefined
+    })
   }
   /** @internal */
   getExpected(): string {
@@ -2486,30 +2487,26 @@ export const Arrays: new(
       }
     }
   }
-  private _rebuild(recur: (ast: AST) => AST, checks: Checks | undefined, encodingChecks: Checks | undefined) {
+  /** @internal */
+  recur(recur: (ast: AST) => AST): Arrays {
     const elements = mapOrSame(this.elements, recur)
     const rest = mapOrSame(this.rest, recur)
-    return elements === this.elements && rest === this.rest && checks === this.checks &&
-        encodingChecks === this.encodingChecks ?
+    return elements === this.elements && rest === this.rest ?
       this :
       new Arrays(
         this.isMutable,
         elements,
         rest,
         this.annotations,
-        checks,
+        this.checks,
         undefined,
         this.context,
-        encodingChecks
+        this.encodingChecks
       )
   }
   /** @internal */
-  recur(recur: (ast: AST) => AST) {
-    return this._rebuild(recur, this.checks, this.encodingChecks)
-  }
-  /** @internal */
-  flip(recur: (ast: AST) => AST) {
-    return this._rebuild(recur, this.encodingChecks, this.checks)
+  flip(recur: (ast: AST) => AST): Arrays {
+    return flipChecks(this.recur(recur))
   }
   /** @internal */
   getExpected(): string {
@@ -3181,12 +3178,8 @@ export const Objects: new(
       return InternalParser.succeed(out)
     }
   }
-  private _rebuild(
-    recur: (ast: AST) => AST,
-    recurParameter: (ast: AST) => AST,
-    checks: Checks | undefined,
-    encodingChecks: Checks | undefined
-  ): Objects {
+  /** @internal */
+  recur(recur: (ast: AST) => AST, recurParameter: (ast: AST) => AST = recur): Objects {
     const props = mapOrSame(this.propertySignatures, (ps) => {
       const t = recur(ps.type)
       return t === ps.type ? ps : new PropertySignature(ps.name, t)
@@ -3200,26 +3193,13 @@ export const Objects: new(
         : new IndexSignature(p, t)
     })
 
-    return props === this.propertySignatures && indexes === this.indexSignatures && checks === this.checks &&
-        encodingChecks === this.encodingChecks
-      ? this
-      : new Objects(
-        props,
-        indexes,
-        this.annotations,
-        checks,
-        undefined,
-        this.context,
-        encodingChecks
-      )
+    return props === this.propertySignatures && indexes === this.indexSignatures ?
+      this :
+      copy(this, { propertySignatures: props, indexSignatures: indexes, encoding: undefined })
   }
   /** @internal */
-  flip(recur: (ast: AST) => AST): AST {
-    return this._rebuild(recur, recur, this.encodingChecks, this.checks)
-  }
-  /** @internal */
-  recur(recur: (ast: AST) => AST, recurParameter: (ast: AST) => AST = recur): AST {
-    return this._rebuild(recur, recurParameter, this.checks, this.encodingChecks)
+  flip(recur: (ast: AST) => AST): Objects {
+    return flipChecks(this.recur(recur))
   }
   /** @internal */
   getExpected(): string {
@@ -3814,23 +3794,14 @@ export const Union: new<A extends AST = AST>(
       return parseUnionCandidates(ast, parser, candidates, input, options)
     }
   }
-  private _rebuild(
-    recur: (ast: AST) => AST,
-    checks: Checks | undefined,
-    encodingChecks: Checks | undefined
-  ): Union<AST> {
-    const types = mapOrSame(this.types, recur)
-    return types === this.types && checks === this.checks && encodingChecks === this.encodingChecks ?
-      this :
-      new Union(types, this.options, this.annotations, checks, undefined, this.context, encodingChecks)
-  }
   /** @internal */
   recur(recur: (ast: AST) => AST): Union<AST> {
-    return this._rebuild(recur, this.checks, this.encodingChecks)
+    const types = mapOrSame(this.types, recur)
+    return types === this.types ? this : copy<Union<AST>>(this, { types, encoding: undefined })
   }
   /** @internal */
   flip(recur: (ast: AST) => AST): Union<AST> {
-    return this._rebuild(recur, this.encodingChecks, this.checks)
+    return flipChecks(this.recur(recur))
   }
   /** @internal */
   matchPart(s: string, options: ParseOptions): LiteralValue | undefined {
@@ -4065,8 +4036,7 @@ export const Suspend: new(
       throw new Error("Cannot add checks to Suspend")
     }
     super(annotations, undefined, encoding, context)
-    let ast: AST
-    this.thunk = () => ast ??= thunk()
+    this.thunk = memoizeThunk(thunk)
   }
   /** @internal */
   getParser(compile: SchemaParser.Compiler): SchemaParser.Parser {
@@ -4087,6 +4057,11 @@ export const Suspend: new(
   getExpected(getExpected: (ast: AST) => string): string {
     return getExpected(this.thunk())
   }
+}
+
+function memoizeThunk(thunk: Suspend["thunk"]): Suspend["thunk"] {
+  let ast: AST
+  return () => ast ??= thunk()
 }
 
 // -----------------------------------------------------------------------------
@@ -4378,11 +4353,12 @@ export function isPattern(regExp: globalThis.RegExp, annotations?: Schema.Annota
 const bodyOwners = new WeakMap<AST, AST>()
 
 function copy<A extends AST>(ast: A, changes: Partial<AST>): A {
-  // AST copies preserve the prototype and enumerable values, not property descriptors.
-  const out = Object.assign(Object.create(Object.getPrototypeOf(ast)), ast, changes) as A
-  if (Reflect.ownKeys(changes).every((key) => key === "context" || key === "encoding")) {
-    bodyOwners.set(out, getContextOwner(ast))
-  }
+  return Object.assign(Object.create(Object.getPrototypeOf(ast)), ast, changes) as A
+}
+
+function copyBody<A extends AST>(ast: A, changes: Pick<Partial<AST>, "context" | "encoding">): A {
+  const out = copy(ast, changes)
+  bodyOwners.set(out, getContextOwner(ast))
   return out
 }
 
@@ -4392,14 +4368,14 @@ export function getContextOwner<A extends AST>(ast: A): A {
   if (existing !== undefined) return existing as A
   if (ast.encoding === undefined) return ast
   // A body representative must not expose or retain the node's own codec.
-  const owner = Object.assign(Object.create(Object.getPrototypeOf(ast)), ast, { encoding: undefined }) as A
+  const owner = copy(ast, { encoding: undefined })
   bodyOwners.set(ast, owner)
   return owner
 }
 
 /** @internal */
 export function replaceEncoding<A extends AST>(ast: A, encoding: Encoding | undefined): A {
-  return ast.encoding === encoding ? ast : copy(ast, { encoding })
+  return ast.encoding === encoding ? ast : copyBody(ast, { encoding })
 }
 
 /** @internal */
@@ -4411,7 +4387,7 @@ export function replaceContext<A extends AST>(ast: A, context: Context | undefin
   if (owner.context === context && owner.encoding === ast.encoding) {
     return owner
   }
-  return copy(ast, { context })
+  return copyBody(ast, { context })
 }
 
 /** @internal */
@@ -4422,8 +4398,7 @@ export function getLastEncoding(ast: AST): AST {
 /** @internal */
 export function annotate<A extends AST>(ast: A, annotations: Schema.Annotations.Annotations): A {
   if (ast.checks) {
-    const last = ast.checks[ast.checks.length - 1]
-    return replaceChecks(ast, Arr.append(ast.checks.slice(0, -1), last.annotate(annotations)))
+    return replaceChecks(ast, mapLast(ast.checks, (check) => check.annotate(annotations)))
   }
   return copy(ast, { annotations: { ...ast.annotations, ...annotations } })
 }
@@ -4450,11 +4425,17 @@ export function mapLink(link: Link, f: (ast: AST) => AST): Link {
   return to === link.to ? link : new Link(to, link.transformation)
 }
 
+function mapLast<A>(items: readonly [A, ...Array<A>], f: (item: A) => A): readonly [A, ...Array<A>] {
+  const last = items[items.length - 1]
+  const out = f(last)
+  if (last === out) return items
+  const copy: [A, ...Array<A>] = [...items]
+  copy[copy.length - 1] = out
+  return copy
+}
+
 function updateLastLink(encoding: Encoding, f: (ast: AST) => AST): Encoding {
-  const links = encoding
-  const last = links[links.length - 1]
-  const out = mapLink(last, f)
-  return out === last ? encoding : Arr.append(encoding.slice(0, encoding.length - 1), out)
+  return mapLast(encoding, (link) => mapLink(link, f))
 }
 
 /** @internal */
@@ -4541,30 +4522,39 @@ export function mapOrSame<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArra
   return out ?? as
 }
 
-/** @internal */
-export function annotateKey<A extends AST>(ast: A, annotations: Schema.Annotations.Key<unknown>): A {
-  const context = ast.context ?
-    new Context(
-      ast.context.isOptional,
-      ast.context.isMutable,
-      ast.context.constructorDefault,
-      { ...ast.context.annotations, ...annotations }
-    ) :
-    new Context(false, false, undefined, annotations)
-  return replaceContext(ast, context)
+function updateContext<A extends AST>(
+  ast: A,
+  optional = isOptional(ast),
+  mutable = isMutable(ast),
+  constructorDefault = ast.context?.constructorDefault,
+  annotations = ast.context?.annotations
+): A {
+  return replaceContext(ast, new Context(optional, mutable, constructorDefault, annotations))
+}
+
+function setContextFlag(key: "isOptional" | "isMutable") {
+  const optional = key === "isOptional" ? true : undefined
+  const mutable = key === "isMutable" ? true : undefined
+  const set: <A extends AST>(ast: A) => A = memoizeIdempotent(<A extends AST>(ast: A): A =>
+    last(ast.context?.[key] ? ast : updateContext(ast, optional, mutable))
+  )
+  const last = applyToLastLink(set)
+  return set
 }
 
 /** @internal */
-export const optionalKey: <A extends AST>(ast: A) => A = memoizeIdempotent(<A extends AST>(ast: A): A => {
-  const context = ast.context ?
-    ast.context.isOptional === false ?
-      new Context(true, ast.context.isMutable, ast.context.constructorDefault, ast.context.annotations) :
-      ast.context :
-    new Context(true, false)
-  return optionalKeyLastLink(replaceContext(ast, context))
-})
+export function annotateKey<A extends AST>(ast: A, annotations: Schema.Annotations.Key<unknown>): A {
+  return updateContext(
+    ast,
+    undefined,
+    undefined,
+    undefined,
+    ast.context ? { ...ast.context.annotations, ...annotations } : annotations
+  )
+}
 
-const optionalKeyLastLink = applyToLastLink(optionalKey)
+/** @internal */
+export const optionalKey: <A extends AST>(ast: A) => A = setContextFlag("isOptional")
 
 /** @internal */
 export const optional = memoize(<A extends AST>(ast: A): Union<A | Undefined> =>
@@ -4572,26 +4562,14 @@ export const optional = memoize(<A extends AST>(ast: A): Union<A | Undefined> =>
 )
 
 /** @internal */
-export const mutableKey = memoizeIdempotent(<A extends AST>(ast: A): A => {
-  const context = ast.context ?
-    ast.context.isMutable === false ?
-      new Context(ast.context.isOptional, true, ast.context.constructorDefault, ast.context.annotations) :
-      ast.context :
-    new Context(false, true)
-  return mutableKeyLastLink(replaceContext(ast, context))
-})
-
-const mutableKeyLastLink = applyToLastLink(mutableKey)
+export const mutableKey = setContextFlag("isMutable")
 
 /** @internal */
 export function withConstructorDefault<A extends AST>(
   ast: A,
   defaultValue: Effect.Effect<unknown, SchemaIssue.Issue>
 ): A {
-  const context = ast.context ?
-    new Context(ast.context.isOptional, ast.context.isMutable, defaultValue, ast.context.annotations) :
-    new Context(false, false, defaultValue)
-  return replaceContext(ast, context)
+  return updateContext(ast, undefined, undefined, defaultValue)
 }
 
 /**
@@ -4711,37 +4689,63 @@ function extractStructuralChecks(checks: Checks): Checks | undefined {
   return Arr.isArrayNonEmpty(out) ? out : undefined
 }
 
-function canPreserveEncodingChecks(ast: AST): boolean {
-  let preserve = true
+// Suspensions are leaves in this walk. Only resolving a suspension may call its thunk.
+function everyNode(root: AST, predicate: (ast: AST) => boolean, proven?: WeakSet<AST>): boolean {
+  const nodes = new Set([root])
+  for (const ast of nodes) {
+    if (proven?.has(ast)) continue
+    if (!predicate(ast)) return false
+    if (!isSuspend(ast) && "recur" in ast) ast.recur(visit)
+  }
+  if (proven) {
+    for (const ast of nodes) {
+      proven.add(ast)
+    }
+  }
+  return true
+
   function visit(child: AST): AST {
-    preserve = preserve && !child.encoding && !isSuspend(child)
-    if (preserve && "recur" in child) child.recur(visit)
+    nodes.add(child)
     return child
   }
-  if ("recur" in ast) ast.recur(visit)
-  return preserve
 }
 
-function keepsAllChecks(ast: AST, checks: Checks): boolean {
-  return canPromoteStructuralChecks(ast) && checks.every(isStructuralCheck) || canPreserveEncodingChecks(ast)
+const preservesShape = new WeakSet<AST>()
+
+function projectChecks(ast: AST, checks: Checks): Checks | undefined {
+  const structural = isArrays(ast) || isObjects(ast) || isDeclaration(ast) && ast.typeParameters.length > 0
+  if (
+    structural && checks.every(isStructuralCheck) ||
+    everyNode(ast, (node) => !node.encoding && !isSuspend(node), preservesShape)
+  ) {
+    return checks
+  }
+  if (structural) return extractStructuralChecks(checks)
 }
 
-function canPromoteStructuralChecks(ast: AST): boolean {
-  return isArrays(ast) || isObjects(ast) || isDeclaration(ast) && ast.typeParameters.length > 0
+function hasDirectionalParser(ast: AST): boolean {
+  return isDeclaration(ast) && ast.encodingRun !== undefined && ast.encodingRun !== ast.run
 }
 
-interface TypeView {
-  // A thunk means that this type is unchanged on reversal if the type at
-  // that suspended edge is also unchanged. Keep different unknown edges distinct.
-  sameOnBothSides: boolean | Suspend["thunk"]
-  encoded?: true
-  reprojected?: true
-  reverse?: AST
+function canReuse(root: AST, edge: Suspend["thunk"]): boolean {
+  function same(ast: AST): boolean {
+    if (isSuspend(ast)) return ast.thunk === edge
+    return !hasDirectionalParser(ast) &&
+      !("encodingChecks" in ast && ast.checks && projectChecks(ast, ast.checks) !== ast.checks)
+  }
+  return everyNode(root, same)
 }
 
-const typeViews = new WeakMap<AST, TypeView>()
+const projected = new WeakSet<AST>()
+const reversed = new WeakMap<AST, AST>()
+const encoded = new WeakSet<AST>()
+const reprojected = new WeakSet<AST>()
 const flippedFrom = new WeakMap<AST, AST>()
-const flippedThunks = new WeakMap<Suspend["thunk"], Suspend>()
+interface FlippedSuspension {
+  readonly source: Suspend
+  project(ast: Suspend): Suspend
+}
+const flippedThunks = new WeakMap<Suspend["thunk"], FlippedSuspension>()
 
 /**
  * Strips all encoding transformations from an AST, returning the decoded
@@ -4772,98 +4776,42 @@ const flippedThunks = new WeakMap<Suspend["thunk"], Suspend>()
 export const toType = memoize(<A extends AST>(ast: A): A => {
   const source = flippedFrom.get(ast)
   // The public encoded projection is idempotent, including when requested as toType(flip(ast)).
-  if (source && typeViews.get(source)?.encoded) return source as A
+  if (source && encoded.has(source)) return source as A
   const out = stripEncoding(ast)
-  if (source) typeViews.get(out)!.encoded = true
+  if (source) encoded.add(out)
   return out
 })
 
 const stripEncoding = memoizeIdempotent(<A extends AST>(ast: A): A => {
   const source = flippedFrom.get(ast)
-  const previous = source && typeViews.get(source)
-  if (source && previous?.sameOnBothSides === true) return source as A
-  if (previous?.reverse) return previous.reverse as A
-  const info: TypeView = { sameOnBothSides: true }
-  const out = projectType(ast, info)
-  let view = typeViews.get(out)
-  if (!view) {
-    if (
-      isDeclaration(out) && out.encodingRun !== undefined && out.encodingRun !== out.run ||
-      typeof info.sameOnBothSides === "function" && "encodingChecks" in out && out.checks &&
-        !(canPromoteStructuralChecks(out) && out.checks.every(isStructuralCheck))
-    ) {
-      info.sameOnBothSides = false
-    }
-    view = info
-    typeViews.set(out, view)
-  }
-  if (source && previous) {
-    // One more projection can discard checks. After that, reversal is an involution.
-    previous.reverse = out
-    if (previous.reprojected) view.reverse = source
-    view.reprojected = true
-  }
-  return out
+  const wasProjected = source && projected.has(source)
+  const out = source && reversed.get(source) || projectType(ast)
+  if (wasProjected) reversed.set(source, out)
+  projected.add(out)
+  return out as A
 })
 
-function projectType<A extends AST>(ast: A, view: TypeView): A {
+function projectOwner<A extends AST>(ast: A, project: (ast: A) => AST): A | undefined {
   const owner = getContextOwner(ast)
   if (owner !== ast) {
-    const type = stripEncoding(owner)
-    view.sameOnBothSides = typeViews.get(type)!.sameOnBothSides
-    return type === owner && ast.encoding === undefined ? ast : replaceContext(type, ast.context)
+    const out = project(owner)
+    return out === owner && !ast.encoding ? ast : replaceContext(out, ast.context) as A
   }
-  if (isSuspend(ast)) return stripSuspend(ast, view) as A
-  const projectChild = (child: AST): AST => {
-    const type = stripEncoding(child)
-    const condition = typeViews.get(type)!.sameOnBothSides
-    if (view.sameOnBothSides === true) view.sameOnBothSides = condition
-    else if (condition !== true && condition !== view.sameOnBothSides) view.sameOnBothSides = false
-    return type
-  }
-  const type = ("recur" in ast ? ast.recur(projectChild) : ast) as A
-  if ("encodingChecks" in type && type.encodingChecks) {
-    const checks = keepsAllChecks(ast, type.encodingChecks)
-      ? type.encodingChecks
-      : canPromoteStructuralChecks(type)
-      ? extractStructuralChecks(type.encodingChecks)
-      : undefined
-    return copy(type, {
-      encodingChecks: undefined,
-      // Match parsing order and preserve annotation precedence for decoded checks.
-      checks: combineChecks(checks, type.checks)
-    })
-  }
-  return type
 }
 
-function stripSuspend(ast: Suspend, view: TypeView): Suspend {
-  const source = flippedThunks.get(ast.thunk)
-  if (!source) {
-    view.sameOnBothSides = ast.thunk
-    return ast.recur(stripEncoding)
+function projectType<A extends AST>(ast: A): A {
+  const owned = projectOwner(ast, stripEncoding)
+  if (owned) return owned
+  if (isSuspend(ast)) return (flippedThunks.get(ast.thunk)?.project(ast) ?? ast.recur(stripEncoding)) as A
+  const type = ("recur" in ast ? ast.recur(stripEncoding) : ast) as A
+  if ("encodingChecks" in type && type.encodingChecks) {
+    return copy(type, {
+      encodingChecks: undefined,
+      checks: combineChecks(projectChecks(ast, type.encodingChecks), type.checks)
+    })
   }
-  const condition = typeViews.get(source)?.sameOnBothSides ?? ast.thunk
-  view.sameOnBothSides = condition
-  return new Suspend(
-    () => {
-      const body = source.thunk()
-      const inner = typeViews.get(body)
-      // Resolving the only remaining unknown back to this body closes the cycle.
-      if (
-        inner && (inner.sameOnBothSides === true || inner.sameOnBothSides === source.thunk ||
-          typeof condition === "function" && inner.sameOnBothSides === condition)
-      ) {
-        inner.reverse = body
-        return body
-      }
-      return stripEncoding(flip(body))
-    },
-    ast.annotations,
-    undefined,
-    undefined,
-    ast.context
-  )
+  // A flipped declaration and its encoded projection need distinct reverse parsers.
+  return type === ast && hasDirectionalParser(type) && flippedFrom.has(ast) ? copy(type, {}) : type
 }
 
 /**
@@ -4896,21 +4844,14 @@ function stripSuspend(ast: Suspend, view: TypeView): Suspend {
 export const toEncoded = (ast: AST): AST => toType(flip(ast))
 
 function flipEncoding(ast: AST, encoding: Encoding): AST {
-  const links = encoding
-  const len = links.length
-  const last = links[len - 1]
-  const ls: Arr.NonEmptyArray<Link> = [
-    new Link(flip(replaceEncoding(ast, undefined)), links[0].transformation.flip())
-  ]
-  for (let i = 1; i < len; i++) {
-    ls.unshift(new Link(flip(links[i - 1].to), links[i].transformation.flip()))
-  }
-  const to = flip(last.to)
-  if (to.encoding) {
-    return replaceEncoding(to, [...to.encoding, ...ls])
-  } else {
-    return replaceEncoding(to, ls)
-  }
+  let from = replaceEncoding(ast, undefined)
+  const reversed = encoding.map((link) => {
+    const out = new Link(flip(from), link.transformation.flip())
+    from = link.to
+    return out
+  }).reverse() as Arr.NonEmptyArray<Link>
+  const to = flip(from)
+  return replaceEncoding(to, to.encoding ? [...to.encoding, ...reversed] : reversed)
 }
 
 /**
@@ -4941,20 +4882,40 @@ function flipAST(ast: AST): AST {
   if (ast.encoding) {
     return flipEncoding(ast, ast.encoding)
   }
-  const owner = getContextOwner(ast)
-  if (owner !== ast) {
-    const flipped = flip(owner)
-    return flipped === owner ? ast : replaceContext(flipped, ast.context)
-  }
+  const owned = projectOwner(ast, flip)
+  if (owned) return owned
   if (isSuspend(ast)) {
-    const source = flippedThunks.get(ast.thunk)
-    // Reversing a thunk twice must not wrap its result in two more recursive walks.
-    if (source) return copy(ast, { thunk: source.thunk })
-    const out = ast.recur(flip)
-    flippedThunks.set(out.thunk, ast)
-    return out
+    const previous = flippedThunks.get(ast.thunk)
+    if (previous) return copy(ast, { thunk: previous.source.thunk })
+    const flipped = ast.recur(flip)
+    // Register the projection here so decoding alone does not pull in flip.
+    flippedThunks.set(flipped.thunk, {
+      source: ast,
+      project(node) {
+        const thunk = memoizeThunk(() => reverseBody(ast.thunk(), thunk))
+        return copy(node, { thunk })
+      }
+    })
+    return flipped
   }
   return "flip" in ast ? ast.flip(flip) : ast
+}
+
+function reverseBody(body: AST, edge: Suspend["thunk"]): AST {
+  if (!projected.has(body)) return stripEncoding(flip(body))
+  const existing = reversed.get(body)
+  if (existing) return existing
+  // A projected body can close its own cycle if all suspended edges lead back here
+  // and reversing it preserves the checks and declaration callbacks.
+  if (canReuse(body, edge)) {
+    reversed.set(body, body)
+    return body
+  }
+  const out = stripEncoding(flip(body))
+  // The first reversal can discard checks. Further reversals can reuse the pair.
+  if (reprojected.has(body) && !reversed.has(out)) reversed.set(out, body)
+  reprojected.add(out)
+  return out
 }
 
 function fromConst<const T>(
