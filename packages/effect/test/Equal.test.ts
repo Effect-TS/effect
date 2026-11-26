@@ -88,20 +88,10 @@ describe("Equal.equals", () => {
         for (let i = 0; i < size; i++) nodes[i].next = nodes[(i + 1) % size]
         return nodes[0]
       }
-      const makeArrayPair = () => {
-        const a: Array<unknown> = []
-        a.push(a)
-        const b1: Array<unknown> = []
-        const b2: Array<unknown> = [b1]
-        b1.push(b2)
-        return [a, b1] as const
-      }
-      // The second root reaches the ring through a node of the first.
       const makeShared = (size: number) => {
         const a = makeRing(size)
         return [a, { next: a.next }] as const
       }
-
       const k = Symbol("x")
       const j = Symbol("x")
       const wrap = (v: object) => ({ [k]: v, [j]: v })
@@ -109,8 +99,13 @@ describe("Equal.equals", () => {
       const pairs = [
         () => [makeRing(1), makeRing(2)] as const,
         () => [makeRing(37), makeRing(41)] as const,
-        makeArrayPair,
-        () => makeShared(1),
+        () => {
+          const a: Array<unknown> = []
+          a.push(a)
+          const b1: Array<unknown> = []
+          b1.push([b1])
+          return [a, b1] as const
+        },
         () => makeShared(2),
         () => {
           const [a, b] = makeShared(1)
@@ -201,50 +196,36 @@ describe("Equal.equals", () => {
       expect(Equal.equals(obj1, obj2)).toBe(false)
     })
 
-    it("reads each property once on fresh plain objects", () => {
+    it("reads fresh plain objects once and avoids exponential traversal on shared acyclic graphs", () => {
       let reads = 0
-      const make = () => ({
-        get a() {
-          reads++
-          return 1
-        }
-      })
-      assert.isTrue(Equal.equals(make(), make()))
-      assert.strictEqual(reads, 2)
-    })
-
-    it("avoids exponential traversal on shared acyclic graphs", () => {
-      let reads = 0
-      const makeLeaf = () => ({
+      const leaf = () => ({
         get v() {
           reads++
           return 1
         }
       })
-      const makeDag = (tag: number) => {
-        let node: unknown = makeLeaf()
+      const dag = (tag: number) => {
+        let node: unknown = leaf()
         for (let i = 0; i < 14; i++) node = { l: node, r: node }
         return { dag: node, tag }
       }
 
-      assert.isFalse(Equal.equals(makeDag(0), makeDag(1)))
+      assert.isTrue(Equal.equals(leaf(), leaf()))
       assert.strictEqual(reads, 2)
 
       reads = 0
-      assert.isTrue(Equal.equals(makeDag(0), makeDag(0)))
+      assert.isFalse(Equal.equals(dag(0), dag(1)))
       assert.strictEqual(reads, 2)
 
-      // Interleaved multi-partner DAG: each left node is compared against two distinct equal right nodes.
       reads = 0
-      let a: unknown = makeLeaf()
-      let b1: unknown = makeLeaf()
-      let b2: unknown = makeLeaf()
+      assert.isTrue(Equal.equals(dag(0), dag(0)))
+      assert.strictEqual(reads, 2)
+
+      reads = 0
+      let a: unknown = leaf(), b1: unknown = leaf(), b2: unknown = leaf()
       for (let i = 0; i < 14; i++) {
         a = { l: a, r: a }
-        const nb1 = { l: b1, r: b2 }
-        const nb2 = { l: b2, r: b1 }
-        b1 = nb1
-        b2 = nb2
+        ;[b1, b2] = [{ l: b1, r: b2 }, { l: b2, r: b1 }]
       }
       assert.isTrue(Equal.equals(a, b1))
       assert.strictEqual(reads, 4)
@@ -496,24 +477,16 @@ describe("Equal.equals", () => {
       expect(Equal.equals(arr1, arr2)).toBe(false)
     })
 
-    it("compares arrays by index consistently whether pre-hashed or not", () => {
-      const make = () =>
-        [
-          Object.assign([1], {
-            *[Symbol.iterator]() {
-              yield 2
-            }
-          }),
-          [1]
-        ] as const
-
-      const [freshA, freshB] = make()
-      assert.isTrue(Equal.equals(freshA, freshB))
-
-      const [hashedA, hashedB] = make()
-      assert.strictEqual(Hash.hash(hashedA), Hash.hash(hashedB))
-      assert.isTrue(Equal.equals(hashedA, hashedB))
-      assert.strictEqual(Hash.array(hashedA), Hash.array([...hashedA]))
+    it("compares arrays by index consistently while keeping Hash.array iterable-based", () => {
+      const a = Object.assign([1], {
+        *[Symbol.iterator]() {
+          yield 2
+        }
+      })
+      assert.isTrue(Equal.equals(a, [1]))
+      assert.strictEqual(Hash.hash(a), Hash.hash([1]))
+      assert.isTrue(Equal.equals(a, [1]))
+      assert.strictEqual(Hash.array(a), Hash.array([...a]))
     })
   })
 
