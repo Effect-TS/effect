@@ -383,11 +383,9 @@ describe("EntityManager", () => {
         manager.invoke(secondEnvelope, false, delivery),
         { startImmediately: true }
       )
-      // Wait for A and the first two B deliveries to register their waiters.
       yield* manager.invoke(envelope("Get"), false).pipe(Effect.timeout("1 second"), TestClock.withLive)
 
-      // Hold the entry permit so a further redelivery of B is still in flight
-      // when `interrupt(B, B)` arrives.
+      // Hold the entry permit so a redelivery of B stays queued during interrupt.
       const entryHeld = yield* Deferred.make<void>()
       const releaseEntry = yield* Deferred.make<void>()
       const getAlarm = storage.getAlarm.bind(storage)
@@ -585,7 +583,6 @@ describe("EntityManager", () => {
       yield* Deferred.await(inStart)
       yield* manager.interrupt(requestId)
 
-      // Fail only the transaction saving the interrupt reply.
       const transactionSync = storage.transactionSync.bind(storage)
       storage.transactionSync = () => {
         storage.transactionSync = transactionSync
@@ -610,8 +607,7 @@ describe("EntityManager", () => {
       const push = waitUntilFibers.push.bind(waitUntilFibers)
       waitUntilFibers.push = (...items) => {
         waitUntilFibers.push = push
-        // `waitUntil` is called right after `session` is published, before the
-        // deferred handler fiber gets its first turn.
+        // Fires after session publication, before the deferred handler fiber starts.
         interrupting = Effect.runFork(manager.interrupt(firstRequestId))
         return push(...items)
       }
@@ -625,7 +621,6 @@ describe("EntityManager", () => {
       yield* Fiber.join(interrupting!).pipe(Effect.timeout("1 second"), TestClock.withLive)
       assert.isNull(storage.alarm, "In-flight persisted count leaked after pre-start interrupt")
 
-      // The next persisted ask must transition 0 -> 1 and arm a recovery heartbeat.
       const second = yield* Effect.forkChild(manager.invoke(envelope("Add", { operationId: "second" }), false))
       yield* Deferred.await(started)
       assert.isNotNull(storage.alarm, "Next persisted ask skipped arming its recovery heartbeat")

@@ -2,4 +2,4 @@
 "@effect/platform-cloudflare": patch
 ---
 
-Preserve early entity ask interrupts, resolve delayed-waiter interrupts by client request id, and avoid blocking active-ask interruption behind the entry permit.
+Fix Cloudflare entity request interruption so asks are reliably cancelled even if the interrupt arrives before the request registers, while another request waits on a SQL transaction, or for a deduplicated delayed ask.

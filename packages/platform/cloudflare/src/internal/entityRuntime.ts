@@ -519,10 +519,8 @@ export interface EntityManager {
   ) => Effect.Effect<EntityInvokeResult>
   readonly acknowledge: (requestId: string, replyId: string) => Effect.Effect<ReadonlyArray<string>>
   /**
-   * Interrupts an ask within this Durable Object incarnation, whether it
-   * arrives before `invoke`, while `invoke` waits for the entry permit, or
-   * after the request has registered. Uninterruptible RPCs ignore it, and
-   * discards are not tracked.
+   * Interrupts an ask within this Durable Object incarnation, even if it arrives
+   * before the request registers. Uninterruptible RPCs ignore it; discards are not tracked.
    */
   readonly interrupt: (storageRequestId: string, clientRequestId?: string) => Effect.Effect<void>
   readonly reset: (requestId: string) => Effect.Effect<void>
@@ -617,11 +615,9 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   // separately so only transitions touch the recovery alarm.
   let inFlightPersisted = 0
   const workerWaiters = new Map<string, Set<WorkerWaiter>>()
-  // Secondary index so an interrupt carrying only a duplicate's client id
-  // finds its waiter before `invoke` has returned the original's storage id.
+  // Indexes delayed waiters by client id before `invoke` returns the original storage id.
   const clientWaiters = new Map<string, WorkerWaiter>()
-  // Client request ids interrupted in this incarnation, kept bounded so early
-  // arrivals and in-flight redeliveries both observe cancellation.
+  // Bounded set of interrupted client ids for early arrivals and in-flight redeliveries.
   const interruptedRequests = new Map<string, true>()
   const replyRegistry = makeReplyRegistry()
   const entitySql = makeEntitySql(storage)
@@ -1328,10 +1324,8 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       })
     )
 
-  // Lookup and claim run without taking the entry permit so an active ask
-  // holding the SQL transaction gate can still be interrupted while another
-  // entry waits on that gate under the entry permit. Registration checks
-  // `interruptedRequests` atomically with publishing the session or waiter.
+  // Claim without the entry permit so an ask holding the SQL transaction gate
+  // can still be interrupted while another entry waits on that gate.
   const interrupt = (storageRequestId: string, clientRequestId = storageRequestId): Effect.Effect<void> =>
     Effect.suspend(() => {
       const session = sessions.get(storageRequestId)
