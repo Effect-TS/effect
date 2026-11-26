@@ -8,12 +8,12 @@ import { dual, identity } from "../Function.ts"
 import * as Hash from "../Hash.ts"
 import { NodeInspectSymbol } from "../Inspectable.ts"
 import { pipeArguments } from "../Pipeable.ts"
-import { hasProperty } from "../Predicate.ts"
 import type { StackFrame } from "../References.ts"
 import type * as Types from "../Types.ts"
 import { SingleShotGen } from "../Utils.ts"
 import type { FiberImpl } from "./effect.ts"
 import { combine as hashCombine } from "./equal.ts"
+import { hasProperty } from "./predicate.ts"
 import * as InternalRecord from "./record.ts"
 
 /** @internal */
@@ -164,7 +164,7 @@ export class CauseImpl<E> implements Cause.Cause<E> {
     )
   }
   [Hash.symbol](): number {
-    return Hash.hash(this.reasons)
+    return Hash.array(this.reasons)
   }
 }
 
@@ -613,12 +613,13 @@ export const exitSucceed: <A>(a: A) => Exit.Exit<A> = makeExit({
 })
 
 /** @internal */
-export const StackTraceKeyName = "effect/Cause/StackTrace" satisfies typeof Cause.StackTrace.key
+export const StackTraceKey = {
+  key: "effect/Cause/StackTrace" satisfies typeof Cause.StackTrace.key
+} as Context.Service<Cause.StackTrace, StackFrame>
 
 /** @internal */
-export const StackTraceKey = {
-  key: StackTraceKeyName
-} as Context.Service<Cause.StackTrace, StackFrame>
+export const causeAnnotateStackFrame = <E>(self: Cause.Cause<E>, frame: StackFrame): Cause.Cause<E> =>
+  causeAnnotateMap(self, new Map([[StackTraceKey.key, frame]]))
 
 /** @internal */
 export const InterruptorStackTrace = {
@@ -633,7 +634,7 @@ export const exitFailCause: <E>(cause: Cause.Cause<E>) => Exit.Exit<never, E> = 
     let cause = this[args]
     let annotated = false
     if (fiber.cache.stackFrame) {
-      cause = causeAnnotateMap(cause, new Map([[StackTraceKeyName, fiber.cache.stackFrame]]))
+      cause = causeAnnotateStackFrame(cause, fiber.cache.stackFrame)
       annotated = true
     }
     let cont = fiber.getCont(contE)

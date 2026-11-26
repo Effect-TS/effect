@@ -21,7 +21,7 @@ import {
   objectKind,
   toBytes
 } from "./internal/equal.ts"
-import { hasProperty } from "./Predicate.ts"
+import { hasProperty } from "./internal/predicate.ts"
 
 /**
  * Defines the unique string identifier for the `Equal` interface.

@@ -22,8 +22,8 @@ import * as Option from "../Option.ts"
 import * as Order from "../Order.ts"
 import { pipeArguments } from "../Pipeable.ts"
 import type * as Predicate from "../Predicate.ts"
-import { hasProperty, isIterable, isString, isTagged } from "../Predicate.ts"
-import { redact } from "../Redactable.ts"
+import { isIterable, isString, isTagged } from "../Predicate.ts"
+import { currentFiberTypeId, redact } from "../Redactable.ts"
 import type { StackFrame } from "../References.ts"
 import * as Result from "../Result.ts"
 import type * as Scheduler from "../Scheduler.ts"
@@ -46,12 +46,12 @@ import type {
   unassigned
 } from "../Types.ts"
 import { internalCall } from "../Utils.ts"
-import { getDefaultValue, lookup, notFound } from "./context.ts"
 import type { Primitive } from "./core.ts"
 import {
   args,
   causeAddInterrupts,
   causeAnnotateMap,
+  causeAnnotateStackFrame,
   causeCombine,
   causeEmpty,
   causeFromReasons,
@@ -81,14 +81,12 @@ import {
   NoSuchElementError,
   ReasonBase,
   StackTraceKey as CauseStackTrace,
-  StackTraceKeyName as CauseStackTraceKeyName,
   TaggedError,
   withFiber,
   Yield
 } from "./core.ts"
 import * as doNotation from "./doNotation.ts"
 import {
-  currentFiberTypeId,
   CurrentLogLevelKey,
   CurrentStackFrameKey,
   defaultCurrentLogLevel,
@@ -105,6 +103,7 @@ import {
   TracerEnabledKey,
   TracerKey
 } from "./fiberCachedKeys.ts"
+import { hasProperty } from "./predicate.ts"
 import * as InternalRecord from "./record.ts"
 import {
   CurrentErrorReporters,
@@ -117,7 +116,7 @@ import {
   TracerTimingEnabled,
   UnhandledLogLevel
 } from "./references.ts"
-import { getDefaultScheduler, MixedScheduler } from "./scheduler.ts"
+import { defaultScheduler, MixedScheduler } from "./scheduler.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "./stackTraceLimit.ts"
 import { addSpanStackTrace, makeStackCleaner } from "./tracer.ts"
 
@@ -588,8 +587,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   }
 
   getRef<X>(ref: Context.Reference<X>): X {
-    const value = lookup(this.context, ref.key)
-    return value === notFound ? getDefaultValue(ref) : value as X
+    return Context.getReferenceUnsafe(this.context, ref)
   }
   addObserver(cb: (exit: Exit.Exit<A, E>) => void): () => void {
     if (this._exit) {
@@ -612,7 +610,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     let cause = causeInterrupt(fiberId)
     if (this.cache.stackFrame) {
-      cause = causeAnnotateMap(cause, new Map([[CauseStackTraceKeyName, this.cache.stackFrame]]))
+      cause = causeAnnotateStackFrame(cause, this.cache.stackFrame)
     }
     if (annotations) {
       cause = causeAnnotateMap(cause, annotations.mapUnsafe)
@@ -809,23 +807,19 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 }
 
 const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
-  // Reading by key keeps the service objects, and the native tracer behind
-  // Tracer.Tracer's default, out of bundles that never use them.
-  const get = <A>(key: string, fallback?: A): A => {
-    const value = lookup(context, key)
-    return value === notFound ? fallback as A : value as A
-  }
-  const currentTracer = get<Tracer.Tracer | undefined>(TracerKey)
+  // Reading by key keeps the service objects out of bundles that never use them
+  const get = <A>(key: string, orElse: A): A => Context.getOrElseUnsafe(context, key, orElse)
+  const tracer = get<Tracer.Tracer | undefined>(TracerKey, undefined)
   return {
-    scheduler: get<Scheduler.Scheduler | undefined>(SchedulerKey) ?? getDefaultScheduler(),
-    tracer: currentTracer,
-    tracerContext: currentTracer?.["context"],
+    scheduler: get<Scheduler.Scheduler>(SchedulerKey, defaultScheduler),
+    tracer,
+    tracerContext: tracer?.["context"],
     tracerEnabled: get(TracerEnabledKey, defaultTracerEnabled),
-    span: get(ParentSpanKey),
-    logLevel: get<LogLevel.Severity>(CurrentLogLevelKey, defaultCurrentLogLevel),
-    minimumLogLevel: get<LogLevel.LogLevel>(MinimumLogLevelKey, defaultMinimumLogLevel),
-    stackFrame: get(CurrentStackFrameKey),
-    runtimeMetrics: get(FiberRuntimeMetricsKey),
+    span: get<Tracer.AnySpan | undefined>(ParentSpanKey, undefined),
+    logLevel: get(CurrentLogLevelKey, defaultCurrentLogLevel),
+    minimumLogLevel: get(MinimumLogLevelKey, defaultMinimumLogLevel),
+    stackFrame: get<StackFrame | undefined>(CurrentStackFrameKey, undefined),
+    runtimeMetrics: get<Fiber.Fiber.Cache["runtimeMetrics"]>(FiberRuntimeMetricsKey, undefined),
     maxOpsBeforeYield: get(MaxOpsBeforeYieldKey, defaultMaxOpsBeforeYield),
     preventYield: get(PreventSchedulerYieldKey, defaultPreventSchedulerYield)
   }

@@ -158,7 +158,11 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
   }
 }
 
-let defaultScheduler: Scheduler | undefined
-
-/** @internal */
-export const getDefaultScheduler = (): Scheduler => (defaultScheduler ??= new MixedScheduler())
+/**
+ * The scheduler of fibers whose context provides none. `Scheduler.Scheduler`
+ * resolves to this instance too, so a fiber and `Context.get` agree on the
+ * scheduler in use.
+ *
+ * @internal
+ */
+export const defaultScheduler: Scheduler = new MixedScheduler()

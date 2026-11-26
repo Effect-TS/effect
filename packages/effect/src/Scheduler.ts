@@ -13,14 +13,13 @@
 import * as Context from "./Context.ts"
 import type * as Fiber from "./Fiber.ts"
 import {
-  bindMemoizedDefault,
   defaultMaxOpsBeforeYield,
   defaultPreventSchedulerYield,
   MaxOpsBeforeYieldKey,
   PreventSchedulerYieldKey,
   SchedulerKey
 } from "./internal/fiberCachedKeys.ts"
-import { getDefaultScheduler, MixedScheduler } from "./internal/scheduler.ts"
+import { defaultScheduler, MixedScheduler } from "./internal/scheduler.ts"
 
 /**
  * A scheduler manages the execution of Effect fibers by controlling when queued
@@ -88,12 +87,10 @@ export interface SchedulerDispatcher {
  * @category services
  * @since 2.0.0
  */
-export const Scheduler: Context.Reference<Scheduler> = bindMemoizedDefault(
-  Context.Reference<Scheduler>(SchedulerKey, {
-    defaultValue: () => new MixedScheduler()
-  }),
-  getDefaultScheduler
-)
+export const Scheduler: Context.Reference<Scheduler> = Context.Reference<Scheduler>(SchedulerKey, {
+  defaultValue: () => new MixedScheduler(),
+  cachedDefaultValue: defaultScheduler
+})
 
 export {
   /**

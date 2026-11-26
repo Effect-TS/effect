@@ -102,14 +102,13 @@ describe("bundled", () => {
       "Hash.ts",
       "Inspectable.ts",
       "Pipeable.ts",
-      "Predicate.ts",
       "Redactable.ts",
       "Utils.ts",
-      "internal/context.ts",
       "internal/core.ts",
       "internal/effect.ts",
       "internal/equal.ts",
       "internal/fiberCachedKeys.ts",
+      "internal/predicate.ts",
       "internal/scheduler.ts"
     ])
     // The runtime calls the data-first forms of dual APIs and stays on flat contexts

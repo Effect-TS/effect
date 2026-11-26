@@ -1,11 +1,12 @@
+import type { Fiber } from "../Fiber.ts"
 import type { LogLevel, Severity } from "../LogLevel.ts"
 
 /**
- * Runtime keys and defaults cached on every fiber's `Fiber.Cache`.
+ * The context keys and defaults behind a fiber's `Fiber.Cache`.
  *
- * `Context.ts` reads `fiberCachedKeys` for cache invalidation, and the services
- * that expose these keys import them from here so the runtime can read them
- * without constructing the service objects in minimal bundles.
+ * The fiber reads its cache by key, so bundles that never use one of these
+ * services do not construct it. The services take their key and default from
+ * here.
  */
 
 /** @internal */
@@ -39,12 +40,6 @@ export const MinimumLogLevelKey = "effect/References/MinimumLogLevel" as const
 export const FiberRuntimeMetricsKey = "effect/Metric/FiberRuntimeMetrics" as const
 
 /** @internal */
-export const currentFiberTypeId = "~effect/Fiber/currentFiber" as const
-
-/** @internal */
-export const defaultValueCacheKey = "~effect/Context/defaultValue" as const
-
-/** @internal */
 export const defaultMaxOpsBeforeYield = 2048
 
 /** @internal */
@@ -59,32 +54,31 @@ export const defaultCurrentLogLevel: Severity = "Info"
 /** @internal */
 export const defaultMinimumLogLevel: LogLevel = "Info"
 
-/** @internal */
-export const fiberCachedKeys: ReadonlySet<string> = new Set([
-  SchedulerKey,
-  MaxOpsBeforeYieldKey,
-  PreventSchedulerYieldKey,
-  TracerKey,
-  ParentSpanKey,
-  TracerEnabledKey,
-  CurrentStackFrameKey,
-  CurrentLogLevelKey,
-  MinimumLogLevelKey,
-  FiberRuntimeMetricsKey
-])
+/**
+ * The key behind each `Fiber.Cache` field the fiber reads from its context.
+ * `tracerContext` is derived from `tracer`.
+ */
+const cacheFieldKeys: Record<Exclude<keyof Fiber.Cache, "tracerContext">, string> = {
+  scheduler: SchedulerKey,
+  tracer: TracerKey,
+  tracerEnabled: TracerEnabledKey,
+  span: ParentSpanKey,
+  logLevel: CurrentLogLevelKey,
+  minimumLogLevel: MinimumLogLevelKey,
+  stackFrame: CurrentStackFrameKey,
+  runtimeMetrics: FiberRuntimeMetricsKey,
+  maxOpsBeforeYield: MaxOpsBeforeYieldKey,
+  preventYield: PreventSchedulerYieldKey
+}
 
 /**
- * Binds a freshly created `Context.Reference` to a shared lazy default getter
- * via a non-enumerable getter on `defaultValueCacheKey`, so both
- * `Context.get(Context.empty(), ref)` and the fiber runtime resolve the same
- * memoized instance while `ref.defaultValue()` still creates a fresh instance.
+ * Keys whose values fibers cache, so adding one to a context starts a new
+ * cache.
+ *
+ * Seeded with the key of every cache field, so a key invalidates the cache even
+ * in bundles where the service declaring it was tree-shaken. Services declared
+ * with `fiberCached: true` add their own key.
  *
  * @internal
  */
-export const bindMemoizedDefault = <Ref extends object, A>(
-  ref: Ref,
-  getDefault: () => A
-): Ref =>
-  Object.defineProperty(ref, defaultValueCacheKey, {
-    get: getDefault
-  })
+export const fiberCachedKeys: Set<string> = new Set(Object.values(cacheFieldKeys))
