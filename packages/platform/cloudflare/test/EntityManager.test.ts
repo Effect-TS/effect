@@ -1,4 +1,5 @@
 import type { DurableObjectStorage } from "@cloudflare/workers-types"
+import * as CloudflareCluster from "@effect/platform-cloudflare/CloudflareCluster"
 import { makeEntityKeepAlive } from "@effect/platform-cloudflare/internal/entityKeepAlive"
 import { loadNextReply } from "@effect/platform-cloudflare/internal/entityMailbox"
 import { registerEntity, unregisterEntity } from "@effect/platform-cloudflare/internal/entityRegistry"
@@ -405,11 +406,14 @@ describe("EntityManager", () => {
         { startImmediately: true }
       )
       const second = yield* Effect.forkChild(
-        manager.invoke(envelope("Add", { operationId: "same" }, secondRequestId), false, delivery)
+        manager.invoke(envelope("Add", { operationId: "same" }, secondRequestId), false, delivery),
+        { startImmediately: true }
       )
-      // The duplicate waits on the original row, so it is interrupted through
-      // the original's storage id and its own client id.
-      yield* manager.interrupt(firstRequestId, secondRequestId)
+      // Wait for both delayed asks to be admitted and register their waiters.
+      yield* manager.invoke(envelope("Get"), false).pipe(Effect.timeout("1 second"), TestClock.withLive)
+
+      // Before `invoke` returns, the Worker still knows only the duplicate's own id.
+      yield* manager.interrupt(secondRequestId, secondRequestId)
       yield* Fiber.await(second).pipe(Effect.timeout("1 second"), TestClock.withLive)
 
       assert.isUndefined(first.pollUnsafe(), "Interrupting the duplicate also ended the original waiter")
@@ -504,6 +508,53 @@ describe("EntityManager", () => {
       assert(get._tag === "Success")
       assert.deepStrictEqual(exitOf(get.replies[0]), { _tag: "Success", value: 0 })
       assert.isUndefined(counts.get("early-persisted"))
+    }))
+
+  it.effect("interrupts an active ask holding a SQL transaction while another persisted invoke waits on it", () =>
+    Effect.gen(function*() {
+      const inTransaction = yield* Deferred.make<void>()
+      const never = yield* Deferred.make<void>()
+      const entity = Entity.make("TransactionInterruptMailbox", [
+        Rpc.make("HoldTx", { success: Schema.String }).annotate(ClusterSchema.Persisted, true),
+        Rpc.make("Write", { success: Schema.String }).annotate(ClusterSchema.Persisted, true)
+      ])
+      const handlers: EntityRegistration = {
+        entity,
+        keepAliveHeartbeat: 30_000,
+        build: Effect.gen(function*() {
+          const sql = yield* CloudflareCluster.DurableObjectSqlClient
+          return entity.of({
+            HoldTx: () =>
+              sql.withTransaction(
+                Effect.andThen(Deferred.succeed(inTransaction, undefined), Effect.as(Deferred.await(never), "held"))
+              ).pipe(Effect.orDie),
+            Write: () => Effect.succeed("written")
+          })
+        }).pipe(Effect.orDie) as unknown as EntityRegistration["build"],
+        options: undefined,
+        context: Context.empty()
+      }
+      yield* Effect.acquireRelease(
+        Effect.sync(() => registerEntity(entity.type, handlers)),
+        () => Effect.sync(() => unregisterEntity(entity.type, handlers))
+      )
+      const { envelope, exitOf, manager, storage } = yield* makeMailbox("tx-interrupt", entity.type)
+      const holdRequestId = nextRequestId()
+      const hold = yield* Effect.forkChild(manager.invoke(envelope("HoldTx", null, holdRequestId), false))
+      yield* Deferred.await(inTransaction)
+
+      // Persisted invoke takes the entry permit and blocks on the SQL transaction gate.
+      const write = yield* Effect.forkChild(manager.invoke(envelope("Write"), false), { startImmediately: true })
+
+      yield* manager.interrupt(holdRequestId).pipe(Effect.timeout("1 second"), TestClock.withLive)
+      const holdResult = yield* Fiber.join(hold).pipe(Effect.timeout("1 second"), TestClock.withLive)
+      const writeResult = yield* Fiber.join(write).pipe(Effect.timeout("1 second"), TestClock.withLive)
+
+      assert.deepStrictEqual(holdResult, { _tag: "Success", requestId: holdRequestId, replies: [] })
+      assert(writeResult._tag === "Success")
+      assert.deepStrictEqual(exitOf(writeResult.replies[0]), { _tag: "Success", value: "written" })
+      const reply = yield* loadNextReply(storage.sql, holdRequestId)
+      assert.strictEqual(exitOf(reply!.reply)._tag, "Failure")
     }))
 
   it.effect("lets an Rpc.uninterruptible handler finish after an interrupt", () =>

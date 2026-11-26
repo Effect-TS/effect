@@ -469,6 +469,7 @@ interface SessionReply {
 interface Session {
   readonly queue: Queue.Queue<SessionReply, Cause.Done>
   readonly completeInterrupt: Effect.Effect<void>
+  readonly persisted: boolean
   // `ClusterSchema.Uninterruptible` is `true` or `"server"`: an interrupt is
   // ignored and the handler runs to completion.
   readonly uninterruptible: boolean
@@ -484,6 +485,7 @@ interface Session {
 }
 
 interface WorkerWaiter {
+  readonly storageRequestId: string
   readonly clientRequestId: string
   readonly deferred: Deferred.Deferred<EntityInvokeResult>
 }
@@ -613,7 +615,10 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   // can also belong to non-persisted requests. Count persisted handler fibers
   // separately so only transitions touch the recovery alarm.
   let inFlightPersisted = 0
-  const workerWaiters = new Map<string, Array<WorkerWaiter>>()
+  const workerWaiters = new Map<string, Set<WorkerWaiter>>()
+  // Secondary index so an interrupt carrying only a duplicate's client id
+  // finds its waiter before `invoke` has returned the original's storage id.
+  const clientWaiters = new Map<string, WorkerWaiter>()
   // Interrupts that matched no registered ask, checked when an ask arrives.
   // Late interrupts for finished asks land here too and age out by eviction.
   const earlyInterrupts = new Map<string, true>()
@@ -729,6 +734,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       if (waiters !== undefined) {
         workerWaiters.delete(requestId)
         for (const waiter of waiters) {
+          clientWaiters.delete(waiter.clientRequestId)
           Deferred.doneUnsafe(waiter.deferred, Effect.succeed(success(requestId, [reply])))
         }
       }
@@ -774,6 +780,25 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
     Effect.flatMap(
       settleScheduledReply(requestId, reply, replyTos),
       (targets) => pushScheduledReply(reply, targets)
+    )
+
+  const finishCancel = (storageRequestId: string, session: Session): Effect.Effect<void> =>
+    Effect.andThen(
+      session.fiber === undefined ? Effect.void : Fiber.interrupt(session.fiber),
+      session.persisted
+        ? Semaphore.withPermit(
+          semaphore,
+          Effect.andThen(
+            session.completeInterrupt,
+            Effect.suspend(() => {
+              if (sessions.get(storageRequestId) === session) sessions.delete(storageRequestId)
+              return inFlightPersisted === 0 ? rearm : Effect.void
+            })
+          )
+        )
+        : Effect.sync(() => {
+          if (sessions.get(storageRequestId) === session) sessions.delete(storageRequestId)
+        })
     )
 
   // Runs one request under the entry permit up to forking its handler fiber,
@@ -877,17 +902,26 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
           )
       )
       : Effect.void
+    const uninterruptible = isUninterruptibleForServer(rpc.annotations)
     const session: Session = {
       queue,
       completeInterrupt,
-      uninterruptible: isUninterruptibleForServer(rpc.annotations),
+      persisted,
+      uninterruptible,
       cancelling: false,
       ack: undefined,
       fiber: undefined,
       saved: undefined
     }
-    sessions.set(requestId, session)
     if (persisted) yield* startPersisted
+    const cancelledBeforeFork = yield* Effect.sync(() => earlyInterrupts.delete(requestId) && !uninterruptible)
+    if (cancelledBeforeFork) {
+      if (persisted) {
+        yield* completeInterrupt
+        yield* finishPersisted
+      }
+      return Effect.succeed([])
+    }
     const permit = makeHandlerPermit(entityRuntime.handlerSemaphore)
     const respond = Effect.fnUntraced(function*(reply: Reply.Reply<any>) {
       const encoded = yield* encodeReplyFor(registration, rpc, reply)
@@ -907,7 +941,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         yield* Queue.offer(queue, { text: encoded, terminal: true })
       }
     })
-    session.fiber = yield* Effect.forkDetach(
+    const fiber = yield* Effect.forkDetach(
       entityRuntime.run(envelope, lastSentChunk, discard, respond, permit).pipe(
         Effect.onExit((exit) => {
           const cleanup = Effect.sync(() => {
@@ -924,7 +958,25 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
         })
       )
     )
-    options.waitUntil(Fiber.await(session.fiber))
+    const cancelledDuringFork = yield* Effect.sync(() => {
+      session.fiber = fiber
+      if (earlyInterrupts.delete(requestId) && !uninterruptible) {
+        session.cancelling = true
+        sessions.set(requestId, session)
+        Queue.endUnsafe(queue)
+        return true
+      }
+      if (fiber.pollUnsafe() === undefined || Queue.sizeUnsafe(queue) > 0 || session.ack !== undefined) {
+        sessions.set(requestId, session)
+      }
+      return false
+    })
+    options.waitUntil(Fiber.await(fiber))
+    if (cancelledDuringFork) {
+      const cancel = yield* Effect.forkDetach(finishCancel(requestId, session))
+      options.waitUntil(Fiber.await(cancel))
+      return Effect.succeed([])
+    }
     return takeReply(requestId, session)
   })
 
@@ -1023,16 +1075,25 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   // Registers the waiter eagerly (under the entry permit) and returns the
   // await for the caller to run once the permit is released.
   const delayedOutcome = (
-    requestId: string,
+    storageRequestId: string,
     discard: boolean,
     replyTo: string | undefined,
-    clientRequestId = requestId
+    clientRequestId = storageRequestId,
+    uninterruptible = false
   ): Effect.Effect<EntityInvokeResult> => {
-    if (discard || replyTo !== undefined) return Effect.succeed(success(requestId, []))
+    if (discard || replyTo !== undefined) return Effect.succeed(success(storageRequestId, []))
+    if (earlyInterrupts.delete(clientRequestId) && !uninterruptible) {
+      return Effect.succeed(success(storageRequestId, []))
+    }
     const deferred = Deferred.makeUnsafe<EntityInvokeResult>()
-    const waiters = workerWaiters.get(requestId) ?? []
-    waiters.push({ clientRequestId, deferred })
-    workerWaiters.set(requestId, waiters)
+    const waiter: WorkerWaiter = { storageRequestId, clientRequestId, deferred }
+    let waiters = workerWaiters.get(storageRequestId)
+    if (waiters === undefined) {
+      waiters = new Set()
+      workerWaiters.set(storageRequestId, waiters)
+    }
+    waiters.add(waiter)
+    clientWaiters.set(clientRequestId, waiter)
     return Deferred.await(deferred)
   }
 
@@ -1078,7 +1139,8 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       const envelope = yield* decodeRequest(registration, envelopeText)
       const rpc = registration.entity.protocol.requests.get(envelope.tag) as Rpc.AnyWithProps
       const requestId = String(envelope.requestId)
-      if (!discard && earlyInterrupts.delete(requestId) && !isUninterruptibleForServer(rpc.annotations)) {
+      const uninterruptible = isUninterruptibleForServer(rpc.annotations)
+      if (!discard && earlyInterrupts.delete(requestId) && !uninterruptible) {
         return Effect.succeed(success(requestId, []))
       }
       const isPersisted = Context.get(rpc.annotations, Persisted)
@@ -1117,6 +1179,9 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       }
       const persisted: PersistResult = persistedResult.success
       if (persisted._tag === "Duplicate") {
+        if (!discard && persisted.originalId !== requestId && earlyInterrupts.delete(requestId) && !uninterruptible) {
+          return Effect.succeed(success(persisted.originalId, []))
+        }
         const original = yield* loadMessage(sql, persisted.originalId)
         if (original === undefined) return yield* Effect.die("Duplicate mailbox row disappeared")
         if (original.discard && !discard) {
@@ -1142,7 +1207,8 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
             persisted.originalId,
             discard,
             delivery?.replyTo,
-            String(envelope.requestId)
+            requestId,
+            uninterruptible
           )
         }
         // A scheduled ask past its deadline replies through its waiters and
@@ -1154,7 +1220,8 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
             persisted.originalId,
             discard,
             delivery?.replyTo,
-            String(envelope.requestId)
+            requestId,
+            uninterruptible
           )
           if (!isRunning(persisted.originalId)) {
             yield* replayRows(registration, entityRuntime, [original])
@@ -1174,7 +1241,7 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       }
       if (delivery?.deliverAt !== undefined) {
         yield* armEarliestAlarm
-        return delayedOutcome(String(envelope.requestId), discard, delivery.replyTo)
+        return delayedOutcome(requestId, discard, delivery.replyTo, requestId, uninterruptible)
       }
       const continuation = yield* run(registration, entityRuntime, envelope, undefined, discard, true)
       return discard
@@ -1233,54 +1300,40 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       })
     )
 
-  // The claim runs under the entry permit, so it serializes against session
-  // and waiter registration. The handler is stopped after the permit is
-  // released because its finalizer takes the same permit.
+  // Lookup and claim run without taking the entry permit so an active ask
+  // holding the SQL transaction gate can still be interrupted while another
+  // entry waits on that gate under the entry permit. Registration checks
+  // `earlyInterrupts` atomically with publishing the session or waiter.
   const interrupt = (storageRequestId: string, clientRequestId = storageRequestId): Effect.Effect<void> =>
-    Semaphore.withPermit(
-      semaphore,
-      Effect.sync(() => {
-        const waiters = workerWaiters.get(storageRequestId) ?? []
-        const remaining = waiters.filter((waiter) => {
-          if (waiter.clientRequestId !== clientRequestId) return true
-          Deferred.doneUnsafe(waiter.deferred, Effect.die(new Error("Delayed entity request interrupted")))
-          return false
-        })
-        if (remaining.length > 0) workerWaiters.set(storageRequestId, remaining)
-        else workerWaiters.delete(storageRequestId)
-        const session = sessions.get(storageRequestId)
-        if (session === undefined) {
-          if (remaining.length === waiters.length) {
-            setWithEviction(earlyInterrupts, clientRequestId, true, mailboxCapacity)
-          }
-          return undefined
+    Effect.suspend(() => {
+      const waiter = clientWaiters.get(clientRequestId)
+      if (waiter !== undefined) {
+        clientWaiters.delete(clientRequestId)
+        const group = workerWaiters.get(waiter.storageRequestId)
+        if (group !== undefined) {
+          group.delete(waiter)
+          if (group.size === 0) workerWaiters.delete(waiter.storageRequestId)
         }
-        if (session.uninterruptible) return undefined
-        // Keep ownership through handler finalization and the terminal write.
-        // A failed write must leave the row owned rather than replayable.
-        session.cancelling = true
-        if (session.ack !== undefined) {
-          Deferred.doneUnsafe(session.ack.deferred, Effect.void)
-          session.ack = undefined
+        Deferred.doneUnsafe(waiter.deferred, Effect.die(new Error("Delayed entity request interrupted")))
+      }
+      const session = sessions.get(storageRequestId)
+      if (session === undefined) {
+        if (waiter === undefined) {
+          setWithEviction(earlyInterrupts, clientRequestId, true, mailboxCapacity)
         }
-        Queue.endUnsafe(session.queue)
-        return session
-      })
-    ).pipe(Effect.flatMap((session) =>
-      session === undefined ? Effect.void : Effect.andThen(
-        session.fiber === undefined ? Effect.void : Fiber.interrupt(session.fiber),
-        Semaphore.withPermit(
-          semaphore,
-          Effect.andThen(
-            session.completeInterrupt,
-            Effect.suspend(() => {
-              if (sessions.get(storageRequestId) === session) sessions.delete(storageRequestId)
-              return inFlightPersisted === 0 ? rearm : Effect.void
-            })
-          )
-        )
-      )
-    ))
+        return Effect.void
+      }
+      if (session.uninterruptible) return Effect.void
+      // Keep ownership through handler finalization and the terminal write.
+      // A failed write must leave the row owned rather than replayable.
+      session.cancelling = true
+      if (session.ack !== undefined) {
+        Deferred.doneUnsafe(session.ack.deferred, Effect.void)
+        session.ack = undefined
+      }
+      Queue.endUnsafe(session.queue)
+      return finishCancel(storageRequestId, session)
+    })
 
   const reset = (requestId: string): Effect.Effect<void> => write(clearReplies(sql, requestId))
 

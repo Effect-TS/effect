@@ -2,4 +2,4 @@
 "@effect/platform-cloudflare": patch
 ---
 
-Preserve entity ask interrupts that arrive before the request registers in the Durable Object, and serialize interrupt lookup with session registration.
+Preserve early entity ask interrupts, resolve delayed-waiter interrupts by client request id, and avoid blocking active-ask interruption behind the entry permit.
