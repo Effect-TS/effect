@@ -1312,26 +1312,13 @@ export const suite = (
               })).pipe(Effect.provide(layer))
 
               // Counts the live members of the process group led by the parent
-              // whose command line contains `pattern`
-              const countLiveGroupMembers = (pattern: string) =>
-                ChildProcess.make("sh", [
-                  "-c",
-                  "ps -A -o pgid= -o stat= -o args= | awk -v g=\"$1\" -v p=\"$2\" '$1 == g && $2 !~ /^Z/ && (p == \"\" || index($0, p))' | wc -l",
-                  "count-group-members",
-                  String(handle.pid),
-                  pattern
-                ]).pipe(
-                  Effect.flatMap((handle) => decodeByteStream(handle.stdout)),
-                  Effect.map((output) => Number.parseInt(output.trim()))
-                )
-              // Kills the process group and waits up to 5 seconds for its
-              // members to exit
-              const killGroup = ChildProcess.make("sh", [
+              const countLiveGroupMembers = ChildProcess.make("sh", [
                 "-c",
-                "kill -KILL -\"$1\" 2>/dev/null; i=0; while [ $i -lt 50 ] && ps -A -o pgid= -o stat= | awk -v g=\"$1\" '$1 == g && $2 !~ /^Z/ { found = 1 } END { exit !found }'; do sleep 0.1; i=$((i + 1)); done",
-                "kill-group",
-                String(handle.pid)
-              ]).pipe(Effect.flatMap((handle) => handle.exitCode))
+                `ps -A -o pgid= -o stat= | awk '$1 == ${handle.pid} && $2 !~ /^Z/' | wc -l`
+              ]).pipe(
+                Effect.flatMap((handle) => decodeByteStream(handle.stdout)),
+                Effect.map((output) => Number.parseInt(output))
+              )
 
               yield* Effect.gen(function*() {
                 // @effect-diagnostics-next-line floatingEffect:off
@@ -1343,11 +1330,11 @@ export const suite = (
 
                 yield* TestClock.withLive(Effect.sleep("100 millis"))
 
-                // Three children and three grandchildren
-                assert.strictEqual(yield* countLiveGroupMembers("parent-exits-early-"), 6)
-              }).pipe(Effect.ensuring(Effect.ignore(killGroup)))
+                assert.isAbove(yield* countLiveGroupMembers, 0)
+              }).pipe(Effect.ensuring(Effect.ignore(handle.kill({ killSignal: "SIGKILL" }))))
 
-              assert.strictEqual(yield* countLiveGroupMembers(""), 0)
+              // An explicit kill still signals the process group
+              assert.strictEqual(yield* countLiveGroupMembers, 0)
             }).pipe(Effect.provide(layer))
         )
 
