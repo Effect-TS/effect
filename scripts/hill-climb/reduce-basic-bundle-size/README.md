@@ -90,3 +90,20 @@ More gotchas:
 - The shared checkout cache lists `scripts/hill-climb` in `info/exclude`, so `git add` skips new
   files here without failing the commit. Add them with `git add -f` and check `git status` before
   pushing; two benchmark scripts were lost that way.
+
+Measured in round 14:
+
+- Building `Fiber.Cache` in a loop over a table of keys (`cache[field] = ...`) saves about 90 B
+  over ten explicit reads, but the keyed stores make every cache build about 400 ns slower:
+  `runSync` took 1.47 times main's time, since each run adds a scheduler and rebuilds the cache.
+  Keep the object literal with one read per field.
+- An object table of keys and defaults read by property (`keys.scheduler`) costs about 90 B more
+  than separate constants, because property names are not mangled. Separate constants plus a
+  record typed by `Fiber.Cache` for the invalidation set give the same drift protection for free.
+- `Hash.hash(reasons)` in `CauseImpl` instead of `Hash.array(reasons)` makes hashing a fresh
+  `Cause` about 1.38 times slower. `Hash.array` alone restores it.
+- `getRedacted` could use `Context.empty()` instead of its hand-written empty context (33 B
+  smaller), but that makes `Redactable.ts` import `Context.ts` and closes an import cycle through
+  `Formatter.ts`.
+- Run `Metric.test.ts` from the repository root (`pnpm exec vitest run packages/effect/test/Metric.test.ts`);
+  from `packages/effect` it cannot resolve `@effect/opentelemetry`.
