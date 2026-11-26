@@ -3912,25 +3912,30 @@ describe("McpServer", () => {
     })
     const WeatherToolkit = Toolkit.make(GetWeather)
 
-    // Offers each ended `tools/call` span to `ended`.
-    const makeToolCallTracer = (ended: Queue.Queue<Tracer.NativeSpan>) =>
+    // Offers each ended MCP span for `method` to `ended`.
+    const makeMethodTracer = (ended: Queue.Queue<Tracer.NativeSpan>, method = "tools/call") =>
       Tracer.make({
         span(options) {
           const span = new Tracer.NativeSpan(options)
           const end = span.end.bind(span)
           span.end = (endTime, exit) => {
             end(endTime, exit)
-            if (span.attributes.get("mcp.method.name") === "tools/call") Queue.offerUnsafe(ended, span)
+            if (span.attributes.get("mcp.method.name") === method) Queue.offerUnsafe(ended, span)
           }
           return span
         }
       })
 
-    // Returns a function that sends `tools/call` over HTTP and yields its ended MCP span.
-    const makeTracedServer = Effect.fnUntraced(function*(recordToolArguments = false) {
+    // Returns a function that sends `method` requests over HTTP and yields each ended MCP span.
+    const makeTracedServer = Effect.fnUntraced(function*(options?: {
+      readonly recordToolArguments?: boolean | undefined
+      readonly method?: string | undefined
+    }) {
+      const method = options?.method ?? "tools/call"
       const ended = yield* Queue.unbounded<Tracer.NativeSpan>()
-      const tracer = makeToolCallTracer(ended)
-      const tools = Layer.mergeAll(
+      const tracer = makeMethodTracer(ended, method)
+      const itemId = McpSchema.param("id", Schema.String)
+      const registrations = Layer.mergeAll(
         McpServer.toolkit(WeatherToolkit).pipe(
           Layer.provideMerge(WeatherToolkit.toLayer({
             get_weather: ({ location }) =>
@@ -3944,28 +3949,42 @@ describe("McpServer", () => {
             annotations: Context.empty(),
             handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
           })
-        }))
+        })),
+        McpServer.prompt({
+          name: "greet",
+          content: () => Effect.succeed("hello")
+        }),
+        McpServer.resource({
+          uri: "test://static",
+          name: "static",
+          content: Effect.succeed("ok")
+        }),
+        McpServer.resource`test://items/${itemId}`({
+          name: "item",
+          content: () => Effect.succeed("ok")
+        })
       )
-      const harness = yield* makeHttpHarness(tools.pipe(
+      const harness = yield* makeHttpHarness(registrations.pipe(
         Layer.provideMerge(makeServerLayer({ name: "TracingTest", protocols: [McpProtocol.v2025_06_18] })),
         Layer.provideMerge(Layer.succeed(Tracer.Tracer, tracer)),
-        Layer.provideMerge(Layer.succeed(Toolkit.RecordToolArguments, recordToolArguments))
+        Layer.provideMerge(Layer.succeed(Toolkit.RecordToolArguments, options?.recordToolArguments ?? false))
       ))
       const headers = yield* initializeHttpSession(harness, McpProtocol.v2025_06_18)
-      const callTool = Effect.fnUntraced(function*(params: Record<string, unknown>) {
+      let nextId = 1
+      const send = Effect.fnUntraced(function*(params: Record<string, unknown>) {
         yield* readMcpHttpResponse(
-          yield* harness.post({ jsonrpc: "2.0", id: 1, method: "tools/call", params }, headers)
+          yield* harness.post({ jsonrpc: "2.0", id: nextId++, method, params }, headers)
         )
         return yield* Queue.take(ended)
       })
-      return { headers, callTool }
+      return { headers, send }
     })
 
     it.effect("names tool call spans after the tool and does not record arguments by default", () =>
       Effect.gen(function*() {
-        const { callTool, headers } = yield* makeTracedServer()
+        const { headers, send } = yield* makeTracedServer()
 
-        const span = yield* callTool({ name: "get_weather", arguments: { location: "London" } })
+        const span = yield* send({ name: "get_weather", arguments: { location: "London" } })
         assert.strictEqual(span.name, "tools/call get_weather")
         assert.deepInclude(Object.fromEntries(span.attributes), {
           "jsonrpc.request.id": "1",
@@ -3979,19 +3998,60 @@ describe("McpServer", () => {
 
     it.effect("records tool arguments when Toolkit.RecordToolArguments is enabled", () =>
       Effect.gen(function*() {
-        const { callTool } = yield* makeTracedServer(true)
+        const { send } = yield* makeTracedServer({ recordToolArguments: true })
 
         // `echo` is registered with `addTool`, so `Toolkit.handle` cannot record the arguments for McpServer.
-        const span = yield* callTool({ name: "echo", arguments: { text: "hi" } })
+        const span = yield* send({ name: "echo", arguments: { text: "hi" } })
         assert.strictEqual(span.attributes.get("gen_ai.tool.call.arguments"), "{\"text\":\"hi\"}")
+      }))
+
+    it.effect("omits target attributes and span suffix for unregistered tools", () =>
+      Effect.gen(function*() {
+        const { send } = yield* makeTracedServer({ recordToolArguments: true })
+
+        const span = yield* send({ name: "not_registered", arguments: { secret: "value" } })
+        assert.strictEqual(span.name, "tools/call")
+        assert.strictEqual(span.attributes.get("gen_ai.operation.name"), "execute_tool")
+        assert.isFalse(span.attributes.has("gen_ai.tool.name"))
+        assert.isFalse(span.attributes.has("gen_ai.tool.call.arguments"))
+      }))
+
+    it.effect("records prompt target telemetry only for registered prompts", () =>
+      Effect.gen(function*() {
+        const { send } = yield* makeTracedServer({ method: "prompts/get" })
+
+        const registered = yield* send({ name: "greet" })
+        assert.strictEqual(registered.name, "prompts/get greet")
+        assert.strictEqual(registered.attributes.get("gen_ai.prompt.name"), "greet")
+
+        const missing = yield* send({ name: "missing_prompt" })
+        assert.strictEqual(missing.name, "prompts/get")
+        assert.isFalse(missing.attributes.has("gen_ai.prompt.name"))
+      }))
+
+    it.effect("records mcp.resource.uri only for registered static resources", () =>
+      Effect.gen(function*() {
+        const { send } = yield* makeTracedServer({ method: "resources/read" })
+
+        const staticResource = yield* send({ uri: "test://static" })
+        assert.strictEqual(staticResource.name, "resources/read")
+        assert.strictEqual(staticResource.attributes.get("mcp.resource.uri"), "test://static")
+
+        const templateResource = yield* send({ uri: "test://items/secret-id" })
+        assert.strictEqual(templateResource.name, "resources/read")
+        assert.isFalse(templateResource.attributes.has("mcp.resource.uri"))
+
+        const missingResource = yield* send({ uri: "example://missing" })
+        assert.strictEqual(missingResource.name, "resources/read")
+        assert.isFalse(missingResource.attributes.has("mcp.resource.uri"))
       }))
 
     // https://github.com/modelcontextprotocol/modelcontextprotocol/pull/414
     it.effect("continues the client trace from params._meta.traceparent", () =>
       Effect.gen(function*() {
-        const { callTool } = yield* makeTracedServer()
+        const { send } = yield* makeTracedServer()
 
-        const span = yield* callTool({
+        const span = yield* send({
           name: "get_weather",
           arguments: { location: "London" },
           _meta: { traceparent: "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01" }
@@ -4002,9 +4062,9 @@ describe("McpServer", () => {
 
     it.effect("marks a tool result with isError as a tool_error", () =>
       Effect.gen(function*() {
-        const { callTool } = yield* makeTracedServer()
+        const { send } = yield* makeTracedServer()
 
-        const span = yield* callTool({ name: "get_weather", arguments: { location: "Atlantis" } })
+        const span = yield* send({ name: "get_weather", arguments: { location: "Atlantis" } })
         assert.strictEqual(span.attributes.get("error.type"), "tool_error")
       }))
 
@@ -4045,7 +4105,7 @@ describe("McpServer", () => {
         )
         const write = yield* Deferred.await(ready)
         const send = (message: RpcMessage.FromClientEncoded) =>
-          write(1, message).pipe(Effect.provideService(Tracer.Tracer, makeToolCallTracer(ended)))
+          write(1, message).pipe(Effect.provideService(Tracer.Tracer, makeMethodTracer(ended)))
         const clientInfo = { name: "client", version: "1.0.0" }
         const payload = { protocolVersion: "2025-03-26", capabilities: {}, clientInfo }
         yield* send({ _tag: "Request", id: "0", tag: "initialize", payload, headers: [] })
