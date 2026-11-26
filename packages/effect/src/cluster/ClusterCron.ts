@@ -177,10 +177,11 @@ export const make = <E, R>(options: {
     if (DateTime.isLessThan(dateTime, DateTime.subtractDuration(now, cronSchedule.skipIfOlderThan))) {
       return
     }
-    return yield* Effect.provideContext(
+    // each attempt gets its own scope, closed with its exit before any retry
+    return yield* Effect.scoped(Effect.provideContext(
       options.execute,
       Context.add(scheduleContext, CurrentScheduledTime, dateTime)
-    )
+    ))
   }, Effect.orDie)
 
   const EntityLayer = CronEntity.toLayer(Effect.gen(function*() {

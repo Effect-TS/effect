@@ -227,6 +227,7 @@ describe("ClusterCron", { concurrent: false }, () => {
         execute: Effect.gen(function*() {
           attempts.push(DateTime.formatIso(yield* ClusterCron.CurrentScheduledTime))
           if (attempts.length === 1) {
+            yield* Effect.addFinalizer((exit) => Effect.sync(() => attempts.push(exit._tag)))
             return yield* Effect.fail("boom")
           }
         })
@@ -234,19 +235,24 @@ describe("ClusterCron", { concurrent: false }, () => {
 
       yield* deploy(cron, 3500)
 
-      assert.isAbove(attempts.length, 2)
-      assert.strictEqual(attempts[1], attempts[0])
-      assert.deepStrictEqual(attempts, [...attempts].sort())
+      // the failed attempt's scope is closed before it is retried
+      const [first, finalized, ...rest] = attempts
+      assert.strictEqual(finalized, "Failure")
+      assert.isAbove(rest.length, 1)
+      assert.strictEqual(rest[0], first)
+      assert.deepStrictEqual(rest, [...rest].sort())
     }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
 
   it.effect("runs a failed instant once and moves on to the next", () =>
     Effect.gen(function*() {
       const attempts: Array<string> = []
+      const exits: Array<string> = []
       const cron = ClusterCron.make({
         name: "test",
         cron: Cron.parseUnsafe("* * * * * *", "UTC"),
         execute: Effect.gen(function*() {
           attempts.push(DateTime.formatIso(yield* ClusterCron.CurrentScheduledTime))
+          yield* Effect.addFinalizer((exit) => Effect.sync(() => exits.push(exit._tag)))
           return yield* Effect.fail("boom")
         })
       })
@@ -255,6 +261,7 @@ describe("ClusterCron", { concurrent: false }, () => {
 
       assert.isAbove(attempts.length, 1)
       assert.deepStrictEqual(attempts, [...new Set(attempts)])
+      assert.deepStrictEqual(exits, attempts.map(() => "Failure"))
     }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
 
   it.effect("replays an interrupted run with calculateNextRunFromPrevious when its finalizer fails", () =>
