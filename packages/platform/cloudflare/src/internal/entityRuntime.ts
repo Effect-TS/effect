@@ -27,6 +27,7 @@ import type * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import type { EntityDeliveryOptions, EntityInvokeResult } from "../CloudflareDurableObjectPrograms.ts"
+import { setWithEviction } from "./boundedMap.ts"
 import { encodeName } from "./clusterName.ts"
 import type { EntityKeepAlive } from "./entityKeepAlive.ts"
 import {
@@ -36,6 +37,7 @@ import {
   loadMessage,
   loadNextReply,
   loadUnprocessed,
+  mailboxCapacity,
   persistRequest,
   type PersistResult,
   type ReplyTarget,
@@ -513,6 +515,12 @@ export interface EntityManager {
     delivery?: EntityDeliveryOptions | undefined
   ) => Effect.Effect<EntityInvokeResult>
   readonly acknowledge: (requestId: string, replyId: string) => Effect.Effect<ReadonlyArray<string>>
+  /**
+   * Interrupts an ask within this Durable Object incarnation, whether it
+   * arrives before `invoke`, while `invoke` waits for the entry permit, or
+   * after the request has registered. Uninterruptible RPCs ignore it, and
+   * discards are not tracked.
+   */
   readonly interrupt: (storageRequestId: string, clientRequestId?: string) => Effect.Effect<void>
   readonly reset: (requestId: string) => Effect.Effect<void>
   readonly alarm: Effect.Effect<void>
@@ -606,6 +614,10 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   // separately so only transitions touch the recovery alarm.
   let inFlightPersisted = 0
   const workerWaiters = new Map<string, Array<WorkerWaiter>>()
+  // Interrupts that arrived before their matching ask registered. Bounded to
+  // `mailboxCapacity` because they only race asks already in flight to this
+  // Durable Object incarnation.
+  const earlyInterrupts = new Map<string, true>()
   const replyRegistry = makeReplyRegistry()
   const entitySql = makeEntitySql(storage)
   // Every mailbox write runs in its own storage transaction and waits for any
@@ -1066,10 +1078,14 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
 
       const envelope = yield* decodeRequest(registration, envelopeText)
       const rpc = registration.entity.protocol.requests.get(envelope.tag) as Rpc.AnyWithProps
+      const requestId = String(envelope.requestId)
+      if (!discard && earlyInterrupts.delete(requestId) && !isUninterruptibleForServer(rpc.annotations)) {
+        return Effect.succeed(success(requestId, []))
+      }
       const isPersisted = Context.get(rpc.annotations, Persisted)
       if (!isPersisted) {
         const continuation = yield* run(registration, entityRuntime, envelope, undefined, discard, false)
-        return finish(String(envelope.requestId), continuation)
+        return finish(requestId, continuation)
       }
 
       const persistedResult = yield* Effect.result(
@@ -1218,44 +1234,56 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       })
     )
 
+  // Lookup and marking run under the entry permit so they serialize against
+  // session and waiter registration. Handler interruption runs outside the
+  // permit because the handler finalizer takes this same permit.
   const interrupt = (storageRequestId: string, clientRequestId = storageRequestId): Effect.Effect<void> =>
-    Effect.suspend(() => {
-      const waiters = workerWaiters.get(storageRequestId)
-      if (waiters !== undefined) {
-        const remaining = waiters.filter((waiter) => {
-          if (waiter.clientRequestId !== clientRequestId) return true
-          Deferred.doneUnsafe(waiter.deferred, Effect.die(new Error("Delayed entity request interrupted")))
-          return false
-        })
-        if (remaining.length === 0) workerWaiters.delete(storageRequestId)
-        else workerWaiters.set(storageRequestId, remaining)
-      }
-      const session = sessions.get(storageRequestId)
-      if (session === undefined || session.uninterruptible) return Effect.void
-      // Keep ownership through handler finalization and the terminal write.
-      // A failed write must leave the row owned rather than replayable.
-      session.cancelling = true
-      if (session.ack !== undefined) {
-        Deferred.doneUnsafe(session.ack.deferred, Effect.void)
-        session.ack = undefined
-      }
-      Queue.endUnsafe(session.queue)
-      const stop = session.fiber === undefined ? Effect.void : Effect.asVoid(Fiber.interrupt(session.fiber))
-      // The handler finalizer takes this same permit. Interrupt outside it.
-      return Effect.andThen(
-        stop,
-        Semaphore.withPermit(
-          semaphore,
-          Effect.andThen(
-            session.completeInterrupt,
-            Effect.suspend(() => {
-              if (sessions.get(storageRequestId) === session) sessions.delete(storageRequestId)
-              return inFlightPersisted === 0 ? rearm : Effect.void
-            })
+    Effect.flatten(Semaphore.withPermit(
+      semaphore,
+      Effect.sync((): Effect.Effect<void> => {
+        let matchedWaiter = false
+        const waiters = workerWaiters.get(storageRequestId)
+        if (waiters !== undefined) {
+          const remaining = waiters.filter((waiter) => {
+            if (waiter.clientRequestId !== clientRequestId) return true
+            matchedWaiter = true
+            Deferred.doneUnsafe(waiter.deferred, Effect.die(new Error("Delayed entity request interrupted")))
+            return false
+          })
+          if (remaining.length === 0) workerWaiters.delete(storageRequestId)
+          else workerWaiters.set(storageRequestId, remaining)
+        }
+        const session = sessions.get(storageRequestId)
+        if (session === undefined) {
+          if (!matchedWaiter) setWithEviction(earlyInterrupts, clientRequestId, true, mailboxCapacity)
+          return Effect.void
+        }
+        if (session.uninterruptible) return Effect.void
+        // Keep ownership through handler finalization and the terminal write.
+        // A failed write must leave the row owned rather than replayable.
+        session.cancelling = true
+        if (session.ack !== undefined) {
+          Deferred.doneUnsafe(session.ack.deferred, Effect.void)
+          session.ack = undefined
+        }
+        Queue.endUnsafe(session.queue)
+        const stop = session.fiber === undefined ? Effect.void : Effect.asVoid(Fiber.interrupt(session.fiber))
+        // The handler finalizer takes this same permit. Interrupt outside it.
+        return Effect.andThen(
+          stop,
+          Semaphore.withPermit(
+            semaphore,
+            Effect.andThen(
+              session.completeInterrupt,
+              Effect.suspend(() => {
+                if (sessions.get(storageRequestId) === session) sessions.delete(storageRequestId)
+                return inFlightPersisted === 0 ? rearm : Effect.void
+              })
+            )
           )
         )
-      )
-    })
+      })
+    ))
 
   const reset = (requestId: string): Effect.Effect<void> => write(clearReplies(sql, requestId))
 
