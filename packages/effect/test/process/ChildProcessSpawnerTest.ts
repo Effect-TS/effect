@@ -1303,13 +1303,13 @@ export const suite = (
           "should not cleanup descendants after an unrefed parent exits non-zero",
           () =>
             Effect.gen(function*() {
-              const path = yield* Path.Path
-              const cwd = yield* path.fromFileUrl(new URL("./fixtures/bash/", import.meta.url))
               const scope = yield* Scope.make()
 
-              const handle = yield* Scope.provide(scope)(Effect.gen(function*() {
-                return yield* ChildProcess.make({ cwd })`./parent-exits-early.sh`
-              })).pipe(Effect.provide(layer))
+              // The parent leaves a descendant behind and exits once stdin
+              // receives a line
+              const handle = yield* Scope.provide(scope)(
+                ChildProcess.make("sh", ["-c", "sleep 30 & read -r _; exit 1"])
+              ).pipe(Effect.provide(layer))
 
               // Live (non-zombie) members of the parent's process group
               const countLiveGroupMembers = ChildProcess.make("sh", [
@@ -1323,6 +1323,7 @@ export const suite = (
               yield* Effect.gen(function*() {
                 // @effect-diagnostics-next-line floatingEffect:off
                 yield* Scope.provide(scope)(handle.unref).pipe(Effect.provide(layer))
+                yield* Stream.run(Stream.make(new TextEncoder().encode("\n")), handle.stdin)
 
                 const exitCode = yield* handle.exitCode
                 assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(1))
