@@ -49,3 +49,8 @@ Gotchas:
   everything they call. Leaving `Equal.ts`, `Hash.ts` or `Formatter.ts` out of `basic.ts`
   means those methods can no longer run on their own, for example when called by literal
   key or from another copy of effect.
+
+- `hash-parity.mjs <base dist> <current dist>`: checks that `Hash.hash` and `Equal.equals`
+  give the same results in two builds of effect (for example a `main` worktree's
+  `packages/effect/dist` and the current one) on random nested values.
+- `pipe-arguments-bench.mjs`: compares the unrolled `pipeArguments` switch with a plain loop.
