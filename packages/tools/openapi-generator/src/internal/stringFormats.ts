@@ -76,6 +76,15 @@ const annotate = (
     ? declare([representation], identity, annotations)
     : { ...representation, annotations: { ...annotations, ...representation.annotations } }
 
+// Drops the `format` of a node, and of its branches if it is a union, so the overriding codec's format is the only one left.
+const omitFormat = (representation: Node): Node => {
+  const { format: _format, ...annotations } = representation.annotations ?? {}
+  const node = { ...representation, annotations } as Node
+  return node._tag === "Union"
+    ? { ...node, types: node.types.map((type) => type._tag === "Reference" ? type : omitFormat(type)) }
+    : node
+}
+
 const isString = (representation: Representation): boolean =>
   representation._tag === "String" ||
   (representation._tag === "Literal" && typeof representation.literal === "string")
@@ -181,8 +190,8 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
     representation.thunk._tag === "Reference" && !cyclic.has(representation.thunk.$ref)
 
   // Core Schema codegen types `Schema.suspend` as `Schema.Codec<T>`, which requires decoded and encoded
-  // types to match. Definitions referenced from kept suspends keep wire types.
-  const suspended = new Set<string>()
+  // types to match. Recursive definitions, and definitions referenced from kept suspends, keep wire types.
+  const suspended = new Set(cyclic)
   const findSuspended = (representation: Representation): void => {
     if (representation._tag === "Suspend" && !isAlias(representation)) {
       collectReferences(representation.thunk, suspended)
@@ -197,7 +206,7 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
     if (representation._tag === "Suspend") return isAlias(representation) ? representation.thunk : undefined
     if (representation._tag !== "Reference") return undefined
     const $ref = representation.$ref
-    return !suspended.has($ref) && !cyclic.has($ref) && Object.hasOwn(document.references, $ref)
+    return !suspended.has($ref) && Object.hasOwn(document.references, $ref)
       ? document.references[$ref]
       : undefined
   }
@@ -258,27 +267,26 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
       : mapChildren(representation, rewriteWire, rewriteWire)
   }
 
-  // `useSite`: `inherited` comes from a referencing use site and overrides formats inside the inlined target.
+  // `useSite`: `inherited` comes from a referencing use site and replaces formats inside the inlined target.
   const rewriteValue = (
-    representation: Representation,
+    input: Representation,
     path: string,
     inherited?: Representation,
     useSite = false
   ): Representation => {
-    if (representation._tag === "Reference") {
-      const target = targetOf(representation)
-      if (inherited === undefined || target === undefined || !hasStringBranch(target)) return representation
+    if (input._tag === "Reference") {
+      const target = targetOf(input)
+      if (inherited === undefined || target === undefined || !hasStringBranch(target)) return input
       if (isStringOnly(target)) {
-        return formatOf(representation) === inherited
-          ? representation
-          : decodeTo(rewriteWire(representation), inherited)
+        return formatOf(input) === inherited ? input : decodeTo(rewriteWire(input), inherited)
       }
-      // Inline the target to keep its non-string branches, dropping its identifier and own format.
+      // Inline the target to keep its non-string branches, dropping its identifier.
       if (target._tag === "Reference") return rewriteValue(target, path, inherited, true)
-      const { format: _format, identifier: _identifier, ...annotations } = target.annotations ?? {}
+      const { identifier: _identifier, ...annotations } = target.annotations ?? {}
       return rewriteValue({ ...target, annotations }, path, inherited, true)
     }
-    const codec = useSite ? inherited : codecOf(representation) ?? inherited
+    const representation = useSite ? omitFormat(input) : input
+    const codec = codecOf(representation) ?? inherited
     const isUnion = representation._tag === "Union"
     if (
       codec !== undefined &&

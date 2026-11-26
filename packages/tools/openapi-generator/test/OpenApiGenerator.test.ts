@@ -872,7 +872,8 @@ describe("OpenApiGenerator", () => {
                     propertyNames: { $ref: "#/components/schemas/Balance" },
                     additionalProperties: { type: "string" }
                   },
-                  node: { $ref: "#/components/schemas/Node" }
+                  node: { $ref: "#/components/schemas/Node" },
+                  edge: { $ref: "#/components/schemas/Edge" }
                 },
                 required: [
                   "changed",
@@ -887,14 +888,24 @@ describe("OpenApiGenerator", () => {
                   "amounts",
                   "count",
                   "labels",
-                  "node"
+                  "node",
+                  "edge"
                 ],
                 additionalProperties: false
               },
               Balance: { type: "string", format: "int64", pattern: "^-?[1-9][0-9]*$" },
               Digits: { type: "string", pattern: "^[0-9]+$" },
-              Signed: { type: ["string", "null"], format: "int64" },
+              Signed: { oneOf: [{ type: "string", format: "int64" }, { type: "null" }] },
               Node: {
+                type: "object",
+                properties: {
+                  at: { type: "string", format: "date-time" },
+                  next: { $ref: "#/components/schemas/Edge" }
+                },
+                required: ["at"],
+                additionalProperties: false
+              },
+              Edge: {
                 type: "object",
                 properties: {
                   at: { type: "string", format: "date-time" },
@@ -924,12 +935,15 @@ describe("OpenApiGenerator", () => {
           amounts: ["01", "1"],
           count: "18446744073709551615",
           labels: { "42": "daily" },
-          node: { at: "2026-06-01T00:00:00.000Z" }
+          node: { at: "2026-06-01T00:00:00.000Z" },
+          edge: { at: "2026-06-01T00:00:00.000Z" }
         }
 
         const decodedSource = yield* generator.generate(spec, options)
         yield* Effect.promise(() =>
-          withGeneratedModule<{ LedgerReading: Schema.Codec<unknown> }>(decodedSource, ({ LedgerReading }) => {
+          withGeneratedModule<{
+            LedgerReading: Schema.Codec<unknown> & { readonly fields: Record<string, Schema.Top> }
+          }>(decodedSource, ({ LedgerReading }) => {
             const decode = Schema.decodeUnknownExit(LedgerReading)
             const decoded = {
               changed: DateTime.makeUnsafe("2026-06-01T00:00:00.000Z"),
@@ -944,7 +958,8 @@ describe("OpenApiGenerator", () => {
               amounts: [1n, 1n],
               count: 18446744073709551615n,
               labels: { "42": "daily" },
-              node: { at: "2026-06-01T00:00:00.000Z" }
+              node: { at: "2026-06-01T00:00:00.000Z" },
+              edge: { at: "2026-06-01T00:00:00.000Z" }
             }
             assert.deepStrictEqual(decode(wire), Exit.succeed(decoded))
             assert.deepStrictEqual(
@@ -972,6 +987,10 @@ describe("OpenApiGenerator", () => {
             assert.isTrue(Exit.isFailure(decode({ ...wire, refInt: "-1" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, nullableRefInt: "-1" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, unsignedRef: "-1" })))
+            assert.deepStrictEqual(Schema.toJsonSchemaDocument(LedgerReading.fields.unsignedRef).schema, {
+              oneOf: [{ type: "string" }, { type: "null" }],
+              format: "uint64"
+            })
             assert.isTrue(Exit.isFailure(decode({ ...wire, tier: "01" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, amounts: ["1", "1"] })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, count: "-1" })))
