@@ -921,8 +921,12 @@ const searchCron = (
   onDstOverlap: "earlier" | "later"
 ): Date => {
   const tz = Option.getOrUndefined(cron.tz)
+  // Without a schedule or input time zone, use the host zone like `match` does.
+  // The offset at `now` alone would be wrong after a DST change.
+  const useHostZone = tz === undefined && !(dateTime.isDateTime(now) && dateTime.isZoned(now)) &&
+    !(typeof now === "object" && "timeZoneId" in now)
   const zoned = dateTime.makeZonedUnsafe(now, {
-    timeZone: tz
+    timeZone: useHostZone ? dateTime.zoneMakeLocal() : tz
   })
 
   const reverse = direction === "prev"
