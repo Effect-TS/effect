@@ -1,7 +1,7 @@
 import { AnthropicClient } from "@effect/ai-anthropic"
 import * as Errors from "@effect/ai-anthropic/internal/errors"
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Duration, Effect, Layer, Redacted, type Schema } from "effect"
+import { Context, Duration, Effect, Layer, Redacted, type Schema, Stream } from "effect"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("AnthropicClient", () => {
@@ -222,7 +222,47 @@ describe("AnthropicClient", () => {
         request_id: null
       }
     }))))
+  it.effect("decodes refusal stop details without fallback keys", () =>
+    Effect.gen(function*() {
+      const client = yield* AnthropicClient.AnthropicClient
+      const [, stream] = yield* client.createMessageStream({
+        payload: {
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1,
+          messages: [{ role: "user", content: "hello" }]
+        }
+      })
+      const events = yield* Stream.runCollect(stream)
+      const delta = events.find((event) => event.type === "message_delta")
+
+      assert.deepStrictEqual(delta?.type === "message_delta" ? delta.delta.stop_details : undefined, stopDetails)
+    }).pipe(Effect.provide(makeTestLayer({
+      _tag: "Sse",
+      events: [
+        {
+          type: "message_start",
+          message: {
+            id: "msg_refusal",
+            type: "message",
+            role: "assistant",
+            model: "claude-sonnet-4-20250514",
+            content: [],
+            stop_reason: null,
+            stop_sequence: null,
+            usage: { input_tokens: 1, output_tokens: 0 }
+          }
+        },
+        {
+          type: "message_delta",
+          delta: { stop_reason: "refusal", stop_sequence: null, stop_details: stopDetails },
+          usage: { output_tokens: 1 }
+        },
+        { type: "message_stop" }
+      ]
+    }))))
 })
+
+const stopDetails = { type: "refusal", category: "cyber", explanation: "Refused for cyber harm." } as const
 
 type MockResponse =
   | {
