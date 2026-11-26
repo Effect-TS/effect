@@ -239,6 +239,24 @@ describe("ClusterCron", { concurrent: false }, () => {
       assert.deepStrictEqual(attempts, [...attempts].sort())
     }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
 
+  it.effect("runs a failed instant once and moves on to the next", () =>
+    Effect.gen(function*() {
+      const attempts: Array<string> = []
+      const cron = ClusterCron.make({
+        name: "test",
+        cron: Cron.parseUnsafe("* * * * * *", "UTC"),
+        execute: Effect.gen(function*() {
+          attempts.push(DateTime.formatIso(yield* ClusterCron.CurrentScheduledTime))
+          return yield* Effect.fail("boom")
+        })
+      })
+
+      yield* deploy(cron, 3500)
+
+      assert.isAbove(attempts.length, 1)
+      assert.deepStrictEqual(attempts, [...new Set(attempts)])
+    }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
+
   it.effect("replays an interrupted run with calculateNextRunFromPrevious when its finalizer fails", () =>
     Effect.gen(function*() {
       const attempts: Array<string> = []
