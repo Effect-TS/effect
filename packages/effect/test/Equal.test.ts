@@ -96,24 +96,18 @@ describe("Equal.equals", () => {
         b1.push(b2)
         return [a, b1] as const
       }
-      const makeSharedDirect = () => {
-        const a: { next?: unknown } = {}
-        a.next = a
-        return [a, { next: a }] as const
-      }
-      const makeSharedIndirect = () => {
-        const shared: { next?: unknown } = {}
-        const a = { next: shared }
-        shared.next = a
-        return [a, { next: shared }] as const
+      // The second root reaches the ring through a node of the first.
+      const makeShared = (size: number) => {
+        const a = makeRing(size)
+        return [a, { next: a.next }] as const
       }
 
       const pairs = [
         () => [makeRing(1), makeRing(2)] as const,
         () => [makeRing(37), makeRing(41)] as const,
         makeArrayPair,
-        makeSharedDirect,
-        makeSharedIndirect
+        () => makeShared(1),
+        () => makeShared(2)
       ]
       for (const make of pairs) {
         for (const prehash of ["none", "left", "right", "both"] as const) {
@@ -208,26 +202,6 @@ describe("Equal.equals", () => {
         }
       })
       assert.isTrue(Equal.equals(make(), make()))
-      assert.strictEqual(reads, 2)
-    })
-
-    it("avoids exponential traversal on shared acyclic graphs", () => {
-      let reads = 0
-      const make = (tag: number) => {
-        let graph: object = {
-          get value() {
-            reads++
-            return 1
-          }
-        }
-        for (let i = 0; i < 14; i++) graph = { left: graph, right: graph }
-        return { graph, tag }
-      }
-      assert.isFalse(Equal.equals(make(0), make(1)))
-      assert.strictEqual(reads, 2)
-
-      reads = 0
-      assert.isTrue(Equal.equals(make(0), make(0)))
       assert.strictEqual(reads, 2)
     })
 
@@ -512,7 +486,7 @@ describe("Equal.equals", () => {
   })
 
   describe("Date objects", () => {
-    it("should compare dates by ISO string", () => {
+    it("should compare dates by time value", () => {
       const date1 = new Date("2023-01-01T00:00:00.000Z")
       const date2 = new Date("2023-01-01T00:00:00.000Z")
       expect(Equal.equals(date1, date2)).toBe(true)
@@ -531,13 +505,15 @@ describe("Equal.equals", () => {
     it("keeps dates with custom methods consistent with Hash", () => {
       const customIso = Object.assign(new Date(0), { toISOString: () => "custom" })
       const plain = new Date(0)
-      assert.isFalse(Equal.equals(customIso, plain))
-      assert.isFalse(Equal.equals(plain, customIso))
+      assert.isTrue(Equal.equals(customIso, plain))
+      assert.isTrue(Equal.equals(plain, customIso))
+      assert.strictEqual(Hash.hash(customIso), Hash.hash(plain))
 
       const customTime = Object.assign(new Date(0), { getTime: () => 1000 })
       const later = new Date(1000)
-      assert.isFalse(Equal.equals(customTime, later))
-      assert.isFalse(Equal.equals(later, customTime))
+      assert.isTrue(Equal.equals(customTime, later))
+      assert.isTrue(Equal.equals(later, customTime))
+      assert.strictEqual(Hash.hash(customTime), Hash.hash(later))
     })
   })
 

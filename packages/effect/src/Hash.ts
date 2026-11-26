@@ -118,10 +118,7 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
       if (self === null) {
         break
       } else if (self instanceof Date) {
-        if (Number.isNaN(self.getTime())) {
-          return string("Invalid Date")
-        }
-        return string(self.toISOString())
+        return number(self.getTime())
       } else if (self instanceof RegExp) {
         return string(self.toString())
       } else {

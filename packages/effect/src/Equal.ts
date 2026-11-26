@@ -13,7 +13,7 @@
 import type { Equivalence } from "./Equivalence.ts"
 import * as Hash from "./Hash.ts"
 import { bufferBytes, byReferenceInstances, getAllObjectKeys, isArrayBufferLike, viewBytes } from "./internal/equal.ts"
-import { hashCache } from "./internal/hash.ts"
+import { addBackEdge, backEdges, hashCache } from "./internal/hash.ts"
 import { hasProperty } from "./Predicate.ts"
 
 /**
@@ -128,7 +128,7 @@ export interface Equal extends Hash.Hash {
  * `[Equal.symbol]` method; if only one operand implements `Equal`, the result
  * is `false`.
  *
- * Dates compare by ISO string, RegExps compare by string representation,
+ * Dates compare by time value, RegExps compare by string representation,
  * arrays compare element-by-element, Maps and Sets compare entries
  * order-independently, and plain objects compare enumerable keys recursively.
  * Functions without an `Equal` implementation compare by reference. Circular
@@ -186,20 +186,14 @@ export function equals(): any {
 
 function compareBoth(self: unknown, that: unknown): boolean {
   if (self === that) {
-    // A shared child can still reach an ancestor on one side; check whether it is cyclic.
+    // A value shared by both sides can still close a cycle on one of them, which hashing it records.
     if (
       pathLeft.length > 0 &&
       self !== null &&
       (typeof self === "object" || typeof self === "function") &&
-      !hashCache.has(self) &&
-      !(self instanceof Date) &&
-      !(self instanceof RegExp) &&
-      !byReferenceInstances.has(self)
+      !hashCache.has(self)
     ) {
       Hash.hash(self)
-      if (!hashCache.has(self)) {
-        cycles++
-      }
     }
     return true
   }
@@ -225,72 +219,37 @@ function compareBoth(self: unknown, that: unknown): boolean {
 
 function compareObjects(self: object, that: object): boolean {
   const depth = pathLeft.length
-  if (depth === 0) {
-    // Only outermost results are independent of path assumptions.
-    let known = results.get(self)
-    if (!known) results.set(self, known = new WeakMap())
-    let result = known.get(that)
-    if (result === undefined) {
-      try {
-        result = compareOnPath(self, that)
-      } finally {
-        if (seenPair.size > 0) seenPair.clear()
-        if (seenPairMulti.size > 0) seenPairMulti.clear()
-      }
-      known.set(that, result)
-    }
-    return result
-  }
-  const first = seenPair.get(self)
-  if (first !== undefined) {
-    if (first === that) return true
-    const multi = seenPairMulti.get(self)
-    if (multi !== undefined && multi.has(that)) return true
-  }
-  let sideRevisit = false
-  // A repeated pair closes a cycle under coinductive equality.
+  let revisited = false
   for (let i = depth; i-- > 0;) {
     const sameLeft = pathLeft[i] === self
-    const sameRight = pathRight[i] === that
-    if (sameLeft && sameRight) {
-      cycles++
-      return true
+    if (sameLeft || pathRight[i] === that) {
+      addBackEdge()
+      // A repeated pair closes a cycle under coinductive equality.
+      if (sameLeft && pathRight[i] === that) return true
+      revisited = true
     }
-    if (sameLeft || sameRight) sideRevisit = true
   }
-  // Reject mismatched cycle lengths on the first single-side revisit instead of unrolling their product.
-  if (sideRevisit) {
-    cycles++
-    if (Hash.hash(self) !== Hash.hash(that)) return false
+  // One side looped before the other: let the hashes decide instead of unrolling both loops.
+  if (revisited && Hash.hash(self) !== Hash.hash(that)) return false
+  if (depth) return compareOnPath(self, that)
+  // Only outermost results are independent of path assumptions.
+  let known = results.get(self)
+  if (!known) results.set(self, known = new WeakMap())
+  let result = known.get(that)
+  if (result === undefined) {
+    const seen = backEdges
+    // Hashes of cyclic values depend on the entry point, so equal ones must still hash alike.
+    result = compareOnPath(self, that) && (seen === backEdges || Hash.hash(self) === Hash.hash(that))
+    known.set(that, result)
   }
-  return compareOnPath(self, that)
+  return result
 }
 
 function compareOnPath(self: object, that: object): boolean {
-  const depth = pathLeft.length
-  const seen = cycles
   pathLeft.push(self)
   pathRight.push(that)
   try {
-    const result = compareStructure(self, that)
-    // Preserve the Hash law (Equal.equals => equal Hash.hash) when a cycle was closed.
-    if (result && cycles !== seen) {
-      return Hash.hash(self) === Hash.hash(that)
-    }
-    if (result && depth > 0) {
-      const first = seenPair.get(self)
-      if (first === undefined) {
-        seenPair.set(self, that)
-      } else if (first !== that) {
-        let multi = seenPairMulti.get(self)
-        if (multi === undefined) {
-          multi = new Set<object>()
-          seenPairMulti.set(self, multi)
-        }
-        multi.add(that)
-      }
-    }
-    return result
+    return compareStructure(self, that)
   } finally {
     pathLeft.pop()
     pathRight.pop()
@@ -300,23 +259,11 @@ function compareOnPath(self: object, that: object): boolean {
 // The pairs on the current comparison's path (the coinductive assumptions).
 const pathLeft: Array<object> = []
 const pathRight: Array<object> = []
-let cycles = 0
-const seenPair = new Map<object, object>()
-const seenPairMulti = new Map<object, Set<object>>()
 const results = new WeakMap<object, WeakMap<object, boolean>>()
 
 function compareStructure(self: object, that: object): boolean {
   if (self instanceof Date) {
     if (!(that instanceof Date)) return false
-    if (
-      (self.toISOString !== Date.prototype.toISOString ||
-        that.toISOString !== Date.prototype.toISOString ||
-        self.getTime !== Date.prototype.getTime ||
-        that.getTime !== Date.prototype.getTime) &&
-      Hash.hash(self) !== Hash.hash(that)
-    ) {
-      return false
-    }
     const selfTime = self.getTime()
     const thatTime = that.getTime()
     return selfTime === thatTime || (Number.isNaN(selfTime) && Number.isNaN(thatTime))
@@ -331,12 +278,9 @@ function compareStructure(self: object, that: object): boolean {
     // Custom hashes are cheap, and implementors rely on them to reject foreign values.
     if (Hash.hash(self) !== Hash.hash(that)) return false
   } else {
-    // A structural hash costs more than comparing, so only reuse a cached one.
+    // A structural hash costs more than comparing, so only reuse cached ones.
     const selfHash = hashCache.get(self)
-    if (selfHash !== undefined) {
-      const thatHash = hashCache.get(that)
-      if (thatHash !== undefined && selfHash !== thatHash) return false
-    }
+    if (selfHash !== undefined && selfHash !== (hashCache.get(that) ?? selfHash)) return false
   }
   if (bothEquals) {
     return (self as Equal)[symbol](that as Equal)
@@ -405,6 +349,7 @@ function compareRecords(
   self: Record<PropertyKey, unknown>,
   that: Record<PropertyKey, unknown>
 ): boolean {
+  // A record never equals a built-in, whichever side it is on.
   if (
     that instanceof Date ||
     that instanceof RegExp ||
@@ -415,20 +360,6 @@ function compareRecords(
     that instanceof Set
   ) {
     return false
-  }
-
-  if (self.constructor === Object && that.constructor === Object) {
-    const selfKeys = Reflect.ownKeys(self)
-    if (selfKeys.length !== Reflect.ownKeys(that).length) {
-      return false
-    }
-    for (let i = 0; i < selfKeys.length; i++) {
-      const key = selfKeys[i]
-      if (!Object.hasOwn(that, key) || !compareBoth(self[key], that[key])) {
-        return false
-      }
-    }
-    return true
   }
 
   const selfKeys = getAllObjectKeys(self)
