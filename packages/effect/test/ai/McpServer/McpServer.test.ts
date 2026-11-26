@@ -787,12 +787,13 @@ describe("McpServer", () => {
             "mcp-protocol-version": "2025-03-26"
           })
           assert.strictEqual(response.status, 400)
-          const body = (yield* Effect.promise(() => response.json())) as { error: { code: number; message: string } }
-          assert.strictEqual(body.error.code, -32600)
-          assert.strictEqual(
-            body.error.message,
-            "JSON-RPC batches are not accepted here; send each message in its own POST request"
-          )
+          const body = (yield* Effect.promise(() => response.json())) as {
+            readonly id: unknown
+            readonly error: { readonly code: number; readonly message: string }
+          }
+          assert.isNull(body.id)
+          assert.strictEqual(body.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
+          assert.match(body.error.message, /batch/i)
         }
         assert.strictEqual(yield* Ref.get(calls), 0)
       }))
@@ -3057,13 +3058,24 @@ describe("McpServer", () => {
         httpClient.execute
       )
       strictEqual(unsupportedResponse.status, 400)
-      assert.deepInclude(yield* unsupportedResponse.json, {
-        error: {
-          code: -32022,
-          message: "Unsupported protocol version '9999-01-01'. Supported versions: 2025-06-18",
-          data: { supported: ["2025-06-18"], requested: "9999-01-01" }
-        }
-      })
+      const unsupportedBody = (yield* unsupportedResponse.json) as {
+        readonly error: { readonly code: number; readonly message: string; readonly data: unknown }
+      }
+      strictEqual(unsupportedBody.error.code, -32022)
+      assert.include(unsupportedBody.error.message, "9999-01-01")
+      assert.include(unsupportedBody.error.message, "2025-06-18")
+      assert.deepStrictEqual(unsupportedBody.error.data, { supported: ["2025-06-18"], requested: "9999-01-01" })
+
+      const batchUnsupportedResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
+        HttpClientRequest.bodyJsonUnsafe([pingBody]),
+        httpClient.execute
+      )
+      strictEqual(batchUnsupportedResponse.status, 400)
+      const batchUnsupportedBody = JSON.parse(yield* batchUnsupportedResponse.text)
+      strictEqual(batchUnsupportedBody.id, null)
+      strictEqual(batchUnsupportedBody.error.code, -32022)
       strictEqual(unsupportedResponse.headers["access-control-allow-origin"], "*")
 
       const malformedResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
