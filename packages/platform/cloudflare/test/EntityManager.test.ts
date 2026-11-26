@@ -397,7 +397,7 @@ describe("EntityManager", () => {
 
   it.effect("interrupts only the matching waiter of a deduplicated delayed ask", () =>
     Effect.gen(function*() {
-      const { envelope, manager } = yield* makeMailbox("waiters")
+      const { envelope, manager, storage } = yield* makeMailbox("waiters")
       const delivery = { deliverAt: Date.now() + 60_000, primaryKey: "Mailbox/waiters/Add/same" }
       const firstRequestId = nextRequestId()
       const secondRequestId = nextRequestId()
@@ -410,17 +410,37 @@ describe("EntityManager", () => {
         manager.invoke(secondEnvelope, false, delivery),
         { startImmediately: true }
       )
-      const secondRetry = yield* Effect.forkChild(
+      const secondShared = yield* Effect.forkChild(
         manager.invoke(secondEnvelope, false, delivery),
         { startImmediately: true }
       )
-      // Wait for all delayed asks to be admitted and register their waiters.
+      // Wait for A and the first two B deliveries to register their waiters.
       yield* manager.invoke(envelope("Get"), false).pipe(Effect.timeout("1 second"), TestClock.withLive)
+
+      // Hold the entry permit so a further redelivery of B is still in flight
+      // when `interrupt(B, B)` arrives.
+      const entryHeld = yield* Deferred.make<void>()
+      const releaseEntry = yield* Deferred.make<void>()
+      const getAlarm = storage.getAlarm.bind(storage)
+      storage.getAlarm = () => {
+        storage.getAlarm = getAlarm
+        Deferred.doneUnsafe(entryHeld, Effect.void)
+        return Effect.runPromise(Effect.andThen(Deferred.await(releaseEntry), Effect.promise(getAlarm)))
+      }
+      const blocker = yield* Effect.forkChild(manager.saveKeepAlive(true), { startImmediately: true })
+      yield* Deferred.await(entryHeld)
+      const secondInFlight = yield* Effect.forkChild(
+        manager.invoke(secondEnvelope, false, delivery),
+        { startImmediately: true }
+      )
 
       // Before `invoke` returns, the Worker still knows only the duplicate's own id.
       yield* manager.interrupt(secondRequestId, secondRequestId)
+      yield* Deferred.succeed(releaseEntry, undefined)
+      yield* Fiber.join(blocker)
       yield* Fiber.await(second).pipe(Effect.timeout("1 second"), TestClock.withLive)
-      yield* Fiber.await(secondRetry).pipe(Effect.timeout("1 second"), TestClock.withLive)
+      yield* Fiber.await(secondShared).pipe(Effect.timeout("1 second"), TestClock.withLive)
+      yield* Fiber.await(secondInFlight).pipe(Effect.timeout("1 second"), TestClock.withLive)
 
       assert.isUndefined(first.pollUnsafe(), "Interrupting the duplicate also ended the original waiter")
       yield* manager.interrupt(firstRequestId)
