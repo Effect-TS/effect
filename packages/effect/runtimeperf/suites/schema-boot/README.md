@@ -29,7 +29,7 @@ checkout, so only `packages/effect/src` differs.
 Each fixture in `fixtures/` is bundled with esbuild (ESM, Node platform, unminified, linked source maps) against
 the measured `packages/effect/src`. Bundling the TypeScript sources skips the published build's pure-call
 annotations, so absolute bundle sizes and import times are not those of `dist`. Both sides of a comparison are
-bundled the same way.
+bundled the same way, with module path comments normalized, so identical source gives identical bundles.
 
 | Case                         | Definitions                                                                                       | Phases after `define`                   |
 | ---------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------- |

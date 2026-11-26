@@ -30,7 +30,9 @@ First use is every phase after `define`. Warm is per decode, component use or re
 | `httpapi-medium` | 209 ± 67  | 23.8 ± 12.8 | build 40.9, request 19.6, openapi 205  | 527 ± 161  | 939 µs  |             429 |              2,350 |
 | `httpapi-large`  | 274 ± 109 | 110 ± 28    | build 156, request 22.9, openapi 531   | 1346 ± 466 | 512 µs  |           1,283 |              7,606 |
 
-Bundles are 565 KiB for `baseline`, 568–571 KiB for the graph and UI fixtures and 1,186 KiB for HttpApi.
+Bundles are 561 KiB for `baseline`, 564–567 KiB for the graph and UI fixtures and 1,179 KiB for HttpApi. The run's
+bundles were 4–8 KiB larger, because esbuild's module comments then named the worktree path. The harness now
+normalizes those comments, and 4–8 KiB of comments is well inside the import-time noise.
 
 ### Where the work is
 
@@ -158,6 +160,6 @@ No general laziness. Lazy ASTs save 20–26% of definition CPU in the UI fixture
 (6–7% in `ui-one` and `graph-large`). When every schema is used, first use costs more than definition saves, and
 HttpApi gains nothing measurable up to its first response. Both prototypes also move errors to first use.
 
-The larger fixed costs are elsewhere: V8 compiling the bundle (about 57 ms of CPU for 565 KiB), schemas that Effect
+The larger fixed costs are elsewhere: V8 compiling the bundle (about 57 ms of CPU for 561 KiB), schemas that Effect
 modules define at import, and the cost of each schema object. Reducing that cost would help eager and lazy use alike,
 and is the next thing to measure.

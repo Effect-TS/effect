@@ -1,13 +1,12 @@
 import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
-import { mkdtempSync, readFileSync, rmSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { describe, it } from "node:test"
 import { fileURLToPath } from "node:url"
 import { bundle } from "../suites/schema-boot/bundle.mts"
 import { analyzeProfile, groupOf } from "../suites/schema-boot/profile.mts"
-import { effectDir } from "../utils.mts"
+import { effectDir, repoRoot } from "../utils.mts"
 
 const worker = fileURLToPath(new URL("../suites/schema-boot/worker.mts", import.meta.url))
 const runWorker = (args: Array<string>, nodeArgs: Array<string> = []) =>
@@ -33,9 +32,17 @@ describe("schema-boot", () => {
   })
 
   it("runs every workload and attributes profiles to Schema", async () => {
-    const root = mkdtempSync(join(tmpdir(), "effect-schema-boot-"))
+    // Two levels below the repository root, like packages/effect, so the copied tsconfig resolves.
+    mkdirSync(join(repoRoot, "tmp"), { recursive: true })
+    const root = mkdtempSync(join(repoRoot, "tmp", "schema-boot-"))
     try {
-      const bundles = await bundle(effectDir, root)
+      const bundles = await bundle(effectDir, join(root, "bundles"))
+      // The same source checked out elsewhere, like a base worktree, bundles to the same bytes.
+      for (const file of ["src", "package.json", "tsconfig.json"]) {
+        cpSync(join(effectDir, file), join(root, file), { recursive: true })
+      }
+      const copied = await bundle(root, join(root, "copied"))
+      for (const [entry] of cases) assert.equal(copied[entry].sha256, bundles[entry].sha256, entry)
       for (const [entry, size] of cases) {
         const output = runWorker([bundles[entry].path, size, "time", "1"])
         assert.ok(output.timings.import > 0 && output.timings.define >= 0, entry)

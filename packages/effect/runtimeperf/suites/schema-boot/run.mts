@@ -101,9 +101,7 @@ try {
     ? [variant("current", values.head)]
     : [variant("base", values.base), variant("head", values.head)]
   for (const item of variants) {
-    const bundles = join(output, "bundles", item.name)
-    mkdirSync(bundles, { recursive: true })
-    report.variants.push({ ...item, bundles: await bundle(item.effectDir, bundles) })
+    report.variants.push({ ...item, bundles: await bundle(item.effectDir, join(output, "bundles", item.name)) })
   }
   save()
   const rotate = <A,>(items: Array<A>, round: number) => {
