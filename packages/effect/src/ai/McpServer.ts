@@ -3005,11 +3005,19 @@ const addMcpHttpRoutes = Effect.fnUntraced(function*(
   const router = yield* HttpRouter.HttpRouter
   const allowSessionTermination = options.allowSessionTermination === true &&
     runtime.protocols.some((protocol) => protocol.runtime._tag === "Stateful")
-  const withAllowedOrigin = (
-    handler: (request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse>
+  const unsupportedContentType = Effect.succeed(mcpTransportRejection(415, "Content-Type must be application/json"))
+  const notAcceptable = Effect.succeed(
+    mcpTransportRejection(406, "Accept header must include both application/json and text/event-stream")
+  )
+  const withAllowedOrigin = <R>(
+    handler: (
+      request: HttpServerRequest.HttpServerRequest
+    ) => Effect.Effect<HttpServerResponse.HttpServerResponse, never, R>
   ) =>
-  (request: HttpServerRequest.HttpServerRequest) =>
-    isAllowedMcpOrigin(request, options.allowedOrigins) ? handler(request) : Effect.succeed(forbiddenOrigin(request))
+  (request: HttpServerRequest.HttpServerRequest): Effect.Effect<HttpServerResponse.HttpServerResponse, never, R> =>
+    isAllowedMcpOrigin(request, options.allowedOrigins)
+      ? handler(request)
+      : Effect.succeed(mcpTransportRejection(403, `Origin '${request.headers["origin"]}' is not allowed`))
   const methodNotAllowedResponse = Effect.succeed(HttpServerResponse.empty({
     status: 405,
     headers: { allow: allowSessionTermination ? "POST, DELETE" : "POST" }
@@ -3025,23 +3033,13 @@ const addMcpHttpRoutes = Effect.fnUntraced(function*(
       ? withAllowedOrigin((request) => runtime.terminateHttpSession(request.headers))
       : methodNotAllowed
   )
-  yield* router.add("POST", options.path, (request) => {
-    if (!isAllowedMcpOrigin(request, options.allowedOrigins)) {
-      return Effect.succeed(forbiddenOrigin(request))
-    }
+  yield* router.add("POST", options.path, withAllowedOrigin((request) => {
     if (mcpMediaTypes(request.headers["content-type"])[0] !== "application/json") {
-      return Effect.succeed(
-        transportRejection(415, "Unsupported Media Type: send JSON-RPC messages with Content-Type: application/json")
-      )
+      return unsupportedContentType
     }
     const accepted = mcpMediaTypes(request.headers["accept"])
     if (!accepted.includes("application/json") || !accepted.includes("text/event-stream")) {
-      return Effect.succeed(
-        transportRejection(
-          406,
-          "Not Acceptable: the Accept header must list both application/json and text/event-stream"
-        )
-      )
+      return notAcceptable
     }
     return Effect.gen(function*() {
       const parsed = yield* Effect.result(
@@ -3076,7 +3074,7 @@ const addMcpHttpRoutes = Effect.fnUntraced(function*(
           : Effect.die(new Error("MCP request ended without writing its response"))
       })
     })
-  })
+  }))
 })
 
 const mcpHttpSerialization: RpcSerialization.RpcSerialization["Service"] = (() => {
@@ -3199,17 +3197,12 @@ const isAllowedMcpOrigin = (
   return origin === undefined || (allowedOrigins ?? []).includes(origin)
 }
 
-// Rejections made before the JSON-RPC message is read. Clients print the body after their own
-// prefix, so it is a JSON-RPC error without a request ID that says what to change.
-const transportRejection = (status: 403 | 406 | 415, message: string): HttpServerResponse.HttpServerResponse =>
+const mcpTransportRejection = (status: 403 | 406 | 415, message: string): HttpServerResponse.HttpServerResponse =>
   HttpServerResponse.jsonUnsafe({
     jsonrpc: "2.0",
     id: null,
     error: { code: McpSchema.INVALID_REQUEST_ERROR_CODE, message }
   }, { status })
-
-const forbiddenOrigin = (request: HttpServerRequest.HttpServerRequest): HttpServerResponse.HttpServerResponse =>
-  transportRejection(403, `Forbidden: Origin '${request.headers["origin"]}' may not call this MCP endpoint`)
 
 const mcpMediaTypes = (header: string | undefined): ReadonlyArray<string> =>
   header === undefined

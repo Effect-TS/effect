@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Answer `McpServer.layerHttp` transport rejections with a JSON-RPC error that says what to change, instead of an empty body: a disallowed `Origin` (403), a `Content-Type` other than `application/json` (415), an `Accept` header without both media types (406), an unknown `MCP-Session-Id` (404) and a refused batch (400). The unsupported protocol version message also lists the supported versions.
+Return actionable JSON-RPC error bodies for `McpServer.layerHttp` transport rejections (`403` disallowed `Origin`, `415` unsupported `Content-Type`, `406` unacceptable `Accept`, `404` unknown `MCP-Session-Id`, and `400` refused batches), preserve session/version selection rejections on batch requests, and list supported protocol versions in unsupported-version errors.
