@@ -2871,6 +2871,46 @@ describe("Arbitrary", () => {
         assert.isTrue(values.every(Schema.is(Node)))
       }))
 
+    it.effect("generates the encoded form of a recursive schema with renamed keys", () =>
+      Effect.gen(function*() {
+        interface Node {
+          readonly value: number
+          readonly kids: ReadonlyArray<Node>
+        }
+        interface EncodedNode {
+          readonly node_value: string
+          readonly kids: ReadonlyArray<EncodedNode>
+        }
+        const Node = Schema.Struct({
+          value: Schema.NumberFromString,
+          kids: Schema.Array(Schema.suspend((): Schema.Codec<Node, EncodedNode> => Node))
+        }).pipe(Schema.encodeKeys({ value: "node_value" }))
+        const encoded = Schema.toEncoded(Node)
+        const input = { node_value: "1", kids: [{ node_value: "2", kids: [] }] }
+        const decoded = { value: 1, kids: [{ value: 2, kids: [] }] }
+
+        assert.deepStrictEqual(Schema.decodeUnknownSync(Node)(input), decoded)
+        assert.deepStrictEqual(Schema.encodeSync(Node)(decoded), input)
+
+        // Check that schema traversal terminates before starting generator derivation.
+        const document = Schema.toJsonSchemaDocument(encoded)
+        assert.match(JSON.stringify(document.definitions), /"\$ref"/)
+        const values = yield* Arbitrary.sampleEffect(Arbitrary.schema(encoded), {
+          count: 30,
+          seed: "recursive-encoded-keys",
+          size: 5
+        })
+        assert.lengthOf(values, 30)
+        function assertEncodedNode(node: EncodedNode): void {
+          assert.hasAllKeys(node, ["node_value", "kids"])
+          assert.isString(node.node_value)
+          assert.isArray(node.kids)
+          node.kids.forEach(assertEncodedNode)
+        }
+        values.forEach(assertEncodedNode)
+        assert.isTrue(values.some((node) => node.kids.length > 0))
+      }))
+
     it.effect("uses the same recursive value for sampling and a single-run check", () =>
       Effect.gen(function*() {
         interface Node {
