@@ -611,8 +611,8 @@ Layer.launch(ServerLayer).pipe(NodeRuntime.runMain)
 The client and its `McpClientError` module are experimental, so their API may change in minor
 releases. It supports the `2025-03-26`, `2025-06-18`, `2025-11-25` and `2026-07-28` protocol
 revisions over stdio and Streamable HTTP. The transport selects the revision explicitly; the client
-does not negotiate one. `2025-03-26` has no structured tool results, so a `schema` passed to
-`callTool` has nothing to decode there.
+does not negotiate one. `2025-03-26` has no structured tool results, so `callTool` has no
+`structuredContent` to decode when given a `schema`.
 
 The client covers discovery, tool calls, prompt retrieval, resource reads and Toolkit adaptation.
 Resource templates, completion, logging, subscriptions, roots, sampling, elicitation, OAuth and
