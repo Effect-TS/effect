@@ -717,8 +717,8 @@ export const layerNdJsonRpc = (options?: {
  *
  * **Details**
  *
- * `SchemaBinary` is loaded dynamically when the layer is built, not when this
- * module is imported.
+ * `SchemaBinary` is loaded when the layer is built, not when this module is
+ * imported.
  *
  * @stability unstable
  * @category layers
