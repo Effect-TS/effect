@@ -1561,28 +1561,28 @@ const StatementProto: Omit<
 
   get stream(): Stream.Stream<any, SqlError> {
     const self = this as StatementImpl<any>
-    return Stream.unwrap(Effect.withFiber((fiber) =>
-      Effect.flatMap(
-        Effect.makeSpanScoped(fiber.getRef(SpanNameGenerator)(self.spanAttributes), { kind: "client" }),
-        (span) =>
-          withStatement(self, span, (statement, fiber) => {
-            const [sql, params] = statement.compile()
-            for (const [key, value] of self.spanAttributes) {
-              span.attribute(key, value)
-            }
-            span.attribute(ATTR_SQL_METHOD, "executeStream")
-            span.attribute(ATTR_DB_QUERY_TEXT, sql)
-            const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
-            const clock = propagate ? waitClock(fiber) : undefined
-            const acquire = Effect.map(self.acquirer, (connection) => {
-              if (clock !== undefined) recordConnectionWait(span, clock)
-              return connection.executeStream(sql, params, self.transformRows)
-            })
-            return propagate
-              ? Effect.succeed(Stream.provideService(Stream.unwrap(acquire), Tracer.ParentSpan, span))
-              : acquire
+    return Stream.unwrap(Effect.flatMap(
+      Effect.withFiber((fiber) =>
+        Effect.makeSpanScoped(fiber.getRef(SpanNameGenerator)(self.spanAttributes), { kind: "client" })
+      ),
+      (span) =>
+        withStatement(self, span, (statement, fiber) => {
+          const [sql, params] = statement.compile()
+          for (const [key, value] of self.spanAttributes) {
+            span.attribute(key, value)
+          }
+          span.attribute(ATTR_SQL_METHOD, "executeStream")
+          span.attribute(ATTR_DB_QUERY_TEXT, sql)
+          const propagate = fiber.cache.tracerEnabled && fiber.getRef(SpanPropagationEnabled)
+          const clock = propagate ? waitClock(fiber) : undefined
+          const acquire = Effect.map(self.acquirer, (connection) => {
+            if (clock !== undefined) recordConnectionWait(span, clock)
+            return connection.executeStream(sql, params, self.transformRows)
           })
-      )
+          return propagate
+            ? Effect.succeed(Stream.provideService(Stream.unwrap(acquire), Tracer.ParentSpan, span))
+            : acquire
+        })
     ))
   },
 
