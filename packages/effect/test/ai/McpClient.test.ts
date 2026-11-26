@@ -67,12 +67,7 @@ const serverLayer = Layer.mergeAll(
   }))
 )
 
-const protocols = [
-  McpProtocol.v2025_03_26,
-  McpProtocol.v2025_06_18,
-  McpProtocol.v2025_11_25,
-  McpProtocol.v2026_07_28
-] as const
+const protocols = [McpProtocol.v2025_11_25, McpProtocol.v2026_07_28] as const
 
 const connect = Effect.fnUntraced(function*(
   protocol: McpProtocol.ProtocolAdapter<McpClient.ProtocolVersion>,
@@ -110,17 +105,13 @@ describe("McpClient", () => {
 
           const tool = yield* findTool(client, "add")
           const raw = yield* client.callTool({ tool, arguments: { a: 20, b: 22 } })
-          assert.deepStrictEqual(raw.content, [{ type: "text", text: JSON.stringify({ total: 42 }) }])
-          // 2025-03-26 has no structured results, so a schema has nothing to decode there.
-          if (protocol.protocolVersion !== "2025-03-26") {
-            assert.deepStrictEqual(raw.structuredContent, { total: 42 })
-            const decoded = yield* client.callTool({
-              tool,
-              arguments: { a: 1, b: 2 },
-              schema: Schema.Struct({ total: Schema.Number })
-            })
-            assert.deepStrictEqual(decoded, { total: 3 })
-          }
+          assert.deepStrictEqual(raw.structuredContent, { total: 42 })
+          const decoded = yield* client.callTool({
+            tool,
+            arguments: { a: 1, b: 2 },
+            schema: Schema.Struct({ total: Schema.Number })
+          })
+          assert.deepStrictEqual(decoded, { total: 3 })
 
           const [prompt] = yield* client.listPrompts()
           const messages = yield* client.getPrompt({ prompt, arguments: { total: "42" } })
@@ -153,7 +144,7 @@ describe("McpClient", () => {
           const client = yield* connect(protocol)
           const error = yield* client.readResource({ uri: "demo://missing" }).pipe(Effect.flip)
           assert(error.reason._tag === "ProtocolError")
-          assert.strictEqual(error.reason.code, protocol.protocolVersion !== "2026-07-28" ? -32002 : -32602)
+          assert.strictEqual(error.reason.code, protocol.protocolVersion === "2025-11-25" ? -32002 : -32602)
         }))
 
       it.effect("should time out when a call exceeds its deadline", () =>
@@ -180,6 +171,21 @@ describe("McpClient", () => {
         }))
     })
   }
+
+  it.effect("should connect and call tools on 2025-03-26 and 2025-06-18", () =>
+    Effect.gen(function*() {
+      for (const protocol of [McpProtocol.v2025_03_26, McpProtocol.v2025_06_18] as const) {
+        const client = yield* connect(protocol)
+        assert.strictEqual(client.protocolVersion, protocol.protocolVersion)
+        const tool = yield* findTool(client, "add")
+        const raw = yield* client.callTool({ tool, arguments: { a: 20, b: 22 } })
+        assert.deepStrictEqual(raw.content, [{ type: "text", text: JSON.stringify({ total: 42 }) }])
+        assert.deepStrictEqual(
+          raw.structuredContent,
+          protocol.protocolVersion === "2025-03-26" ? undefined : { total: 42 }
+        )
+      }
+    }))
 
   describe("discovery limits", () => {
     it.effect("should expose server capabilities when initialization succeeds", () =>
@@ -489,7 +495,7 @@ describe("McpClient", () => {
           assert(isRequest(callRequest))
           const cancellations = sent.filter(({ message }) => methodOf(message) === "notifications/cancelled")
           assert.isTrue(closed)
-          if (protocol.protocolVersion !== "2026-07-28") {
+          if (protocol.protocolVersion === "2025-11-25") {
             assert.deepStrictEqual(
               cancellations.map(({ message }) =>
                 message !== undefined && "params" in message ? message.params : undefined
@@ -752,14 +758,12 @@ const scriptedReply = (
   message: McpSchema.JsonRpcRequest
 ) =>
   message.method === "initialize"
-    ? jsonRpcResult(message, { ...initializeResult, protocolVersion: protocol.protocolVersion }, {
-      "mcp-session-id": "session-1"
-    })
+    ? jsonRpcResult(message, initializeResult, { "mcp-session-id": "session-1" })
     : message.method === "server/discover"
     ? jsonRpcResult(message, discoverResult)
     : jsonRpcResult(
       message,
-      protocol.protocolVersion !== "2026-07-28" ? { tools: [] } : { ...discoverResult, tools: [] }
+      protocol.protocolVersion === "2025-11-25" ? { tools: [] } : { ...discoverResult, tools: [] }
     )
 
 // Connects through the public HTTP transport, recording every request. Requests
@@ -838,13 +842,9 @@ const connectStdio = Effect.fnUntraced(function*(protocol: McpProtocol.ProtocolA
 
   const initial = yield* receive
   assert(isRequest(initial))
-  const legacy = protocol.protocolVersion !== "2026-07-28"
+  const legacy = protocol.protocolVersion === "2025-11-25"
   assert.strictEqual(initial.method, legacy ? "initialize" : "server/discover")
-  yield* send({
-    jsonrpc: "2.0",
-    id: initial.id,
-    result: legacy ? { ...initializeResult, protocolVersion: protocol.protocolVersion } : discoverResult
-  })
+  yield* send({ jsonrpc: "2.0", id: initial.id, result: legacy ? initializeResult : discoverResult })
   const client = Context.get(yield* Fiber.join(building), McpClient.McpClient)
   if (legacy) assert.deepStrictEqual(yield* receive, { jsonrpc: "2.0", method: "notifications/initialized" })
 
@@ -916,7 +916,7 @@ describe("McpClient skills", () => {
     }))
   )
 
-  for (const protocol of [McpProtocol.v2025_11_25, McpProtocol.v2026_07_28] as const) {
+  for (const protocol of protocols) {
     describe(protocol.protocolVersion, () => {
       it.effect("should list, get and browse skills and read their files verified", () =>
         Effect.gen(function*() {

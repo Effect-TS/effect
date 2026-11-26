@@ -70,6 +70,7 @@ describe("McpClient", () => {
 
   it("should accept only client-supported protocol adapters", () => {
     type Protocol = Parameters<typeof McpClient.http>[0]["protocol"]
+    expect<Parameters<typeof McpClient.stdio>[0]["protocol"]>().type.toBe<Protocol>()
     expect<typeof McpProtocol.v2025_03_26>().type.toBeAssignableTo<Protocol>()
     expect<typeof McpProtocol.v2025_06_18>().type.toBeAssignableTo<Protocol>()
     expect<typeof McpProtocol.v2025_11_25>().type.toBeAssignableTo<Protocol>()
