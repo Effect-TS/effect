@@ -65,5 +65,9 @@ Gotchas:
 - `context-get-bench.mjs <dist> <flat|overlay|both> [label]`: times `Context.get` in a
   separate process per copy and mode; `both` reads a flat and an overlay context from one
   call site, which is where a dispatch regression shows. Alternate base and current runs.
+- `fiber-start-bench.mjs <dist> <runSync|runFork|provide> [label]`: times fiber startup in a
+  separate process per copy and case. Every start builds the fiber cache from the context, so
+  this is where a slower cache refresh or reference default shows. Alternate base and current
+  runs.
 - `equality-parity.mjs <base dist> <current dist>`: checks that `Context` and `Cause` equality
   and `Cause` hashes match between two copies of effect.
