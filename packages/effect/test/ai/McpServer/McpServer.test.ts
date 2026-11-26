@@ -1766,6 +1766,32 @@ describe("McpServer", () => {
 
         assert.strictEqual(received, "2025-06-18")
       }))
+
+    it.effect("replaces a re-registered tool in place", () =>
+      Effect.gen(function*() {
+        const server = yield* McpServer.McpServer.make
+        const add = (name: string, description: string) =>
+          server.addTool({
+            tool: new McpSchema.Tool({ name, description, inputSchema: { type: "object" } }),
+            annotations: Context.empty(),
+            handle: () =>
+              Effect.succeed(new McpSchema.CallToolResult({ content: [{ type: "text", text: description }] }))
+          })
+
+        yield* add("a", "first a")
+        yield* add("b", "first b")
+        yield* add("a", "second a")
+        yield* add("c", "first c")
+
+        assert.deepStrictEqual(
+          server.tools.map(({ tool }) => [tool.name, tool.description]),
+          [["a", "second a"], ["b", "first b"], ["c", "first c"]]
+        )
+        const result = yield* server.callTool({ name: "a" }).pipe(
+          Effect.provideService(McpSchema.McpServerClient, directClient)
+        )
+        assert.deepStrictEqual(result.content, [{ type: "text", text: "second a" }])
+      }))
   })
 
   it.effect("should reject browser Origins by default while accepting Origin-less clients", () =>
@@ -2117,27 +2143,6 @@ describe("McpServer", () => {
           /cannot strictly validate the raw JSON Schema for tool 'DynamicTool'/
         )
         assert.deepStrictEqual(server.tools, [])
-      }))
-
-    it.effect("replaces a tool added again under its name in place", () =>
-      Effect.gen(function*() {
-        const server = yield* McpServer.McpServer.make
-        const add = (name: string, text: string) =>
-          server.addTool({
-            tool: new McpSchema.Tool({ name, inputSchema: { type: "object" } }),
-            annotations: Context.empty(),
-            handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [{ type: "text", text }] }))
-          })
-        yield* add("a", "first a")
-        yield* add("b", "first b")
-        yield* add("c", "first c")
-        yield* add("b", "second b")
-        yield* add("d", "first d")
-        assert.deepStrictEqual(server.tools.map(({ tool }) => tool.name), ["a", "b", "c", "d"])
-        const b = yield* server.callTool({ name: "b" }).pipe(
-          Effect.provideService(McpSchema.McpServerClient, directClient)
-        )
-        assert.deepStrictEqual(b.content, [{ type: "text", text: "second b" }])
       }))
 
     it.effect("preserves existing tools when a later toolkit schema is invalid for MCP", () =>
