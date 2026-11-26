@@ -157,13 +157,6 @@ export interface OpenApiGenerateOptions {
    */
   readonly format: OpenApiGeneratorFormat
   /**
-   * Whether formatted strings (`date-time`, `int64`, `uint64`) remain wire strings (`"encoded"`)
-   * or decode to `DateTime.Utc` and range-checked `bigint` values (`"decoded"`) in schema-backed output.
-   *
-   * @default "encoded"
-   */
-  readonly stringFormats?: "encoded" | "decoded" | undefined
-  /**
    * Hook to transform each JSON Schema node before processing.
    */
   readonly onEnter?: ((js: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
@@ -241,7 +234,6 @@ export const make = Effect.gen(function*() {
       const schemaOptions = {
         onEnter: options.onEnter,
         closeObjects: options.closeObjects,
-        stringFormats: options.stringFormats,
         multipartSchemaRefs: multipart.refs,
         binarySchemas: new Set(parsed.operations.flatMap((operation) =>
           [

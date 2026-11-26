@@ -24,12 +24,10 @@ import * as Option from "effect/Option"
 import * as Rec from "effect/Record"
 import * as Schema from "effect/Schema"
 import * as SchemaRepresentation from "effect/SchemaRepresentation"
-import { decodeStringFormats, type SchemaDocument } from "./internal/stringFormats.ts"
 
 type Source = "openapi-3.0" | "openapi-3.1"
 interface GenerateOptions {
   readonly onEnter?: ((js: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
-  readonly stringFormats?: "encoded" | "decoded" | undefined
   readonly multipartSchemaRefs?: MultipartSchemaRefs | undefined
   readonly binarySchemas?: ReadonlySet<string> | undefined
   readonly includeSchemas?: ReadonlyArray<string> | undefined
@@ -119,11 +117,8 @@ export function compile(
 ): ReadonlyMap<string, Codegen.Binding> {
   const prepared = prepareSchemas(schemas, source, components, options)
   if (prepared === undefined) return new Map()
-  const document = options?.stringFormats === "decoded" && !typeOnly
-    ? decodeStringFormats(prepared)
-    : prepared
-  return module.addSchemas(document.schemas, {
-    references: document.references,
+  return module.addSchemas(prepared.schemas, {
+    references: prepared.references,
     typeOnly
   })
 }
@@ -133,7 +128,10 @@ function prepareSchemas(
   source: Source,
   components: JsonSchema.Definitions,
   options?: GenerateOptions
-): SchemaDocument | undefined {
+): {
+  readonly schemas: Readonly<Record<string, SchemaRepresentation.Representation>>
+  readonly references: SchemaRepresentation.References
+} | undefined {
   const names: Array<string> = []
   const schemas: Array<JsonSchema.JsonSchema> = []
 
