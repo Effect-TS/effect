@@ -1692,6 +1692,61 @@ export const TestClientError = <Tag extends string, E>(
 
   describe("httpapi", () => {
     const Bytes = Schema.Uint8Array.pipe(HttpApiSchema.asUint8Array())
+
+    it.effect("uses group-local endpoint names, qualified OpenAPI ids, and grouped parameter schemas", () =>
+      Effect.gen(function*() {
+        const spec = OpenApi.fromApi(
+          HttpApi.make("Api").add(
+            HttpApiGroup.make("balance").add(
+              HttpApiEndpoint.get("read", "/balance/:accountId", {
+                params: { accountId: Schema.String },
+                query: { currency: Schema.String },
+                headers: { "x-trace-id": Schema.String }
+              })
+            ),
+            HttpApiGroup.make("orders").add(HttpApiEndpoint.get("read", "/orders"))
+          )
+        )
+        const { source } = yield* generateHttpApi(spec)
+        assert.notInclude(source, "BalanceReadParams")
+
+        yield* Effect.promise(() =>
+          withGeneratedModule<{
+            TestClient: HttpApi.HttpApi<string, never> & {
+              readonly groups: Record<string, { readonly endpoints: Record<string, unknown> }>
+            }
+          }>(source, ({ TestClient }) => {
+            assert.deepStrictEqual(Object.keys(TestClient.groups.balance.endpoints), ["read"])
+            assert.deepStrictEqual(Object.keys(TestClient.groups.orders.endpoints), ["read"])
+            const reexported = OpenApi.fromApi(TestClient)
+            assert.strictEqual(reexported.paths["/balance/{accountId}"].get?.operationId, "balance.read")
+            assert.strictEqual(reexported.paths["/orders"].get?.operationId, "orders.read")
+            assert.deepStrictEqual(
+              reexported.paths["/balance/{accountId}"].get?.parameters,
+              spec.paths["/balance/{accountId}"].get?.parameters
+            )
+          })
+        )
+      }))
+
+    it.effect("rejects duplicate local endpoint names in the same group", () =>
+      Effect.gen(function*() {
+        const spec = OpenApi.fromApi(
+          HttpApi.make("Api").add(
+            HttpApiGroup.make("balance").add(
+              HttpApiEndpoint.get("read", "/balance/latest"),
+              HttpApiEndpoint.get("history", "/balance/history").annotate(OpenApi.Identifier, "read")
+            )
+          )
+        )
+        const result = yield* Effect.result(generateHttpApi(spec))
+        if (result._tag === "Success") {
+          assert.fail("Expected duplicate local endpoint names in the same group to fail")
+        }
+        assert.include(result.failure.message, "GET /balance/latest")
+        assert.include(result.failure.message, "GET /balance/history")
+        assert.include(result.failure.message, "read")
+      }))
     const event = (name: string) =>
       Schema.Struct({ ...Sse.EventEncoded.fields, event: Schema.Literal(name) }).annotate({ identifier: name })
 
