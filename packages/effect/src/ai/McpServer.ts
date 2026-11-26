@@ -1555,21 +1555,20 @@ const requestSpanOptions = (
   switch (method) {
     case "tools/call": {
       attributes["gen_ai.operation.name"] = "execute_tool"
-      if (typeof params?.name === "string" && options.server.tools.some(({ tool }) => tool.name === params.name)) {
-        target = params.name
+      const registered = options.server.tools.find(({ tool }) => tool.name === params?.name)
+      if (registered !== undefined) {
+        target = registered.tool.name
         attributes["gen_ai.tool.name"] = target
-        if (options.recordToolArguments && params.arguments !== undefined) {
+        if (options.recordToolArguments && params?.arguments !== undefined) {
           attributes["gen_ai.tool.call.arguments"] = Toolkit.stringifyToolArguments(params.arguments)
         }
       }
       break
     }
     case "prompts/get": {
-      if (
-        typeof params?.name === "string" &&
-        options.server.prompts.some(({ prompt }) => prompt.name === params.name)
-      ) {
-        target = params.name
+      const registered = options.server.prompts.find(({ prompt }) => prompt.name === params?.name)
+      if (registered !== undefined) {
+        target = registered.prompt.name
         attributes["gen_ai.prompt.name"] = target
       }
       break
@@ -1579,12 +1578,8 @@ const requestSpanOptions = (
     case "resources/unsubscribe": {
       // Resource URIs can be unbounded and sensitive, so they stay out of the span name,
       // and `mcp.resource.uri` is recorded only for registered static resources.
-      if (
-        typeof params?.uri === "string" &&
-        options.server.resources.some(({ resource }) => resource.uri === params.uri)
-      ) {
-        attributes["mcp.resource.uri"] = params.uri
-      }
+      const registered = options.server.resources.find(({ resource }) => resource.uri === params?.uri)
+      if (registered !== undefined) attributes["mcp.resource.uri"] = registered.resource.uri
       break
     }
   }
