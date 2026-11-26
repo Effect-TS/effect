@@ -72,6 +72,16 @@ describe("Formatter", () => {
       strictEqual(format({ toString: () => "custom" }), `custom`)
     })
 
+    it("custom toString result that cannot be converted to a string", () => {
+      const unconvertible = {
+        toString() {
+          throw new Error("conversion failed")
+        }
+      }
+      strictEqual(format({ toString: () => unconvertible }), `[toString threw]`)
+      strictEqual(format({ toString: () => 42 }), `42`)
+    })
+
     it("handles throwing property getters", () => {
       const value = Object.defineProperty({ safe: 1 }, "unsafe", {
         enumerable: true,
@@ -88,6 +98,15 @@ describe("Formatter", () => {
       revoke()
 
       strictEqual(format(proxy), `[inspection threw]`)
+    })
+
+    it("formats repeated references in full, including after inspection throws", () => {
+      const { proxy, revoke } = Proxy.revocable({}, {})
+      revoke()
+      const shared = { a: 1 }
+
+      strictEqual(format([proxy, proxy]), `[[inspection threw],[inspection threw]]`)
+      strictEqual(format([shared, shared]), `[{"a":1},{"a":1}]`)
     })
 
     it("does not expose a value when redaction throws", () => {

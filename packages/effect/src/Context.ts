@@ -22,7 +22,7 @@ import { exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts
 import { fiberCachedKeys } from "./internal/fiberCachedKeys.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
-import { hasProperty } from "./Predicate.ts"
+import { hasPropertyDataFirst as hasProperty } from "./Predicate.ts"
 import type * as Types from "./Types.ts"
 
 /**
@@ -209,7 +209,13 @@ export declare namespace ServiceClass {
  * @since 4.0.0
  */
 export const Service: {
-  <Identifier, Shape = Identifier>(key: string): Service<Identifier, Shape>
+  <Identifier, Shape = Identifier>(
+    key: string,
+    options?: {
+      /** @internal */
+      readonly fiberCached?: boolean | undefined
+    } | undefined
+  ): Service<Identifier, Shape>
   <Self, Shape>(): <
     const Identifier extends string,
     E,
@@ -219,6 +225,8 @@ export const Service: {
     id: Identifier,
     options?: {
       readonly make?: ((...args: Args) => Effect<Shape, E, R>) | Effect<Shape, E, R> | undefined
+      /** @internal */
+      readonly fiberCached?: boolean | undefined
     } | undefined
   ) =>
     & ServiceClass<Self, Identifier, Shape>
@@ -231,6 +239,8 @@ export const Service: {
     id: Identifier,
     options: {
       readonly make: Make
+      /** @internal */
+      readonly fiberCached?: boolean | undefined
     }
   ) =>
     & ServiceClass<
@@ -248,6 +258,7 @@ export const Service: {
   const init = (key: string, options?: {
     readonly defaultValue?: any
     readonly make?: any
+    readonly fiberCached?: boolean
   }) => {
     self.key = key
     if (options?.defaultValue) {
@@ -256,6 +267,9 @@ export const Service: {
     }
     if (options?.make) {
       ;(self as any).make = options.make
+    }
+    if (options?.fiberCached) {
+      fiberCachedKeys.add(key)
     }
     return self
   }
@@ -607,7 +621,7 @@ const Proto: Omit<
     const other = that.mapUnsafe
     if (self.size !== other.size) return false
     for (const [key, value] of self) {
-      if (!other.has(key) || !Equal.equals(value, other.get(key))) return false
+      if (!other.has(key) || !Equal.compareBoth(value, other.get(key))) return false
     }
     return true
   },
@@ -1381,5 +1395,7 @@ export const Reference: <Service>(
   key: string,
   options: {
     readonly defaultValue: () => Service
+    /** @internal */
+    readonly fiberCached?: boolean | undefined
   }
 ) => Reference<Service> = Service as any

@@ -47,23 +47,31 @@ describe("Context", () => {
     ])
   })
 
-  it("invalidates the fiber cache only for the keys fibers cache", () => {
+  it("invalidates the fiber cache only for opted-in keys", () => {
+    const Cached = Context.Service<number>("ContextTest/Cached", { fiberCached: true })
+    class CachedClass extends Context.Service<CachedClass, number>()("ContextTest/CachedClass", {
+      fiberCached: true
+    }) {}
     const Ref = Context.Reference<number>("ContextTest/Ref", { defaultValue: () => 0 })
-    const Cached = Scheduler.MaxOpsBeforeYield
-    const CachedClass = Scheduler.PreventSchedulerYield
+    const CachedRef = Context.Reference<number>("ContextTest/CachedRef", {
+      fiberCached: true,
+      defaultValue: () => 0
+    })
 
     const source = Context.make(A, 1)
     assertTrue(Context.hasSameCache(source, Context.add(source, B, 1)))
     assertTrue(Context.hasSameCache(source, Context.add(source, Ref, 1)))
-    assertFalse(Context.hasSameCache(source, Context.add(source, Cached, 1)))
+    assertFalse(Context.hasSameCache(source, Context.add(source, CachedRef, 1)))
+    // Keys the runtime caches invalidate without opting in
+    assertFalse(Context.hasSameCache(source, Context.add(source, Scheduler.MaxOpsBeforeYield, 1)))
     const context = source.pipe(
       Context.add(Cached, 2),
-      Context.add(CachedClass, true)
+      Context.add(CachedClass, 3)
     )
 
     strictEqual(Context.get(context, Cached), 2)
-    strictEqual(Context.get(context, CachedClass), true)
-    assertFalse(source.mapUnsafe.has(Cached.key))
+    strictEqual(Context.get(context, CachedClass), 3)
+    assertTrue(Context.getOption(source, Cached)._tag === "None")
 
     const replaced = Context.add(context, Cached, 4)
     strictEqual(Context.get(replaced, Cached), 4)
@@ -72,16 +80,16 @@ describe("Context", () => {
     deepStrictEqual([...replaced.mapUnsafe], [
       [A.key, 1],
       [Cached.key, 4],
-      [CachedClass.key, true]
+      [CachedClass.key, 3]
     ])
     deepStrictEqual([...Context.omit(Cached)(replaced).mapUnsafe], [
       [A.key, 1],
-      [CachedClass.key, true]
+      [CachedClass.key, 3]
     ])
   })
 
   it("supports the Redactable fallback context", () => {
-    const Cached = Context.Service<number>("ContextTest/RedactableCached")
+    const Cached = Context.Service<number>("ContextTest/RedactableCached", { fiberCached: true })
     const context = Redactable.getRedacted({
       [Redactable.symbolRedactable](context: Context.Context<never>) {
         return context
@@ -97,10 +105,11 @@ describe("Context", () => {
   })
 
   it("distinguishes an undefined service from an absent service", () => {
-    const Undefined = Context.Service<number | undefined>("ContextTest/Undefined")
+    const Undefined = Context.Service<number | undefined>("ContextTest/Undefined", { fiberCached: true })
     const Missing = Context.Service<undefined>("ContextTest/Missing")
     const Ref = Context.Reference<string | undefined>("ContextTest/UndefinedRef", {
-      defaultValue: () => "default"
+      defaultValue: () => "default",
+      fiberCached: true
     })
     const context = Context.make(Undefined, 1).pipe(Context.add(Undefined, undefined), Context.add(Ref, undefined))
 
@@ -293,6 +302,19 @@ describe("Context", () => {
       _id: "Context",
       services: [{ key: A.key, value: 1 }, { key: B.key, value: 2 }]
     })
+  })
+
+  it("compares services by key and structural value, in any insertion order", () => {
+    const entries = (pairs: ReadonlyArray<readonly [string, unknown]>) => Context.makeUnsafe(new Map(pairs))
+    const context = entries([[A.key, { n: 1 }], [B.key, [2]]])
+
+    assertTrue(Equal.equals(context, entries([[B.key, [2]], [A.key, { n: 1 }]])))
+    assertTrue(Equal.equals(context, Context.make(A, { n: 1 } as any).pipe(Context.add(B, [2] as any))))
+    assertFalse(Equal.equals(context, entries([[A.key, { n: 1 }], [C.key, [2]]])))
+    assertFalse(Equal.equals(context, entries([[A.key, { n: 1 }]])))
+    assertFalse(Equal.equals(context, entries([[A.key, { n: 2 }], [B.key, [2]]])))
+    // A map with the same entries is not a context
+    assertFalse(Equal.equals(context, new Map([[A.key, { n: 1 }], [B.key, [2]]])))
   })
 
   it("merges with right bias and preserves empty operand identity", () => {

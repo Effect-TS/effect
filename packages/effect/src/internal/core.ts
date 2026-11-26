@@ -8,7 +8,7 @@ import { dual, identity } from "../Function.ts"
 import * as Hash from "../Hash.ts"
 import { NodeInspectSymbol } from "../Inspectable.ts"
 import { pipeArguments } from "../Pipeable.ts"
-import { hasProperty } from "../Predicate.ts"
+import { hasPropertyDataFirst as hasProperty } from "../Predicate.ts"
 import type { StackFrame } from "../References.ts"
 import type * as Types from "../Types.ts"
 import { SingleShotGen } from "../Utils.ts"
@@ -88,7 +88,7 @@ export const StructuralProto = {
     const selfKeys = InternalRecord.ownEnumerableKeys(this)
     if (selfKeys.length !== InternalRecord.ownEnumerableKeys(that).length) return false
     for (const key of selfKeys) {
-      if (!Object.prototype.propertyIsEnumerable.call(that, key) || !Equal.equals(this[key], that[key])) {
+      if (!Object.prototype.propertyIsEnumerable.call(that, key) || !Equal.compareBoth(this[key], that[key])) {
         return false
       }
     }
@@ -160,7 +160,7 @@ export class CauseImpl<E> implements Cause.Cause<E> {
     return (
       isCause(that) &&
       this.reasons.length === that.reasons.length &&
-      this.reasons.every((e, i) => Equal.equals(e, that.reasons[i]))
+      this.reasons.every((e, i) => Equal.compareBoth(e, that.reasons[i]))
     )
   }
   [Hash.symbol](): number {
@@ -265,8 +265,8 @@ export class Fail<E> extends ReasonBase<"Fail"> implements Cause.Fail<E> {
   [Equal.symbol](that: any): boolean {
     return (
       isFailReason(that) &&
-      Equal.equals(this.error, that.error) &&
-      Equal.equals(this.annotations, that.annotations)
+      Equal.compareBoth(this.error, that.error) &&
+      Equal.compareBoth(this.annotations, that.annotations)
     )
   }
   [Hash.symbol](): number {
@@ -295,7 +295,7 @@ const dedupeReasons = <E>(
     const bucket = buckets.get(hash)
     if (bucket === undefined) {
       buckets.set(hash, [reason])
-    } else if (bucket.some((previous) => Equal.equals(previous, reason))) {
+    } else if (bucket.some((previous) => Equal.compareBoth(previous, reason))) {
       continue
     } else {
       bucket.push(reason)
@@ -320,7 +320,7 @@ export const causeCombine: {
     const newCause = new CauseImpl<E | E2>(
       dedupeReasons<E | E2>(self.reasons, that.reasons)
     )
-    return Equal.equals(self, newCause) ? self : newCause
+    return Equal.compareBoth(self, newCause) ? self : newCause
   }
 )
 
@@ -372,8 +372,8 @@ export class Die extends ReasonBase<"Die"> implements Cause.Die {
   [Equal.symbol](that: any): boolean {
     return (
       isDieReason(that) &&
-      Equal.equals(this.defect, that.defect) &&
-      Equal.equals(this.annotations, that.annotations)
+      Equal.compareBoth(this.defect, that.defect) &&
+      Equal.compareBoth(this.annotations, that.annotations)
     )
   }
   [Hash.symbol](): number {
@@ -586,7 +586,7 @@ export const makeExit = <
       return (
         isExit(that) &&
         that._tag === this._tag &&
-        Equal.equals(this[args], (that as any)[args])
+        Equal.compareBoth(this[args], (that as any)[args])
       )
     },
     [Hash.symbol](this: any): number {
@@ -620,6 +620,14 @@ export const StackTraceKey = {
   key: StackTraceKeyName
 } as Context.Service<Cause.StackTrace, StackFrame>
 
+/**
+ * Adds the stack frame of the code that produced a cause, when there is one.
+ *
+ * @internal
+ */
+export const causeAnnotateStackFrame = <E>(cause: Cause.Cause<E>, stackFrame: StackFrame | undefined): Cause.Cause<E> =>
+  stackFrame ? causeAnnotateMap(cause, new Map([[StackTraceKeyName, stackFrame]])) : cause
+
 /** @internal */
 export const InterruptorStackTrace = {
   key: "effect/Cause/InterruptorStackTrace" satisfies typeof Cause.InterruptorStackTrace.key
@@ -630,12 +638,8 @@ export const exitFailCause: <E>(cause: Cause.Cause<E>) => Exit.Exit<never, E> = 
   op: "Failure",
   prop: "cause",
   [evaluate](fiber) {
-    let cause = this[args]
-    let annotated = false
-    if (fiber.cache.stackFrame) {
-      cause = causeAnnotateMap(cause, new Map([[StackTraceKeyName, fiber.cache.stackFrame]]))
-      annotated = true
-    }
+    let cause = causeAnnotateStackFrame(this[args], fiber.cache.stackFrame)
+    let annotated = cause !== this[args]
     let cont = fiber.getCont(contE)
     const interruptedCause = fiber._interruptedCause
     if (interruptedCause && fiber.interruptible) {

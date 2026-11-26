@@ -59,8 +59,14 @@ export const defaultCurrentLogLevel: Severity = "Info"
 /** @internal */
 export const defaultMinimumLogLevel: LogLevel = "Info"
 
-/** @internal */
-export const fiberCachedKeys: ReadonlySet<string> = new Set([
+/**
+ * Keys whose values fibers cache. Adding one of them to a context starts a new
+ * cache. `Context.Service` and `Context.Reference` add their key here when
+ * created with `fiberCached: true`.
+ *
+ * @internal
+ */
+export const fiberCachedKeys: Set<string> = new Set([
   SchedulerKey,
   MaxOpsBeforeYieldKey,
   PreventSchedulerYieldKey,
