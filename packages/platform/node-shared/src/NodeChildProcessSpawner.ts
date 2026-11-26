@@ -700,22 +700,17 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
           exitSignal: ExitSignal
         ) {
           // A child whose exit status can no longer be observed may have exited
-          // and its ID been reused, so it is left alone
-          if (childProcess.lost === true) {
+          // and its ID been reused, so it is left alone. An unref'ed child,
+          // including its process group, is no longer owned by the scope.
+          if (childProcess.lost === true || !isReferenced) {
             return
           }
           if (Deferred.isDoneUnsafe(exitSignal)) {
             // Only a lost child fails its exit signal
             const [code] = yield* Effect.orDie(Deferred.await(exitSignal))
-            if (code !== 0 && Predicate.isNotNull(code)) {
-              yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
-            } else if (isReferenced && ownsProcessGroup(cmd)) {
-              yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
+            if ((code === 0 || Predicate.isNull(code)) && !ownsProcessGroup(cmd)) {
+              return
             }
-            return
-          }
-          if (!isReferenced) {
-            return
           }
           yield* Effect.ignore(terminateProcessGroup(cmd, childProcess, exitSignal, cmd.options))
         })
@@ -738,7 +733,7 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
         const pid = ProcessId(childProcess.pid!)
         if (ownsProcessGroup(cmd)) {
           childProcess.on("exit", (code) => {
-            if (code !== 0 && Predicate.isNotNull(code)) {
+            if (isReferenced && code !== 0 && Predicate.isNotNull(code)) {
               killProcessGroupOnExit(childProcess, cmd.options.killSignal ?? "SIGTERM")
             }
           })

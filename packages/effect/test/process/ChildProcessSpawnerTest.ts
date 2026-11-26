@@ -1300,7 +1300,7 @@ export const suite = (
           }).pipe(Effect.provide(layer)))
 
         it.effect.skipIf(!options.processGroups)(
-          "should cleanup descendants after an unrefed parent exits non-zero",
+          "should not cleanup descendants after an unrefed parent exits non-zero",
           () =>
             Effect.gen(function*() {
               const path = yield* Path.Path
@@ -1311,17 +1311,20 @@ export const suite = (
                 return yield* ChildProcess.make({ cwd })`./parent-exits-early.sh`
               })).pipe(Effect.provide(layer))
 
-              // @effect-diagnostics-next-line floatingEffect:off
-              yield* Scope.provide(scope)(handle.unref).pipe(Effect.provide(layer))
-              yield* Scope.close(scope, Exit.void)
+              yield* Effect.gen(function*() {
+                // @effect-diagnostics-next-line floatingEffect:off
+                yield* Scope.provide(scope)(handle.unref).pipe(Effect.provide(layer))
+                yield* Scope.close(scope, Exit.void)
 
-              const exitCode = yield* handle.exitCode
-              assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(1))
+                const exitCode = yield* handle.exitCode
+                assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(1))
 
-              yield* TestClock.withLive(Effect.sleep("100 millis"))
+                yield* TestClock.withLive(Effect.sleep("100 millis"))
 
-              const remaining = yield* countMatchingProcesses("parent-exits-early-")
-              assert.strictEqual(remaining, 0)
+                // Three children and three grandchildren
+                const remaining = yield* countMatchingProcesses("parent-exits-early-")
+                assert.strictEqual(remaining, 6)
+              }).pipe(Effect.ensuring(Effect.ignore(killMatchingProcesses("parent-exits-early-"))))
             }).pipe(Effect.provide(layer))
         )
 
