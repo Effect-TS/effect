@@ -757,17 +757,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       if (op[symbol]) return op as any
     }
   }
-  // Passes a success value straight to the next continuation instead of
-  // returning an Exit for the run loop to unwrap. Each call counts as an
-  // operation, and every `maxInlineSteps`th call returns an Exit instead, so
-  // continuations calling continuations never nest deeper than that.
-  succeedWith(value: unknown): Primitive | Yield {
-    if ((++this.currentOpCount & (maxInlineSteps - 1)) === 0) {
-      return exitSucceed(value) as any
-    }
-    const cont = this.getCont(contA)
-    return cont ? cont[contA](value, this) : this.yieldWith(exitSucceed(value))
-  }
   yieldWith(value: Exit.Exit<any, any> | (() => void)): Yield {
     this._yielded = value
     return Yield
@@ -782,9 +771,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     return this.yieldWith(() => {
       resumed = true
     })
-  }
-  children(): Set<Fiber.Fiber<any, any>> {
-    return (this._children ??= new Set())
   }
   pipe() {
     return pipeArguments(this, arguments)
@@ -804,10 +790,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       this._dispatcher = undefined
     }
     this.cache = cache
-  }
-  get currentSpanLocal(): Tracer.Span | undefined {
-    const span = this.cache.span
-    return span?._tag === "Span" ? span : undefined
   }
 }
 
@@ -841,6 +823,23 @@ const deferredInterruptCont: any = {
 
 // must be a power of two
 const maxInlineSteps = 32
+
+// Passes a success value straight to the next continuation instead of
+// returning an Exit for the run loop to unwrap. Each call counts as an
+// operation, and every `maxInlineSteps`th call returns an Exit instead, so
+// continuations calling continuations never nest deeper than that.
+const succeedWith = (fiber: FiberImpl, value: unknown): Primitive | Yield => {
+  if ((++fiber.currentOpCount & (maxInlineSteps - 1)) === 0) {
+    return exitSucceed(value) as any
+  }
+  const cont = fiber.getCont(contA)
+  return cont ? cont[contA](value, fiber) : fiber.yieldWith(exitSucceed(value))
+}
+
+const currentSpanLocal = (fiber: FiberImpl): Tracer.Span | undefined => {
+  const span = fiber.cache.span
+  return span?._tag === "Span" ? span : undefined
+}
 
 const fiberMiddleware = {
   interruptChildren: undefined as
@@ -1579,7 +1578,7 @@ const returnPayload = function(this: { readonly payload: any }) {
   return this.payload
 }
 const succeedPayload = function(this: { readonly payload: any }, _value: unknown, fiber: FiberImpl) {
-  return fiber.succeedWith(this.payload)
+  return succeedWith(fiber, this.payload)
 }
 // V8 includes the property name of a stored continuation in its stack trace.
 // Other engines need an explicit frame for the stack cleaner to cut at.
@@ -1600,7 +1599,7 @@ const continuationMarksStack = (() => {
 })()
 const mapCont = function(this: { readonly payload: any }, value: any, fiber: FiberImpl) {
   const f = this.payload
-  return fiber.succeedWith(continuationMarksStack ? f(value) : internalCall(() => f(value)))
+  return succeedWith(fiber, continuationMarksStack ? f(value) : internalCall(() => f(value)))
 }
 const andThenCont = function(this: { readonly payload: any }, value: any) {
   const f = this.payload
@@ -3618,7 +3617,8 @@ OnSuccessAndFailureImpl.prototype = OnSuccessAndFailureProto
 // payload and call it from the prototype, so no closure is built per call.
 const matchSuccess = function(this: any, value: any, fiber: FiberImpl) {
   const handlers = this.payload
-  return fiber.succeedWith(
+  return succeedWith(
+    fiber,
     continuationMarksStack ? handlers.onSuccess(value) : internalCall(() => handlers.onSuccess(value))
   )
 }
@@ -3646,13 +3646,15 @@ const MatchImpl = makeMatch("Match", function(cause, fiber) {
   const error = findRecoverableError(cause)
   if (Result.isFailure(error)) return failCause(error.failure) as any
   const handlers = this.payload
-  return fiber.succeedWith(
+  return succeedWith(
+    fiber,
     continuationMarksStack ? handlers.onFailure(error.success) : internalCall(() => handlers.onFailure(error.success))
   )
 })
 const MatchCauseImpl = makeMatch("MatchCause", function(cause, fiber) {
   const handlers = this.payload
-  return fiber.succeedWith(
+  return succeedWith(
+    fiber,
     continuationMarksStack ? handlers.onFailure(cause) : internalCall(() => handlers.onFailure(cause))
   )
 })
@@ -3814,10 +3816,10 @@ const exitPrimitive: <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Ex
       return this[args] as any
     },
     [contA](value, fiber, exit) {
-      return fiber.succeedWith(exit ?? exitSucceed(value))
+      return succeedWith(fiber, exit ?? exitSucceed(value))
     },
     [contE](cause, fiber, exit) {
-      return fiber.succeedWith(exit ?? exitFailCause(cause))
+      return succeedWith(fiber, exit ?? exitFailCause(cause))
     }
   })
 
@@ -5558,7 +5560,8 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   const interruptible = uninterruptible === "inherit" ? parentRuntime.interruptible : !uninterruptible
   const child = new FiberImpl<A, E>(parentRuntime.context, interruptible)
   if (!daemon) {
-    parentRuntime.children().add(child)
+    const children = parentRuntime._children ??= new Set()
+    children.add(child)
     child._parent = parentRuntime
   }
   if (immediate) {
@@ -6308,7 +6311,7 @@ export const annotateCurrentSpan: {
   (values: Record<string, unknown>): Effect.Effect<void>
 } = (...args: [Record<string, unknown>] | [key: string, value: unknown]) =>
   withFiber((fiber) => {
-    const span = fiber.currentSpanLocal
+    const span = currentSpanLocal(fiber)
     if (span && span.status._tag !== "Ended") {
       if (args.length === 1) {
         for (const [key, value] of Object.entries(args[0])) {
@@ -6323,7 +6326,7 @@ export const annotateCurrentSpan: {
 
 /** @internal */
 export const currentSpan: Effect.Effect<Tracer.Span, Cause.NoSuchElementError> = withFiber((fiber) => {
-  const span = fiber.currentSpanLocal
+  const span = currentSpanLocal(fiber)
   return span ? succeed(span) : fail(new NoSuchElementError())
 })
 

@@ -284,10 +284,10 @@ const hexEncodeUint8Array = (bytes: Uint8Array): string => {
   return result
 }
 
-const hexCodes = new Uint8Array(256).fill(255)
-for (let i = 0; i < 16; i++) {
-  hexCodes["0123456789abcdef".charCodeAt(i)] = i
-  hexCodes["0123456789ABCDEF".charCodeAt(i)] = i
-}
+// Maps each byte to its hex digit value, or 255 when it is not a hex digit.
+const hexCodes = Uint8Array.from({ length: 256 }, (_, charCode) => {
+  const digit = "0123456789abcdef".indexOf(String.fromCharCode(charCode).toLowerCase())
+  return digit === -1 ? 255 : digit
+})
 
 const hexCode = (charCode: number): number => charCode < 256 ? hexCodes[charCode] : 255

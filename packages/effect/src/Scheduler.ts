@@ -116,34 +116,6 @@ const setImmediate = (f: () => void) => {
   }
 }
 
-class PriorityBuckets {
-  buckets: Array<[priority: number, tasks: Array<() => void>]> = []
-
-  scheduleTask(task: () => void, priority: number): void {
-    const buckets = this.buckets
-    const len = buckets.length
-    let bucket: [number, Array<() => void>] | undefined
-    let index = 0
-    for (; index < len; index++) {
-      if (buckets[index][0] > priority) break
-      bucket = buckets[index]
-    }
-    if (bucket && bucket[0] === priority) {
-      bucket[1].push(task)
-    } else if (index === len) {
-      buckets.push([priority, [task]])
-    } else {
-      buckets.splice(index, 0, [priority, [task]])
-    }
-  }
-
-  drain() {
-    const buckets = this.buckets
-    this.buckets = []
-    return buckets
-  }
-}
-
 /**
  * Provides a scheduler implementation that batches queued tasks and dispatches them by
  * priority.
@@ -215,7 +187,8 @@ export class MixedScheduler implements Scheduler {
 }
 
 class MixedSchedulerDispatcher implements SchedulerDispatcher {
-  private tasks = new PriorityBuckets()
+  // Ordered by ascending priority; tasks keep FIFO order within a bucket.
+  private buckets: Array<[priority: number, tasks: Array<() => void>]> = []
   private running: (() => void) | undefined = undefined
   readonly setImmediate: (f: () => void) => () => void
 
@@ -229,7 +202,21 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    * @since 2.0.0
    */
   scheduleTask(task: () => void, priority: number) {
-    this.tasks.scheduleTask(task, priority)
+    const buckets = this.buckets
+    const len = buckets.length
+    let bucket: [number, Array<() => void>] | undefined
+    let index = 0
+    for (; index < len; index++) {
+      if (buckets[index][0] > priority) break
+      bucket = buckets[index]
+    }
+    if (bucket && bucket[0] === priority) {
+      bucket[1].push(task)
+    } else if (index === len) {
+      buckets.push([priority, [task]])
+    } else {
+      buckets.splice(index, 0, [priority, [task]])
+    }
     if (this.running === undefined) {
       this.running = this.setImmediate(this.afterScheduled)
     }
@@ -247,7 +234,8 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    * @since 2.0.0
    */
   runTasks() {
-    const buckets = this.tasks.drain()
+    const buckets = this.buckets
+    this.buckets = []
     for (let i = 0; i < buckets.length; i++) {
       const toRun = buckets[i][1]
       for (let j = 0; j < toRun.length; j++) {
@@ -260,7 +248,7 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    * @since 2.0.0
    */
   flush() {
-    while (this.tasks.buckets.length > 0) {
+    while (this.buckets.length > 0) {
       if (this.running !== undefined) {
         this.running()
         this.running = undefined
