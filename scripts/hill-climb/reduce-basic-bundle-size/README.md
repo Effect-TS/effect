@@ -26,6 +26,14 @@ node scripts/hill-climb/reduce-basic-bundle-size/attribution.mjs tmp/bundle-anal
 `bundle-compare-selected --base main` measures against the local `main` ref. If that
 ref is stale, pass `--base origin/main` instead.
 
+Check the other fixtures before finishing, since a change that helps `basic.ts` can pull
+modules into bundles that do not run effects (`brand.ts`, `optic.ts`). Comparing every
+fixture takes about three minutes:
+
+```sh
+pnpm bundle-compare-selected --base origin/main packages/tools/bundle/fixtures/*.ts
+```
+
 Gotchas:
 
 - `pnpm check` writes unannotated output over `packages/effect/dist`. Without the
@@ -34,3 +42,8 @@ Gotchas:
   statement with a side effect is kept, along with everything it references.
 - `bundle-compare-selected --keep-base` leaves `tmp/bundle-base` behind, which makes
   `pnpm check` report duplicate packages. Run the last comparison without `--keep-base`.
+- The `[Equal.symbol]`, `[Hash.symbol]` and `toString` methods of `Exit`, `Cause` and
+  `Context` sit on prototypes every fiber creates, so bundlers keep them along with
+  everything they call. Leaving `Equal.ts`, `Hash.ts` or `Formatter.ts` out of `basic.ts`
+  means those methods can no longer run on their own, for example when called by literal
+  key or from another copy of effect.
