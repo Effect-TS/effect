@@ -468,29 +468,29 @@ const makeFile = (() => {
     }
 
     private writeAllChunk(buffer: Uint8Array): Effect.Effect<void, Error.PlatformError> {
-      return this.writeAt("writeAll", (position) =>
-        Effect.flatMap(
-          nodeWriteAll(this.fd, buffer, position),
-          (bytesWritten) => {
-            if (bytesWritten === 0) {
-              return Effect.fail(
-                Error.systemError({
-                  module: "FileSystem",
-                  method: "writeAll",
-                  _tag: "WriteZero",
-                  pathOrDescriptor: this.fd,
-                  description: "write returned 0 bytes written"
-                })
-              )
-            }
-
+      return Effect.flatMap(
+        this.writeAt("writeAll", (position) =>
+          Effect.map(nodeWriteAll(this.fd, buffer, position), (bytesWritten) => {
             if (position !== undefined) {
               this.position = BigInt(position) + BigInt(bytesWritten)
             }
-
-            return bytesWritten < buffer.length ? this.writeAllChunk(buffer.subarray(bytesWritten)) : Effect.void
+            return bytesWritten
+          })),
+        (bytesWritten) => {
+          if (bytesWritten === 0) {
+            return Effect.fail(
+              Error.systemError({
+                module: "FileSystem",
+                method: "writeAll",
+                _tag: "WriteZero",
+                pathOrDescriptor: this.fd,
+                description: "write returned 0 bytes written"
+              })
+            )
           }
-        ))
+          return bytesWritten < buffer.length ? this.writeAllChunk(buffer.subarray(bytesWritten)) : Effect.void
+        }
+      )
     }
 
     writeAll(buffer: Uint8Array) {
