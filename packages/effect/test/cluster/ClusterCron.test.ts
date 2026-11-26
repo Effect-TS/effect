@@ -217,57 +217,30 @@ describe("ClusterCron", { concurrent: false }, () => {
       assert.deepStrictEqual(scheduled, [...scheduled].sort())
     }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
 
-  it.effect("retries a failed run with calculateNextRunFromPrevious before later instants", () =>
-    Effect.gen(function*() {
-      const attempts: Array<string> = []
-      const cron = ClusterCron.make({
-        name: "test",
-        cron: Cron.parseUnsafe("* * * * * *", "UTC"),
-        calculateNextRunFromPrevious: true,
-        execute: Effect.gen(function*() {
-          attempts.push(DateTime.formatIso(yield* ClusterCron.CurrentScheduledTime))
-          if (attempts.length === 1) {
-            yield* Effect.addFinalizer((exit) => Effect.sync(() => attempts.push(exit._tag)))
-            yield* Effect.forkChild(
-              Effect.never.pipe(Effect.onInterrupt(() => Effect.sync(() => attempts.push("child interrupted")))),
-              { startImmediately: true }
-            )
+  it.effect.each([false, true])(
+    "runs a failed instant once and moves on to the next (calculateNextRunFromPrevious: %s)",
+    (calculateNextRunFromPrevious) =>
+      Effect.gen(function*() {
+        const attempts: Array<string> = []
+        const exits: Array<string> = []
+        const cron = ClusterCron.make({
+          name: "test",
+          cron: Cron.parseUnsafe("* * * * * *", "UTC"),
+          calculateNextRunFromPrevious,
+          execute: Effect.gen(function*() {
+            attempts.push(DateTime.formatIso(yield* ClusterCron.CurrentScheduledTime))
+            yield* Effect.addFinalizer((exit) => Effect.sync(() => exits.push(exit._tag)))
             return yield* Effect.fail("boom")
-          }
+          })
         })
-      })
 
-      yield* deploy(cron, 3500)
+        yield* deploy(cron, 3500)
 
-      // the failed attempt's children and scope are closed before it is retried
-      const [first, interrupted, finalized, ...rest] = attempts
-      assert.strictEqual(interrupted, "child interrupted")
-      assert.strictEqual(finalized, "Failure")
-      assert.isAbove(rest.length, 1)
-      assert.strictEqual(rest[0], first)
-      assert.deepStrictEqual(rest, [...rest].sort())
-    }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
-
-  it.effect("runs a failed instant once and moves on to the next", () =>
-    Effect.gen(function*() {
-      const attempts: Array<string> = []
-      const exits: Array<string> = []
-      const cron = ClusterCron.make({
-        name: "test",
-        cron: Cron.parseUnsafe("* * * * * *", "UTC"),
-        execute: Effect.gen(function*() {
-          attempts.push(DateTime.formatIso(yield* ClusterCron.CurrentScheduledTime))
-          yield* Effect.addFinalizer((exit) => Effect.sync(() => exits.push(exit._tag)))
-          return yield* Effect.fail("boom")
-        })
-      })
-
-      yield* deploy(cron, 3500)
-
-      assert.isAbove(attempts.length, 1)
-      assert.deepStrictEqual(attempts, [...new Set(attempts)])
-      assert.deepStrictEqual(exits, attempts.map(() => "Failure"))
-    }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
+        assert.isAbove(attempts.length, 1)
+        assert.deepStrictEqual(attempts, [...new Set(attempts)].sort())
+        assert.deepStrictEqual(exits, attempts.map(() => "Failure"))
+      }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer))
+  )
 
   it.effect("replays an interrupted run with calculateNextRunFromPrevious when its finalizer fails", () =>
     Effect.gen(function*() {
