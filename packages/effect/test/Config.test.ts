@@ -37,6 +37,19 @@ async function assertFailure<T>(config: Config.Config<T>, provider: ConfigProvid
 }
 
 describe("Config", () => {
+  it("ConfigError keeps its message when its cause is replaced", () => {
+    const exit = Effect.runSyncExit(Config.String("PORT").parse(ConfigProvider.fromUnknown({})))
+    assert.isTrue(Exit.isFailure(exit))
+    const error = Cause.squash((exit as Exit.Failure<never, Config.ConfigError>).cause) as Config.ConfigError
+    const message = error.message
+    assert.include(message, "Expected string")
+    // Test runners such as Vitest replace `cause` with a serialized, null-prototype copy.
+    const replaced: { cause: unknown } = error
+    replaced.cause = Object.assign(Object.create(null), { _tag: "SchemaError" })
+    assert.strictEqual(error.message, message)
+    assert.strictEqual(error.toString(), `ConfigError(${message})`)
+  })
+
   it("recognizes SourceError defects from a reloaded module copy", async () => {
     vi.resetModules()
     const ForeignConfigProvider = await vi.importActual<typeof ConfigProviderModule>(
