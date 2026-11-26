@@ -107,6 +107,14 @@ describe("DenoChildProcessSpawner options", () => {
       )
     }).pipe(Effect.provide(layer)))
 
+  it.effect("rejects numeric file descriptors", () =>
+    Effect.gen(function*() {
+      for (const options of [{ stdin: 0 }, { stdout: 1 }, { stderr: 2 }] as const) {
+        const error = yield* ChildProcess.make("echo", ["test"], options).pipe(Effect.flip)
+        assert.strictEqual(error.reason._tag, "BadArgument")
+      }
+    }).pipe(Effect.provide(layer)))
+
   it.effect("kills every process in a pipeline", () =>
     Effect.gen(function*() {
       const directory = yield* Effect.acquireRelease(

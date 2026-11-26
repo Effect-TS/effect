@@ -12,11 +12,13 @@ import * as Scope from "effect/Scope"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
+import * as NodeFs from "node:fs"
 import { inspect } from "node:util"
 
 export interface Options {
   readonly processGroups: boolean
   readonly additionalFds?: boolean | undefined
+  readonly inheritedFds?: boolean | undefined
 }
 
 const sourceError = PlatformError.systemError({
@@ -1437,5 +1439,114 @@ export const suite = (
           const output = yield* spawner.string(ChildProcess.make("sh", ["-c", "seq 1 100000 >&2; printf done"]))
           assert.strictEqual(output, "done")
         }), { timeout: 10_000 })
+    })
+    exitStatusSuite(layer)
+    if (options.inheritedFds ?? options.additionalFds !== false) {
+      inheritedFdSuite(layer)
+    }
+  })
+
+const exitCommand = (code: number) =>
+  "deno" in process.versions
+    ? ChildProcess.make(process.execPath, ["eval", `Deno.exit(${code})`])
+    : ChildProcess.make(process.execPath, ["-e", `process.exit(${code})`])
+
+export const exitStatusSuite = (
+  layer: Layer.Layer<ChildProcessSpawner.ChildProcessSpawner>
+) =>
+  describe("exitStatus", () => {
+    it.layer(layer)((it) => {
+      it.effect("returns Exited for a normal exit", () =>
+        Effect.gen(function*() {
+          const handle = yield* exitCommand(42)
+          const status = yield* handle.exitStatus
+
+          assert.deepStrictEqual(status, {
+            _tag: "Exited",
+            code: ChildProcessSpawner.ExitCode(42)
+          })
+        }))
+
+      it.effect.skipIf(process.platform === "win32")("returns Signaled when terminated by SIGTERM", () =>
+        Effect.gen(function*() {
+          const handle = yield* ChildProcess.make("sleep", ["10"])
+
+          yield* handle.kill({ killSignal: "SIGTERM" })
+
+          const status = yield* handle.exitStatus
+          assert.deepStrictEqual(status, {
+            _tag: "Signaled",
+            signal: "SIGTERM"
+          })
+        }))
+    })
+  })
+
+// `FileSystem.File` exposes no descriptor, so the file is opened with `node:fs`
+const openTempFd = Effect.gen(function*() {
+  const fs = yield* FileSystem.FileSystem
+  const path = yield* Path.Path
+  const file = path.join(yield* fs.makeTempDirectoryScoped(), "output")
+  const fd = yield* Effect.acquireRelease(
+    Effect.sync(() => NodeFs.openSync(file, "w+")),
+    (fd) => Effect.sync(() => NodeFs.closeSync(fd))
+  )
+  return { file, fd }
+})
+
+export const inheritedFdSuite = (
+  layer: Layer.Layer<ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem | Path.Path>
+) =>
+  describe("inherited file descriptors", () => {
+    it.layer(layer)((it) => {
+      it.effect("routes stdout, stderr, and additionalFds directly to inherited file descriptors", () =>
+        Effect.gen(function*() {
+          const fs = yield* FileSystem.FileSystem
+          const { fd: logFd, file: logPath } = yield* openTempFd
+          const { fd: extraFd, file: extraPath } = yield* openTempFd
+
+          const exitCode = yield* Effect.scoped(Effect.gen(function*() {
+            const handle = yield* ChildProcess.make("sh", ["-c", "echo out; echo err >&2; printf 'hello fd3' >&3"], {
+              stdin: "ignore",
+              stdout: logFd,
+              stderr: logFd,
+              additionalFds: { fd3: extraFd }
+            })
+            const exitCode = yield* handle.exitCode
+
+            assert.strictEqual((yield* fs.readFileString(logPath)).trim(), "out\nerr")
+            assert.strictEqual(yield* fs.readFileString(extraPath), "hello fd3")
+            assert.strictEqual(yield* decodeByteStream(handle.all), "")
+            assert.strictEqual(yield* decodeByteStream(handle.getOutputFd(3)), "")
+            return exitCode
+          }))
+
+          assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
+          assert.doesNotThrow(() => NodeFs.fstatSync(logFd))
+          assert.doesNotThrow(() => NodeFs.fstatSync(extraFd))
+        }))
+
+      it.effect("fails with BadArgument for invalid numeric file descriptors", () =>
+        Effect.gen(function*() {
+          const commands = [
+            ChildProcess.make("echo", ["test"], { stdout: -1 }),
+            ChildProcess.make("echo", ["test"], { stderr: 1.5 }),
+            ChildProcess.make("echo", ["test"], { stdin: Number.NaN }),
+            ChildProcess.make("echo", ["test"], { additionalFds: { fd3: -1 } })
+          ]
+          for (const command of commands) {
+            const error = yield* Effect.flip(Effect.scoped(command))
+            assert.strictEqual(error.reason._tag, "BadArgument")
+          }
+        }))
+
+      it.effect("fails with a typed PlatformError for an unopened file descriptor", () =>
+        Effect.gen(function*() {
+          const error = yield* Effect.flip(
+            Effect.scoped(ChildProcess.make("echo", ["test"], { stdout: 99999 }))
+          )
+          assert.strictEqual(error._tag, "PlatformError")
+          assert.strictEqual(error.reason.method, "spawn")
+        }))
     })
   })

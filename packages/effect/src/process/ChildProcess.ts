@@ -156,6 +156,14 @@ export interface PipeOptions {
 /**
  * Input type for child process stdin.
  *
+ * **Details**
+ *
+ * A non-negative integer passes a caller-owned file descriptor directly to the
+ * child. The spawner never closes it; the child gets its own copy, so it only
+ * needs to stay open until `spawn` returns. On the handle, `stdin` returns a
+ * draining `Sink`. Native `DenoChildProcessSpawner` rejects numeric descriptors
+ * with `BadArgument`.
+ *
  * @stability unstable
  * @category models
  * @since 4.0.0
@@ -165,10 +173,19 @@ export type CommandInput =
   | "inherit"
   | "ignore"
   | "overlapped"
+  | number
   | Stream.Stream<Uint8Array, PlatformError.PlatformError>
 
 /**
  * Output type for child process stdout/stderr.
+ *
+ * **Details**
+ *
+ * A non-negative integer passes a caller-owned file descriptor directly to the
+ * child. The spawner never closes it; the child gets its own copy, so it only
+ * needs to stay open until `spawn` returns. On the handle, `stdout` and
+ * `stderr` return an empty `Stream` and contribute nothing to `all`. Native
+ * `DenoChildProcessSpawner` rejects numeric descriptors with `BadArgument`.
  *
  * @stability unstable
  * @category models
@@ -179,6 +196,7 @@ export type CommandOutput =
   | "inherit"
   | "ignore"
   | "overlapped"
+  | number
   | Sink.Sink<Uint8Array, Uint8Array, never, PlatformError.PlatformError>
 
 /**
@@ -194,6 +212,7 @@ export type Signal =
   | "SIGBUS"
   | "SIGCHLD"
   | "SIGCONT"
+  | "SIGEMT"
   | "SIGFPE"
   | "SIGHUP"
   | "SIGILL"
@@ -291,7 +310,8 @@ export interface StdinConfig {
    * pipe established between the child process `stdin` and the parent process.
    *
    * Can also be a `Stream`, which will pipe all elements produced into the
-   * `stdin` of the child process.
+   * `stdin` of the child process, or an existing file descriptor (see
+   * {@link CommandInput}).
    *
    * Defaults to "pipe".
    */
@@ -322,6 +342,8 @@ export interface StdoutConfig {
    *
    * Can be a string indicating how the operating system should configure the
    * pipe established between the child process `stdout` and the parent process.
+   *
+   * Can also be an existing file descriptor (see {@link CommandOutput}).
    *
    * A `Sink` can also be passed. The output is transduced through the sink as
    * `handle.stdout` is consumed, and `handle.stdout` emits the results produced by
@@ -354,6 +376,8 @@ export interface StderrConfig {
    * Can be a string indicating how the operating system should configure the
    * pipe established between the child process `stderr` and the parent process.
    *
+   * Can also be an existing file descriptor (see {@link CommandOutput}).
+   *
    * A `Sink` can also be passed. The output is transduced through the sink as
    * `handle.stderr` is consumed, and `handle.stderr` emits the results produced by
    * the sink instead of the raw output.
@@ -372,11 +396,20 @@ export interface StderrConfig {
 /**
  * Configuration for additional file descriptors to expose to the child process.
  *
+ * **Details**
+ *
+ * A non-negative integer passes a caller-owned file descriptor directly to the
+ * child at that slot. The spawner never closes it; the child gets its own copy,
+ * so it only needs to stay open until `spawn` returns. On the handle,
+ * `getInputFd` returns a draining `Sink` and `getOutputFd` returns an empty
+ * `Stream`.
+ *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
 export type AdditionalFdConfig =
+  | number
   | {
     /**
      * The direction of data flow for this file descriptor.
@@ -602,11 +635,11 @@ export interface CommandOptions extends KillOptions {
    *   }
    * })
    * const result = [
-   *   cmd1.options.additionalFds?.fd3?.type,
-   *   cmd2.options.additionalFds?.fd3?.type,
-   *   cmd3.options.additionalFds?.fd3?.type
+   *   cmd1.options.additionalFds?.fd3,
+   *   cmd2.options.additionalFds?.fd3,
+   *   cmd3.options.additionalFds?.fd3
    * ]
-   * result // => ["output", "input", "duplex"]
+   * result // => [{ type: "output" }, { type: "input" }, { type: "duplex" }]
    * ```
    */
   readonly additionalFds?: Record<`fd${number}`, AdditionalFdConfig> | undefined
