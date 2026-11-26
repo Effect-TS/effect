@@ -370,11 +370,13 @@ const makeFile = (() => {
     }
 
     private writeOnce(method: string, write: typeof nodeWrite, buffer: Uint8Array) {
-      return this.append ? write(this.fd, buffer, undefined) : this.atCursor((position) =>
-        position === null
-          ? write(this.fd, buffer, undefined)
-          : Effect.flatMap(positionToNumber(position, method), (position) => write(this.fd, buffer, position))
-      )
+      return this.append ?
+        Effect.suspend(() => write(this.fd, buffer, undefined)) :
+        this.atCursor((position) =>
+          position === null
+            ? write(this.fd, buffer, undefined)
+            : Effect.flatMap(positionToNumber(position, method), (position) => write(this.fd, buffer, position))
+        )
     }
 
     seek(offset: bigint, from: FileSystem.SeekMode) {
@@ -393,13 +395,15 @@ const makeFile = (() => {
     }
 
     read(buffer: Uint8Array, options?: FileSystem.File.ReadOptions) {
-      const explicit = options?.position
-      if (explicit === undefined) {
-        return this.atCursor((position) => nodeRead(this.fd, { buffer, position }))
-      }
-      return explicit < BigInt(0)
-        ? Effect.fail(negativePosition("read"))
-        : nodeRead(this.fd, { buffer, position: explicit })
+      return Effect.suspend(() => {
+        const explicit = options?.position
+        if (explicit === undefined) {
+          return this.atCursor((position) => nodeRead(this.fd, { buffer, position }))
+        }
+        return explicit < BigInt(0)
+          ? Effect.fail(negativePosition("read"))
+          : nodeRead(this.fd, { buffer, position: explicit })
+      })
     }
 
     readAlloc(size: number, options?: FileSystem.File.ReadOptions) {
