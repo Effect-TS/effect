@@ -12,7 +12,8 @@
  */
 import * as Context from "../Context.ts"
 import * as Data from "../Data.ts"
-import * as SchemaBinary from "../encoding/SchemaBinary.ts"
+import * as Effect from "../Effect.ts"
+import type * as SchemaBinary from "../encoding/SchemaBinary.ts"
 import * as Layer from "../Layer.ts"
 import * as Predicate from "../Predicate.ts"
 import { hasProperty } from "../Predicate.ts"
@@ -605,28 +606,30 @@ type JsonRpcMessage = JsonRpcRequest | JsonRpcResponse
 
 const defaultSchemaBinaryMaxFrameSize = 16 * 1024 * 1024
 
-const schemaBinaryTextEncoder = new TextEncoder()
-
-const makeSchemaBinary = (options?: {
-  readonly maxFrameSize?: number | "unbounded" | undefined
-  readonly fingerprintPayloads?: boolean | undefined
-}): RpcSerialization["Service"] => {
+const makeSchemaBinary = (
+  schemaBinary: typeof SchemaBinary,
+  options?: {
+    readonly maxFrameSize?: number | "unbounded" | undefined
+    readonly fingerprintPayloads?: boolean | undefined
+  }
+): RpcSerialization["Service"] => {
   const maxFrameSize = options?.maxFrameSize === "unbounded"
     ? undefined
     : options?.maxFrameSize ?? defaultSchemaBinaryMaxFrameSize
   const codecFor: CodecFor = options?.fingerprintPayloads === true
-    ? (schema) => SchemaBinary.toCodecDirect(schema, { fingerprint: true })
-    : SchemaBinary.toCodecDirect
+    ? (schema) => schemaBinary.toCodecDirect(schema, { fingerprint: true })
+    : schemaBinary.toCodecDirect
   const envelopeOptions = { fingerprint: true } as const
+  const textEncoder = new TextEncoder()
   return RpcSerialization.of({
     contentType: "application/vnd.effect.rpc+schema-binary",
     includesFraming: true,
     codecFor,
     makeUnsafe: () => {
-      const parser = SchemaBinary.parser(RpcMessage.EncodedSchema, { ...envelopeOptions, maxFrameSize })
-      const encoder = SchemaBinary.encoder(RpcMessage.EncodedSchema, envelopeOptions)
+      const parser = schemaBinary.parser(RpcMessage.EncodedSchema, { ...envelopeOptions, maxFrameSize })
+      const encoder = schemaBinary.encoder(RpcMessage.EncodedSchema, envelopeOptions)
       return {
-        decode: (data) => parser.feedSync(typeof data === "string" ? schemaBinaryTextEncoder.encode(data) : data),
+        decode: (data) => parser.feedSync(typeof data === "string" ? textEncoder.encode(data) : data),
         encode: (response) => {
           if (!Array.isArray(response)) {
             return encoder.encode(response)
@@ -711,6 +714,11 @@ export const layerNdJsonRpc = (options?: {
  * schema evolution. Frames default to a 16 MiB maximum size. Use `"unbounded"`
  * to disable the frame-size limit.
  *
+ * **Details**
+ *
+ * `SchemaBinary` is loaded dynamically when the layer is built, not when this
+ * module is imported.
+ *
  * @stability unstable
  * @category layers
  * @since 4.0.0
@@ -718,4 +726,10 @@ export const layerNdJsonRpc = (options?: {
 export const layerSchemaBinary = (options?: {
   readonly maxFrameSize?: number | "unbounded" | undefined
   readonly fingerprintPayloads?: boolean | undefined
-}): Layer.Layer<RpcSerialization> => Layer.sync(RpcSerialization)(() => makeSchemaBinary(options))
+}): Layer.Layer<RpcSerialization> =>
+  Layer.effect(RpcSerialization)(
+    Effect.map(
+      Effect.promise(() => import("../encoding/SchemaBinary.ts")),
+      (schemaBinary) => makeSchemaBinary(schemaBinary, options)
+    )
+  )

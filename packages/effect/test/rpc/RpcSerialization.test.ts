@@ -5,6 +5,7 @@ import { HttpRouter } from "effect/http"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import { Rpc, RpcClient, RpcGroup, type RpcMessage, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
+import { readFileSync } from "node:fs"
 
 const responseExitSuccess = (requestId: string | number, value: unknown) => ({
   _tag: "Exit",
@@ -584,6 +585,12 @@ describe("RpcSerialization", () => {
   })
 
   describe("SchemaBinary", () => {
+    it("does not statically import SchemaBinary", () => {
+      const source = readFileSync(new URL("../../src/rpc/RpcSerialization.ts", import.meta.url), "utf8")
+      const staticImport = /^\s*import\s+(?!type\b)(?:(?:[^"'\n]*|\{[^}]*\})\s*from\s*)?["'][^"']*SchemaBinary/m
+      assert.isFalse(staticImport.test(source))
+    })
+
     it.effect("roundtrips requests and streamed responses over HTTP", () =>
       Effect.gen(function*() {
         const client = yield* makeBinaryClient()
