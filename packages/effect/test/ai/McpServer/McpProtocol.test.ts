@@ -77,28 +77,6 @@ const request = (payload: unknown) => ({
   headers: []
 })
 
-describe("2025-06-18 elicitation schema", () => {
-  it("keeps an enum property's values", () => {
-    const payload = Schema.decodeUnknownSync(McpSchema2025_06_18.Elicit.payloadSchema)({
-      message: "Pick one",
-      requestedSchema: {
-        type: "object",
-        properties: {
-          color: { type: "string", title: "Color", enum: ["red", "green"], enumNames: ["Red", "Green"] },
-          note: { type: "string", maxLength: 10 }
-        }
-      }
-    })
-    assert.deepStrictEqual(payload.requestedSchema.properties.color, {
-      type: "string",
-      title: "Color",
-      enum: ["red", "green"],
-      enumNames: ["Red", "Green"]
-    })
-    assert.deepStrictEqual(payload.requestedSchema.properties.note, { type: "string", maxLength: 10 })
-  })
-})
-
 describe("McpProtocolRegistry", () => {
   it.effect("should reject an empty declaration when runtime input bypasses the non-empty type", () =>
     Effect.gen(function*() {
@@ -213,6 +191,28 @@ describe("MCP v2025-06-18 schema", () => {
       lastModified: "2026-07-26"
     })
     assert.notProperty(annotations, "lastModified")
+  })
+
+  it("preserves enum properties in elicitation schemas", () => {
+    const payload = Schema.decodeUnknownSync(McpSchema2025_06_18.Elicit.payloadSchema)({
+      message: "Pick one",
+      requestedSchema: {
+        type: "object",
+        properties: {
+          color: { type: "string", enum: ["red", "green"], enumNames: ["Red", "Green"] },
+          note: { type: "string", maxLength: 10 }
+        }
+      }
+    })
+    const expected = {
+      color: { type: "string", enum: ["red", "green"], enumNames: ["Red", "Green"] },
+      note: { type: "string", maxLength: 10 }
+    }
+
+    const encoded = Schema.encodeSync(Schema.toCodecJson(McpSchema2025_06_18.Elicit.payloadSchema))(payload)
+
+    assert.deepStrictEqual(payload.requestedSchema.properties, expected)
+    assert.deepStrictEqual(encoded.requestedSchema.properties, expected)
   })
 })
 
