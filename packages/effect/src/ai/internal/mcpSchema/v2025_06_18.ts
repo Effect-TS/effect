@@ -479,7 +479,8 @@ const RequestedSchema = Schema.Struct({
   type: Schema.Literal("object"),
   properties: Schema.Record(
     Schema.String,
-    Schema.Union([StringSchema, NumberSchema, BooleanSchema, EnumSchema])
+    // EnumSchema first: StringSchema also matches an enum and would drop its values.
+    Schema.Union([EnumSchema, StringSchema, NumberSchema, BooleanSchema])
   ),
   required: optional(Schema.Array(Schema.String))
 })
