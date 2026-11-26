@@ -901,8 +901,7 @@ export const prev = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
 
 const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, direction: "next" | "prev"): Date => {
   const start = now ?? new Date()
-  // Without a schedule or input time zone, search in the host zone like `match`
-  // does. The host offset at `start` alone would be wrong after a DST change.
+  // Use the named host zone when unzoned so offsets update across DST transitions.
   const useHostZone = Option.isNone(cron.tz) && !(dateTime.isDateTime(start) && dateTime.isZoned(start)) &&
     !(typeof start === "object" && "timeZoneId" in start)
   const zoned = dateTime.makeZonedUnsafe(start, {
