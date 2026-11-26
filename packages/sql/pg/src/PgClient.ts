@@ -398,7 +398,8 @@ const makeImpl = Effect.fnUntraced(function*<R>(
         return fiber.cache.tracerEnabled && fiber.getRef(Statement.SpanPropagationEnabled)
           ? Effect.provideService(execute, Tracer.ParentSpan, span)
           : execute
-      }))
+      })
+    )
 
   return Object.assign(
     client,

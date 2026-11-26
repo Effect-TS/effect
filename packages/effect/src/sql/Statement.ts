@@ -1504,7 +1504,8 @@ const StatementProto: Omit<
             withoutTransform,
             span
           )
-      ))
+      )
+    )
   },
   withConnectionSpan<XA, E>(
     this: StatementImpl<any>,

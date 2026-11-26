@@ -204,7 +204,8 @@ const makeBatch = (options: {
         })
         return results as BatchResults<Statements>
       })
-    ))
+    )
+  )
 }
 
 /**
