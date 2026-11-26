@@ -102,12 +102,20 @@ describe("Equal.equals", () => {
         return [a, { next: a.next }] as const
       }
 
+      const k = Symbol("x")
+      const j = Symbol("x")
+      const wrap = (v: object) => ({ [k]: v, [j]: v })
+
       const pairs = [
         () => [makeRing(1), makeRing(2)] as const,
         () => [makeRing(37), makeRing(41)] as const,
         makeArrayPair,
         () => makeShared(1),
-        () => makeShared(2)
+        () => makeShared(2),
+        () => {
+          const [a, b] = makeShared(1)
+          return [wrap(a), wrap(b)] as const
+        }
       ]
       for (const make of pairs) {
         for (const prehash of ["none", "left", "right", "both"] as const) {
@@ -203,6 +211,43 @@ describe("Equal.equals", () => {
       })
       assert.isTrue(Equal.equals(make(), make()))
       assert.strictEqual(reads, 2)
+    })
+
+    it("avoids exponential traversal on shared acyclic graphs", () => {
+      let reads = 0
+      const makeLeaf = () => ({
+        get v() {
+          reads++
+          return 1
+        }
+      })
+      const makeDag = (tag: number) => {
+        let node: unknown = makeLeaf()
+        for (let i = 0; i < 14; i++) node = { l: node, r: node }
+        return { dag: node, tag }
+      }
+
+      assert.isFalse(Equal.equals(makeDag(0), makeDag(1)))
+      assert.strictEqual(reads, 2)
+
+      reads = 0
+      assert.isTrue(Equal.equals(makeDag(0), makeDag(0)))
+      assert.strictEqual(reads, 2)
+
+      // Interleaved multi-partner DAG: each left node is compared against two distinct equal right nodes.
+      reads = 0
+      let a: unknown = makeLeaf()
+      let b1: unknown = makeLeaf()
+      let b2: unknown = makeLeaf()
+      for (let i = 0; i < 14; i++) {
+        a = { l: a, r: a }
+        const nb1 = { l: b1, r: b2 }
+        const nb2 = { l: b2, r: b1 }
+        b1 = nb1
+        b2 = nb2
+      }
+      assert.isTrue(Equal.equals(a, b1))
+      assert.strictEqual(reads, 4)
     })
 
     it("does not equate plain objects with built-ins that override constructor", () => {
@@ -486,7 +531,7 @@ describe("Equal.equals", () => {
   })
 
   describe("Date objects", () => {
-    it("should compare dates by time value", () => {
+    it("should compare dates by ISO string", () => {
       const date1 = new Date("2023-01-01T00:00:00.000Z")
       const date2 = new Date("2023-01-01T00:00:00.000Z")
       expect(Equal.equals(date1, date2)).toBe(true)
@@ -505,15 +550,15 @@ describe("Equal.equals", () => {
     it("keeps dates with custom methods consistent with Hash", () => {
       const customIso = Object.assign(new Date(0), { toISOString: () => "custom" })
       const plain = new Date(0)
-      assert.isTrue(Equal.equals(customIso, plain))
-      assert.isTrue(Equal.equals(plain, customIso))
-      assert.strictEqual(Hash.hash(customIso), Hash.hash(plain))
+      assert.isFalse(Equal.equals(customIso, plain))
+      assert.isFalse(Equal.equals(plain, customIso))
+      assert.notStrictEqual(Hash.hash(customIso), Hash.hash(plain))
 
       const customTime = Object.assign(new Date(0), { getTime: () => 1000 })
       const later = new Date(1000)
-      assert.isTrue(Equal.equals(customTime, later))
-      assert.isTrue(Equal.equals(later, customTime))
-      assert.strictEqual(Hash.hash(customTime), Hash.hash(later))
+      assert.isFalse(Equal.equals(customTime, later))
+      assert.isFalse(Equal.equals(later, customTime))
+      assert.notStrictEqual(Hash.hash(customTime), Hash.hash(later))
     })
   })
 

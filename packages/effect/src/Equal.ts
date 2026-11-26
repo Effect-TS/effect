@@ -12,7 +12,7 @@
  */
 import type { Equivalence } from "./Equivalence.ts"
 import * as Hash from "./Hash.ts"
-import { bufferBytes, byReferenceInstances, getAllObjectKeys, isArrayBufferLike, viewBytes } from "./internal/equal.ts"
+import { byReferenceInstances, getAllObjectKeys, objectKind, toBytes } from "./internal/equal.ts"
 import { addBackEdge, backEdges, hashCache } from "./internal/hash.ts"
 import { hasProperty } from "./Predicate.ts"
 
@@ -128,7 +128,7 @@ export interface Equal extends Hash.Hash {
  * `[Equal.symbol]` method; if only one operand implements `Equal`, the result
  * is `false`.
  *
- * Dates compare by time value, RegExps compare by string representation,
+ * Dates compare by ISO string, RegExps compare by string representation,
  * arrays compare element-by-element, Maps and Sets compare entries
  * order-independently, and plain objects compare enumerable keys recursively.
  * Functions without an `Equal` implementation compare by reference. Circular
@@ -185,40 +185,32 @@ export function equals(): any {
 }
 
 function compareBoth(self: unknown, that: unknown): boolean {
+  if (self == null || that == null) return self === that
+  const selfType = typeof self
+  if (selfType !== "object" && selfType !== "function") {
+    return self === that || (self !== self && that !== that)
+  }
   if (self === that) {
     // A value shared by both sides can still close a cycle on one of them, which hashing it records.
-    if (
-      pathLeft.length > 0 &&
-      self !== null &&
-      (typeof self === "object" || typeof self === "function") &&
-      !hashCache.has(self)
-    ) {
-      Hash.hash(self)
-    }
+    if (pathLeft.length > 0 && !hashCache.has(self)) Hash.hash(self)
     return true
   }
-  if (self == null || that == null) return false
-  const selfType = typeof self
-  if (selfType !== typeof that) {
+  if (selfType !== typeof that || byReferenceInstances.has(self) || byReferenceInstances.has(that)) {
     return false
   }
-  // Special case for NaN: NaN should be considered equal to NaN
-  if (selfType === "number" && self !== self && that !== that) {
-    return true
-  }
-  if (selfType !== "object" && selfType !== "function") {
-    return false
-  }
-
-  if (byReferenceInstances.has(self) || byReferenceInstances.has(that)) {
-    return false
-  }
-
   return compareObjects(self, that)
 }
 
 function compareObjects(self: object, that: object): boolean {
   const depth = pathLeft.length
+  const prev = seen.get(self)
+  if (prev === that) return true
+  let known: WeakMap<object, boolean> | undefined
+  if (!depth || prev !== undefined) {
+    known = results.get(self)
+    const cached = known?.get(that)
+    if (cached !== undefined) return cached
+  }
   let revisited = false
   for (let i = depth; i-- > 0;) {
     const sameLeft = pathLeft[i] === self
@@ -231,99 +223,84 @@ function compareObjects(self: object, that: object): boolean {
   }
   // One side looped before the other: let the hashes decide instead of unrolling both loops.
   if (revisited && Hash.hash(self) !== Hash.hash(that)) return false
-  if (depth) return compareOnPath(self, that)
-  // Only outermost results are independent of path assumptions.
-  let known = results.get(self)
-  if (!known) results.set(self, known = new WeakMap())
-  let result = known.get(that)
-  if (result === undefined) {
-    const seen = backEdges
-    // Hashes of cyclic values depend on the entry point, so equal ones must still hash alike.
-    result = compareOnPath(self, that) && (seen === backEdges || Hash.hash(self) === Hash.hash(that))
+  const seenBack = backEdges
+  pathLeft.push(self)
+  pathRight.push(that)
+  let result: boolean
+  try {
+    result = compareStructure(self, that)
+  } finally {
+    pathLeft.pop()
+    pathRight.pop()
+    if (!depth) seen.clear()
+  }
+  // Hashes of cyclic values depend on the entry point, so equal ones must still hash alike.
+  if (seenBack !== backEdges) return result && Hash.hash(self) === Hash.hash(that)
+  // Only cache acyclic results so nested lookups never skip a back-edge.
+  if (depth && prev === undefined) {
+    if (result) seen.set(self, that)
+  } else {
+    if (!known) results.set(self, known = new WeakMap())
     known.set(that, result)
   }
   return result
 }
 
-function compareOnPath(self: object, that: object): boolean {
-  pathLeft.push(self)
-  pathRight.push(that)
-  try {
-    return compareStructure(self, that)
-  } finally {
-    pathLeft.pop()
-    pathRight.pop()
-  }
-}
-
 // The pairs on the current comparison's path (the coinductive assumptions).
 const pathLeft: Array<object> = []
 const pathRight: Array<object> = []
+const seen = new Map<object, object>()
 const results = new WeakMap<object, WeakMap<object, boolean>>()
 
 function compareStructure(self: object, that: object): boolean {
-  if (self instanceof Date) {
-    if (!(that instanceof Date)) return false
-    const selfTime = self.getTime()
-    const thatTime = that.getTime()
-    return selfTime === thatTime || (Number.isNaN(selfTime) && Number.isNaN(thatTime))
-  } else if (self instanceof RegExp) {
-    return that instanceof RegExp && self.toString() === that.toString()
+  // Reuse already-cached structural or custom hashes before any further dispatch.
+  const selfHash = hashCache.get(self)
+  if (selfHash !== undefined && selfHash !== (hashCache.get(that) ?? selfHash)) return false
+  const kind = objectKind(self)
+  if (kind === 1 || kind === 2) {
+    if (objectKind(that) !== kind) return false
+    if (kind === 2) return self.toString() === that.toString()
+    if (Hash.hash(self) !== Hash.hash(that)) return false
+    const a = (self as Date).getTime()
+    const b = (that as Date).getTime()
+    return a === b || (a !== a && b !== b)
   }
   const bothEquals = isEqual(self)
   if (bothEquals !== isEqual(that) || (typeof self === "function" && !bothEquals)) {
     return false
   }
-  if (bothEquals || Hash.isHash(self) || Hash.isHash(that)) {
-    // Custom hashes are cheap, and implementors rely on them to reject foreign values.
-    if (Hash.hash(self) !== Hash.hash(that)) return false
-  } else {
-    // A structural hash costs more than comparing, so only reuse cached ones.
-    const selfHash = hashCache.get(self)
-    if (selfHash !== undefined && selfHash !== (hashCache.get(that) ?? selfHash)) return false
+  if ((bothEquals || Hash.isHash(self) || Hash.isHash(that)) && Hash.hash(self) !== Hash.hash(that)) {
+    return false
   }
   if (bothEquals) {
     return (self as Equal)[symbol](that as Equal)
-  } else if (Array.isArray(self)) {
-    if (!Array.isArray(that) || self.length !== that.length) {
-      return false
-    }
-    return compareArrays(self, that)
-  } else if (isArrayBufferLike(self)) {
-    if (!isArrayBufferLike(that) || (self instanceof ArrayBuffer) !== (that instanceof ArrayBuffer)) {
-      return false
-    }
-    const selfBytes = bufferBytes(self)
-    const thatBytes = bufferBytes(that)
+  }
+  if (kind !== objectKind(that)) {
+    return false
+  }
+  if (kind >= 7) {
+    const selfBytes = toBytes(self as ArrayBufferLike | DataView, kind)
+    const thatBytes = toBytes(that as ArrayBufferLike | DataView, kind)
     return selfBytes !== undefined && thatBytes !== undefined && compareTypedArrays(selfBytes, thatBytes)
-  } else if (ArrayBuffer.isView(self)) {
-    const selfIsDataView = self instanceof DataView
-    if (
-      !ArrayBuffer.isView(that) ||
-      self.byteLength !== that.byteLength ||
-      selfIsDataView !== (that instanceof DataView)
-    ) {
-      return false
-    }
-    if (selfIsDataView) {
-      return compareTypedArrays(viewBytes(self), viewBytes(that as DataView))
-    }
-    return compareTypedArrays(self as Uint8Array, that as Uint8Array)
-  } else if (self instanceof Map) {
-    if (!(that instanceof Map) || self.size !== that.size) {
-      return false
-    }
-    return compareHashed(self, that, entryHash, equalEntries)
-  } else if (self instanceof Set) {
-    if (!(that instanceof Set) || self.size !== that.size) {
-      return false
-    }
-    return compareHashed(self, that, Hash.hash, compareBoth)
+  } else if (kind === 5) {
+    return compareArrays(self as Array<unknown>, that as Array<unknown>)
+  } else if (kind === 6) {
+    return (self as ArrayBufferView).byteLength === (that as ArrayBufferView).byteLength &&
+      compareTypedArrays(self as Uint8Array, that as Uint8Array)
+  } else if (kind === 3) {
+    return (self as Map<unknown, unknown>).size === (that as Map<unknown, unknown>).size &&
+      compareHashed(self as Map<unknown, unknown>, that as Map<unknown, unknown>, entryHash, equalEntries)
+  } else if (kind === 4) {
+    return (self as Set<unknown>).size === (that as Set<unknown>).size &&
+      compareHashed(self as Set<unknown>, that as Set<unknown>, Hash.hash, compareBoth)
   }
   return compareRecords(self as any, that as any)
 }
 
 function compareArrays(self: Array<unknown>, that: Array<unknown>): boolean {
+  if (self.length !== that.length) {
+    return false
+  }
   for (let i = 0; i < self.length; i++) {
     if (!compareBoth(self[i], that[i])) {
       return false
@@ -349,32 +326,17 @@ function compareRecords(
   self: Record<PropertyKey, unknown>,
   that: Record<PropertyKey, unknown>
 ): boolean {
-  // A record never equals a built-in, whichever side it is on.
-  if (
-    that instanceof Date ||
-    that instanceof RegExp ||
-    Array.isArray(that) ||
-    isArrayBufferLike(that) ||
-    ArrayBuffer.isView(that) ||
-    that instanceof Map ||
-    that instanceof Set
-  ) {
-    return false
-  }
-
   const selfKeys = getAllObjectKeys(self)
   const thatKeys = getAllObjectKeys(that)
-
-  if (selfKeys.size !== thatKeys.size) {
+  const thatIsSet = thatKeys instanceof Set
+  if ((selfKeys instanceof Set ? selfKeys.size : selfKeys.length) !== (thatIsSet ? thatKeys.size : thatKeys.length)) {
     return false
   }
-
   for (const key of selfKeys) {
-    if (!(thatKeys.has(key)) || !compareBoth(self[key], that[key])) {
+    if (!(thatIsSet ? thatKeys.has(key) : Object.hasOwn(that, key)) || !compareBoth(self[key], that[key])) {
       return false
     }
   }
-
   return true
 }
 
