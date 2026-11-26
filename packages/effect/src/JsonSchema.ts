@@ -420,10 +420,8 @@ export function fromSchemaOpenApi3_1(js: JsonSchema, options?: FromOpenApiOption
   const isRootResource = createsResource(js.$id)
   const onReference = options?.onReference
   const schema = transformSchema(js, (schema, inEmbeddedResource) => {
-    if (onReference !== undefined) {
-      if (typeof schema.$ref === "string") onReference(schema.$ref)
-      if (typeof schema.$dynamicRef === "string") onReference(schema.$dynamicRef)
-    }
+    if (typeof schema.$ref === "string") onReference?.(schema.$ref)
+    if (typeof schema.$dynamicRef === "string") onReference?.(schema.$dynamicRef)
     if (!isRootResource && !inEmbeddedResource) rewriteSchemaRef(schema, rewriteOpenApiComponentsReference)
     if (isMetaSchemaUri(schema.$schema, META_SCHEMA_URI_OPEN_API_3_1)) {
       InternalRecord.assignProperty(schema, "$schema", META_SCHEMA_URI_DRAFT_2020_12)
@@ -493,7 +491,7 @@ export function fromSchemaOpenApi3_1(js: JsonSchema, options?: FromOpenApiOption
 export function fromSchemaOpenApi3_0(schema: JsonSchema): Document<"draft-2020-12">
 export function fromSchemaOpenApi3_0(schema: JsonSchema, options?: FromOpenApiOptions): Document<"draft-2020-12">
 export function fromSchemaOpenApi3_0(schema: JsonSchema, options?: FromOpenApiOptions): Document<"draft-2020-12"> {
-  return fromSchemaDraft2020_12(convertOpenApi30(schema, options))
+  return fromSchemaDraft2020_12(convertOpenApi30(schema, options?.onReference))
 }
 
 /**
@@ -1395,8 +1393,7 @@ function convertDependencies(
   if (Object.keys(dependencies).length > 0) InternalRecord.assignProperty(out, "dependencies", dependencies)
 }
 
-function convertOpenApi30(root: JsonSchema, options?: FromOpenApiOptions): JsonSchema {
-  const onReference = options?.onReference
+function convertOpenApi30(root: JsonSchema, onReference: FromOpenApiOptions["onReference"]): JsonSchema {
   return convertSchema(root, (source, context) => {
     const out: JsonSchema = {}
 
