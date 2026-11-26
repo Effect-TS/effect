@@ -194,18 +194,21 @@ describe("MCP v2025-06-18 schema", () => {
   })
 
   it("preserves enum properties in elicitation schemas", () => {
-    const properties = {
-      color: { type: "string", enum: ["red", "green"], enumNames: ["Red", "Green"] },
-      note: { type: "string", maxLength: 10 }
-    }
-    const payload = Schema.decodeUnknownSync(McpSchema2025_06_18.Elicit.payloadSchema)({
+    const input = {
       message: "Pick one",
-      requestedSchema: { type: "object", properties }
-    })
+      requestedSchema: {
+        type: "object",
+        properties: {
+          color: { type: "string", enum: ["red", "green"], enumNames: ["Red", "Green"] },
+          note: { type: "string", maxLength: 10 }
+        }
+      }
+    } as const
+    const payload = Schema.decodeUnknownSync(McpSchema2025_06_18.Elicit.payloadSchema)(input)
     const encoded = Schema.encodeSync(Schema.toCodecJson(McpSchema2025_06_18.Elicit.payloadSchema))(payload)
 
-    assert.deepStrictEqual(payload.requestedSchema.properties, properties)
-    assert.deepStrictEqual(encoded.requestedSchema.properties, properties)
+    assert.deepStrictEqual(payload, input)
+    assert.deepStrictEqual(encoded, input)
   })
 })
 
