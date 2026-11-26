@@ -11,6 +11,8 @@ repository root after `pnpm build` (or `pnpm --dir packages/effect build` when o
 - `module-code.ts <entry.ts> [module-filter]`: lists the modules in the unminified
   bundle by rendered size. With a filter (`dist/Context.js`) it prints the code those
   modules contribute, which shows the declarations that survive tree-shaking.
+- `bundle-unmangled.ts <entry.ts> <out.js>`: writes the same bundle minified but not
+  mangled, a faster input for `attribution.mjs` than a full `pnpm bundle-analyze`.
 - `attribution.mjs <bundle.js> [limit]`: removes each top-level declaration in turn
   and reports the gzipped bytes it accounts for. Use it on the unmangled
   `tmp/bundle-analysis/basic.min.js` so names stay readable.
