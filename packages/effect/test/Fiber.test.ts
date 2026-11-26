@@ -39,6 +39,17 @@ describe("Fiber", () => {
       assert.instanceOf(cache.scheduler, Scheduler.MixedScheduler)
     })
 
+    it("holds the reference defaults under runFork", () => {
+      const fiber = Effect.runFork(cachedAndReferenced)
+      const exit = fiber.pollUnsafe()
+      assert.isTrue(exit !== undefined && Exit.isSuccess(exit))
+      const { cache, references } = (exit as Exit.Success<Effect.Success<typeof cachedAndReferenced>>).value
+      for (const [name, value] of Object.entries(references)) {
+        assert.strictEqual(cache[name as keyof typeof references], value, name)
+      }
+      assert.strictEqual(cache.scheduler, Context.get(Context.empty(), Scheduler.Scheduler))
+    })
+
     it("holds the runFork scheduler option after a fiber ran on the same context", () => {
       Effect.runSync(Effect.void)
       const scheduler = new Scheduler.MixedScheduler("sync")
@@ -48,6 +59,20 @@ describe("Fiber", () => {
       const { cache, references } = (exit as Exit.Success<Effect.Success<typeof cachedAndReferenced>>).value
       assert.strictEqual(cache.scheduler, scheduler)
       assert.strictEqual(references.scheduler, scheduler)
+    })
+
+    it("preserves context maxDepth under runForkWith with a scheduler override", () => {
+      const base = Context.makeUnsafe<never>(new Map(), { maxDepth: 2 })
+      const scheduler = new Scheduler.MixedScheduler("sync")
+      const fiber = Effect.runForkWith(base)(
+        Effect.withFiber((f) => Effect.succeed(f.context)),
+        { scheduler }
+      )
+      const exit = fiber.pollUnsafe()
+      assert.isTrue(exit !== undefined && Exit.isSuccess(exit))
+      const ctx = (exit as Exit.Success<Context.Context<never>>).value
+      assert.strictEqual((ctx as unknown as { readonly maxDepth: number }).maxDepth, 2)
+      assert.strictEqual(Context.get(ctx, Scheduler.Scheduler), scheduler)
     })
 
     it("refreshes when a cached service is added by key", () => {

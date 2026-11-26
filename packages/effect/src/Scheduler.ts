@@ -12,6 +12,15 @@
  */
 import * as Context from "./Context.ts"
 import type * as Fiber from "./Fiber.ts"
+import {
+  bindMemoizedDefault,
+  defaultMaxOpsBeforeYield,
+  defaultPreventSchedulerYield,
+  MaxOpsBeforeYieldKey,
+  PreventSchedulerYieldKey,
+  SchedulerKey
+} from "./internal/fiberCachedKeys.ts"
+import { getDefaultScheduler, MixedScheduler } from "./internal/scheduler.ts"
 
 /**
  * A scheduler manages the execution of Effect fibers by controlling when queued
@@ -62,12 +71,6 @@ export interface SchedulerDispatcher {
   flush(): void
 }
 
-/** @internal */
-export const schedulerDefinition: Context.ReferenceDefinition<Scheduler> = {
-  key: "effect/Scheduler",
-  defaultValue: () => new MixedScheduler()
-}
-
 /**
  * Context reference for the scheduler used by the Effect runtime.
  *
@@ -85,198 +88,44 @@ export const schedulerDefinition: Context.ReferenceDefinition<Scheduler> = {
  * @category services
  * @since 2.0.0
  */
-export const Scheduler: Context.Reference<Scheduler> = Context.referenceFromDefinition(schedulerDefinition)
+export const Scheduler: Context.Reference<Scheduler> = bindMemoizedDefault(
+  Context.Reference<Scheduler>(SchedulerKey, {
+    defaultValue: () => new MixedScheduler()
+  }),
+  getDefaultScheduler
+)
 
-const setMicrotask = (f: () => void) => {
-  let cancelled = false
-  Promise.resolve().then(() => {
-    if (!cancelled) f()
-  })
-  return (): void => {
-    cancelled = true
-  }
-}
-
-const setTimer: (f: () => void) => () => void = "setImmediate" in globalThis
-  ? (f) => {
-    // @ts-ignore
-    const timer = globalThis.setImmediate(f)
-    // @ts-ignore
-    return (): void => globalThis.clearImmediate(timer)
-  }
-  : (f) => {
-    const timer = setTimeout(f, 0)
-    return (): void => clearTimeout(timer)
-  }
-
-// Some runtimes (e.g. Cloudflare Workers) throw when a timer is set in global
-// scope. Fall back to a microtask so effects can still yield at module load.
-const setImmediate = (f: () => void) => {
-  try {
-    return setTimer(f)
-  } catch {
-    return setMicrotask(f)
-  }
-}
-
-class PriorityBuckets {
-  buckets: Array<[priority: number, tasks: Array<() => void>]> = []
-
-  scheduleTask(task: () => void, priority: number): void {
-    const buckets = this.buckets
-    const len = buckets.length
-    let bucket: [number, Array<() => void>] | undefined
-    let index = 0
-    for (; index < len; index++) {
-      if (buckets[index][0] > priority) break
-      bucket = buckets[index]
-    }
-    if (bucket && bucket[0] === priority) {
-      bucket[1].push(task)
-    } else if (index === len) {
-      buckets.push([priority, [task]])
-    } else {
-      buckets.splice(index, 0, [priority, [task]])
-    }
-  }
-
-  drain() {
-    const buckets = this.buckets
-    this.buckets = []
-    return buckets
-  }
-}
-
-/**
- * Provides a scheduler implementation that batches queued tasks and dispatches them by
- * priority.
- *
- * **When to use**
- *
- * Use when you need the default runtime scheduler directly, including a
- * scheduler that batches queued work by priority and preserves FIFO order within
- * each priority.
- *
- * **Details**
- *
- * `MixedScheduler` supports synchronous and asynchronous execution modes, uses
- * operation counts to decide when fibers should yield, and is the default
- * scheduler implementation.
- *
- * **Gotchas**
- *
- * On Cloudflare Workers, request-owned scheduler timers can be discarded,
- * leaving shared fibers suspended. Use `new MixedScheduler("sync")` for the
- * whole application; see `HttpRouter.toWebHandler` for a recipe.
- * Sync mode does not yield to the event loop: CPU-heavy work delays other
- * requests, and I/O-polling loops can exhaust the CPU limit. It does not fix
- * request-owned timers (such as `Effect.sleep`) or request-bound async contexts.
- *
- * @stability stable
- * @category models
- * @since 2.0.0
- */
-export class MixedScheduler implements Scheduler {
-  readonly executionMode: "sync" | "async"
-  readonly setImmediate: (f: () => void) => () => void
-
-  constructor(
-    executionMode: "sync" | "async" = "async",
-    setImmediateFn?: (f: () => void) => () => void
-  ) {
-    this.executionMode = executionMode
-    this.setImmediate = setImmediateFn ?? (executionMode === "sync" ? setMicrotask : setImmediate)
-  }
-
+export {
   /**
-   * Returns whether the fiber has reached its operation budget and should yield.
+   * Provides a scheduler implementation that batches queued tasks and dispatches them by
+   * priority.
    *
    * **When to use**
    *
-   * Use to decide whether a fiber should yield after consuming its current
-   * operation budget.
+   * Use when you need the default runtime scheduler directly, including a
+   * scheduler that batches queued work by priority and preserves FIFO order within
+   * each priority.
    *
-   * @since 2.0.0
-   */
-  shouldYield(fiber: Fiber.Fiber<unknown, unknown>) {
-    return fiber.currentOpCount >= fiber.cache.maxOpsBeforeYield
-  }
-
-  /**
-   * Creates a dispatcher that schedules work through this scheduler.
+   * **Details**
    *
-   * **When to use**
+   * `MixedScheduler` supports synchronous and asynchronous execution modes, uses
+   * operation counts to decide when fibers should yield, and is the default
+   * scheduler implementation.
    *
-   * Use when you need a standalone dispatcher from a scheduler instance, for
-   * example in tests that enqueue tasks and then flush them deterministically.
+   * **Gotchas**
    *
-   * @since 4.0.0
-   */
-  makeDispatcher() {
-    return new MixedSchedulerDispatcher(this.setImmediate)
-  }
-}
-
-class MixedSchedulerDispatcher implements SchedulerDispatcher {
-  private tasks = new PriorityBuckets()
-  private running: (() => void) | undefined = undefined
-  readonly setImmediate: (f: () => void) => () => void
-
-  constructor(
-    setImmediateFn: (f: () => void) => () => void = setImmediate
-  ) {
-    this.setImmediate = setImmediateFn
-  }
-
-  /**
+   * On Cloudflare Workers, request-owned scheduler timers can be discarded,
+   * leaving shared fibers suspended. Use `new MixedScheduler("sync")` for the
+   * whole application; see `HttpRouter.toWebHandler` for a recipe.
+   * Sync mode does not yield to the event loop: CPU-heavy work delays other
+   * requests, and I/O-polling loops can exhaust the CPU limit. It does not fix
+   * request-owned timers (such as `Effect.sleep`) or request-bound async contexts.
+   *
+   * @stability stable
+   * @category models
    * @since 2.0.0
    */
-  scheduleTask(task: () => void, priority: number) {
-    this.tasks.scheduleTask(task, priority)
-    if (this.running === undefined) {
-      this.running = this.setImmediate(this.afterScheduled)
-    }
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  afterScheduled = () => {
-    this.running = undefined
-    this.runTasks()
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  runTasks() {
-    const buckets = this.tasks.drain()
-    for (let i = 0; i < buckets.length; i++) {
-      const toRun = buckets[i][1]
-      for (let j = 0; j < toRun.length; j++) {
-        toRun[j]()
-      }
-    }
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  flush() {
-    while (this.tasks.buckets.length > 0) {
-      if (this.running !== undefined) {
-        this.running()
-        this.running = undefined
-      }
-      this.runTasks()
-    }
-  }
-}
-
-/** @internal */
-export const maxOpsBeforeYieldDefinition: Context.ReferenceDefinition<number> = {
-  key: "effect/Scheduler/MaxOpsBeforeYield",
-  defaultValue: () => 2048
+  MixedScheduler
 }
 
 /**
@@ -300,15 +149,9 @@ export const maxOpsBeforeYieldDefinition: Context.ReferenceDefinition<number> = 
  * @category services
  * @since 4.0.0
  */
-export const MaxOpsBeforeYield: Context.Reference<number> = Context.referenceFromDefinition(
-  maxOpsBeforeYieldDefinition
-)
-
-/** @internal */
-export const preventSchedulerYieldDefinition: Context.ReferenceDefinition<boolean> = {
-  key: "effect/Scheduler/PreventSchedulerYield",
-  defaultValue: () => false
-}
+export const MaxOpsBeforeYield: Context.Reference<number> = Context.Reference<number>(MaxOpsBeforeYieldKey, {
+  defaultValue: () => defaultMaxOpsBeforeYield
+})
 
 /**
  * Context reference that controls whether the runtime should bypass scheduler
@@ -332,6 +175,6 @@ export const preventSchedulerYieldDefinition: Context.ReferenceDefinition<boolea
  * @category services
  * @since 4.0.0
  */
-export const PreventSchedulerYield: Context.Reference<boolean> = Context.referenceFromDefinition(
-  preventSchedulerYieldDefinition
-)
+export const PreventSchedulerYield: Context.Reference<boolean> = Context.Reference<boolean>(PreventSchedulerYieldKey, {
+  defaultValue: () => defaultPreventSchedulerYield
+})

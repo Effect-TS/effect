@@ -114,92 +114,80 @@ export function format(input: unknown, options?: {
   readonly space?: number | string | undefined
   readonly ignoreToString?: boolean | undefined
 }): string {
-  const space = options?.space ?? 0
+  const space = options?.space
   const ancestors = new WeakSet<object>()
-  const gap = !space ? "" : (typeof space === "number" ? " ".repeat(space) : space)
-  const ind = (d: number) => gap.repeat(d)
+  const gap = typeof space === "number" ? " ".repeat(space) : space ?? ""
+  const ignoreToString = options?.ignoreToString === true
 
-  const wrap = (v: unknown, body: string): string => {
-    const ctor = (v as any)?.constructor
-    return ctor && ctor !== Object.prototype.constructor && ctor.name ? `${ctor.name}(${body})` : body
+  const formatBlock = <A>(
+    open: string,
+    close: string,
+    items: ReadonlyArray<A>,
+    d: number,
+    render: (item: A, nextDepth: number, multiline: boolean) => string
+  ): string => {
+    const multiline = Boolean(gap) && items.length > 1
+    const next = multiline ? d + 1 : d
+    const rendered = items.map((item) => render(item, next, multiline))
+    if (!multiline) return `${open}${rendered.join(",")}${close}`
+    const pad = gap.repeat(next)
+    return `${open}\n${pad}${rendered.join(`,\n${pad}`)}\n${gap.repeat(d)}${close}`
   }
 
-  const ownKeys = (o: object): Array<PropertyKey> => {
+  function recur(v: unknown, d: number): string {
     try {
-      return Reflect.ownKeys(o)
-    } catch {
-      return ["[ownKeys threw]"]
-    }
-  }
+      if (typeof v === "string") return JSON.stringify(v)
+      if (typeof v === "bigint") return `${v}n`
+      if (v === null || (typeof v !== "object" && typeof v !== "function")) return String(v)
 
-  function recur(v: unknown, d = 0): string {
-    try {
-      return recurUnsafe(v, d)
-    } catch {
-      if ((typeof v === "object" && v !== null) || typeof v === "function") ancestors.delete(v)
-      return "[inspection threw]"
-    }
-  }
-
-  function recurUnsafe(v: unknown, d = 0): string {
-    if (typeof v === "string") return JSON.stringify(v)
-
-    if (
-      typeof v === "number" ||
-      v == null ||
-      typeof v === "boolean" ||
-      typeof v === "symbol"
-    ) return String(v)
-
-    if (typeof v === "bigint") return String(v) + "n"
-
-    if (typeof v === "object" || typeof v === "function") {
-      if (ancestors.has(v)) return CIRCULAR
+      if (ancestors.has(v)) return "[Circular]"
       ancestors.add(v)
 
       let output: string
       if (symbolRedactable in v) {
         output = recur(getRedacted(v as any), d)
       } else if (Array.isArray(v)) {
-        output = !gap || v.length <= 1
-          ? `[${v.map((x) => recur(x, d)).join(",")}]`
-          : `[\n${ind(d + 1)}${v.map((x) => recur(x, d + 1)).join(",\n" + ind(d + 1))}\n${ind(d)}]`
+        output = formatBlock("[", "]", v, d, (x, next) => recur(x, next))
       } else if (v instanceof Date) {
         output = formatDate(v)
-      } else if (
-        !options?.ignoreToString &&
-        Predicate.hasProperty(v, "toString") &&
-        typeof v["toString"] === "function" &&
-        v["toString"] !== Object.prototype.toString &&
-        v["toString"] !== Array.prototype.toString
-      ) {
-        const s = safeToString(v)
-        output = v instanceof Error && v.cause !== undefined ? `${s} (cause: ${recur(v.cause, d)})` : s
-      } else if (Symbol.iterator in v) {
-        output = `${v.constructor.name}(${recur(Array.from(v as any), d)})`
       } else {
-        const keys = ownKeys(v)
-        if (!gap || keys.length <= 1) {
-          const body = `{${keys.map((k) => `${formatPropertyKey(k)}:${recur(safeGet(v, k), d)}`).join(",")}}`
-          output = wrap(v, body)
+        const toString = ignoreToString ? undefined : (v as any).toString
+        if (
+          typeof toString === "function" &&
+          toString !== Object.prototype.toString &&
+          toString !== Array.prototype.toString
+        ) {
+          const s = tryOr(() => String(toString.call(v)), "[toString threw]")
+          output = v instanceof Error && v.cause !== undefined ? `${s} (cause: ${recur(v.cause, d)})` : s
+        } else if (Symbol.iterator in v) {
+          output = `${v.constructor.name}(${recur(Array.from(v as any), d)})`
         } else {
-          const body = `{\n${
-            keys.map((k) => `${ind(d + 1)}${formatPropertyKey(k)}: ${recur(safeGet(v, k), d + 1)}`).join(",\n")
-          }\n${ind(d)}}`
-          output = wrap(v, body)
+          const keys = tryOr(() => Reflect.ownKeys(v), ownKeysThrew)
+          const body = formatBlock(
+            "{",
+            "}",
+            keys,
+            d,
+            (k, next, multiline) =>
+              `${formatPropertyKey(k)}${multiline ? ": " : ":"}${
+                recur(tryOr(() => (v as any)[k], "[property access threw]"), next)
+              }`
+          )
+          const ctor = (v as any).constructor
+          output = ctor && ctor !== Object && ctor.name ? `${ctor.name}(${body})` : body
         }
       }
       ancestors.delete(v)
       return output
+    } catch {
+      // WeakSet.prototype.delete returns false for non-objects without throwing.
+      ancestors.delete(v as any)
+      return "[inspection threw]"
     }
-
-    return String(v)
   }
 
   return recur(input, 0)
 }
-
-const CIRCULAR = "[Circular]"
 
 /**
  * @internal
@@ -224,27 +212,16 @@ export function formatPath(path: ReadonlyArray<PropertyKey>): string {
  * @internal
  */
 export function formatDate(date: Date): string {
-  try {
-    return date.toISOString()
-  } catch {
-    return "Invalid Date"
-  }
+  return tryOr(() => date.toISOString(), "Invalid Date")
 }
 
-function safeToString(input: any): string {
-  try {
-    const s = input.toString()
-    return typeof s === "string" ? s : String(s)
-  } catch {
-    return "[toString threw]"
-  }
-}
+const ownKeysThrew: ReadonlyArray<PropertyKey> = ["[ownKeys threw]"]
 
-function safeGet(input: object, key: PropertyKey): unknown {
+function tryOr<A>(f: () => A, fallback: A): A {
   try {
-    return (input as any)[key]
+    return f()
   } catch {
-    return "[property access threw]"
+    return fallback
   }
 }
 

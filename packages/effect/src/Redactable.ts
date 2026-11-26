@@ -10,6 +10,7 @@
  * @since 4.0.0
  */
 import type * as Context from "./Context.ts"
+import { currentFiberTypeId as InternalCurrentFiberTypeId } from "./internal/fiberCachedKeys.ts"
 import { pipeArguments } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
 
@@ -167,8 +168,10 @@ export function getRedacted(redactable: Redactable): unknown {
 }
 
 /** @internal */
-export const currentFiberTypeId = "~effect/Fiber/currentFiber"
+export const currentFiberTypeId: "~effect/Fiber/currentFiber" = InternalCurrentFiberTypeId
 
+// Fallback when no fiber is running. Kept local so `Formatter.ts`, which imports
+// this module, does not pull in `Context.ts`.
 const emptyMap = new Map()
 const emptyContext: Context.Context<never> = {
   "~effect/Context": {} as any,
