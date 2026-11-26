@@ -2119,6 +2119,27 @@ describe("McpServer", () => {
         assert.deepStrictEqual(server.tools, [])
       }))
 
+    it.effect("replaces a tool added again under its name in place", () =>
+      Effect.gen(function*() {
+        const server = yield* McpServer.McpServer.make
+        const add = (name: string, text: string) =>
+          server.addTool({
+            tool: new McpSchema.Tool({ name, inputSchema: { type: "object" } }),
+            annotations: Context.empty(),
+            handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [{ type: "text", text }] }))
+          })
+        yield* add("a", "first a")
+        yield* add("b", "first b")
+        yield* add("c", "first c")
+        yield* add("b", "second b")
+        yield* add("d", "first d")
+        assert.deepStrictEqual(server.tools.map(({ tool }) => tool.name), ["a", "b", "c", "d"])
+        const b = yield* server.callTool({ name: "b" }).pipe(
+          Effect.provideService(McpSchema.McpServerClient, directClient)
+        )
+        assert.deepStrictEqual(b.content, [{ type: "text", text: "second b" }])
+      }))
+
     it.effect("preserves existing tools when a later toolkit schema is invalid for MCP", () =>
       Effect.gen(function*() {
         const ValidTool = Tool.make("ValidTool", { success: Schema.String })
