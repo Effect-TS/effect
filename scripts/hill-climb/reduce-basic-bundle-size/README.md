@@ -87,3 +87,6 @@ More gotchas:
   first (`git worktree move tmp/bundle-base ../bundle-base`) and back before comparing.
 - Building only `packages/effect` in the base worktree and writing `.bundle-build-stamp` is enough
   for `bundle-compare-selected` to reuse it, because every fixture imports from `effect` alone.
+- The shared checkout cache lists `scripts/hill-climb` in `info/exclude`, so `git add` skips new
+  files here without failing the commit. Add them with `git add -f` and check `git status` before
+  pushing; two benchmark scripts were lost that way.
