@@ -8,6 +8,11 @@ const [bundlePath, size, mode, warmArgument = "300", profilePrefix] = process.ar
 assert.ok(mode === "time" || mode === "heap" || mode === "profile")
 const warmMs = Number(warmArgument)
 const now = () => Number(process.hrtime.bigint()) / 1e6
+// Main-thread CPU time does not count time spent descheduled on a loaded host.
+const cpuNow = () => {
+  const { user, system } = process.threadCpuUsage()
+  return (user + system) / 1e3
+}
 const gc = (globalThis as any).gc as (() => void) | undefined
 assert.ok(mode !== "heap" || gc, "heap mode requires --expose-gc")
 
@@ -30,15 +35,18 @@ if (mode === "profile") {
 }
 
 const timings: Record<string, number> = {}
+const cpu: Record<string, number> = {}
 const heapUsed: Record<string, number> = {}
 const profiles: Array<string> = []
 
 const phase = async (name: string, run: () => unknown) => {
   if (mode === "profile") await session.post("Profiler.start")
   const start = now()
+  const cpuStart = cpuNow()
   const result: any = run()
   if (typeof result?.then === "function") await result
   timings[name] = now() - start
+  cpu[name] = cpuNow() - cpuStart
   if (mode === "profile") {
     const { profile } = await session.post("Profiler.stop")
     const path = `${profilePrefix}-${name}.cpuprofile`
@@ -81,4 +89,4 @@ if (mode === "time" && workload.warm && warmMs > 0) {
 assert.ok(workload.retained())
 await workload.dispose?.()
 session.disconnect()
-process.stdout.write(JSON.stringify({ timings, heapUsed, warm, profiles }))
+process.stdout.write(JSON.stringify({ timings, cpu, heapUsed, warm, profiles }))

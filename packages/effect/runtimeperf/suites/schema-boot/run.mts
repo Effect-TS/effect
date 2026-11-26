@@ -173,7 +173,9 @@ function summarize() {
       const series = Object.fromEntries([
         ...phases.map((phase) => [phase, time.map((sample: any) => sample.timings[phase])]),
         ["total", time.map((sample: any) => phases.reduce((sum, phase) => sum + sample.timings[phase], 0))],
-        ...(time[0].warm ? [["warm", time.map((sample: any) => sample.warm.nsPerOp)]] : [])
+        ...(time[0].warm ? [["warm", time.map((sample: any) => sample.warm.nsPerOp)]] : []),
+        ...phases.map((phase) => [`${phase} cpu`, time.map((sample: any) => sample.cpu[phase])]),
+        ["total cpu", time.map((sample: any) => phases.reduce((sum, phase) => sum + sample.cpu[phase], 0))]
       ])
       const heapDelta = heap.length === 0 ? {} : Object.fromEntries(phases.map((phase, index) => [
         phase,

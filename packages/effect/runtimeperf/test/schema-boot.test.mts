@@ -39,6 +39,7 @@ describe("schema-boot", () => {
           encoding: "utf8"
         }))
         assert.ok(output.timings.import > 0 && output.timings.define >= 0, entry)
+        assert.ok(output.cpu.import > 0 && output.cpu.define >= 0, entry)
         assert.ok(output.warm.nsPerOp > 0, entry)
       }
       const heap = JSON.parse(execFileSync(process.execPath, ["--expose-gc", worker, bundles.graph.path, "small", "heap"], {
