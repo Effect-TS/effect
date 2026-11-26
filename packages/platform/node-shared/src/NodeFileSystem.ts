@@ -270,6 +270,9 @@ const openFactory = (method: string): FileSystem.FileSystem["open"] => {
 }
 const open = openFactory("open")
 
+const isEspipe = (error: Error.PlatformError) =>
+  (error.reason.cause as NodeJS.ErrnoException | undefined)?.code === "ESPIPE"
+
 const negativePosition = (method: string) =>
   Error.badArgument({
     module: "FileSystem",
@@ -322,7 +325,7 @@ const makeFile = (() => {
     private readonly append: boolean
 
     private position: bigint = BigInt(0)
-    private seekable: boolean | undefined
+    private sequential = false
 
     constructor(
       fd: number,
@@ -341,25 +344,28 @@ const makeFile = (() => {
       return nodeSync(this.fd)
     }
 
-    // Pipes, sockets and terminals reject positioned I/O with ESPIPE, so
-    // implicit reads and writes on them use the descriptor's own offset (null).
-    private get implicitPosition(): Effect.Effect<bigint | null, Error.PlatformError> {
-      const seekable = Effect.suspend(() =>
-        this.seekable !== undefined
-          ? Effect.succeed(this.seekable)
-          : Effect.map(nodeStat(this.fd, { bigint: true }), (stat) => {
-            const type = fileType(stat)
-            return this.seekable = type !== "FIFO" && type !== "Socket" && type !== "CharacterDevice"
-          })
+    // Pipes, sockets and terminals reject positioned I/O with ESPIPE. Retry
+    // at the descriptor's own offset (null) and keep doing so for this handle.
+    private implicit<A>(
+      f: (position: bigint | null) => Effect.Effect<A, Error.PlatformError>
+    ): Effect.Effect<A, Error.PlatformError> {
+      return Effect.suspend(() =>
+        this.sequential ? f(null) : Effect.catchIf(f(this.position), isEspipe, () => {
+          this.sequential = true
+          return f(null)
+        })
       )
-      return Effect.map(seekable, (seekable) => seekable ? this.position : null)
     }
 
-    private writePosition(method: string): Effect.Effect<number | undefined, Error.PlatformError> {
-      return this.append ? Effect.succeed(undefined) : Effect.flatMap(
-        this.implicitPosition,
-        (position) => position === null ? Effect.succeed(undefined) : positionToNumber(position, method)
-      )
+    private writeAt<A>(
+      method: string,
+      f: (position: number | undefined) => Effect.Effect<A, Error.PlatformError>
+    ): Effect.Effect<A, Error.PlatformError> {
+      return this.append ?
+        f(undefined) :
+        this.implicit((position) =>
+          position === null ? f(undefined) : Effect.flatMap(positionToNumber(position, method), f)
+        )
     }
 
     seek(offset: bigint, from: FileSystem.SeekMode) {
@@ -385,7 +391,7 @@ const makeFile = (() => {
             ? Effect.fail(negativePosition("read"))
             : nodeRead(this.fd, { buffer, position: explicit })
         }
-        return Effect.flatMap(this.implicitPosition, (position) =>
+        return this.implicit((position) =>
           Effect.map(
             nodeRead(this.fd, { buffer, position }),
             (bytesRead) => {
@@ -394,7 +400,8 @@ const makeFile = (() => {
               }
               return bytesRead
             }
-          ))
+          )
+        )
       })
     }
 
@@ -409,29 +416,27 @@ const makeFile = (() => {
             return Effect.fail(negativePosition("readAlloc"))
           }
           const buffer = Buffer.allocUnsafeSlow(size)
-          return Effect.flatMap(
-            explicit === undefined ? this.implicitPosition : Effect.succeed(explicit),
-            (position) =>
-              Effect.map(
-                nodeReadAlloc(this.fd, { buffer, position }),
-                (bytesRead): Option.Option<Buffer> => {
-                  if (bytesRead === 0) {
-                    return Option.none()
-                  }
-
-                  if (explicit === undefined && position !== null) {
-                    this.position = position + BigInt(bytesRead)
-                  }
-                  if (bytesRead === size) {
-                    return Option.some(buffer)
-                  }
-
-                  const dst = Buffer.allocUnsafeSlow(bytesRead)
-                  buffer.copy(dst, 0, 0, bytesRead)
-                  return Option.some(dst)
+          const readInto = (position: bigint | null) =>
+            Effect.map(
+              nodeReadAlloc(this.fd, { buffer, position }),
+              (bytesRead): Option.Option<Buffer> => {
+                if (bytesRead === 0) {
+                  return Option.none()
                 }
-              )
-          )
+
+                if (explicit === undefined && position !== null) {
+                  this.position = position + BigInt(bytesRead)
+                }
+                if (bytesRead === size) {
+                  return Option.some(buffer)
+                }
+
+                const dst = Buffer.allocUnsafeSlow(bytesRead)
+                buffer.copy(dst, 0, 0, bytesRead)
+                return Option.some(dst)
+              }
+            )
+          return explicit === undefined ? this.implicit(readInto) : readInto(explicit)
         } catch (cause) {
           return Effect.fail(handleBadArgument("readAlloc")(cause))
         }
@@ -450,7 +455,7 @@ const makeFile = (() => {
     }
 
     write(buffer: Uint8Array) {
-      return Effect.flatMap(this.writePosition("write"), (position) =>
+      return this.writeAt("write", (position) =>
         Effect.map(
           nodeWrite(this.fd, buffer, position),
           (bytesWritten) => {
@@ -463,7 +468,7 @@ const makeFile = (() => {
     }
 
     private writeAllChunk(buffer: Uint8Array): Effect.Effect<void, Error.PlatformError> {
-      return Effect.flatMap(this.writePosition("writeAll"), (position) =>
+      return this.writeAt("writeAll", (position) =>
         Effect.flatMap(
           nodeWriteAll(this.fd, buffer, position),
           (bytesWritten) => {
