@@ -77,11 +77,11 @@ export class ConfigError {
   readonly _tag = "ConfigError"
   readonly name: string = "ConfigError"
   readonly cause: SourceError | Schema.SchemaError
+  readonly message: string
   constructor(cause: SourceError | Schema.SchemaError) {
     this.cause = cause
-  }
-  get message() {
-    return this.cause.toString()
+    // Computed eagerly so replacing `cause` (as test runners do when serializing errors) cannot break it
+    this.message = cause.toString()
   }
   toString() {
     return `ConfigError(${this.message})`
