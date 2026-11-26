@@ -83,6 +83,29 @@ describe("Formatter", () => {
       strictEqual(format(value), `{"safe":1,"unsafe":"[property access threw]"}`)
     })
 
+    it("reports a toString whose result cannot be converted as [toString threw]", () => {
+      const result = {
+        toString() {
+          throw new Error("conversion defect")
+        },
+        valueOf() {
+          throw new Error("conversion defect")
+        }
+      }
+
+      strictEqual(format({ toString: () => result }), `[toString threw]`)
+    })
+
+    it("handles throwing ownKeys traps", () => {
+      const proxy = new Proxy({}, {
+        ownKeys() {
+          throw new Error("ownKeys defect")
+        }
+      })
+
+      strictEqual(format(proxy), `{"[ownKeys threw]":undefined}`)
+    })
+
     it("handles hostile Proxies", () => {
       const { proxy, revoke } = Proxy.revocable({}, {})
       revoke()

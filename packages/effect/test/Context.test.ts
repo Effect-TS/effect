@@ -347,4 +347,14 @@ describe("Context", () => {
 
     strictEqual(context.mapUnsafe, map)
   })
+
+  it("still accepts the internal fiberCached option", () => {
+    const Ref = Context.Reference("test/FiberCachedRef", { defaultValue: () => 1, fiberCached: true })
+    const Key = Context.Service<string>("test/FiberCachedKey", { fiberCached: true })
+    const context = Context.make(Key, "a")
+
+    strictEqual(Context.get(context, Ref), 1)
+    // The fiber cache reads fixed runtime keys, so other keys keep it
+    assertTrue(Context.hasSameCache(context, Context.add(context, Ref, 2)))
+  })
 })

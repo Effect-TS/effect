@@ -21,7 +21,7 @@ import {
   objectKind,
   toBytes
 } from "./internal/equal.ts"
-import { hasProperty } from "./Predicate.ts"
+import { hasPropertyDataFirst as hasProperty } from "./Predicate.ts"
 
 /**
  * Defines the unique string identifier for the `Equal` interface.
@@ -191,7 +191,13 @@ export function equals(): any {
   return compareBoth(arguments[0], arguments[1])
 }
 
-function compareBoth(self: unknown, that: unknown): boolean {
+/**
+ * Data-first {@link equals}. The runtime data types call it from their
+ * `Equal.symbol` methods, which always compare two values.
+ *
+ * @internal
+ */
+export function compareBoth(self: unknown, that: unknown): boolean {
   if (self == null || that == null) return self === that
   const selfType = typeof self
   if (selfType !== "object" && selfType !== "function") {
