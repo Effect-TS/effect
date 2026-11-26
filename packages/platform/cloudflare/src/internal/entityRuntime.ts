@@ -1359,7 +1359,8 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       return finishCancel(storageRequestId, session)
     })
 
-  const reset = (requestId: string): Effect.Effect<void> => write(clearReplies(sql, requestId))
+  const reset = (requestId: string): Effect.Effect<void> =>
+    Effect.andThen(write(clearReplies(sql, requestId)), Effect.sync(() => interruptedRequests.delete(requestId)))
 
   const alarm = Effect.suspend(() => {
     const registration = getEntityRegistration(options.address.entityType)

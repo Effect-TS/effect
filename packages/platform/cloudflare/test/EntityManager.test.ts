@@ -650,6 +650,29 @@ describe("EntityManager", () => {
       yield* Fiber.join(second)
     }))
 
+  it.effect("replays an interrupted persisted ask in the same manager after reset", () =>
+    Effect.gen(function*() {
+      const { entity, release, started, state } = yield* makeGatedAsk("ResetAfterInterrupt")
+      const { envelope, exitOf, manager, storage } = yield* makeMailbox("reset-after-interrupt", entity.type)
+      const requestId = nextRequestId()
+      const first = yield* Effect.forkChild(
+        manager.invoke(envelope("Add", { operationId: "same" }, requestId), false)
+      )
+      yield* Deferred.await(started)
+      assert.strictEqual(state.runs, 1)
+
+      yield* manager.interrupt(requestId)
+      yield* Fiber.join(first)
+      yield* Deferred.succeed(release, undefined)
+
+      yield* manager.reset(requestId)
+      yield* manager.alarm
+
+      assert.strictEqual(state.runs, 2)
+      const reply = yield* loadNextReply(storage.sql, requestId)
+      assert.deepStrictEqual(exitOf(reply!.reply), { _tag: "Success", value: 2 })
+    }))
+
   it.effect("lets an Rpc.uninterruptible handler finish after an interrupt", () =>
     Effect.gen(function*() {
       const started = yield* Deferred.make<void>()
