@@ -1025,7 +1025,14 @@ export function asOption<T, E, R>(
   parser: (input: E, options?: SchemaAST.ParseOptions) => Effect.Effect<T, SchemaIssue.Issue, R>
 ): (input: E, options?: SchemaAST.ParseOptions) => Option.Option<T> {
   const parserExit = asExit(parser)
-  return (input, options) => exitToOption(parserExit(input, options))
+  return (input: E, options?: SchemaAST.ParseOptions) => {
+    const exit = parserExit(input, options)
+    if (Exit.isSuccess(exit)) {
+      return Option.some(exit.value)
+    }
+    InternalSchemaCause.getSchemaIssueOrThrow(exit.cause, "Option adapter can only return none for schema issues")
+    return Option.none()
+  }
 }
 
 function exitToOption<T>(exit: Exit.Exit<T, SchemaIssue.Issue>): Option.Option<T> {

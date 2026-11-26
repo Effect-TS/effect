@@ -4736,7 +4736,7 @@ function canReuse(root: AST, edge: Suspend["thunk"]): boolean {
   return everyNode(root, same)
 }
 
-const projected = new WeakSet<AST>()
+const types = new WeakMap<AST, AST>()
 const reversed = new WeakMap<AST, AST>()
 const encoded = new WeakSet<AST>()
 const reprojected = new WeakSet<AST>()
@@ -4773,7 +4773,9 @@ const flippedThunks = new WeakMap<Suspend["thunk"], FlippedSuspension>()
  * @category transforming
  * @since 4.0.0
  */
-export const toType = memoize(<A extends AST>(ast: A): A => {
+export const toType = <A extends AST>(ast: A): A => flippedFrom.has(ast) ? toFlippedType(ast) : stripEncoding(ast)
+
+const toFlippedType = memoize(<A extends AST>(ast: A): A => {
   const source = flippedFrom.get(ast)
   // The public encoded projection is idempotent, including when requested as toType(flip(ast)).
   if (source && encoded.has(source)) return source as A
@@ -4782,14 +4784,18 @@ export const toType = memoize(<A extends AST>(ast: A): A => {
   return out
 })
 
-const stripEncoding = memoizeIdempotent(<A extends AST>(ast: A): A => {
+function stripEncoding<A extends AST>(ast: A): A {
+  const cached = types.get(ast)
+  if (cached) return cached as A
   const source = flippedFrom.get(ast)
-  const wasProjected = source && projected.has(source)
+  const wasProjected = source && types.get(source) === source
   const out = source && reversed.get(source) || projectType(ast)
   if (wasProjected) reversed.set(source, out)
-  projected.add(out)
+  types.set(ast, out)
+  // Projected nodes map to themselves, so the cache also identifies completed projections.
+  if (out !== ast) types.set(out, out)
   return out as A
-})
+}
 
 function projectOwner<A extends AST>(ast: A, project: (ast: A) => AST): A | undefined {
   const owner = getContextOwner(ast)
@@ -4902,7 +4908,7 @@ function flipAST(ast: AST): AST {
 }
 
 function reverseBody(body: AST, edge: Suspend["thunk"]): AST {
-  if (!projected.has(body)) return stripEncoding(flip(body))
+  if (types.get(body) !== body) return stripEncoding(flip(body))
   const existing = reversed.get(body)
   if (existing) return existing
   // A projected body can close its own cycle if all suspended edges lead back here
