@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import os from "node:os"
-import { join, resolve } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import { fileURLToPath } from "node:url"
 import { aggregate, analyzePairs, median } from "../../stats.mts"
@@ -52,6 +52,7 @@ const worker = fileURLToPath(new URL("./worker.mts", import.meta.url))
 const git = (...args: Array<string>) => execFileSync("git", args, { cwd: repoRoot, encoding: "utf8" }).trim()
 const sha256 = (path: string) => createHash("sha256").update(readFileSync(path)).digest("hex")
 
+mkdirSync(dirname(output), { recursive: true })
 mkdirSync(output)
 const worktrees: Array<string> = []
 // A variant is a packages/effect directory: the current checkout or a detached worktree of a ref.
@@ -170,12 +171,20 @@ function summarize() {
       const heap = samplesOf("heap", item.name, variantItem.name)
       const profile = samplesOf("profile", item.name, variantItem.name)
       const phases = Object.keys(time[0].timings)
+      // Per-process sums from import through a phase. `total` includes optional phases such as OpenAPI.
+      const through = (key: "timings" | "cpu", last: string) => {
+        const included = phases.slice(0, phases.indexOf(last) + 1)
+        return time.map((sample: any) => included.reduce((sum, phase) => sum + sample[key][phase], 0))
+      }
+      const milestones = ["build", "request"].filter((phase) => phases.includes(phase))
       const series = Object.fromEntries([
         ...phases.map((phase) => [phase, time.map((sample: any) => sample.timings[phase])]),
-        ["total", time.map((sample: any) => phases.reduce((sum, phase) => sum + sample.timings[phase], 0))],
+        ...milestones.map((phase) => [`through ${phase}`, through("timings", phase)]),
+        ["total", through("timings", phases.at(-1)!)],
         ...(time[0].warm ? [["warm", time.map((sample: any) => sample.warm.nsPerOp)]] : []),
         ...phases.map((phase) => [`${phase} cpu`, time.map((sample: any) => sample.cpu[phase])]),
-        ["total cpu", time.map((sample: any) => phases.reduce((sum, phase) => sum + sample.cpu[phase], 0))]
+        ...milestones.map((phase) => [`through ${phase} cpu`, through("cpu", phase)]),
+        ["total cpu", through("cpu", phases.at(-1)!)]
       ])
       const heapDelta = heap.length === 0 ? {} : Object.fromEntries(phases.map((phase, index) => [
         phase,

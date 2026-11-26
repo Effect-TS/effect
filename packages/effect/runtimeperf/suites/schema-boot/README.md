@@ -53,7 +53,8 @@ bundle, including V8 compilation and module evaluation; every later phase includ
 compilation. Each phase records wall time and main-thread CPU time (`process.threadCpuUsage`), reported as `<phase>`
 and `<phase> cpu`. On a loaded host, wall time includes time spent waiting for a CPU, so compare CPU time there.
 CPU time excludes background compilation and concurrent garbage collection threads. Medians and median absolute
-deviations are reported per phase, together with the per-process total.
+deviations are reported per phase, together with per-process sums: `total` over every phase and, for HttpApi,
+`through build` and `through request`, which exclude optional OpenAPI generation. Warm throughput is wall time only.
 Comparisons use the paired bootstrap from `../../stats.mts` and classify a phase only when its 95% interval excludes
 the 2% improvement or 5% regression threshold.
 
