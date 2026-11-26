@@ -614,9 +614,8 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
   // separately so only transitions touch the recovery alarm.
   let inFlightPersisted = 0
   const workerWaiters = new Map<string, Array<WorkerWaiter>>()
-  // Interrupts that arrived before their matching ask registered. Bounded to
-  // `mailboxCapacity` because they only race asks already in flight to this
-  // Durable Object incarnation.
+  // Interrupts that matched no registered ask, checked when an ask arrives.
+  // Late interrupts for finished asks land here too and age out by eviction.
   const earlyInterrupts = new Map<string, true>()
   const replyRegistry = makeReplyRegistry()
   const entitySql = makeEntitySql(storage)
@@ -1234,31 +1233,29 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
       })
     )
 
-  // Lookup and marking run under the entry permit so they serialize against
-  // session and waiter registration. Handler interruption runs outside the
-  // permit because the handler finalizer takes this same permit.
+  // The claim runs under the entry permit, so it serializes against session
+  // and waiter registration. The handler is stopped after the permit is
+  // released because its finalizer takes the same permit.
   const interrupt = (storageRequestId: string, clientRequestId = storageRequestId): Effect.Effect<void> =>
-    Effect.flatten(Semaphore.withPermit(
+    Semaphore.withPermit(
       semaphore,
-      Effect.sync((): Effect.Effect<void> => {
-        let matchedWaiter = false
-        const waiters = workerWaiters.get(storageRequestId)
-        if (waiters !== undefined) {
-          const remaining = waiters.filter((waiter) => {
-            if (waiter.clientRequestId !== clientRequestId) return true
-            matchedWaiter = true
-            Deferred.doneUnsafe(waiter.deferred, Effect.die(new Error("Delayed entity request interrupted")))
-            return false
-          })
-          if (remaining.length === 0) workerWaiters.delete(storageRequestId)
-          else workerWaiters.set(storageRequestId, remaining)
-        }
+      Effect.sync(() => {
+        const waiters = workerWaiters.get(storageRequestId) ?? []
+        const remaining = waiters.filter((waiter) => {
+          if (waiter.clientRequestId !== clientRequestId) return true
+          Deferred.doneUnsafe(waiter.deferred, Effect.die(new Error("Delayed entity request interrupted")))
+          return false
+        })
+        if (remaining.length > 0) workerWaiters.set(storageRequestId, remaining)
+        else workerWaiters.delete(storageRequestId)
         const session = sessions.get(storageRequestId)
         if (session === undefined) {
-          if (!matchedWaiter) setWithEviction(earlyInterrupts, clientRequestId, true, mailboxCapacity)
-          return Effect.void
+          if (remaining.length === waiters.length) {
+            setWithEviction(earlyInterrupts, clientRequestId, true, mailboxCapacity)
+          }
+          return undefined
         }
-        if (session.uninterruptible) return Effect.void
+        if (session.uninterruptible) return undefined
         // Keep ownership through handler finalization and the terminal write.
         // A failed write must leave the row owned rather than replayable.
         session.cancelling = true
@@ -1267,22 +1264,22 @@ export const makeEntityManager = (options: EntityManagerOptions): EntityManager 
           session.ack = undefined
         }
         Queue.endUnsafe(session.queue)
-        const stop = session.fiber === undefined ? Effect.void : Effect.asVoid(Fiber.interrupt(session.fiber))
-        // The handler finalizer takes this same permit. Interrupt outside it.
-        return Effect.andThen(
-          stop,
-          Semaphore.withPermit(
-            semaphore,
-            Effect.andThen(
-              session.completeInterrupt,
-              Effect.suspend(() => {
-                if (sessions.get(storageRequestId) === session) sessions.delete(storageRequestId)
-                return inFlightPersisted === 0 ? rearm : Effect.void
-              })
-            )
+        return session
+      })
+    ).pipe(Effect.flatMap((session) =>
+      session === undefined ? Effect.void : Effect.andThen(
+        session.fiber === undefined ? Effect.void : Fiber.interrupt(session.fiber),
+        Semaphore.withPermit(
+          semaphore,
+          Effect.andThen(
+            session.completeInterrupt,
+            Effect.suspend(() => {
+              if (sessions.get(storageRequestId) === session) sessions.delete(storageRequestId)
+              return inFlightPersisted === 0 ? rearm : Effect.void
+            })
           )
         )
-      })
+      )
     ))
 
   const reset = (requestId: string): Effect.Effect<void> => write(clearReplies(sql, requestId))
