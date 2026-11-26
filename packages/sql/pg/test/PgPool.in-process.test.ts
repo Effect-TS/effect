@@ -301,6 +301,50 @@ describe("PgPool connection spans", () => {
     }).pipe(Effect.withTracer(tracer), Effect.provide(Reactivity.layer))
   })
 
+  it.effect("overrides queryTextValues span names with SpanNameGenerator while keeping attributes", () => {
+    const { spans, tracer } = recording()
+    return Effect.gen(function*() {
+      const sql = yield* PgClient.make({
+        url: Redacted.make("postgres://postgres:postgres@127.0.0.1:55415/app"),
+        prepare: false,
+        stream: () => {
+          let startup = true
+          const socket = new Duplex({
+            read() {},
+            write(chunk: Buffer, _encoding, callback) {
+              if (startup) {
+                startup = false
+                queueMicrotask(() => socket.push(ready))
+              } else if (chunk[0] === 0x50) {
+                queueMicrotask(() => socket.push(emptyQueryResult))
+              }
+              callback()
+            }
+          })
+          return socket
+        }
+      })
+      yield* sql.queryTextValues("SELECT 1")
+      yield* sql.queryTextValues("SELECT 1").pipe(
+        Effect.provideService(Statement.SpanNameGenerator, () => "sql.execute")
+      )
+      assert.deepStrictEqual(
+        spans
+          .filter((span) => span.attributes.has("db.system.name"))
+          .map((span) => [
+            span.name,
+            span.attributes.get("db.namespace"),
+            span.attributes.get("server.address"),
+            span.attributes.get("server.port")
+          ]),
+        [
+          ["app", "app", "127.0.0.1", 55415],
+          ["sql.execute", "app", "127.0.0.1", 55415]
+        ]
+      )
+    }).pipe(Effect.withTracer(tracer), Effect.provide(Reactivity.layer))
+  })
+
   const traced = <A, E, R>(effect: Effect.Effect<A, E, R>, tracer: Tracer.Tracer, propagate: boolean) =>
     effect.pipe(Effect.withTracer(tracer), Effect.provideService(Statement.SpanPropagationEnabled, propagate))
 

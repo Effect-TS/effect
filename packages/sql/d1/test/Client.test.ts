@@ -253,6 +253,43 @@ describe("Client", { concurrent: false, timeout: 30_000 }, () => {
       Effect.provide(Reactivity.layer)
     ))
 
+  it.effect("overrides single-statement batch span names with SpanNameGenerator", () =>
+    Effect.gen(function*() {
+      const db = {
+        prepare: () => ({ bind: () => ({}) }),
+        batch: async (statements: Array<unknown>) => statements.map(() => ({ results: [] }))
+      } as any
+      const sql = yield* D1Client.make({ db, spanAttributes: { "db.namespace": "app" } })
+      const spans: Array<Tracer.NativeSpan> = []
+      const tracer = Tracer.make({
+        span: (options) => {
+          const span = new Tracer.NativeSpan(options)
+          spans.push(span)
+          return span
+        }
+      })
+      yield* sql.batch([sql`SELECT 1`]).pipe(Effect.withTracer(tracer))
+      yield* sql.batch([sql`SELECT 1`]).pipe(
+        Effect.provideService(Statement.SpanNameGenerator, () => "sql.execute"),
+        Effect.withTracer(tracer)
+      )
+      yield* sql.batch([sql`SELECT 1`, sql`SELECT 2`]).pipe(
+        Effect.provideService(Statement.SpanNameGenerator, () => "sql.execute"),
+        Effect.withTracer(tracer)
+      )
+      assert.deepStrictEqual(
+        spans.map((span) => [span.name, span.attributes.get("db.namespace")]),
+        [
+          ["app", "app"],
+          ["sql.execute", "app"],
+          ["BATCH app", "app"]
+        ]
+      )
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(Reactivity.layer)
+    ))
+
   it.effect("should defect when batching in a transaction", () =>
     Effect.gen(function*() {
       const sql = yield* D1Client.D1Client

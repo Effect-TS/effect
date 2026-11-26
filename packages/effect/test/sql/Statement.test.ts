@@ -236,9 +236,64 @@ describe("Statement", () => {
       )
       assert.deepStrictEqual(clients, ["sql", "sql", "copy", "copy"])
     }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("overrides statement span names with SpanNameGenerator while keeping attributes", () =>
+    Effect.gen(function*() {
+      const spans: Array<Tracer.NativeSpan> = []
+      const tracer = Tracer.make({
+        span(options) {
+          const span = new Tracer.NativeSpan(options)
+          spans.push(span)
+          return span
+        }
+      })
+      const attrs: ReadonlyArray<readonly [string, unknown]> = [
+        ["db.namespace", "app_staging"],
+        ["server.address", "db.internal"]
+      ]
+      const sql = yield* makeClient(Effect.void, false, Effect.void, attrs)
+      const query = sql`select 1`
+      const runStatements = Effect.all([query, query.raw, Stream.runDrain(query.stream)])
+
+      yield* runStatements.pipe(Effect.withTracer(tracer))
+
+      const received: Array<ReadonlyArray<readonly [string, unknown]>> = []
+      yield* Effect.andThen(runStatements, sql.withTransaction(Effect.void)).pipe(
+        Effect.provideService(Statement.SpanNameGenerator, (spanAttributes) => {
+          received.push(spanAttributes)
+          return "sql.execute"
+        }),
+        Effect.withTracer(tracer)
+      )
+
+      assert.deepStrictEqual(
+        spans.map((span) => [
+          span.name,
+          span.attributes.get("db.namespace"),
+          span.attributes.get("server.address")
+        ]),
+        [
+          ["app_staging", "app_staging", "db.internal"],
+          ["app_staging", "app_staging", "db.internal"],
+          ["app_staging", "app_staging", "db.internal"],
+          ["sql.execute", "app_staging", "db.internal"],
+          ["sql.execute", "app_staging", "db.internal"],
+          ["sql.execute", "app_staging", "db.internal"],
+          ["sql.transaction", "app_staging", "db.internal"],
+          ["BEGIN app_staging", "app_staging", "db.internal"],
+          ["COMMIT app_staging", "app_staging", "db.internal"]
+        ]
+      )
+      assert.deepStrictEqual(received, [attrs, attrs, attrs])
+    }).pipe(Effect.provide(Reactivity.layer)))
 })
 
-const makeClient = (observe: Effect.Effect<void>, borrow = false, acquire = observe) => {
+const makeClient = (
+  observe: Effect.Effect<void>,
+  borrow = false,
+  acquire = observe,
+  spanAttributes: ReadonlyArray<readonly [string, unknown]> = []
+) => {
   const execute = Effect.as(observe, [])
   const connection: Connection = {
     execute: () => execute,
@@ -253,6 +308,6 @@ const makeClient = (observe: Effect.Effect<void>, borrow = false, acquire = obse
     acquirer: Effect.as(acquire, connection),
     borrower: borrow ? (f) => Effect.andThen(acquire, f(connection)) : undefined,
     compiler: Statement.makeCompilerSqlite(),
-    spanAttributes: []
+    spanAttributes
   })
 }
