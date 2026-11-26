@@ -74,10 +74,20 @@ export class MixedScheduler implements Scheduler {
   }
 }
 
-class PriorityBuckets {
-  buckets: Array<[priority: number, tasks: Array<() => void>]> = []
+class MixedSchedulerDispatcher implements SchedulerDispatcher {
+  // Sorted by priority; tasks within a bucket run in the order they were scheduled
+  private buckets: Array<[priority: number, tasks: Array<() => void>]> = []
+  private running: (() => void) | undefined = undefined
+  readonly setImmediate: (f: () => void) => () => void
 
-  scheduleTask(task: () => void, priority: number): void {
+  constructor(setImmediateFn: (f: () => void) => () => void) {
+    this.setImmediate = setImmediateFn
+  }
+
+  /**
+   * @since 2.0.0
+   */
+  scheduleTask(task: () => void, priority: number) {
     const buckets = this.buckets
     const len = buckets.length
     let bucket: [number, Array<() => void>] | undefined
@@ -93,31 +103,6 @@ class PriorityBuckets {
     } else {
       buckets.splice(index, 0, [priority, [task]])
     }
-  }
-
-  drain() {
-    const buckets = this.buckets
-    this.buckets = []
-    return buckets
-  }
-}
-
-class MixedSchedulerDispatcher implements SchedulerDispatcher {
-  private tasks = new PriorityBuckets()
-  private running: (() => void) | undefined = undefined
-  readonly setImmediate: (f: () => void) => () => void
-
-  constructor(
-    setImmediateFn: (f: () => void) => () => void = setImmediate
-  ) {
-    this.setImmediate = setImmediateFn
-  }
-
-  /**
-   * @since 2.0.0
-   */
-  scheduleTask(task: () => void, priority: number) {
-    this.tasks.scheduleTask(task, priority)
     if (this.running === undefined) {
       this.running = this.setImmediate(this.afterScheduled)
     }
@@ -135,7 +120,8 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    * @since 2.0.0
    */
   runTasks() {
-    const buckets = this.tasks.drain()
+    const buckets = this.buckets
+    this.buckets = []
     for (let i = 0; i < buckets.length; i++) {
       const toRun = buckets[i][1]
       for (let j = 0; j < toRun.length; j++) {
@@ -148,7 +134,7 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    * @since 2.0.0
    */
   flush() {
-    while (this.tasks.buckets.length > 0) {
+    while (this.buckets.length > 0) {
       if (this.running !== undefined) {
         this.running()
         this.running = undefined
@@ -157,8 +143,3 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
     }
   }
 }
-
-let defaultScheduler: Scheduler | undefined
-
-/** @internal */
-export const getDefaultScheduler = (): Scheduler => (defaultScheduler ??= new MixedScheduler())

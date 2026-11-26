@@ -1139,6 +1139,17 @@ export function isObjectKeyword(input: unknown): input is object {
 }
 
 /**
+ * Data-first {@link hasProperty}. Effect's runtime modules call it, so bundles
+ * that run effects do not include `dual`.
+ *
+ * @internal
+ */
+export const hasPropertyDataFirst = <P extends PropertyKey>(
+  self: unknown,
+  property: P
+): self is { [K in P]: unknown } => isObjectKeyword(self) && (property in self)
+
+/**
  * Checks whether a value has a given property key.
  *
  * **When to use**
@@ -1173,15 +1184,7 @@ export function isObjectKeyword(input: unknown): input is object {
 export const hasProperty: {
   <P extends PropertyKey>(property: P): (self: unknown) => self is { [K in P]: unknown }
   <P extends PropertyKey>(self: unknown, property: P): self is { [K in P]: unknown }
-} = function(self: unknown, property?: PropertyKey) {
-  // Written out instead of using `dual`: every fiber reaches `hasProperty`, so
-  // `dual` would otherwise be part of every bundle that runs an effect.
-  if (arguments.length >= 2) {
-    return isObjectKeyword(self) && (property! in self)
-  }
-  const key = self as PropertyKey
-  return (u: unknown) => isObjectKeyword(u) && (key in u)
-} as any
+} = dual(2, hasPropertyDataFirst)
 
 /**
  * Checks whether a value has a `_tag` property equal to the given tag.

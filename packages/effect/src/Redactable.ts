@@ -10,9 +10,8 @@
  * @since 4.0.0
  */
 import type * as Context from "./Context.ts"
-import { currentFiberTypeId as InternalCurrentFiberTypeId } from "./internal/fiberCachedKeys.ts"
 import { pipeArguments } from "./Pipeable.ts"
-import { hasProperty } from "./Predicate.ts"
+import { hasPropertyDataFirst } from "./Predicate.ts"
 
 /**
  * Defines the symbol used to identify objects that implement the {@link Redactable}
@@ -107,7 +106,7 @@ export interface Redactable {
  * @category guards
  * @since 3.10.0
  */
-export const isRedactable = (u: unknown): u is Redactable => hasProperty(u, symbolRedactable)
+export const isRedactable = (u: unknown): u is Redactable => hasPropertyDataFirst(u, symbolRedactable)
 
 /**
  * Returns a redacted value if it implements {@link Redactable}, otherwise returns it
@@ -168,10 +167,8 @@ export function getRedacted(redactable: Redactable): unknown {
 }
 
 /** @internal */
-export const currentFiberTypeId: "~effect/Fiber/currentFiber" = InternalCurrentFiberTypeId
+export const currentFiberTypeId = "~effect/Fiber/currentFiber"
 
-// Fallback when no fiber is running. Kept local so `Formatter.ts`, which imports
-// this module, does not pull in `Context.ts`.
 const emptyMap = new Map()
 const emptyContext: Context.Context<never> = {
   "~effect/Context": {} as any,

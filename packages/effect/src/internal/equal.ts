@@ -5,15 +5,9 @@
 // created, not what it is.
 const errorSiteKeys = ["line", "column", "sourceURL", "originalLine", "originalColumn"]
 
-const ownKeys = (obj: object): Array<PropertyKey> => {
-  const names = Object.getOwnPropertyNames(obj)
-  const syms = Object.getOwnPropertySymbols(obj)
-  return syms.length > 0 ? [...names, ...syms] : names
-}
-
 /** @internal */
 export const getAllObjectKeys = (obj: object): Array<PropertyKey> | Set<PropertyKey> => {
-  const own = ownKeys(obj)
+  const own = Reflect.ownKeys(obj)
   const proto = Object.getPrototypeOf(obj)
   if (proto === Object.prototype || proto === null) return own
   const keys = new Set<PropertyKey>(own)
@@ -27,7 +21,7 @@ export const getAllObjectKeys = (obj: object): Array<PropertyKey> | Set<Property
 
   let current = proto
   while (current !== null && current !== Object.prototype) {
-    for (const key of ownKeys(current)) keys.add(key)
+    for (const key of Reflect.ownKeys(current)) keys.add(key)
     current = Object.getPrototypeOf(current)
   }
   if (typeof obj.constructor === "function" && proto === obj.constructor.prototype) {

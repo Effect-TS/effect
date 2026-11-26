@@ -8,7 +8,7 @@ import { dual, identity } from "../Function.ts"
 import * as Hash from "../Hash.ts"
 import { NodeInspectSymbol } from "../Inspectable.ts"
 import { pipeArguments } from "../Pipeable.ts"
-import { hasProperty } from "../Predicate.ts"
+import { hasPropertyDataFirst } from "../Predicate.ts"
 import type { StackFrame } from "../References.ts"
 import type * as Types from "../Types.ts"
 import { SingleShotGen } from "../Utils.ts"
@@ -106,10 +106,11 @@ export const EffectProto = {
 }
 
 /** @internal */
-export const isEffect = (u: unknown): u is Effect.Effect<unknown, unknown, unknown> => hasProperty(u, EffectTypeId)
+export const isEffect = (u: unknown): u is Effect.Effect<unknown, unknown, unknown> =>
+  hasPropertyDataFirst(u, EffectTypeId)
 
 /** @internal */
-export const isExit = (u: unknown): u is Exit.Exit<unknown, unknown> => hasProperty(u, ExitTypeId)
+export const isExit = (u: unknown): u is Exit.Exit<unknown, unknown> => hasPropertyDataFirst(u, ExitTypeId)
 
 // ----------------------------------------------------------------------------
 // Cause
@@ -122,10 +123,11 @@ export const CauseTypeId = "~effect/Cause"
 export const CauseReasonTypeId = "~effect/Cause/Reason"
 
 /** @internal */
-export const isCause = (self: unknown): self is Cause.Cause<unknown> => hasProperty(self, CauseTypeId)
+export const isCause = (self: unknown): self is Cause.Cause<unknown> => hasPropertyDataFirst(self, CauseTypeId)
 
 /** @internal */
-export const isCauseReason = (self: unknown): self is Cause.Reason<unknown> => hasProperty(self, CauseReasonTypeId)
+export const isCauseReason = (self: unknown): self is Cause.Reason<unknown> =>
+  hasPropertyDataFirst(self, CauseReasonTypeId)
 
 /** @internal */
 export class CauseImpl<E> implements Cause.Cause<E> {
@@ -753,7 +755,7 @@ export const NoSuchElementErrorTypeId = "~effect/Cause/NoSuchElementError"
 /** @internal */
 export const isNoSuchElementError = (
   u: unknown
-): u is Cause.NoSuchElementError => hasProperty(u, NoSuchElementErrorTypeId)
+): u is Cause.NoSuchElementError => hasPropertyDataFirst(u, NoSuchElementErrorTypeId)
 
 /** @internal */
 export class NoSuchElementError extends TaggedError("NoSuchElementError") {
@@ -769,7 +771,7 @@ export const DoneTypeId = "~effect/Cause/Done"
 /** @internal */
 export const isDone = (
   u: unknown
-): u is Cause.Done => hasProperty(u, DoneTypeId)
+): u is Cause.Done => hasPropertyDataFirst(u, DoneTypeId)
 
 const DoneVoid: Cause.Done<void> = {
   [DoneTypeId]: DoneTypeId,

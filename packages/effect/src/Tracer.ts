@@ -16,7 +16,7 @@ import type * as Exit from "./Exit.ts"
 import type { Fiber } from "./Fiber.ts"
 import { constFalse, type LazyArg } from "./Function.ts"
 import type * as core from "./internal/core.ts"
-import { ParentSpanKey as InternalParentSpanKey, TracerKey as InternalTracerKey } from "./internal/fiberCachedKeys.ts"
+import { ParentSpanKey as InternalParentSpanKey, TracerKey as InternalTracerKey } from "./internal/fiberCache.ts"
 import type { LogLevel } from "./LogLevel.ts"
 import * as Option from "./Option.ts"
 

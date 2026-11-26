@@ -159,7 +159,7 @@ export const toJson = (input: unknown): unknown => {
   try {
     input = redact(input)
     if (
-      Predicate.hasProperty(input, "toJSON") &&
+      Predicate.hasPropertyDataFirst(input, "toJSON") &&
       Predicate.isFunction(input["toJSON"]) &&
       input["toJSON"].length === 0
     ) {

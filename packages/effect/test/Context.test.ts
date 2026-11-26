@@ -347,4 +347,16 @@ describe("Context", () => {
 
     strictEqual(context.mapUnsafe, map)
   })
+
+  it("invalidates the fiber cache for keys created with fiberCached", () => {
+    const Ref = Context.Reference("test/FiberCachedRef", { defaultValue: () => 1, fiberCached: true })
+    const Key = Context.Service<string>("test/FiberCachedKey", { fiberCached: true })
+    class KeyClass extends Context.Service<KeyClass, string>()("test/FiberCachedKeyClass", { fiberCached: true }) {}
+    const context = Context.make(Key, "a")
+
+    strictEqual(Context.get(context, Ref), 1)
+    assertFalse(Context.hasSameCache(context, Context.add(context, Ref, 2)))
+    assertFalse(Context.hasSameCache(context, Context.add(context, Key, "b")))
+    assertFalse(Context.hasSameCache(context, Context.add(context, KeyClass, "c")))
+  })
 })

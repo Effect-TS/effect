@@ -135,54 +135,45 @@ export function format(input: unknown, options?: {
   }
 
   function recur(v: unknown, d: number): string {
+    if (typeof v === "string") return JSON.stringify(v)
+    if (typeof v === "bigint") return `${v}n`
+    if (v === null || (typeof v !== "object" && typeof v !== "function")) return String(v)
+
+    if (ancestors.has(v)) return "[Circular]"
+    ancestors.add(v)
     try {
-      if (typeof v === "string") return JSON.stringify(v)
-      if (typeof v === "bigint") return `${v}n`
-      if (v === null || (typeof v !== "object" && typeof v !== "function")) return String(v)
+      if (symbolRedactable in v) return recur(getRedacted(v as any), d)
+      if (Array.isArray(v)) return formatBlock("[", "]", v, d, recur)
+      if (v instanceof Date) return formatDate(v)
 
-      if (ancestors.has(v)) return "[Circular]"
-      ancestors.add(v)
-
-      let output: string
-      if (symbolRedactable in v) {
-        output = recur(getRedacted(v as any), d)
-      } else if (Array.isArray(v)) {
-        output = formatBlock("[", "]", v, d, (x, next) => recur(x, next))
-      } else if (v instanceof Date) {
-        output = formatDate(v)
-      } else {
-        const toString = ignoreToString ? undefined : (v as any).toString
-        if (
-          typeof toString === "function" &&
-          toString !== Object.prototype.toString &&
-          toString !== Array.prototype.toString
-        ) {
-          const s = tryOr(() => String(toString.call(v)), "[toString threw]")
-          output = v instanceof Error && v.cause !== undefined ? `${s} (cause: ${recur(v.cause, d)})` : s
-        } else if (Symbol.iterator in v) {
-          output = `${v.constructor.name}(${recur(Array.from(v as any), d)})`
-        } else {
-          const keys = tryOr(() => Reflect.ownKeys(v), ownKeysThrew)
-          const body = formatBlock(
-            "{",
-            "}",
-            keys,
-            d,
-            (k, next, multiline) =>
-              `${formatPropertyKey(k)}${multiline ? ": " : ":"}${
-                recur(tryOr(() => (v as any)[k], "[property access threw]"), next)
-              }`
-          )
-          const ctor = (v as any).constructor
-          output = ctor && ctor !== Object && ctor.name ? `${ctor.name}(${body})` : body
-        }
+      const toString = ignoreToString ? undefined : (v as any).toString
+      if (
+        typeof toString === "function" &&
+        toString !== Object.prototype.toString &&
+        toString !== Array.prototype.toString
+      ) {
+        const s = tryOr(() => String(toString.call(v)), "[toString threw]")
+        return v instanceof Error && v.cause !== undefined ? `${s} (cause: ${recur(v.cause, d)})` : s
       }
-      ancestors.delete(v)
-      return output
+      if (Symbol.iterator in v) return `${v.constructor.name}(${recur(Array.from(v as any), d)})`
+
+      const keys = tryOr<ReadonlyArray<PropertyKey>>(() => Reflect.ownKeys(v), ["[ownKeys threw]"])
+      const body = formatBlock(
+        "{",
+        "}",
+        keys,
+        d,
+        (k, next, multiline) =>
+          `${formatPropertyKey(k)}${multiline ? ": " : ":"}${
+            recur(tryOr(() => (v as any)[k], "[property access threw]"), next)
+          }`
+      )
+      const ctor = (v as any).constructor
+      return ctor && ctor !== Object && ctor.name ? `${ctor.name}(${body})` : body
     } catch {
-      // WeakSet.prototype.delete returns false for non-objects without throwing.
-      ancestors.delete(v as any)
       return "[inspection threw]"
+    } finally {
+      ancestors.delete(v)
     }
   }
 
@@ -214,8 +205,6 @@ export function formatPath(path: ReadonlyArray<PropertyKey>): string {
 export function formatDate(date: Date): string {
   return tryOr(() => date.toISOString(), "Invalid Date")
 }
-
-const ownKeysThrew: ReadonlyArray<PropertyKey> = ["[ownKeys threw]"]
 
 function tryOr<A>(f: () => A, fallback: A): A {
   try {
@@ -293,7 +282,7 @@ export function formatJson(input: unknown, options?: {
     input,
     function(this: object, key: string, value: unknown) {
       const original = Object.getOwnPropertyDescriptor(sources.get(this) ?? this, key)?.value
-      const redacted = Predicate.hasProperty(original, symbolRedactable)
+      const redacted = Predicate.hasPropertyDataFirst(original, symbolRedactable)
         ? redact(original)
         : redact(value)
       if (typeof redacted === "bigint") {
@@ -302,7 +291,7 @@ export function formatJson(input: unknown, options?: {
       if (typeof redacted !== "object" || redacted === null) {
         return redacted
       }
-      const current = redacted instanceof Error && !Predicate.hasProperty(redacted, "toJSON")
+      const current = redacted instanceof Error && !Predicate.hasPropertyDataFirst(redacted, "toJSON")
         ? { ...redacted, name: redacted.name, message: redacted.message }
         : redacted
       while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {

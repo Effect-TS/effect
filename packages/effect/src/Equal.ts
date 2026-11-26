@@ -21,7 +21,7 @@ import {
   objectKind,
   toBytes
 } from "./internal/equal.ts"
-import { hasProperty } from "./Predicate.ts"
+import { hasPropertyDataFirst } from "./Predicate.ts"
 
 /**
  * Defines the unique string identifier for the `Equal` interface.
@@ -441,7 +441,7 @@ export function makeCompareSet<A>(equivalence: Equivalence<A>) {
  * @category guards
  * @since 2.0.0
  */
-export const isEqual = (u: unknown): u is Equal => hasProperty(u, symbol) && typeof u[symbol] === "function"
+export const isEqual = (u: unknown): u is Equal => hasPropertyDataFirst(u, symbol) && typeof u[symbol] === "function"
 
 /**
  * Wraps {@link equals} as an `Equivalence<A>`.

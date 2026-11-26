@@ -10,17 +10,11 @@
  * @stability stable
  * @since 2.0.0
  */
-import * as Context from "./Context.ts"
+import type * as Context from "./Context.ts"
 import type * as Fiber from "./Fiber.ts"
-import {
-  bindMemoizedDefault,
-  defaultMaxOpsBeforeYield,
-  defaultPreventSchedulerYield,
-  MaxOpsBeforeYieldKey,
-  PreventSchedulerYieldKey,
-  SchedulerKey
-} from "./internal/fiberCachedKeys.ts"
-import { getDefaultScheduler, MixedScheduler } from "./internal/scheduler.ts"
+import { fiberCache } from "./internal/fiberCache.ts"
+import { fiberReference } from "./internal/references.ts"
+import { MixedScheduler } from "./internal/scheduler.ts"
 
 /**
  * A scheduler manages the execution of Effect fibers by controlling when queued
@@ -88,12 +82,7 @@ export interface SchedulerDispatcher {
  * @category services
  * @since 2.0.0
  */
-export const Scheduler: Context.Reference<Scheduler> = bindMemoizedDefault(
-  Context.Reference<Scheduler>(SchedulerKey, {
-    defaultValue: () => new MixedScheduler()
-  }),
-  getDefaultScheduler
-)
+export const Scheduler: Context.Reference<Scheduler> = fiberReference(fiberCache.scheduler)
 
 export {
   /**
@@ -149,9 +138,7 @@ export {
  * @category services
  * @since 4.0.0
  */
-export const MaxOpsBeforeYield: Context.Reference<number> = Context.Reference<number>(MaxOpsBeforeYieldKey, {
-  defaultValue: () => defaultMaxOpsBeforeYield
-})
+export const MaxOpsBeforeYield: Context.Reference<number> = fiberReference(fiberCache.maxOpsBeforeYield)
 
 /**
  * Context reference that controls whether the runtime should bypass scheduler
@@ -175,6 +162,4 @@ export const MaxOpsBeforeYield: Context.Reference<number> = Context.Reference<nu
  * @category services
  * @since 4.0.0
  */
-export const PreventSchedulerYield: Context.Reference<boolean> = Context.Reference<boolean>(PreventSchedulerYieldKey, {
-  defaultValue: () => defaultPreventSchedulerYield
-})
+export const PreventSchedulerYield: Context.Reference<boolean> = fiberReference(fiberCache.preventYield)

@@ -22,7 +22,7 @@ import {
   objectKind,
   toBytes
 } from "./internal/equal.ts"
-import { hasProperty } from "./Predicate.ts"
+import { hasPropertyDataFirst } from "./Predicate.ts"
 
 /**
  * Defines the unique identifier used to identify objects that implement the Hash interface.
@@ -318,7 +318,7 @@ export const optimize = (n: number): number => (n & 0xbfffffff) | ((n >>> 1) & 0
  * @category guards
  * @since 2.0.0
  */
-export const isHash = (u: unknown): u is Hash => hasProperty(u, symbol) && typeof u[symbol] === "function"
+export const isHash = (u: unknown): u is Hash => hasPropertyDataFirst(u, symbol) && typeof u[symbol] === "function"
 
 // Created on first use so loading Hash.ts does not eagerly allocate a DataView.
 let float64: DataView | undefined

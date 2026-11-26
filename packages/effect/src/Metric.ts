@@ -17,10 +17,11 @@ import * as Context from "./Context.ts"
 import * as Duration from "./Duration.ts"
 import type { Effect } from "./Effect.ts"
 import type { Exit } from "./Exit.ts"
-import { constUndefined, constVoid, dual, identity } from "./Function.ts"
+import { constVoid, dual, identity } from "./Function.ts"
 import * as InternalEffect from "./internal/effect.ts"
-import { FiberRuntimeMetricsKey as InternalFiberRuntimeMetricsKey } from "./internal/fiberCachedKeys.ts"
+import { fiberCache, FiberRuntimeMetricsKey as InternalFiberRuntimeMetricsKey } from "./internal/fiberCache.ts"
 import * as InternalRecord from "./internal/record.ts"
+import { fiberReference } from "./internal/references.ts"
 import * as Layer from "./Layer.ts"
 import * as Order from "./Order.ts"
 import type { Pipeable } from "./Pipeable.ts"
@@ -3526,9 +3527,8 @@ export interface FiberRuntimeMetricsService {
  * @category services
  * @since 4.0.0
  */
-export const FiberRuntimeMetrics = Context.Reference<FiberRuntimeMetricsService | undefined>(
-  InternalFiberRuntimeMetricsKey,
-  { defaultValue: constUndefined }
+export const FiberRuntimeMetrics: Context.Reference<FiberRuntimeMetricsService | undefined> = fiberReference(
+  fiberCache.runtimeMetrics
 )
 
 /**
