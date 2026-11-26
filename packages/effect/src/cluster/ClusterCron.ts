@@ -15,12 +15,12 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Cron from "../Cron.ts"
 import * as DateTime from "../DateTime.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
-import * as Exit from "../Exit.ts"
 import * as Layer from "../Layer.ts"
 import * as PrimaryKey from "../PrimaryKey.ts"
 import * as Rpc from "../rpc/Rpc.ts"
@@ -78,6 +78,10 @@ export class CronSchedule extends Context.Service<CronSchedule, {
  * The job is scheduled as persisted entity messages, with an initial singleton
  * scheduling step and optional controls for shard group, next-run calculation,
  * and skipping stale scheduled runs.
+ *
+ * By default, a run that fails or dies is logged and not retried, and the next
+ * run is still scheduled. With `calculateNextRunFromPrevious`, it is retried
+ * in place instead.
  *
  * @stability unstable
  * @category constructors
@@ -193,12 +197,17 @@ export const make = <E, R>(options: {
         }
         processedRun = true
         return Effect.onExitPrimitive(
-          execute(dateTime),
-          (exit) =>
-            Effect.andThen(
-              Exit.isFailure(exit) ? Effect.logWarning(exit.cause) : Effect.void,
-              fromPrevious ? schedule(nextRun(dateTime)) : Effect.flatMap(DateTime.now, (now) => schedule(nextRun(now)))
-            ),
+          execute(dateTime).pipe(
+            Effect.tapCause(Effect.logWarning),
+            Effect.sandbox,
+            // interrupts are left for the entity manager to replay
+            fromPrevious
+              ? Effect.retry({ schedule: retryPolicy, while: isBodyFailure })
+              : Effect.catchIf(isBodyFailure, () => Effect.void),
+            Effect.catch(Effect.failCause)
+          ),
+          () =>
+            fromPrevious ? schedule(nextRun(dateTime)) : Effect.flatMap(DateTime.now, (now) => schedule(nextRun(now))),
           true
         ).pipe(
           Effect.annotateLogs({
@@ -220,6 +229,8 @@ export const make = <E, R>(options: {
 }
 
 const executorId = "executor"
+
+const isBodyFailure = (cause: Cause.Cause<unknown>): boolean => !Cause.hasInterrupts(cause)
 
 const retryPolicy = Schedule.min([
   Schedule.exponential(200, 1.5),
