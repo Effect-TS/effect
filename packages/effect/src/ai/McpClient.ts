@@ -120,8 +120,9 @@ export interface McpClient {
   ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, McpClientError>
   /**
    * Returns every tool page with the same bounds as `listTools` plus the aggregated
-   * `2026-07-28` cache hint (minimum `ttlMs`; `"public"` only if every page is `"public"`),
-   * or `undefined` when the protocol or server provides no hint.
+   * `2026-07-28` `cacheHint` (minimum `ttlMs`; `"public"` only if every page is `"public"`).
+   * `cacheHint` is `undefined` on protocols before `2026-07-28` or when the server does not
+   * advertise the `tools` capability.
    */
   readonly listToolsWithCacheHint: (
     options?: {
