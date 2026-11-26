@@ -17,6 +17,8 @@ import { byReferenceInstances, getAllObjectKeys, objectKind, toBytes } from "./i
 import { addBackEdge, backEdges, hashCache } from "./internal/hash.ts"
 import { hasProperty } from "./Predicate.ts"
 
+// Provides the comparison to the data types every fiber creates. See
+// `provideEquals` in `internal/equal.ts`.
 /**
  * Defines the unique string identifier for the `Equal` interface.
  *
@@ -56,7 +58,7 @@ import { hasProperty } from "./Predicate.ts"
  * @category symbols
  * @since 2.0.0
  */
-export const symbol: "~effect/Equal" = InternalEqual.symbol
+export const symbol: "~effect/Equal" = InternalEqual.provideEquals(compareBoth)
 
 /**
  * The interface for types that define their own equality logic.
@@ -273,8 +275,6 @@ function compareStructure(self: object, that: object): boolean {
     return false
   }
   if (bothEquals) {
-    // Runtime data types compare their nested values through this hook.
-    InternalEqual.installEquals(compareBoth)
     return (self as Equal)[symbol](that as Equal)
   }
   if (kind !== objectKind(that)) {

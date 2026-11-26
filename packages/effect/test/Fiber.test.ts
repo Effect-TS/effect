@@ -1,5 +1,18 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Deferred, Effect, Exit, Fiber, Latch, References, Result, Scheduler, Scope } from "effect"
+import {
+  Cause,
+  Context,
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  Latch,
+  References,
+  Result,
+  Scheduler,
+  Scope,
+  Tracer
+} from "effect"
 
 describe("Fiber", () => {
   describe("cache", () => {
@@ -35,6 +48,40 @@ describe("Fiber", () => {
       const { cache, references } = (exit as Exit.Success<Effect.Success<typeof cachedAndReferenced>>).value
       assert.strictEqual(cache.scheduler, scheduler)
       assert.strictEqual(references.scheduler, scheduler)
+    })
+
+    it("refreshes when a cached service is added by key", () => {
+      // Complete on purpose: a new cache field has to name the key it reads
+      const cached: {
+        readonly [Field in Exclude<keyof Fiber.Fiber.Cache, "tracerContext">]: readonly [
+          key: string,
+          value: Fiber.Fiber.Cache[Field]
+        ]
+      } = {
+        scheduler: ["effect/Scheduler", new Scheduler.MixedScheduler("sync")],
+        maxOpsBeforeYield: ["effect/Scheduler/MaxOpsBeforeYield", 4096],
+        preventYield: ["effect/Scheduler/PreventSchedulerYield", true],
+        tracer: ["effect/Tracer", Tracer.make({ span: () => assert.fail("no span is created") })],
+        span: ["effect/Tracer/ParentSpan", Tracer.externalSpan({ spanId: "span", traceId: "trace" })],
+        tracerEnabled: ["effect/References/TracerEnabled", false],
+        stackFrame: ["effect/References/CurrentStackFrame", {
+          name: "frame",
+          stack: () => undefined,
+          parent: undefined
+        }],
+        logLevel: ["effect/References/CurrentLogLevel", "Debug"],
+        minimumLogLevel: ["effect/References/MinimumLogLevel", "Debug"],
+        runtimeMetrics: ["effect/Metric/FiberRuntimeMetrics", { recordFiberStart() {}, recordFiberEnd() {} }]
+      }
+      for (const [field, [key, value]] of Object.entries(cached)) {
+        const read = Effect.withFiber((fiber) => Effect.succeed(fiber.cache[field as keyof typeof cached]))
+        const added = read.pipe(
+          Effect.updateContext((context: Context.Context<never>): Context.Context<never> =>
+            Context.addUnsafe(context, key, value)
+          )
+        )
+        assert.strictEqual(Effect.runSync(added), value, field)
+      }
     })
   })
 

@@ -275,38 +275,57 @@ export const Service: {
   return arguments.length > 0 ? init(arguments[0], arguments[1]) : init
 } as any
 
-const ServiceProto: any = {
-  [ServiceTypeId]: ServiceTypeId,
-  ...Effectable.Prototype<Service<never, any>>({
+const ServiceProto: any = Object.assign(
+  { [ServiceTypeId]: ServiceTypeId },
+  Effectable.Prototype<Service<never, any>>({
     label: "Service",
     evaluate(fiber) {
       return exitSucceed(get(fiber.context, this))
     }
   }),
-  toJSON<I, A>(this: Service<I, A>) {
-    return {
-      _id: "Service",
-      key: this.key
+  {
+    toJSON<I, A>(this: Service<I, A>) {
+      return {
+        _id: "Service",
+        key: this.key
+      }
+    },
+    of<Service>(this: void, self: Service): Service {
+      return self
+    },
+    context<Identifier, Shape>(
+      this: Service<Identifier, Shape>,
+      self: Shape
+    ): Context<Identifier> {
+      return make(this, self)
+    },
+    use<A, E, R>(this: Service<never, any>, f: (service: any) => Effect<A, E, R>): Effect<A, E, R> {
+      return withFiber((fiber) => f(get(fiber.context, this)))
+    },
+    useSync<A>(this: Service<never, any>, f: (service: any) => A): Effect<A, never, never> {
+      return withFiber((fiber) => exitSucceed(f(get(fiber.context, this))))
     }
-  },
-  of<Service>(this: void, self: Service): Service {
-    return self
-  },
-  context<Identifier, Shape>(
-    this: Service<Identifier, Shape>,
-    self: Shape
-  ): Context<Identifier> {
-    return make(this, self)
-  },
-  use<A, E, R>(this: Service<never, any>, f: (service: any) => Effect<A, E, R>): Effect<A, E, R> {
-    return withFiber((fiber) => f(get(fiber.context, this)))
-  },
-  useSync<A>(this: Service<never, any>, f: (service: any) => A): Effect<A, never, never> {
-    return withFiber((fiber) => exitSucceed(f(get(fiber.context, this))))
   }
-}
+)
 
-const cacheKeys = new Set<string>()
+// Keys whose services fibers cache (see `Fiber.Cache`). Adding one of them to a
+// context starts a new cache, so a fiber never reads a stale value.
+//
+// The keys the runtime caches are listed here instead of being registered by
+// their services: the runtime reads them by key, so a bundle may not contain
+// the service that would register them.
+const cacheKeys = new Set<string>([
+  "effect/Scheduler",
+  "effect/Scheduler/MaxOpsBeforeYield",
+  "effect/Scheduler/PreventSchedulerYield",
+  "effect/Tracer",
+  "effect/Tracer/ParentSpan",
+  "effect/References/TracerEnabled",
+  "effect/References/CurrentStackFrame",
+  "effect/References/CurrentLogLevel",
+  "effect/References/MinimumLogLevel",
+  "effect/Metric/FiberRuntimeMetrics"
+])
 
 const ReferenceTypeId = "~effect/Context/Reference" as const
 
@@ -1000,52 +1019,39 @@ export const getOrUndefinedUnsafe = <A, Services = never>(self: Context<Services
 }
 
 /**
- * The key and default of a `Reference`. The runtime reads fiber-cached
- * references through these, so running an effect does not build the
- * `Reference` services themselves.
+ * The key and default value of a `Reference`, without the service itself.
+ *
+ * The fiber runtime reads the references it caches through their definitions,
+ * so running an effect does not construct the `Reference` services.
  *
  * @internal
  */
-export interface ReferenceOptions<A> {
+export interface ReferenceDefinition<Shape> {
   readonly key: string
-  readonly defaultValue: () => A
+  readonly defaultValue: () => Shape
 }
 
 /**
- * Same result as `get` on the `Reference` created from `options`, provided
- * its default is the same value on every call.
+ * Creates the `Reference` of a definition. Both resolve to the same default
+ * value.
  *
  * @internal
  */
-export const getByOptionsUnsafe = <A, Services = never>(self: Context<Services>, options: ReferenceOptions<A>): A => {
-  const value = lookup(self, options.key)
-  return value === notFound ? options.defaultValue() : value as A
-}
+export const referenceFromDefinition = <Shape>(definition: ReferenceDefinition<Shape>): Reference<Shape> =>
+  Reference(definition.key, { defaultValue: () => getDefaultValue(definition) })
 
 /**
- * Same as `get` for a `Reference`, which never reaches the missing service
- * error.
+ * Same as `get` for a `Reference` or its definition, neither of which reaches
+ * the missing service error.
  *
  * @internal
  */
-export const getReferenceUnsafe = <A, Services = never>(self: Context<Services>, reference: Reference<A>): A => {
-  const value = lookup(self, reference.key)
-  return value === notFound ? getDefaultValue(reference) : value as A
-}
-
-/**
- * Like `addUnsafe`, for a key the fiber caches. Its `Reference` registers the
- * key when created, which may not have happened yet.
- *
- * @internal
- */
-export const addFiberCachedUnsafe = <Services, I, S>(
+export const getReferenceUnsafe = <Shape, Services = never>(
   self: Context<Services>,
-  key: string,
-  service: Types.NoInfer<S>
-): Context<Services | I> => {
-  cacheKeys.add(key)
-  return addUnsafe(self, key, service)
+  reference: ReferenceDefinition<Shape>
+): Shape => {
+  const value = lookup(self, reference.key)
+  return value === notFound ? getDefaultValue(reference) : value as Shape
 }
 
 /**
@@ -1138,7 +1144,7 @@ export const get: {
 
 const defaultValueCacheKey = "~effect/Context/defaultValue" as const
 
-const getDefaultValue = (ref: Reference<any>) => {
+const getDefaultValue = (ref: ReferenceDefinition<any>) => {
   if (defaultValueCacheKey in ref) {
     return ref[defaultValueCacheKey] as any
   }

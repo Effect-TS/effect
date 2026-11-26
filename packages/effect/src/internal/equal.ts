@@ -2,25 +2,30 @@
 export const symbol = "~effect/Equal"
 
 /**
- * Compares nested values for the `[Equal.symbol]` methods of runtime data
- * types (`Exit`, `Cause`, `Context`).
+ * `Equal.equals`, for the `[Equal.symbol]` methods of the data types every
+ * fiber creates (`Exit`, `Cause` and `Context`).
  *
- * Every fiber creates those values, so importing `Equal.ts` from them would put
- * the structural comparison in every program that runs an effect. Instead
- * `Equal.equals` installs itself here before it calls an `[Equal.symbol]`
- * method, so comparisons made through `Equal.equals` behave exactly as if the
- * methods imported it. A method called directly, before any `Equal.equals`
- * dispatch, compares nested values by identity, treating `NaN` as equal to
- * itself like `Equal.equals` does.
+ * If those methods imported `Equal.ts`, every program that runs an effect would
+ * carry structural equality, whether or not it compares anything. `Equal.ts`
+ * provides the comparison instead, see `provideEquals`.
  *
  * @internal
  */
-export let equals: (self: unknown, that: unknown) => boolean = (self, that) =>
-  self === that || (self !== self && that !== that)
+export let equals: (self: unknown, that: unknown) => boolean
 
-/** @internal */
-export const installEquals = (f: (self: unknown, that: unknown) => boolean): void => {
+/**
+ * Provides `equals` and returns the key of the methods that use it.
+ *
+ * `Equal.ts` initializes `Equal.symbol` with this call. Reaching one of the
+ * methods takes that key, directly or through `Equal.equals`, so the comparison
+ * is provided before the first call and a bundle only drops it together with
+ * every use of the key.
+ *
+ * @internal
+ */
+export const provideEquals = (f: (self: unknown, that: unknown) => boolean): typeof symbol => {
   equals = f
+  return symbol
 }
 
 // JavaScriptCore (Bun, Safari) stamps the construction site onto every Error as

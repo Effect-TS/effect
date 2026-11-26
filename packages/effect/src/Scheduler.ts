@@ -12,7 +12,6 @@
  */
 import * as Context from "./Context.ts"
 import type * as Fiber from "./Fiber.ts"
-import { constFalse } from "./Function.ts"
 
 /**
  * A scheduler manages the execution of Effect fibers by controlling when queued
@@ -63,21 +62,10 @@ export interface SchedulerDispatcher {
   flush(): void
 }
 
-const schedulerKey = "effect/Scheduler"
-
-let defaultScheduler: Scheduler | undefined
-
-// Created once, so the fiber runtime and `Scheduler` share one instance
-const getDefaultScheduler = (): Scheduler => defaultScheduler ??= new MixedScheduler()
-
-/**
- * Lets the fiber runtime read the scheduler without building `Scheduler`.
- *
- * @internal
- */
-export const schedulerOptions: Context.ReferenceOptions<Scheduler> = {
-  key: schedulerKey,
-  defaultValue: getDefaultScheduler
+/** @internal */
+export const schedulerDefinition: Context.ReferenceDefinition<Scheduler> = {
+  key: "effect/Scheduler",
+  defaultValue: () => new MixedScheduler()
 }
 
 /**
@@ -97,10 +85,7 @@ export const schedulerOptions: Context.ReferenceOptions<Scheduler> = {
  * @category services
  * @since 2.0.0
  */
-export const Scheduler: Context.Reference<Scheduler> = Context.Reference<Scheduler>(schedulerKey, {
-  fiberCached: true,
-  defaultValue: getDefaultScheduler
-})
+export const Scheduler: Context.Reference<Scheduler> = Context.referenceFromDefinition(schedulerDefinition)
 
 const setMicrotask = (f: () => void) => {
   let cancelled = false
@@ -131,6 +116,34 @@ const setImmediate = (f: () => void) => {
     return setTimer(f)
   } catch {
     return setMicrotask(f)
+  }
+}
+
+class PriorityBuckets {
+  buckets: Array<[priority: number, tasks: Array<() => void>]> = []
+
+  scheduleTask(task: () => void, priority: number): void {
+    const buckets = this.buckets
+    const len = buckets.length
+    let bucket: [number, Array<() => void>] | undefined
+    let index = 0
+    for (; index < len; index++) {
+      if (buckets[index][0] > priority) break
+      bucket = buckets[index]
+    }
+    if (bucket && bucket[0] === priority) {
+      bucket[1].push(task)
+    } else if (index === len) {
+      buckets.push([priority, [task]])
+    } else {
+      buckets.splice(index, 0, [priority, [task]])
+    }
+  }
+
+  drain() {
+    const buckets = this.buckets
+    this.buckets = []
+    return buckets
   }
 }
 
@@ -205,8 +218,7 @@ export class MixedScheduler implements Scheduler {
 }
 
 class MixedSchedulerDispatcher implements SchedulerDispatcher {
-  // Ordered by ascending priority; tasks keep FIFO order within a bucket.
-  private buckets: Array<[priority: number, tasks: Array<() => void>]> = []
+  private tasks = new PriorityBuckets()
   private running: (() => void) | undefined = undefined
   readonly setImmediate: (f: () => void) => () => void
 
@@ -220,21 +232,7 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    * @since 2.0.0
    */
   scheduleTask(task: () => void, priority: number) {
-    const buckets = this.buckets
-    const len = buckets.length
-    let bucket: [number, Array<() => void>] | undefined
-    let index = 0
-    for (; index < len; index++) {
-      if (buckets[index][0] > priority) break
-      bucket = buckets[index]
-    }
-    if (bucket && bucket[0] === priority) {
-      bucket[1].push(task)
-    } else if (index === len) {
-      buckets.push([priority, [task]])
-    } else {
-      buckets.splice(index, 0, [priority, [task]])
-    }
+    this.tasks.scheduleTask(task, priority)
     if (this.running === undefined) {
       this.running = this.setImmediate(this.afterScheduled)
     }
@@ -252,8 +250,7 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    * @since 2.0.0
    */
   runTasks() {
-    const buckets = this.buckets
-    this.buckets = []
+    const buckets = this.tasks.drain()
     for (let i = 0; i < buckets.length; i++) {
       const toRun = buckets[i][1]
       for (let j = 0; j < toRun.length; j++) {
@@ -266,7 +263,7 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    * @since 2.0.0
    */
   flush() {
-    while (this.buckets.length > 0) {
+    while (this.tasks.buckets.length > 0) {
       if (this.running !== undefined) {
         this.running()
         this.running = undefined
@@ -276,14 +273,10 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
   }
 }
 
-const maxOpsBeforeYieldKey = "effect/Scheduler/MaxOpsBeforeYield"
-
-const defaultMaxOpsBeforeYield = () => 2048
-
 /** @internal */
-export const maxOpsBeforeYieldOptions: Context.ReferenceOptions<number> = {
-  key: maxOpsBeforeYieldKey,
-  defaultValue: defaultMaxOpsBeforeYield
+export const maxOpsBeforeYieldDefinition: Context.ReferenceDefinition<number> = {
+  key: "effect/Scheduler/MaxOpsBeforeYield",
+  defaultValue: () => 2048
 }
 
 /**
@@ -307,17 +300,14 @@ export const maxOpsBeforeYieldOptions: Context.ReferenceOptions<number> = {
  * @category services
  * @since 4.0.0
  */
-export const MaxOpsBeforeYield = Context.Reference<number>(maxOpsBeforeYieldKey, {
-  fiberCached: true,
-  defaultValue: defaultMaxOpsBeforeYield
-})
-
-const preventSchedulerYieldKey = "effect/Scheduler/PreventSchedulerYield"
+export const MaxOpsBeforeYield: Context.Reference<number> = Context.referenceFromDefinition(
+  maxOpsBeforeYieldDefinition
+)
 
 /** @internal */
-export const preventSchedulerYieldOptions: Context.ReferenceOptions<boolean> = {
-  key: preventSchedulerYieldKey,
-  defaultValue: constFalse
+export const preventSchedulerYieldDefinition: Context.ReferenceDefinition<boolean> = {
+  key: "effect/Scheduler/PreventSchedulerYield",
+  defaultValue: () => false
 }
 
 /**
@@ -342,7 +332,6 @@ export const preventSchedulerYieldOptions: Context.ReferenceOptions<boolean> = {
  * @category services
  * @since 4.0.0
  */
-export const PreventSchedulerYield = Context.Reference<boolean>(preventSchedulerYieldKey, {
-  fiberCached: true,
-  defaultValue: constFalse
-})
+export const PreventSchedulerYield: Context.Reference<boolean> = Context.referenceFromDefinition(
+  preventSchedulerYieldDefinition
+)

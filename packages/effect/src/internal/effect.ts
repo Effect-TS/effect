@@ -90,13 +90,13 @@ import * as InternalRecord from "./record.ts"
 import {
   CurrentErrorReporters,
   CurrentLogAnnotations,
-  currentLogLevelOptions,
+  currentLogLevelDefinition,
   CurrentLogSpans,
   CurrentStackFrame,
-  currentStackFrameOptions,
-  minimumLogLevelOptions,
+  currentStackFrameDefinition,
+  minimumLogLevelDefinition,
   TracerEnabled,
-  tracerEnabledOptions,
+  tracerEnabledDefinition,
   TracerSpanAnnotations,
   TracerSpanLinks,
   TracerTimingEnabled,
@@ -796,21 +796,21 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 }
 
 const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
-  // Reading by key keeps the Reference services, and the native tracer
-  // behind Tracer.Tracer's default, out of bundles that never use them
+  // Reading by key and by definition keeps the services, and the native
+  // tracer behind Tracer.Tracer's default, out of bundles that never use them
   const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
   return {
-    scheduler: Context.getByOptionsUnsafe(context, Scheduler.schedulerOptions),
+    scheduler: Context.getReferenceUnsafe(context, Scheduler.schedulerDefinition),
     tracer: currentTracer,
     tracerContext: currentTracer ? currentTracer["context"] : undefined,
-    tracerEnabled: Context.getByOptionsUnsafe(context, tracerEnabledOptions),
+    tracerEnabled: Context.getReferenceUnsafe(context, tracerEnabledDefinition),
     span: Context.getOrUndefinedUnsafe(context, Tracer.ParentSpanKey),
-    logLevel: Context.getByOptionsUnsafe(context, currentLogLevelOptions),
-    minimumLogLevel: Context.getByOptionsUnsafe(context, minimumLogLevelOptions),
-    stackFrame: Context.getByOptionsUnsafe(context, currentStackFrameOptions),
+    logLevel: Context.getReferenceUnsafe(context, currentLogLevelDefinition),
+    minimumLogLevel: Context.getReferenceUnsafe(context, minimumLogLevelDefinition),
+    stackFrame: Context.getReferenceUnsafe(context, currentStackFrameDefinition),
     runtimeMetrics: Context.getOrUndefinedUnsafe(context, InternalMetric.FiberRuntimeMetricsKey),
-    maxOpsBeforeYield: Context.getByOptionsUnsafe(context, Scheduler.maxOpsBeforeYieldOptions),
-    preventYield: Context.getByOptionsUnsafe(context, Scheduler.preventSchedulerYieldOptions)
+    maxOpsBeforeYield: Context.getReferenceUnsafe(context, Scheduler.maxOpsBeforeYieldDefinition),
+    preventYield: Context.getReferenceUnsafe(context, Scheduler.preventSchedulerYieldDefinition)
   }
 }
 
@@ -5726,9 +5726,7 @@ export const runForkWith = <R>(context: Context.Context<R>) =>
   options?: Effect.RunOptions | undefined
 ): Fiber.Fiber<A, E> => {
   const fiber = new FiberImpl<A, E>(
-    options?.scheduler
-      ? Context.addFiberCachedUnsafe(context, Scheduler.schedulerOptions.key, options.scheduler)
-      : context,
+    options?.scheduler ? Context.addUnsafe(context, Scheduler.schedulerDefinition.key, options.scheduler) : context,
     options?.uninterruptible !== true
   )
   fiber.evaluate(effect as any)

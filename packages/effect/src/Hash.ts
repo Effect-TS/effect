@@ -10,28 +10,11 @@
  * @stability stable
  * @since 2.0.0
  */
+import { dual } from "./Function.ts"
 import { byReferenceInstances, getAllObjectKeys, objectKind, toBytes } from "./internal/equal.ts"
 import * as InternalHash from "./internal/hash.ts"
 import { addBackEdge, backEdges, hashCache } from "./internal/hash.ts"
 import { hasProperty } from "./Predicate.ts"
-
-/**
- * Defines the unique identifier used to identify objects that implement the Hash interface.
- *
- * **When to use**
- *
- * Use as the computed property key for the method that supplies a custom hash
- * value on a `Hash` implementor.
- *
- * @see {@link Hash} for the interface implemented with this symbol
- * @see {@link isHash} for checking whether a value implements `Hash`
- * @see {@link hash} for computing hash values
- *
- * @stability stable
- * @category symbols
- * @since 2.0.0
- */
-export const symbol: "~effect/Hash" = InternalHash.symbol
 
 /**
  * A type that represents an object that can be hashed.
@@ -143,8 +126,6 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
         let h: number
         try {
           if (isHash(self)) {
-            // Runtime data types hash their nested values through this hook.
-            InternalHash.installHash(hash)
             h = (self as Hash)[symbol]()
           } else if (typeof self === "function") {
             h = random(self)
@@ -171,7 +152,7 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
       }
     }
   }
-  return optimize(InternalHash.mix(string(String(self))))
+  return optimize(mix(string(String(self))))
 }
 
 /**
@@ -212,6 +193,15 @@ export const random: <A extends object>(self: A) => number = (self) => {
   return h
 }
 
+// 32-bit MurmurHash3 finalizer.
+const mix = (h: number): number => {
+  h ^= h >>> 16
+  h = Math.imul(h, 0x85ebca6b)
+  h ^= h >>> 13
+  h = Math.imul(h, 0xc2b2ae35)
+  return h ^ (h >>> 16)
+}
+
 /**
  * Combines two hash values into a single hash value.
  *
@@ -246,7 +236,7 @@ export const random: <A extends object>(self: A) => number = (self) => {
 export const combine: {
   (b: number): (self: number) => number
   (self: number, b: number): number
-} = InternalHash.combine
+} = dual(2, (self: number, b: number): number => mix(Math.imul(self, 0x9e3779b1) + Math.imul(b, 0x85ebca6b)))
 
 /**
  * Applies bit manipulation techniques to optimize a hash value.
@@ -272,7 +262,7 @@ export const combine: {
  * @category hashing
  * @since 2.0.0
  */
-export const optimize: (n: number) => number = InternalHash.optimize
+export const optimize = (n: number): number => (n & 0xbfffffff) | ((n >>> 1) & 0x40000000)
 
 /**
  * Checks whether a value implements the Hash interface.
@@ -309,6 +299,8 @@ export const optimize: (n: number) => number = InternalHash.optimize
  */
 export const isHash = (u: unknown): u is Hash => hasProperty(u, symbol) && typeof u[symbol] === "function"
 
+const float64 = new DataView(new ArrayBuffer(8))
+
 /**
  * Computes a hash value for a number.
  *
@@ -337,7 +329,14 @@ export const isHash = (u: unknown): u is Hash => hasProperty(u, symbol) && typeo
  * @category hashing
  * @since 2.0.0
  */
-export const number: (n: number) => number = InternalHash.number
+export const number = (n: number) => {
+  const h = n | 0
+  if (h === n) {
+    return optimize(h)
+  }
+  float64.setFloat64(0, n !== n ? NaN : n)
+  return optimize(combine(float64.getInt32(0), float64.getInt32(4)))
+}
 
 /**
  * Computes a hash value for a string using the djb2 algorithm.
@@ -368,7 +367,13 @@ export const number: (n: number) => number = InternalHash.number
  * @category hashing
  * @since 2.0.0
  */
-export const string: (str: string) => number = InternalHash.string
+export const string = (str: string) => {
+  let h = 5381, i = str.length
+  while (i) {
+    h = (h * 33) ^ str.charCodeAt(--i)
+  }
+  return optimize(h)
+}
 
 /**
  * Computes a hash value for an object using only the specified keys.
@@ -490,8 +495,11 @@ const unordered = (seed: number, f: (el: any) => number) => (iter: Iterable<any>
  * @since 2.0.0
  */
 export const array = <A>(arr: Iterable<A>): number => {
-  InternalHash.installHash(hash)
-  return InternalHash.array(arr)
+  let h = 6151
+  for (const element of arr) {
+    h = combine(h, hash(element))
+  }
+  return optimize(h)
 }
 
 const hashIndexed = (arr: ArrayLike<unknown>): number => {
@@ -511,3 +519,23 @@ const hashSet: <A>(set: Iterable<A>) => number = unordered(setSeed, (element) =>
 
 const randomHashCache = new WeakMap<any, number>()
 const visitedObjects = new WeakSet<object>()
+
+// Declared last: it provides the functions above to the data types every
+// fiber creates. See `provideHashing` in `internal/hash.ts`.
+/**
+ * Defines the unique identifier used to identify objects that implement the Hash interface.
+ *
+ * **When to use**
+ *
+ * Use as the computed property key for the method that supplies a custom hash
+ * value on a `Hash` implementor.
+ *
+ * @see {@link Hash} for the interface implemented with this symbol
+ * @see {@link isHash} for checking whether a value implements `Hash`
+ * @see {@link hash} for computing hash values
+ *
+ * @stability stable
+ * @category symbols
+ * @since 2.0.0
+ */
+export const symbol: "~effect/Hash" = InternalHash.provideHashing({ hash, combine, string, number, array })
