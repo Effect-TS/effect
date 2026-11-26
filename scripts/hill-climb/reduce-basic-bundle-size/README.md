@@ -107,3 +107,32 @@ Measured in round 14:
   `Formatter.ts`.
 - Run `Metric.test.ts` from the repository root (`pnpm exec vitest run packages/effect/test/Metric.test.ts`);
   from `packages/effect` it cannot resolve `@effect/opentelemetry`.
+- `format-edge.mjs <absolute dist dir>`: prints `Formatter.format` output for `toString` methods that
+  throw, return something unconvertible or sit behind an accessor, with the number of accessor reads.
+  Run it once per copy of effect and compare the lines.
+
+`isolated-bench.mjs` also times hashing of new objects, maps, sets and floats and `Cause.combine`.
+
+Measured in round 15 (node 26, `isolated-bench.mjs`, ratios are candidate over main):
+
+- The round 8 commit was slower than main where nobody had measured: `Context.get` 1.24 times on an
+  overlay context and 1.37 times alternating flat and overlay, `Hash.hash` of a new cause 1.22 times
+  and `Cause.combine` 1.42 times.
+- The overlay slowdown came from dispatching on the prototype method. A context that has flattened
+  itself kept calling it for every read. Dispatching on the `overlay` field sends flattened contexts
+  down the flat path: 0.78 (overlay) and 0.87 (mixed).
+- `lookup` and `notFound` have to be unexported bindings of `Context.ts`. Exported, with the same
+  code in the same module, flat `Context.get` is 1.09 and mixed 1.11; unexported they are 0.91 and
+  0.87. Importing them from an internal module costs the same as exporting them.
+- Giving flat contexts an own `overlay = undefined` field made flat reads slower (1.17 to 1.20) and
+  cost 7 B. Leave the field off flat contexts.
+- `Hash.array(reasons)` in `CauseImpl` costs 16 B over `Hash.hash(reasons)` and restores main's
+  timings. `Hash.hash` on the array adds a second `WeakMap` write per new cause.
+- Main's `Formatter.ts` costs 24 B more than the round 8 rewrite. The two print the same text on
+  12,000 random cases; the rewrite reads an accessor `toString` once where main reads it four times.
+- `Predicate.hasProperty` through `dual` costs 130 B (6,494 B, 13.3% under main). Written out it is
+  about 20 times faster called directly (0.5 against 10.5 ns), while `Exit.isExit` over a mix of
+  value shapes is 1.12 times main (16.2 against 14.5 ns).
+- A shared helper for the stack frame annotation cost 3 B more than the two inline calls.
+- The scripts report bytes and the bundle report divides by 1000, so 6.20 KB is 6,200 B. Main is
+  7,491 B, which makes 15% smaller 6,367 B.

@@ -38,6 +38,12 @@ const cases = (M) => {
     "Equal.equals(cause)": () => M.Equal.equals(cause, causeCopy),
     "Equal.equals(context)": () => M.Equal.equals(flat, contextCopy),
     "Hash.hash(cause)": () => M.Hash.hash(M.Cause.fail({ code: i++ })),
+    // Fresh values, so every call computes the hash instead of reading the cache
+    "Hash.hash(object)": () => M.Hash.hash({ id: i++, name: "x", tags: ["a", "b"] }),
+    "Hash.hash(Map)": () => M.Hash.hash(new Map([["a", i++], ["b", 2], ["c", 3]])),
+    "Hash.hash(Set)": () => M.Hash.hash(new Set([i++, "b", "c"])),
+    "Hash.hash(float)": () => M.Hash.hash(i++ + 0.5),
+    "Cause.combine": () => M.Cause.combine(M.Cause.fail(i++), cause),
     "format(object)": () => M.Formatter.format(value),
     "String(cause)": () => String(cause),
     "Exit.isExit mixed": () => M.Exit.isExit(guarded[i++ % guarded.length]),
