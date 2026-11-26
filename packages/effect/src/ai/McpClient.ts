@@ -192,7 +192,8 @@ export interface McpClient {
     options?: { readonly timeout?: Duration.Input | undefined }
   ) => Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
   /**
-   * Calls a discovered tool, optionally decoding with a schema. Errors retain the full result.
+   * Calls a discovered tool, optionally decoding `structuredContent` with a schema. Errors retain
+   * the full result. `2025-03-26` has no structured results, so `schema` decodes `undefined`.
    * Unbounded unless `timeout` is supplied.
    */
   readonly callTool: {
