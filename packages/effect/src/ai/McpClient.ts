@@ -79,8 +79,7 @@ export type ProtocolVersion = "2025-11-25" | "2026-07-28"
 export const McpClient: Context.Service<McpClient, McpClient> = Context.Service<McpClient>("effect/ai/McpClient")
 
 /**
- * A `2026-07-28` server's cache hint for a list: how long the list stays fresh,
- * in milliseconds, and whether a cache shared between users may keep it.
+ * Cache hint returned by a `2026-07-28` MCP list response.
  *
  * @stability experimental
  * @category models
@@ -120,10 +119,9 @@ export interface McpClient {
     }
   ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, McpClientError>
   /**
-   * Returns every tool page as one snapshot with the same bounds as `listTools`,
-   * along with the aggregated `2026-07-28` cache hint: the smallest page `ttlMs`
-   * and `"public"` only when every page is `"public"`. Protocols before `2026-07-28`
-   * and servers without the `tools` capability return `cacheHint: undefined`.
+   * Returns every tool page with the same bounds as `listTools` plus the aggregated
+   * `2026-07-28` cache hint (minimum `ttlMs`; `"public"` only if every page is `"public"`),
+   * or `undefined` when the protocol or server provides no hint.
    */
   readonly listToolsWithCacheHint: (
     options?: {
