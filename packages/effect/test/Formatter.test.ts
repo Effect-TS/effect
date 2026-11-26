@@ -72,6 +72,12 @@ describe("Formatter", () => {
       strictEqual(format({ toString: () => "custom" }), `custom`)
     })
 
+    it("reports a toString result that cannot be converted to a string", () => {
+      const unconvertible = { toString: () => ({}), valueOf: () => ({}) }
+
+      strictEqual(format({ toString: () => unconvertible }), `[toString threw]`)
+    })
+
     it("handles throwing property getters", () => {
       const value = Object.defineProperty({ safe: 1 }, "unsafe", {
         enumerable: true,

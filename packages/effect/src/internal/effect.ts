@@ -22,7 +22,7 @@ import * as Option from "../Option.ts"
 import * as Order from "../Order.ts"
 import { pipeArguments } from "../Pipeable.ts"
 import type * as Predicate from "../Predicate.ts"
-import { hasProperty, isIterable, isString, isTagged } from "../Predicate.ts"
+import { hasProperty, isIterable, isObjectKeyword, isString, isTagged } from "../Predicate.ts"
 import { redact } from "../Redactable.ts"
 import type { StackFrame } from "../References.ts"
 import * as Result from "../Result.ts"
@@ -46,7 +46,6 @@ import type {
   unassigned
 } from "../Types.ts"
 import { internalCall } from "../Utils.ts"
-import { getDefaultValue, lookup, notFound } from "./context.ts"
 import type { Primitive } from "./core.ts"
 import {
   args,
@@ -588,8 +587,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   }
 
   getRef<X>(ref: Context.Reference<X>): X {
-    const value = lookup(this.context, ref.key)
-    return value === notFound ? getDefaultValue(ref) : value as X
+    return Context.getReferenceUnsafe(this.context, ref)
   }
   addObserver(cb: (exit: Exit.Exit<A, E>) => void): () => void {
     if (this._exit) {
@@ -739,7 +737,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
             return Yield
           }
         } catch (error) {
-          if (!hasProperty(current, evaluate)) {
+          if (!(isObjectKeyword(current) && evaluate in current)) {
             return exitDie(`Fiber.runLoop: Not a valid effect: ${String(current)}`)
           }
           current = exitDie(error) as any
@@ -811,21 +809,18 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
   // Reading by key keeps the service objects, and the native tracer behind
   // Tracer.Tracer's default, out of bundles that never use them.
-  const get = <A>(key: string, fallback?: A): A => {
-    const value = lookup(context, key)
-    return value === notFound ? fallback as A : value as A
-  }
-  const currentTracer = get<Tracer.Tracer | undefined>(TracerKey)
+  const get = <A>(key: string, orElse: A): A => Context.lookup(context, key, orElse)
+  const currentTracer = get<Tracer.Tracer | undefined>(TracerKey, undefined)
   return {
-    scheduler: get<Scheduler.Scheduler | undefined>(SchedulerKey) ?? getDefaultScheduler(),
+    scheduler: get<Scheduler.Scheduler | undefined>(SchedulerKey, undefined) ?? getDefaultScheduler(),
     tracer: currentTracer,
     tracerContext: currentTracer?.["context"],
     tracerEnabled: get(TracerEnabledKey, defaultTracerEnabled),
-    span: get(ParentSpanKey),
-    logLevel: get<LogLevel.Severity>(CurrentLogLevelKey, defaultCurrentLogLevel),
-    minimumLogLevel: get<LogLevel.LogLevel>(MinimumLogLevelKey, defaultMinimumLogLevel),
-    stackFrame: get(CurrentStackFrameKey),
-    runtimeMetrics: get(FiberRuntimeMetricsKey),
+    span: get<Tracer.AnySpan | undefined>(ParentSpanKey, undefined),
+    logLevel: get(CurrentLogLevelKey, defaultCurrentLogLevel),
+    minimumLogLevel: get(MinimumLogLevelKey, defaultMinimumLogLevel),
+    stackFrame: get<StackFrame | undefined>(CurrentStackFrameKey, undefined),
+    runtimeMetrics: get<Fiber.Fiber.Cache["runtimeMetrics"]>(FiberRuntimeMetricsKey, undefined),
     maxOpsBeforeYield: get(MaxOpsBeforeYieldKey, defaultMaxOpsBeforeYield),
     preventYield: get(PreventSchedulerYieldKey, defaultPreventSchedulerYield)
   }

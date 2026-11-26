@@ -108,6 +108,18 @@ describe("Fiber", () => {
         assert.strictEqual(Effect.runSync(added), value, field)
       }
     })
+
+    it("starts a new cache only when the added reference is declared fiber cached", () => {
+      const sharesCache = (reference: Context.Reference<number>) =>
+        Effect.runSync(Effect.withFiber((fiber) => {
+          const before = fiber.cache
+          return Effect.sync(() => fiber.cache === before).pipe(Effect.provideService(reference, 1))
+        }))
+      assert.isTrue(sharesCache(Context.Reference("test/Fiber/Plain", { defaultValue: () => 0 })))
+      assert.isFalse(
+        sharesCache(Context.Reference("test/Fiber/Cached", { defaultValue: () => 0, fiberCached: true }))
+      )
+    })
   })
 
   for (const name of ["await", "join", "awaitAll"] as const) {

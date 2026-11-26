@@ -8,7 +8,7 @@ import { dual, identity } from "../Function.ts"
 import * as Hash from "../Hash.ts"
 import { NodeInspectSymbol } from "../Inspectable.ts"
 import { pipeArguments } from "../Pipeable.ts"
-import { hasProperty } from "../Predicate.ts"
+import { isObjectKeyword } from "../Predicate.ts"
 import type { StackFrame } from "../References.ts"
 import type * as Types from "../Types.ts"
 import { SingleShotGen } from "../Utils.ts"
@@ -105,11 +105,16 @@ export const EffectProto = {
   }
 }
 
-/** @internal */
-export const isEffect = (u: unknown): u is Effect.Effect<unknown, unknown, unknown> => hasProperty(u, EffectTypeId)
+// The guards of the runtime data types spell the property check out instead of
+// calling the dual `Predicate.hasProperty`, which would put `dual` into every
+// bundle that runs an effect.
 
 /** @internal */
-export const isExit = (u: unknown): u is Exit.Exit<unknown, unknown> => hasProperty(u, ExitTypeId)
+export const isEffect = (u: unknown): u is Effect.Effect<unknown, unknown, unknown> =>
+  isObjectKeyword(u) && EffectTypeId in u
+
+/** @internal */
+export const isExit = (u: unknown): u is Exit.Exit<unknown, unknown> => isObjectKeyword(u) && ExitTypeId in u
 
 // ----------------------------------------------------------------------------
 // Cause
@@ -122,10 +127,11 @@ export const CauseTypeId = "~effect/Cause"
 export const CauseReasonTypeId = "~effect/Cause/Reason"
 
 /** @internal */
-export const isCause = (self: unknown): self is Cause.Cause<unknown> => hasProperty(self, CauseTypeId)
+export const isCause = (self: unknown): self is Cause.Cause<unknown> => isObjectKeyword(self) && CauseTypeId in self
 
 /** @internal */
-export const isCauseReason = (self: unknown): self is Cause.Reason<unknown> => hasProperty(self, CauseReasonTypeId)
+export const isCauseReason = (self: unknown): self is Cause.Reason<unknown> =>
+  isObjectKeyword(self) && CauseReasonTypeId in self
 
 /** @internal */
 export class CauseImpl<E> implements Cause.Cause<E> {
@@ -164,7 +170,7 @@ export class CauseImpl<E> implements Cause.Cause<E> {
     )
   }
   [Hash.symbol](): number {
-    return Hash.hash(this.reasons)
+    return Hash.array(this.reasons)
   }
 }
 
@@ -753,7 +759,7 @@ export const NoSuchElementErrorTypeId = "~effect/Cause/NoSuchElementError"
 /** @internal */
 export const isNoSuchElementError = (
   u: unknown
-): u is Cause.NoSuchElementError => hasProperty(u, NoSuchElementErrorTypeId)
+): u is Cause.NoSuchElementError => isObjectKeyword(u) && NoSuchElementErrorTypeId in u
 
 /** @internal */
 export class NoSuchElementError extends TaggedError("NoSuchElementError") {
@@ -769,7 +775,7 @@ export const DoneTypeId = "~effect/Cause/Done"
 /** @internal */
 export const isDone = (
   u: unknown
-): u is Cause.Done => hasProperty(u, DoneTypeId)
+): u is Cause.Done => isObjectKeyword(u) && DoneTypeId in u
 
 const DoneVoid: Cause.Done<void> = {
   [DoneTypeId]: DoneTypeId,

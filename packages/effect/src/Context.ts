@@ -14,15 +14,14 @@
 import type { Effect, EffectIterator } from "./Effect.ts"
 import * as Effectable from "./Effectable.ts"
 import * as Equal from "./Equal.ts"
-import { dual, identity, type LazyArg } from "./Function.ts"
+import { dual, type LazyArg } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import type { Inspectable } from "./Inspectable.ts"
-import { type ContextImpl, getDefaultValue, lookup, notFound, type Overlay } from "./internal/context.ts"
 import { exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts"
-import { fiberCachedKeys } from "./internal/fiberCachedKeys.ts"
+import { defaultValueCacheKey, fiberCachedKeys } from "./internal/fiberCachedKeys.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
-import { hasProperty } from "./Predicate.ts"
+import { isObjectKeyword } from "./Predicate.ts"
 import type * as Types from "./Types.ts"
 
 /**
@@ -209,7 +208,13 @@ export declare namespace ServiceClass {
  * @since 4.0.0
  */
 export const Service: {
-  <Identifier, Shape = Identifier>(key: string): Service<Identifier, Shape>
+  <Identifier, Shape = Identifier>(
+    key: string,
+    options?: {
+      /** @internal */
+      readonly fiberCached?: boolean | undefined
+    } | undefined
+  ): Service<Identifier, Shape>
   <Self, Shape>(): <
     const Identifier extends string,
     E,
@@ -219,6 +224,8 @@ export const Service: {
     id: Identifier,
     options?: {
       readonly make?: ((...args: Args) => Effect<Shape, E, R>) | Effect<Shape, E, R> | undefined
+      /** @internal */
+      readonly fiberCached?: boolean | undefined
     } | undefined
   ) =>
     & ServiceClass<Self, Identifier, Shape>
@@ -231,6 +238,8 @@ export const Service: {
     id: Identifier,
     options: {
       readonly make: Make
+      /** @internal */
+      readonly fiberCached?: boolean | undefined
     }
   ) =>
     & ServiceClass<
@@ -248,6 +257,7 @@ export const Service: {
   const init = (key: string, options?: {
     readonly defaultValue?: any
     readonly make?: any
+    readonly fiberCached?: boolean
   }) => {
     self.key = key
     if (options?.defaultValue) {
@@ -256,6 +266,9 @@ export const Service: {
     }
     if (options?.make) {
       ;(self as any).make = options.make
+    }
+    if (options?.fiberCached) {
+      fiberCachedKeys.add(key)
     }
     return self
   }
@@ -473,6 +486,23 @@ export interface Context<in Services> extends Equal.Equal, Pipeable, Inspectable
   readonly mapUnsafe: ReadonlyMap<string, any>
 }
 
+interface ContextImpl<in Services> extends Context<Services> {
+  cacheRoot: ContextImpl<any> | undefined
+  base: ReadonlyMap<string, any>
+  baseHits: number
+  overlay: Overlay | undefined
+  depth: number
+  _flat: ReadonlyMap<string, any> | undefined
+  maxDepth: number
+  lookupOverlay?<A>(key: string, orElse: A): A
+}
+
+interface Overlay {
+  readonly key: string
+  readonly value: unknown
+  readonly parent: Overlay | undefined
+}
+
 // Keep small bases cheap to read; larger bases are worth copying only after
 // enough fall-throughs to amortize the copy.
 const FlattenAfterBaseHits = 8
@@ -526,6 +556,24 @@ const withFlat = <B>(self: Context<any>, f: (map: Map<string, any>) => void): Co
   const map = new Map(self.mapUnsafe)
   f(map)
   return makeFlat(undefined, map, (self as ContextImpl<any>).maxDepth)
+}
+
+// A private symbol so user code cannot forge a value that reads as absent
+const notFound = Symbol()
+
+/**
+ * Reads a key, returning `orElse` when the context does not contain it.
+ *
+ * Only contexts with pending overlays leave the direct read, so flat contexts
+ * and overlay contexts that were flattened take the same path.
+ *
+ * @internal
+ */
+export const lookup = <A, Services = never>(self: Context<Services>, key: string, orElse: A): A => {
+  const impl = self as ContextImpl<Services>
+  if (impl.overlay !== undefined) return impl.lookupOverlay!(key, orElse)
+  const value = impl.base.get(key)
+  return value === undefined && !impl.base.has(key) ? orElse : value
 }
 
 /**
@@ -586,14 +634,14 @@ export const makeUnsafe = <Services = never>(
 
 const Proto: Omit<
   ContextImpl<never>,
-  "cacheRoot" | "base" | "overlay" | "depth" | "_flat" | "baseHits" | "maxDepth" | "_lookup"
+  "cacheRoot" | "base" | "overlay" | "depth" | "_flat" | "baseHits" | "maxDepth" | "lookupOverlay"
 > = {
   get mapUnsafe() {
     return (this as any as ContextImpl<any>).base
   },
   ...PipeInspectableProto,
   [TypeId]: {
-    _Services: identity
+    _Services: (_: never) => _
   },
   toJSON(this: Context<never>) {
     return {
@@ -627,16 +675,16 @@ const OverlayProto = Object.create(Proto, {
     enumerable: true,
     configurable: true
   },
-  _lookup: {
-    value(this: ContextImpl<any>, key: string): unknown {
+  lookupOverlay: {
+    value<A>(this: ContextImpl<any>, key: string, orElse: A): A {
       for (let overlay = this.overlay; overlay; overlay = overlay.parent) {
-        if (overlay.key === key) return overlay.value
+        if (overlay.key === key) return overlay.value as A
       }
       const value = this.base.get(key)
       // Misses must not advance the counter: reference-default lookups miss the
       // base on every fiber cache refresh, which would flatten every short-lived
       // request context and reintroduce the O(services) per-request cost
-      if (value === undefined && !this.base.has(key)) return notFound
+      if (value === undefined && !this.base.has(key)) return orElse
       if (this.overlay && ++this.baseHits >= this.base.size && this.baseHits >= FlattenAfterBaseHits) {
         this.base = flatten(this)
         this.overlay = undefined
@@ -685,7 +733,7 @@ export const hasSameCache = <Services, Services2>(
  * @category guards
  * @since 2.0.0
  */
-export const isContext = (u: unknown): u is Context<never> => hasProperty(u, TypeId)
+export const isContext = (u: unknown): u is Context<never> => isObjectKeyword(u) && TypeId in u
 
 /**
  * Checks whether the provided argument is a `Key`.
@@ -701,7 +749,7 @@ export const isContext = (u: unknown): u is Context<never> => hasProperty(u, Typ
  * @category guards
  * @since 4.0.0
  */
-export const isKey = (u: unknown): u is Key<any, any> => hasProperty(u, ServiceTypeId)
+export const isKey = (u: unknown): u is Key<any, any> => isObjectKeyword(u) && ServiceTypeId in u
 
 /**
  * Checks whether the provided argument is a `Reference`.
@@ -958,7 +1006,7 @@ export const getOrElse: {
   <S, I, B>(key: Key<I, S>, orElse: LazyArg<B>): <Services>(self: Context<Services>) => S | B
   <Services, S, I, B>(self: Context<Services>, key: Key<I, S>, orElse: LazyArg<B>): S | B
 } = dual(3, <Services, S, I, B>(self: Context<Services>, key: Key<I, S>, orElse: LazyArg<B>): S | B => {
-  const value = lookup(self, key.key)
+  const value: unknown = lookup(self, key.key, notFound)
   if (value !== notFound) return value as any
   return isReference(key) ? getDefaultValue(key) : orElse()
 })
@@ -992,9 +1040,17 @@ export const getOrUndefined: {
 )
 
 /** @internal */
-export const getOrUndefinedUnsafe = <A, Services = never>(self: Context<Services>, key: string): A | undefined => {
-  const value = lookup(self, key)
-  return value === notFound ? undefined : value as A
+export const getOrUndefinedUnsafe = <A, Services = never>(self: Context<Services>, key: string): A | undefined =>
+  lookup<A | undefined, Services>(self, key, undefined)
+
+/**
+ * Data-first `get` for references, which cannot fail.
+ *
+ * @internal
+ */
+export const getReferenceUnsafe = <S, Services = never>(self: Context<Services>, reference: Reference<S>): S => {
+  const value: unknown = lookup(self, reference.key, notFound)
+  return value === notFound ? getDefaultValue(reference) : value as S
 }
 
 /**
@@ -1039,7 +1095,7 @@ export const getUnsafe: {
 } = dual(
   2,
   <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): S => {
-    const value = lookup(self, service.key)
+    const value: unknown = lookup(self, service.key, notFound)
     if (value === notFound) {
       if (isReference(service)) return getDefaultValue(service as any)
       throw serviceNotFoundError(service)
@@ -1084,6 +1140,13 @@ export const get: {
   <Services, I extends Services, S>(service: Key<I, S>): (self: Context<Services>) => S
   <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): S
 } = getUnsafe
+
+const getDefaultValue = (ref: Reference<any>) => {
+  if (defaultValueCacheKey in ref) {
+    return ref[defaultValueCacheKey] as any
+  }
+  return (ref as any)[defaultValueCacheKey] = ref.defaultValue()
+}
 
 const serviceNotFoundError = (service: Key<any, any>) => {
   const error = new Error(
@@ -1135,7 +1198,7 @@ export const getOption: {
   <S, I>(service: Key<I, S>): <Services>(self: Context<Services>) => Option.Option<S>
   <Services, S, I>(self: Context<Services>, service: Key<I, S>): Option.Option<S>
 } = dual(2, <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): Option.Option<S> => {
-  const value = lookup(self, service.key)
+  const value: unknown = lookup(self, service.key, notFound)
   if (value !== notFound) return Option.some(value as any)
   return isReference(service) ? Option.some(getDefaultValue(service as any)) : Option.none()
 })
@@ -1276,7 +1339,7 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
     const map = new Map<string, unknown>()
     if (services.length === 1) {
       const key = services[0].key
-      const value = lookup(self, key)
+      const value: unknown = lookup(self, key, notFound)
       if (value !== notFound) map.set(key, value)
     }
     return makeFlat(undefined, map, (self as ContextImpl<any>).maxDepth)
@@ -1381,5 +1444,7 @@ export const Reference: <Service>(
   key: string,
   options: {
     readonly defaultValue: () => Service
+    /** @internal */
+    readonly fiberCached?: boolean | undefined
   }
 ) => Reference<Service> = Service as any

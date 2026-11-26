@@ -3,9 +3,8 @@ import type { LogLevel, Severity } from "../LogLevel.ts"
 /**
  * Runtime keys and defaults cached on every fiber's `Fiber.Cache`.
  *
- * `Context.ts` reads `fiberCachedKeys` for cache invalidation, and the services
- * that expose these keys import them from here so the runtime can read them
- * without constructing the service objects in minimal bundles.
+ * The services that expose these keys import them from here, so the runtime can
+ * read them without constructing the service objects in minimal bundles.
  */
 
 /** @internal */
@@ -59,8 +58,17 @@ export const defaultCurrentLogLevel: Severity = "Info"
 /** @internal */
 export const defaultMinimumLogLevel: LogLevel = "Info"
 
-/** @internal */
-export const fiberCachedKeys: ReadonlySet<string> = new Set([
+/**
+ * Keys whose values are cached on the fiber, so adding one to a context starts
+ * a new cache.
+ *
+ * Seeded with the keys the fiber reads by name, which keeps invalidation
+ * working in bundles where the reference declaring a key was tree-shaken.
+ * `Context.Reference(key, { fiberCached: true })` registers further keys.
+ *
+ * @internal
+ */
+export const fiberCachedKeys: Set<string> = new Set([
   SchedulerKey,
   MaxOpsBeforeYieldKey,
   PreventSchedulerYieldKey,
