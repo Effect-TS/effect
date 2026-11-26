@@ -9,6 +9,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
+import * as ChildProcess from "node:child_process"
 import * as NFS from "node:fs"
 import * as Path from "node:path"
 import { afterEach, beforeEach, vi } from "vitest"
@@ -90,6 +91,26 @@ describe("FileSystem", { concurrent: false }, () => {
     }).pipe(
       Effect.provide(NodeFileSystem.layer)
     ))
+
+  it.effect.skipIf(process.platform === "win32")(
+    "File handles and stream read and write a FIFO sequentially",
+    () =>
+      Effect.gen(function*() {
+        const fs = yield* FileSystem.FileSystem
+        const fifo = Path.join(yield* fs.makeTempDirectoryScoped(), "fifo")
+        ChildProcess.execFileSync("mkfifo", [fifo])
+
+        const [text] = yield* Effect.all([
+          fs.stream(fifo).pipe(Stream.decodeText(), Stream.mkString),
+          Effect.scoped(
+            Effect.flatMap(fs.open(fifo, { flag: "w" }), (file) => file.writeAll(Buffer.from("piped text")))
+          )
+        ], { concurrency: 2 })
+        assert.strictEqual(text, "piped text")
+      }).pipe(
+        Effect.provide(NodeFileSystem.layer)
+      )
+  )
 
   it.effect("watch reports Create for a new file outside the current directory", () =>
     Effect.gen(function*() {
