@@ -14,9 +14,13 @@ if (Module.registerHooks !== undefined) {
     }
   })
 } else {
+  const disallow = () => {
+    throw new EvalError("Code generation from strings disallowed")
+  }
   Object.defineProperty(globalThis, "Function", {
-    value: function() {
-      throw new EvalError("Code generation from strings disallowed")
-    }
+    value: new Proxy(Function, {
+      apply: disallow,
+      construct: disallow
+    })
   })
 }

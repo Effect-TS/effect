@@ -179,7 +179,7 @@ jobs:
             command: deno task test --max-concurrency=10
           - runtime: Bun
             deno: ""
-            bun: 1.4.0
+            bun: 1.4.5
             pg-lifecycle: true
             command: bun run --bun vitest run --max-concurrency=10
     steps:
