@@ -81,8 +81,8 @@ export class CronSchedule extends Context.Service<CronSchedule, {
  * and skipping stale scheduled runs.
  *
  * By default, a run that fails or dies is logged and not retried, and the next
- * run is still scheduled. With `calculateNextRunFromPrevious`, it is retried
- * in place instead.
+ * run is scheduled as usual. With `calculateNextRunFromPrevious`, it is
+ * retried in place instead.
  *
  * @stability unstable
  * @category constructors
@@ -179,8 +179,7 @@ export const make = <E, R>(options: {
       if (DateTime.isLessThan(dateTime, DateTime.subtractDuration(now, cronSchedule.skipIfOlderThan))) {
         return
       }
-      // each attempt runs in its own fiber and scope, so its child fibers and
-      // finalizers have finished before it is retried
+      // each attempt gets its own fiber and scope, so its children and finalizers finish before a retry
       const fiber = yield* Effect.forkChild(
         Effect.provideContext(options.execute, Context.add(scheduleContext, CurrentScheduledTime, dateTime)),
         { uninterruptible: "inherit" }
@@ -208,7 +207,7 @@ export const make = <E, R>(options: {
           execute(dateTime).pipe(
             Effect.tapCause(Effect.logWarning),
             Effect.sandbox,
-            // interrupts are left for the entity manager to replay
+            // interrupted runs are left for the entity manager to replay
             fromPrevious
               ? Effect.retry({ schedule: retryPolicy, while: isBodyFailure })
               : Effect.catchIf(isBodyFailure, () => Effect.void),
