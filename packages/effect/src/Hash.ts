@@ -148,9 +148,9 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
             h = random(self)
           } else if (kind >= 7) {
             const bytes = toBytes(self as any, kind)
-            h = bytes === undefined ? random(self) : array(bytes)
+            h = bytes === undefined ? random(self) : hashIndexed(bytes)
           } else if (kind >= 5) {
-            h = array(self as any)
+            h = hashIndexed(self as any)
           } else if (kind === 3) {
             h = hashMap(self as any)
           } else if (kind === 4) {
@@ -513,14 +513,16 @@ const unordered = (seed: number, f: (el: any) => number) => (iter: Iterable<any>
  */
 export const array = <A>(arr: Iterable<A>): number => {
   let h = 6151
-  if (Array.isArray(arr) || ArrayBuffer.isView(arr)) {
-    for (let i = 0; i < (arr as ArrayLike<A>).length; i++) {
-      h = combine(h, hash((arr as ArrayLike<A>)[i]))
-    }
-  } else {
-    for (const element of arr) {
-      h = combine(h, hash(element))
-    }
+  for (const element of arr) {
+    h = combine(h, hash(element))
+  }
+  return optimize(h)
+}
+
+const hashIndexed = (arr: ArrayLike<unknown>): number => {
+  let h = 6151
+  for (let i = 0; i < arr.length; i++) {
+    h = combine(h, hash(arr[i]))
   }
   return optimize(h)
 }

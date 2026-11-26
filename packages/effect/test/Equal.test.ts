@@ -257,6 +257,16 @@ describe("Equal.equals", () => {
       assert.isFalse(Equal.equals(set, record))
     })
 
+    it("includes inherited properties on objects with custom plain prototypes", () => {
+      const p1 = Object.create({ type: "p" })
+      const p2 = Object.create({ type: "p" })
+      const q = Object.create({ type: "q" })
+      assert.isTrue(Equal.equals(p1, p2))
+      assert.strictEqual(Hash.hash(p1), Hash.hash(p2))
+      assert.isFalse(Equal.equals(p1, q))
+      assert.isFalse(Equal.equals(p1, {}))
+    })
+
     // The protocol keys are strings, so data can carry them without implementing the protocols.
     it("should compare non-callable protocol keys as data", () => {
       for (const key of [Equal.symbol, Hash.symbol]) {
@@ -503,6 +513,7 @@ describe("Equal.equals", () => {
       const [hashedA, hashedB] = make()
       assert.strictEqual(Hash.hash(hashedA), Hash.hash(hashedB))
       assert.isTrue(Equal.equals(hashedA, hashedB))
+      assert.strictEqual(Hash.array(hashedA), Hash.array([...hashedA]))
     })
   })
 
