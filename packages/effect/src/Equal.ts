@@ -12,13 +12,17 @@
  */
 import type { Equivalence } from "./Equivalence.ts"
 import * as Hash from "./Hash.ts"
-import * as InternalEqual from "./internal/equal.ts"
-import { byReferenceInstances, getAllObjectKeys, objectKind, toBytes } from "./internal/equal.ts"
-import { addBackEdge, backEdges, hashCache } from "./internal/hash.ts"
+import {
+  addBackEdge,
+  backEdges,
+  byReferenceInstances,
+  getAllObjectKeys,
+  hashCache,
+  objectKind,
+  toBytes
+} from "./internal/equal.ts"
 import { hasProperty } from "./Predicate.ts"
 
-// Provides the comparison to the data types every fiber creates. See
-// `provideEquals` in `internal/equal.ts`.
 /**
  * Defines the unique string identifier for the `Equal` interface.
  *
@@ -58,7 +62,7 @@ import { hasProperty } from "./Predicate.ts"
  * @category symbols
  * @since 2.0.0
  */
-export const symbol: "~effect/Equal" = InternalEqual.provideEquals(compareBoth)
+export const symbol = "~effect/Equal" as const
 
 /**
  * The interface for types that define their own equality logic.
@@ -262,10 +266,8 @@ function compareStructure(self: object, that: object): boolean {
   if (kind === 1 || kind === 2) {
     if (objectKind(that) !== kind) return false
     if (kind === 2) return self.toString() === that.toString()
-    if (Hash.hash(self) !== Hash.hash(that)) return false
-    const a = (self as Date).getTime()
-    const b = (that as Date).getTime()
-    return a === b || (a !== a && b !== b)
+    return Hash.hash(self) === Hash.hash(that) &&
+      Object.is((self as Date).getTime(), (that as Date).getTime())
   }
   const bothEquals = isEqual(self)
   if (bothEquals !== isEqual(that) || (typeof self === "function" && !bothEquals)) {
@@ -283,15 +285,20 @@ function compareStructure(self: object, that: object): boolean {
   if (kind >= 7) {
     const selfBytes = toBytes(self as ArrayBufferLike | DataView, kind)
     const thatBytes = toBytes(that as ArrayBufferLike | DataView, kind)
-    return selfBytes !== undefined && thatBytes !== undefined && compareTypedArrays(selfBytes, thatBytes)
+    return selfBytes !== undefined && thatBytes !== undefined && compareIndexed(selfBytes, thatBytes, false)
   } else if (kind === 5) {
-    return compareArrays(self as Array<unknown>, that as Array<unknown>)
+    return compareIndexed(self as Array<unknown>, that as Array<unknown>, true)
   } else if (kind === 6) {
     return (self as ArrayBufferView).byteLength === (that as ArrayBufferView).byteLength &&
-      compareTypedArrays(self as Uint8Array, that as Uint8Array)
+      compareIndexed(self as Uint8Array, that as Uint8Array, false)
   } else if (kind === 3) {
     return (self as Map<unknown, unknown>).size === (that as Map<unknown, unknown>).size &&
-      compareHashed(self as Map<unknown, unknown>, that as Map<unknown, unknown>, entryHash, equalEntries)
+      compareHashed(
+        self as Map<unknown, unknown>,
+        that as Map<unknown, unknown>,
+        (entry) => Hash.hash(entry[0]),
+        (a, b) => compareBoth(a[0], b[0]) && compareBoth(a[1], b[1])
+      )
   } else if (kind === 4) {
     return (self as Set<unknown>).size === (that as Set<unknown>).size &&
       compareHashed(self as Set<unknown>, that as Set<unknown>, Hash.hash, compareBoth)
@@ -299,25 +306,12 @@ function compareStructure(self: object, that: object): boolean {
   return compareRecords(self as any, that as any)
 }
 
-function compareArrays(self: Array<unknown>, that: Array<unknown>): boolean {
+function compareIndexed(self: ArrayLike<unknown>, that: ArrayLike<unknown>, deep: boolean): boolean {
   if (self.length !== that.length) {
     return false
   }
   for (let i = 0; i < self.length; i++) {
-    if (!compareBoth(self[i], that[i])) {
-      return false
-    }
-  }
-
-  return true
-}
-
-function compareTypedArrays(self: Uint8Array, that: Uint8Array): boolean {
-  if (self.length !== that.length) {
-    return false
-  }
-  for (let i = 0; i < self.length; i++) {
-    if (self[i] !== that[i]) {
+    if (deep ? !compareBoth(self[i], that[i]) : self[i] !== that[i]) {
       return false
     }
   }
@@ -353,9 +347,9 @@ function compareHashed<A>(
   let remaining = 0
   for (const item of that) {
     const h = hashOf(item)
-    const group = groups.get(h)
-    if (group) group.push(item)
-    else groups.set(h, [item])
+    let group = groups.get(h)
+    if (!group) groups.set(h, group = [])
+    group.push(item)
     remaining++
   }
   outer: for (const item of self) {
@@ -374,11 +368,6 @@ function compareHashed<A>(
   }
   return remaining === 0
 }
-
-const entryHash = (entry: readonly [unknown, unknown]): number => Hash.hash(entry[0])
-
-const equalEntries = <K, V>(self: readonly [K, V], that: readonly [K, V]): boolean =>
-  compareBoth(self[0], that[0]) && compareBoth(self[1], that[1])
 
 const sameGroup = (): number => 0
 

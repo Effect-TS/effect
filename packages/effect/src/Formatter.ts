@@ -114,92 +114,69 @@ export function format(input: unknown, options?: {
   readonly space?: number | string | undefined
   readonly ignoreToString?: boolean | undefined
 }): string {
-  const space = options?.space ?? 0
+  const space = options?.space
   const ancestors = new WeakSet<object>()
-  const gap = !space ? "" : (typeof space === "number" ? " ".repeat(space) : space)
-  const ind = (d: number) => gap.repeat(d)
+  const gap = typeof space === "number" ? " ".repeat(space) : space ?? ""
+  const ignoreToString = options?.ignoreToString === true
 
-  const wrap = (v: unknown, body: string): string => {
-    const ctor = (v as any)?.constructor
-    return ctor && ctor !== Object.prototype.constructor && ctor.name ? `${ctor.name}(${body})` : body
+  const formatBlock = (open: string, close: string, items: Array<string>, d: number): string => {
+    if (!gap || items.length <= 1) return `${open}${items.join(",")}${close}`
+    const pad = gap.repeat(d + 1)
+    return `${open}\n${pad}${items.join(`,\n${pad}`)}\n${gap.repeat(d)}${close}`
   }
 
-  const ownKeys = (o: object): Array<PropertyKey> => {
+  function recur(v: unknown, d: number): string {
     try {
-      return Reflect.ownKeys(o)
-    } catch {
-      return ["[ownKeys threw]"]
-    }
-  }
+      if (typeof v === "string") return JSON.stringify(v)
+      if (typeof v === "bigint") return `${v}n`
+      if (v === null || (typeof v !== "object" && typeof v !== "function")) return String(v)
 
-  function recur(v: unknown, d = 0): string {
-    try {
-      return recurUnsafe(v, d)
-    } catch {
-      if ((typeof v === "object" && v !== null) || typeof v === "function") ancestors.delete(v)
-      return "[inspection threw]"
-    }
-  }
-
-  function recurUnsafe(v: unknown, d = 0): string {
-    if (typeof v === "string") return JSON.stringify(v)
-
-    if (
-      typeof v === "number" ||
-      v == null ||
-      typeof v === "boolean" ||
-      typeof v === "symbol"
-    ) return String(v)
-
-    if (typeof v === "bigint") return String(v) + "n"
-
-    if (typeof v === "object" || typeof v === "function") {
-      if (ancestors.has(v)) return CIRCULAR
+      if (ancestors.has(v)) return "[Circular]"
       ancestors.add(v)
 
       let output: string
+      let toString: unknown
       if (symbolRedactable in v) {
         output = recur(getRedacted(v as any), d)
       } else if (Array.isArray(v)) {
-        output = !gap || v.length <= 1
-          ? `[${v.map((x) => recur(x, d)).join(",")}]`
-          : `[\n${ind(d + 1)}${v.map((x) => recur(x, d + 1)).join(",\n" + ind(d + 1))}\n${ind(d)}]`
+        const next = !gap || v.length <= 1 ? d : d + 1
+        output = formatBlock("[", "]", v.map((x) => recur(x, next)), d)
       } else if (v instanceof Date) {
         output = formatDate(v)
       } else if (
-        !options?.ignoreToString &&
-        Predicate.hasProperty(v, "toString") &&
-        typeof v["toString"] === "function" &&
-        v["toString"] !== Object.prototype.toString &&
-        v["toString"] !== Array.prototype.toString
+        !ignoreToString &&
+        typeof (toString = (v as any).toString) === "function" &&
+        toString !== Object.prototype.toString &&
+        toString !== Array.prototype.toString
       ) {
         const s = safeToString(v)
         output = v instanceof Error && v.cause !== undefined ? `${s} (cause: ${recur(v.cause, d)})` : s
       } else if (Symbol.iterator in v) {
         output = `${v.constructor.name}(${recur(Array.from(v as any), d)})`
       } else {
-        const keys = ownKeys(v)
-        if (!gap || keys.length <= 1) {
-          const body = `{${keys.map((k) => `${formatPropertyKey(k)}:${recur(safeGet(v, k), d)}`).join(",")}}`
-          output = wrap(v, body)
-        } else {
-          const body = `{\n${
-            keys.map((k) => `${ind(d + 1)}${formatPropertyKey(k)}: ${recur(safeGet(v, k), d + 1)}`).join(",\n")
-          }\n${ind(d)}}`
-          output = wrap(v, body)
+        let keys: Array<PropertyKey>
+        try {
+          keys = Reflect.ownKeys(v)
+        } catch {
+          keys = ["[ownKeys threw]"]
         }
+        const multi = Boolean(gap) && keys.length > 1
+        const sep = multi ? ": " : ":"
+        const next = multi ? d + 1 : d
+        const body = formatBlock("{", "}", keys.map((k) => `${formatPropertyKey(k)}${sep}${recur(safeGet(v, k), next)}`), d)
+        const ctor = (v as any).constructor
+        output = ctor && ctor !== Object && ctor.name ? `${ctor.name}(${body})` : body
       }
       ancestors.delete(v)
       return output
+    } catch {
+      ancestors.delete(v as any)
+      return "[inspection threw]"
     }
-
-    return String(v)
   }
 
   return recur(input, 0)
 }
-
-const CIRCULAR = "[Circular]"
 
 /**
  * @internal

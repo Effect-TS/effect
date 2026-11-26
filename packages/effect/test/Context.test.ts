@@ -3,6 +3,7 @@ import * as Context from "effect/Context"
 import * as Equal from "effect/Equal"
 import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
+import * as Scheduler from "effect/Scheduler"
 import { describe, it } from "vitest"
 
 interface ContextInternals {
@@ -46,29 +47,23 @@ describe("Context", () => {
     ])
   })
 
-  it("invalidates the fiber cache only for opted-in keys", () => {
-    const Cached = Context.Service<number>("ContextTest/Cached", { fiberCached: true })
-    class CachedClass extends Context.Service<CachedClass, number>()("ContextTest/CachedClass", {
-      fiberCached: true
-    }) {}
+  it("invalidates the fiber cache only for the keys fibers cache", () => {
     const Ref = Context.Reference<number>("ContextTest/Ref", { defaultValue: () => 0 })
-    const CachedRef = Context.Reference<number>("ContextTest/CachedRef", {
-      fiberCached: true,
-      defaultValue: () => 0
-    })
+    const Cached = Scheduler.MaxOpsBeforeYield
+    const CachedClass = Scheduler.PreventSchedulerYield
 
     const source = Context.make(A, 1)
     assertTrue(Context.hasSameCache(source, Context.add(source, B, 1)))
     assertTrue(Context.hasSameCache(source, Context.add(source, Ref, 1)))
-    assertFalse(Context.hasSameCache(source, Context.add(source, CachedRef, 1)))
+    assertFalse(Context.hasSameCache(source, Context.add(source, Cached, 1)))
     const context = source.pipe(
       Context.add(Cached, 2),
-      Context.add(CachedClass, 3)
+      Context.add(CachedClass, true)
     )
 
     strictEqual(Context.get(context, Cached), 2)
-    strictEqual(Context.get(context, CachedClass), 3)
-    assertTrue(Context.getOption(source, Cached)._tag === "None")
+    strictEqual(Context.get(context, CachedClass), true)
+    assertFalse(source.mapUnsafe.has(Cached.key))
 
     const replaced = Context.add(context, Cached, 4)
     strictEqual(Context.get(replaced, Cached), 4)
@@ -77,16 +72,16 @@ describe("Context", () => {
     deepStrictEqual([...replaced.mapUnsafe], [
       [A.key, 1],
       [Cached.key, 4],
-      [CachedClass.key, 3]
+      [CachedClass.key, true]
     ])
     deepStrictEqual([...Context.omit(Cached)(replaced).mapUnsafe], [
       [A.key, 1],
-      [CachedClass.key, 3]
+      [CachedClass.key, true]
     ])
   })
 
   it("supports the Redactable fallback context", () => {
-    const Cached = Context.Service<number>("ContextTest/RedactableCached", { fiberCached: true })
+    const Cached = Context.Service<number>("ContextTest/RedactableCached")
     const context = Redactable.getRedacted({
       [Redactable.symbolRedactable](context: Context.Context<never>) {
         return context
@@ -102,11 +97,10 @@ describe("Context", () => {
   })
 
   it("distinguishes an undefined service from an absent service", () => {
-    const Undefined = Context.Service<number | undefined>("ContextTest/Undefined", { fiberCached: true })
+    const Undefined = Context.Service<number | undefined>("ContextTest/Undefined")
     const Missing = Context.Service<undefined>("ContextTest/Missing")
     const Ref = Context.Reference<string | undefined>("ContextTest/UndefinedRef", {
-      defaultValue: () => "default",
-      fiberCached: true
+      defaultValue: () => "default"
     })
     const context = Context.make(Undefined, 1).pipe(Context.add(Undefined, undefined), Context.add(Ref, undefined))
 

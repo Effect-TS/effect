@@ -409,7 +409,7 @@ export const constNull: LazyArg<null> = constant(null)
  * @category constants
  * @since 2.0.0
  */
-export const constUndefined: LazyArg<undefined> = constant(undefined)
+export const constUndefined: LazyArg<undefined> = () => undefined
 
 /**
  * Returns no meaningful value when called.

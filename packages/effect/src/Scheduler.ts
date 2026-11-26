@@ -12,6 +12,7 @@
  */
 import * as Context from "./Context.ts"
 import type * as Fiber from "./Fiber.ts"
+import { MaxOpsBeforeYieldKey, PreventSchedulerYieldKey, SchedulerKey } from "./internal/fiberCachedKeys.ts"
 
 /**
  * A scheduler manages the execution of Effect fibers by controlling when queued
@@ -62,11 +63,16 @@ export interface SchedulerDispatcher {
   flush(): void
 }
 
-/** @internal */
-export const schedulerDefinition: Context.ReferenceDefinition<Scheduler> = {
-  key: "effect/Scheduler",
-  defaultValue: () => new MixedScheduler()
-}
+let defaultScheduler: Scheduler | undefined
+
+/**
+ * Shared default scheduler used by fibers when no `Scheduler` is in context.
+ * Kept separate from `Scheduler.defaultValue()` so direct calls still return a
+ * fresh `MixedScheduler`.
+ *
+ * @internal
+ */
+export const getDefaultScheduler = (): Scheduler => (defaultScheduler ??= new MixedScheduler())
 
 /**
  * Context reference for the scheduler used by the Effect runtime.
@@ -85,7 +91,9 @@ export const schedulerDefinition: Context.ReferenceDefinition<Scheduler> = {
  * @category services
  * @since 2.0.0
  */
-export const Scheduler: Context.Reference<Scheduler> = Context.referenceFromDefinition(schedulerDefinition)
+export const Scheduler: Context.Reference<Scheduler> = Context.Reference<Scheduler>(SchedulerKey, {
+  defaultValue: () => new MixedScheduler()
+})
 
 const setMicrotask = (f: () => void) => {
   let cancelled = false
@@ -97,23 +105,18 @@ const setMicrotask = (f: () => void) => {
   }
 }
 
-const setTimer: (f: () => void) => () => void = "setImmediate" in globalThis
-  ? (f) => {
-    // @ts-ignore
-    const timer = globalThis.setImmediate(f)
-    // @ts-ignore
-    return (): void => globalThis.clearImmediate(timer)
-  }
-  : (f) => {
-    const timer = setTimeout(f, 0)
-    return (): void => clearTimeout(timer)
-  }
-
 // Some runtimes (e.g. Cloudflare Workers) throw when a timer is set in global
 // scope. Fall back to a microtask so effects can still yield at module load.
-const setImmediate = (f: () => void) => {
+const setImmediate = (f: () => void): (() => void) => {
   try {
-    return setTimer(f)
+    if ("setImmediate" in globalThis) {
+      // @ts-ignore
+      const timer = globalThis.setImmediate(f)
+      // @ts-ignore
+      return (): void => globalThis.clearImmediate(timer)
+    }
+    const timer = setTimeout(f, 0)
+    return (): void => clearTimeout(timer)
   } catch {
     return setMicrotask(f)
   }
@@ -124,17 +127,10 @@ class PriorityBuckets {
 
   scheduleTask(task: () => void, priority: number): void {
     const buckets = this.buckets
-    const len = buckets.length
-    let bucket: [number, Array<() => void>] | undefined
     let index = 0
-    for (; index < len; index++) {
-      if (buckets[index][0] > priority) break
-      bucket = buckets[index]
-    }
-    if (bucket && bucket[0] === priority) {
-      bucket[1].push(task)
-    } else if (index === len) {
-      buckets.push([priority, [task]])
+    while (index < buckets.length && buckets[index][0] < priority) index++
+    if (buckets[index]?.[0] === priority) {
+      buckets[index][1].push(task)
     } else {
       buckets.splice(index, 0, [priority, [task]])
     }
@@ -177,8 +173,8 @@ class PriorityBuckets {
  * @since 2.0.0
  */
 export class MixedScheduler implements Scheduler {
-  readonly executionMode: "sync" | "async"
-  readonly setImmediate: (f: () => void) => () => void
+  declare readonly executionMode: "sync" | "async"
+  declare readonly setImmediate: (f: () => void) => () => void
 
   constructor(
     executionMode: "sync" | "async" = "async",
@@ -220,10 +216,10 @@ export class MixedScheduler implements Scheduler {
 class MixedSchedulerDispatcher implements SchedulerDispatcher {
   private tasks = new PriorityBuckets()
   private running: (() => void) | undefined = undefined
-  readonly setImmediate: (f: () => void) => () => void
+  declare readonly setImmediate: (f: () => void) => () => void
 
   constructor(
-    setImmediateFn: (f: () => void) => () => void = setImmediate
+    setImmediateFn: (f: () => void) => () => void
   ) {
     this.setImmediate = setImmediateFn
   }
@@ -250,11 +246,9 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    * @since 2.0.0
    */
   runTasks() {
-    const buckets = this.tasks.drain()
-    for (let i = 0; i < buckets.length; i++) {
-      const toRun = buckets[i][1]
-      for (let j = 0; j < toRun.length; j++) {
-        toRun[j]()
+    for (const [, toRun] of this.tasks.drain()) {
+      for (const task of toRun) {
+        task()
       }
     }
   }
@@ -264,19 +258,11 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    */
   flush() {
     while (this.tasks.buckets.length > 0) {
-      if (this.running !== undefined) {
-        this.running()
-        this.running = undefined
-      }
+      this.running?.()
+      this.running = undefined
       this.runTasks()
     }
   }
-}
-
-/** @internal */
-export const maxOpsBeforeYieldDefinition: Context.ReferenceDefinition<number> = {
-  key: "effect/Scheduler/MaxOpsBeforeYield",
-  defaultValue: () => 2048
 }
 
 /**
@@ -300,15 +286,9 @@ export const maxOpsBeforeYieldDefinition: Context.ReferenceDefinition<number> = 
  * @category services
  * @since 4.0.0
  */
-export const MaxOpsBeforeYield: Context.Reference<number> = Context.referenceFromDefinition(
-  maxOpsBeforeYieldDefinition
-)
-
-/** @internal */
-export const preventSchedulerYieldDefinition: Context.ReferenceDefinition<boolean> = {
-  key: "effect/Scheduler/PreventSchedulerYield",
-  defaultValue: () => false
-}
+export const MaxOpsBeforeYield: Context.Reference<number> = Context.Reference<number>(MaxOpsBeforeYieldKey, {
+  defaultValue: () => 2048
+})
 
 /**
  * Context reference that controls whether the runtime should bypass scheduler
@@ -332,6 +312,6 @@ export const preventSchedulerYieldDefinition: Context.ReferenceDefinition<boolea
  * @category services
  * @since 4.0.0
  */
-export const PreventSchedulerYield: Context.Reference<boolean> = Context.referenceFromDefinition(
-  preventSchedulerYieldDefinition
-)
+export const PreventSchedulerYield: Context.Reference<boolean> = Context.Reference<boolean>(PreventSchedulerYieldKey, {
+  defaultValue: () => false
+})

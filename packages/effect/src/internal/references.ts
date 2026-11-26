@@ -5,6 +5,12 @@ import type { LogLevel, Severity } from "../LogLevel.ts"
 import type { ReadonlyRecord } from "../Record.ts"
 import type { StackFrame } from "../References.ts"
 import type { SpanLink } from "../Tracer.ts"
+import {
+  CurrentLogLevelKey,
+  CurrentStackFrameKey,
+  MinimumLogLevelKey,
+  TracerEnabledKey
+} from "./fiberCachedKeys.ts"
 
 /** @internal */
 export const CurrentErrorReporters = Context.Reference<ReadonlySet<ErrorReporter>>(
@@ -13,24 +19,15 @@ export const CurrentErrorReporters = Context.Reference<ReadonlySet<ErrorReporter
 )
 
 /** @internal */
-export const currentStackFrameDefinition: Context.ReferenceDefinition<StackFrame | undefined> = {
-  key: "effect/References/CurrentStackFrame",
-  defaultValue: constUndefined
-}
-
-/** @internal */
-export const CurrentStackFrame: Context.Reference<StackFrame | undefined> = Context.referenceFromDefinition(
-  currentStackFrameDefinition
+export const CurrentStackFrame: Context.Reference<StackFrame | undefined> = Context.Reference<StackFrame | undefined>(
+  CurrentStackFrameKey,
+  { defaultValue: constUndefined }
 )
 
 /** @internal */
-export const tracerEnabledDefinition: Context.ReferenceDefinition<boolean> = {
-  key: "effect/References/TracerEnabled",
+export const TracerEnabled: Context.Reference<boolean> = Context.Reference<boolean>(TracerEnabledKey, {
   defaultValue: constTrue
-}
-
-/** @internal */
-export const TracerEnabled: Context.Reference<boolean> = Context.referenceFromDefinition(tracerEnabledDefinition)
+})
 
 /** @internal */
 export const TracerTimingEnabled = Context.Reference<boolean>("effect/References/TracerTimingEnabled", {
@@ -55,22 +52,14 @@ export const CurrentLogAnnotations = Context.Reference<ReadonlyRecord<string, un
 )
 
 /** @internal */
-export const currentLogLevelDefinition: Context.ReferenceDefinition<Severity> = {
-  key: "effect/References/CurrentLogLevel",
+export const CurrentLogLevel: Context.Reference<Severity> = Context.Reference<Severity>(CurrentLogLevelKey, {
   defaultValue: () => "Info"
-}
+})
 
 /** @internal */
-export const CurrentLogLevel: Context.Reference<Severity> = Context.referenceFromDefinition(currentLogLevelDefinition)
-
-/** @internal */
-export const minimumLogLevelDefinition: Context.ReferenceDefinition<LogLevel> = {
-  key: "effect/References/MinimumLogLevel",
+export const MinimumLogLevel: Context.Reference<LogLevel> = Context.Reference<LogLevel>(MinimumLogLevelKey, {
   defaultValue: () => "Info"
-}
-
-/** @internal */
-export const MinimumLogLevel: Context.Reference<LogLevel> = Context.referenceFromDefinition(minimumLogLevelDefinition)
+})
 
 /** @internal */
 export const UnhandledLogLevel: Context.Reference<Severity | undefined> = Context.Reference(

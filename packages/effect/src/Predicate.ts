@@ -1135,7 +1135,7 @@ export function isReadonlyObject(input: unknown): input is { readonly [x: Proper
  * @since 4.0.0
  */
 export function isObjectKeyword(input: unknown): input is object {
-  return (typeof input === "object" && input !== null) || isFunction(input)
+  return (typeof input === "object" && input !== null) || typeof input === "function"
 }
 
 /**
@@ -1173,11 +1173,13 @@ export function isObjectKeyword(input: unknown): input is object {
 export const hasProperty: {
   <P extends PropertyKey>(property: P): (self: unknown) => self is { [K in P]: unknown }
   <P extends PropertyKey>(self: unknown, property: P): self is { [K in P]: unknown }
-} = dual(
-  2,
-  <P extends PropertyKey>(self: unknown, property: P): self is { [K in P]: unknown } =>
-    isObjectKeyword(self) && (property in self)
-)
+} = function(self: unknown, property?: PropertyKey) {
+  if (arguments.length >= 2) {
+    return isObjectKeyword(self) && (property! in self)
+  }
+  const key = self as PropertyKey
+  return (u: unknown) => isObjectKeyword(u) && (key in u)
+} as any
 
 /**
  * Checks whether a value has a `_tag` property equal to the given tag.
