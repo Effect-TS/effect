@@ -73,6 +73,11 @@
     "effect": "workspace:^",
     "redis": ">=5.1.0 <7.0.0"
   },
+  "peerDependenciesMeta": {
+    "redis": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@testcontainers/mssqlserver": "^12.2.2",
     "@testcontainers/mysql": "^12.2.2",
