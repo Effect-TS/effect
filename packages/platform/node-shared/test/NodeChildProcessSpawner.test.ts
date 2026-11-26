@@ -23,6 +23,7 @@ import NodeChildProcess, { spawnSync } from "node:child_process"
 import NodeFs from "node:fs"
 import { syncBuiltinESMExports } from "node:module"
 import Net from "node:net"
+import { constants as osConstants } from "node:os"
 import { join } from "node:path"
 import { vi } from "vitest"
 
@@ -50,7 +51,8 @@ describe("shared suite", { concurrent: false }, () => {
   // The proxy process layer fails to build on Windows
   if (process.platform !== "win32") {
     ChildProcessSpawnerTest.suite("NodeChildProcessSpawner.layerProxyProcess", Layer.orDie(ProxyServices), {
-      processGroups: true
+      processGroups: true,
+      inheritedFds: false
     })
   }
 })
@@ -436,6 +438,14 @@ ${proxyProcessSource}`
     assert.isTrue(stdin.destroyed)
     assert.deepStrictEqual(released, [7])
   })
+
+  it.effect("rejects numeric file descriptors with BadArgument", () =>
+    Effect.gen(function*() {
+      for (const options of [{ stdin: 0 }, { stdout: 1 }, { stderr: 2 }, { additionalFds: { fd3: 3 } }] as const) {
+        const error = yield* Effect.flip(Effect.scoped(ChildProcess.make("echo", ["test"], options)))
+        assert.strictEqual(error.reason._tag, "BadArgument")
+      }
+    }).pipe(Effect.provide(ProxyServices)))
 })
 
 describe.skipIf(process.platform === "win32")("error descriptions", () => {
@@ -913,3 +923,15 @@ it.live("scope release closes stdin for a child that drains it on the kill signa
 
     assert.isBelow(releaseMillis, 2_000)
   }).pipe(Effect.provide(NodeServices)))
+
+it.effect.skipIf(process.platform === "win32" || "SIGEMT" in osConstants.signals)(
+  "kill fails with a typed PlatformError for an unsupported signal",
+  () =>
+    Effect.gen(function*() {
+      const handle = yield* ChildProcess.make("sleep", ["10"], { detached: false })
+      const error = yield* Effect.flip(handle.kill({ killSignal: "SIGEMT" }))
+
+      assert.strictEqual(error._tag, "PlatformError")
+      assert.strictEqual(error.reason.method, "kill")
+    }).pipe(Effect.provide(NodeServices))
+)

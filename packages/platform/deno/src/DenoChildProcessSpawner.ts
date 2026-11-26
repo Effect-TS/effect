@@ -17,7 +17,7 @@ import * as Path from "effect/Path"
 import * as PlatformError from "effect/PlatformError"
 import * as Predicate from "effect/Predicate"
 import * as ChildProcess from "effect/process/ChildProcess"
-import type { ChildProcessHandle } from "effect/process/ChildProcessSpawner"
+import type { ChildProcessHandle, ExitStatus } from "effect/process/ChildProcessSpawner"
 import {
   ChildProcessSpawner,
   ExitCode,
@@ -77,7 +77,7 @@ const toPlatformError = (
   })
 }
 
-const unsupported = (option: "additionalFds" | "detached") =>
+const unsupported = (option: "additionalFds" | "detached" | "file descriptor") =>
   PlatformError.badArgument({
     module: "ChildProcessSpawner",
     method: "spawn",
@@ -111,10 +111,7 @@ const make = Effect.gen(function*() {
     if (options.stdin === undefined) {
       return defaultConfig
     }
-    if (typeof options.stdin === "string") {
-      return { ...defaultConfig, stream: options.stdin }
-    }
-    if (Stream.isStream(options.stdin)) {
+    if (typeof options.stdin !== "object" || Stream.isStream(options.stdin)) {
       return { ...defaultConfig, stream: options.stdin }
     }
     return {
@@ -130,7 +127,7 @@ const make = Effect.gen(function*() {
   ): ChildProcess.StdoutConfig => {
     const option = options[streamName]
     if (option === undefined) return { stream: "pipe" }
-    if (typeof option === "string" || Sink.isSink(option)) return { stream: option }
+    if (typeof option !== "object" || Sink.isSink(option)) return { stream: option }
     return { stream: option.stream }
   }
 
@@ -283,6 +280,13 @@ const make = Effect.gen(function*() {
         const stdinConfig = resolveStdinOption(cmd.options)
         const stdoutConfig = resolveOutputOption(cmd.options, "stdout")
         const stderrConfig = resolveOutputOption(cmd.options, "stderr")
+        if (
+          typeof stdinConfig.stream === "number" ||
+          typeof stdoutConfig.stream === "number" ||
+          typeof stderrConfig.stream === "number"
+        ) {
+          return yield* Effect.fail(unsupported("file descriptor"))
+        }
         let isReferenced = true
 
         if (cmd.options.shell !== undefined && cmd.options.shell !== false && cmd.args.length > 0) {
@@ -360,19 +364,25 @@ const make = Effect.gen(function*() {
         // A failed input stream truncates the input of the child process, so
         // its failure takes precedence over the exit status and is surfaced
         // without waiting for the child process to exit
-        const exitCode = Effect.flatMap(
+        const exitStatus = Effect.flatMap(
           Effect.raceFirst(Deferred.await(exitSignal), Deferred.await(inputFailure)),
           (status) => {
             if (Deferred.isDoneUnsafe(inputFailure)) {
               return Deferred.await(inputFailure)
             }
             if (Predicate.isNull(status.signal)) {
-              return Effect.succeed(ExitCode(status.code))
+              return Effect.succeed<ExitStatus>({ _tag: "Exited", code: ExitCode(status.code) })
             }
-            const error = new globalThis.Error(`Process interrupted due to receipt of signal: '${status.signal}'`)
-            return Effect.fail(toPlatformError("exitCode", error, cmd))
+            return Effect.succeed<ExitStatus>({ _tag: "Signaled", signal: status.signal })
           }
         )
+        const exitCode = Effect.flatMap(exitStatus, (status) => {
+          if (status._tag === "Exited") {
+            return Effect.succeed(status.code)
+          }
+          const error = new globalThis.Error(`Process interrupted due to receipt of signal: '${status.signal}'`)
+          return Effect.fail(toPlatformError("exitCode", error, cmd))
+        })
         const kill = (options?: ChildProcess.KillOptions | undefined) => {
           const killWithTimeout = withTimeout(childProcess, cmd, options)
           return killWithTimeout((command, childProcess, signal) =>
@@ -385,6 +395,7 @@ const make = Effect.gen(function*() {
         return makeHandle({
           pid: ProcessId(childProcess.pid),
           exitCode,
+          exitStatus,
           isRunning,
           kill,
           stdin,
@@ -434,6 +445,7 @@ const make = Effect.gen(function*() {
         return makeHandle({
           pid: handle.pid,
           exitCode: handle.exitCode,
+          exitStatus: handle.exitStatus,
           isRunning: handle.isRunning,
           kill,
           stdin: handle.stdin,

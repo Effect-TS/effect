@@ -32,6 +32,7 @@ const MockExecutorLayer = Layer.succeed(
       stderr: Stream.fromIterable([new TextEncoder().encode("")]),
       all: Stream.fromIterable([output]),
       exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(0)),
+      exitStatus: Effect.succeed({ _tag: "Exited", code: ChildProcessSpawner.ExitCode(0) }),
       isRunning: Effect.succeed(false),
       kill: () => Effect.void,
       getInputFd: () => Sink.drain,
@@ -318,7 +319,7 @@ describe("ChildProcess", () => {
         })
         assert.strictEqual(cmd._tag, "StandardCommand")
         assert.isDefined(cmd.options.additionalFds)
-        assert.strictEqual(cmd.options.additionalFds!.fd3.type, "output")
+        assert.deepStrictEqual(cmd.options.additionalFds!.fd3, { type: "output" })
       })
 
       it("should accept additionalFds option with input fd", () => {
@@ -327,7 +328,7 @@ describe("ChildProcess", () => {
         })
         assert.strictEqual(cmd._tag, "StandardCommand")
         assert.isDefined(cmd.options.additionalFds)
-        assert.strictEqual(cmd.options.additionalFds!.fd3.type, "input")
+        assert.deepStrictEqual(cmd.options.additionalFds!.fd3, { type: "input" })
       })
 
       it("should accept multiple additional fds", () => {
@@ -340,9 +341,9 @@ describe("ChildProcess", () => {
         })
         assert.strictEqual(cmd._tag, "StandardCommand")
         assert.isDefined(cmd.options.additionalFds)
-        assert.strictEqual(cmd.options.additionalFds!.fd3.type, "output")
-        assert.strictEqual(cmd.options.additionalFds!.fd4.type, "input")
-        assert.strictEqual(cmd.options.additionalFds!.fd5.type, "output")
+        assert.deepStrictEqual(cmd.options.additionalFds!.fd3, { type: "output" })
+        assert.deepStrictEqual(cmd.options.additionalFds!.fd4, { type: "input" })
+        assert.deepStrictEqual(cmd.options.additionalFds!.fd5, { type: "output" })
       })
 
       it("should accept additionalFds with streams", () => {
@@ -352,8 +353,7 @@ describe("ChildProcess", () => {
         })
         assert.strictEqual(cmd._tag, "StandardCommand")
         assert.isDefined(cmd.options.additionalFds)
-        assert.strictEqual(cmd.options.additionalFds!.fd3.type, "input")
-        assert.propertyVal(cmd.options.additionalFds!.fd3, "stream", inputStream)
+        assert.deepStrictEqual(cmd.options.additionalFds!.fd3, { type: "input", stream: inputStream })
       })
 
       it("should accept additionalFds with sinks", () => {
@@ -368,8 +368,7 @@ describe("ChildProcess", () => {
         })
         assert.strictEqual(cmd._tag, "StandardCommand")
         assert.isDefined(cmd.options.additionalFds)
-        assert.strictEqual(cmd.options.additionalFds!.fd3.type, "output")
-        assert.propertyVal(cmd.options.additionalFds!.fd3, "sink", outputSink)
+        assert.deepStrictEqual(cmd.options.additionalFds!.fd3, { type: "output", sink: outputSink })
       })
     })
 

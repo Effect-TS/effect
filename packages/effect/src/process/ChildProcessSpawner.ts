@@ -19,7 +19,7 @@ import type * as PlatformError from "../PlatformError.ts"
 import type * as Scope from "../Scope.ts"
 import type * as Sink from "../Sink.ts"
 import * as Stream from "../Stream.ts"
-import type { Command, KillOptions } from "./ChildProcess.ts"
+import type { Command, KillOptions, Signal } from "./ChildProcess.ts"
 
 /**
  * Branded number representing the exit code reported by a child process.
@@ -38,6 +38,18 @@ export type ExitCode = Brand.Branded<number, "ExitCode">
  * @since 4.0.0
  */
 export const ExitCode: Brand.Constructor<ExitCode> = Brand.nominal<ExitCode>()
+
+/**
+ * Structured termination status of a child process: either a normal exit code
+ * or the signal that terminated it.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.2.0
+ */
+export type ExitStatus =
+  | { readonly _tag: "Exited"; readonly code: ExitCode }
+  | { readonly _tag: "Signaled"; readonly signal: Signal }
 
 /**
  * Branded number representing the operating system process identifier of a
@@ -94,6 +106,10 @@ export interface ChildProcessHandle {
    * command that was run.
    */
   readonly exitCode: Effect.Effect<ExitCode, PlatformError.PlatformError>
+  /**
+   * Waits for the child process to terminate and returns its `ExitStatus`.
+   */
+  readonly exitStatus: Effect.Effect<ExitStatus, PlatformError.PlatformError>
   /**
    * Returns `true` if the child process is still running, otherwise returns
    * `false`.

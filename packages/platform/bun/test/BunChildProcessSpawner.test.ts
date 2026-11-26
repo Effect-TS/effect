@@ -6,8 +6,14 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import { ChildProcess } from "effect/process"
 import * as Stream from "effect/Stream"
+import * as ChildProcessSpawnerTest from "../../../effect/test/process/ChildProcessSpawnerTest.ts"
 
-const layer = BunChildProcessSpawner.layer.pipe(Layer.provide(Layer.mergeAll(BunFileSystem.layer, BunPath.layer)))
+const layer = BunChildProcessSpawner.layer.pipe(
+  Layer.provideMerge(Layer.mergeAll(BunFileSystem.layer, BunPath.layer))
+)
+
+ChildProcessSpawnerTest.exitStatusSuite(layer)
+ChildProcessSpawnerTest.inheritedFdSuite(layer)
 
 it.live.skipIf(process.platform === "win32")(
   "scope release terminates a child that never reads a backpressured stdin stream",
