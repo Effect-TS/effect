@@ -37,21 +37,30 @@ export interface JsonSchema {
 /**
  * Options for {@link fromSchemaOpenApi3_1} and {@link fromSchemaOpenApi3_0}.
  *
+ * **When to use**
+ *
+ * Use with {@link fromSchemaOpenApi3_1} or {@link fromSchemaOpenApi3_0} when
+ * you need to observe referenced schemas during conversion without walking the
+ * schema a second time.
+ *
  * **Details**
  *
- * `onReference` observes each `$ref` (and, for OpenAPI 3.1, `$dynamicRef`) in
- * a schema position, with its original string, before the converter rewrites
- * it. It does not follow reference targets, and it does not visit examples,
- * defaults or the siblings OpenAPI 3.0 ignores beside a `$ref`. An exception it
- * throws propagates out of the conversion.
+ * `onReference` is called with each `$ref` (and, in OpenAPI 3.1, `$dynamicRef`)
+ * in a schema position, with its original string before any rewrite. It does
+ * not resolve or deduplicate targets, and skips data keywords such as
+ * `default`, `examples`, and `example`, as well as siblings ignored beside an
+ * OpenAPI 3.0 `$ref`. Errors thrown by `onReference` propagate out of
+ * conversion.
  *
+ * @see {@link fromSchemaOpenApi3_1}
+ * @see {@link fromSchemaOpenApi3_0}
  * @stability stable
- * @category decoding
+ * @category models
  * @since 4.1.7
  */
 export interface FromOpenApiOptions {
   /**
-   * Called with each reference in a schema position, before it is rewritten.
+   * Called with each reference in a schema position before it is rewritten.
    */
   readonly onReference?: ((reference: string) => void) | undefined
 }
@@ -398,6 +407,7 @@ export function fromSchemaDraft2020_12(js: JsonSchema): Document<"draft-2020-12"
  * doc.schema.properties // => { user: { $ref: "#/$defs/User" } }
  * ```
  *
+ * @see {@link FromOpenApiOptions}
  * @see {@link fromSchemaOpenApi3_0}
  * @see {@link toMultiDocumentOpenApi3_1}
  * @stability stable
@@ -406,9 +416,12 @@ export function fromSchemaDraft2020_12(js: JsonSchema): Document<"draft-2020-12"
  */
 export function fromSchemaOpenApi3_1(js: JsonSchema, options?: FromOpenApiOptions): Document<"draft-2020-12"> {
   const isRootResource = createsResource(js.$id)
+  const onReference = options?.onReference
   const schema = transformSchema(js, (schema, inEmbeddedResource) => {
-    if (typeof schema.$ref === "string") options?.onReference?.(schema.$ref)
-    if (typeof schema.$dynamicRef === "string") options?.onReference?.(schema.$dynamicRef)
+    if (onReference !== undefined) {
+      if (typeof schema.$ref === "string") onReference(schema.$ref)
+      if (typeof schema.$dynamicRef === "string") onReference(schema.$dynamicRef)
+    }
     if (!isRootResource && !inEmbeddedResource) rewriteSchemaRef(schema, rewriteOpenApiComponentsReference)
     if (isMetaSchemaUri(schema.$schema, META_SCHEMA_URI_OPEN_API_3_1)) {
       InternalRecord.assignProperty(schema, "$schema", META_SCHEMA_URI_DRAFT_2020_12)
@@ -468,6 +481,7 @@ export function fromSchemaOpenApi3_1(js: JsonSchema, options?: FromOpenApiOption
  * doc.schema.type // => ["string", "null"]
  * ```
  *
+ * @see {@link FromOpenApiOptions}
  * @see {@link fromSchemaOpenApi3_1}
  * @see {@link fromSchemaDraft07}
  * @stability stable
@@ -1378,11 +1392,12 @@ function convertDependencies(
 }
 
 function convertOpenApi30(root: JsonSchema, options?: FromOpenApiOptions): JsonSchema {
+  const onReference = options?.onReference
   return convertSchema(root, (source, context) => {
     const out: JsonSchema = {}
 
     if (typeof source.$ref === "string") {
-      options?.onReference?.(source.$ref)
+      onReference?.(source.$ref)
       context.reference(out, rewriteOpenApiComponentsReference(source.$ref))
       return out
     }
