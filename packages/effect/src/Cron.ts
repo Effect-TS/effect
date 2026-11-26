@@ -901,13 +901,20 @@ export const prev = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
 
 const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, direction: "next" | "prev"): Date => {
   const start = now ?? new Date()
+  // Without a schedule or input time zone, search in the host zone like `match`
+  // does. The host offset at `start` alone would be wrong after a DST change.
+  const useHostZone = Option.isNone(cron.tz) && !(dateTime.isDateTime(start) && dateTime.isZoned(start)) &&
+    !(typeof start === "object" && "timeZoneId" in start)
+  const zoned = dateTime.makeZonedUnsafe(start, {
+    timeZone: useHostZone ? dateTime.zoneMakeLocal() : Option.getOrUndefined(cron.tz)
+  })
   if (cron.onDstOverlap !== "both") {
-    return searchCron(cron, start, direction, cron.onDstOverlap)
+    return searchCron(cron, zoned, direction, cron.onDstOverlap)
   }
   // Both occurrences are eligible, so the result is the nearest of the two
   // single-occurrence searches in the search direction.
-  const earlier = searchCron(cron, start, direction, "earlier")
-  const later = searchCron(cron, start, direction, "later")
+  const earlier = searchCron(cron, zoned, direction, "earlier")
+  const later = searchCron(cron, zoned, direction, "later")
   if (direction === "next") {
     return earlier <= later ? earlier : later
   }
@@ -916,19 +923,10 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
 
 const searchCron = (
   cron: Cron,
-  now: DateTime.DateTime.Input,
+  zoned: DateTime.Zoned,
   direction: "next" | "prev",
   onDstOverlap: "earlier" | "later"
 ): Date => {
-  const tz = Option.getOrUndefined(cron.tz)
-  // Without a schedule or input time zone, use the host zone like `match` does.
-  // The offset at `now` alone would be wrong after a DST change.
-  const useHostZone = tz === undefined && !(dateTime.isDateTime(now) && dateTime.isZoned(now)) &&
-    !(typeof now === "object" && "timeZoneId" in now)
-  const zoned = dateTime.makeZonedUnsafe(now, {
-    timeZone: useHostZone ? dateTime.zoneMakeLocal() : tz
-  })
-
   const reverse = direction === "prev"
   const tick = reverse ? -1 : 1
   const table = cron[direction]
@@ -938,7 +936,7 @@ const searchCron = (
     (next: number, current: number) => next < current :
     (next: number, current: number) => next > current
 
-  const utc = tz !== undefined && dateTime.isTimeZoneNamed(tz) && tz.id === "UTC"
+  const utc = dateTime.isTimeZoneNamed(zoned.zone) && zoned.zone.id === "UTC"
   // Going backward, a candidate inside a gap is left in place: it resolves to
   // the instant after the gap, and the range check below rejects it when that
   // instant is not before the input.
