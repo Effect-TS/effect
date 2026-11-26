@@ -141,7 +141,7 @@ export interface Equal extends Hash.Hash {
  * **Gotchas**
  *
  * - Object-pair results are cached in a WeakMap. **Objects must not be
- *   be mutated after their first comparison.**
+ *   mutated after their first comparison.**
  * - Map and Set entries are matched within groups of equal hashes, so they
  *   are O(n) for well-distributed hashes and O(n²) when every hash collides.
  *
@@ -191,7 +191,7 @@ function compareBoth(self: unknown, that: unknown): boolean {
     return self === that || (self !== self && that !== that)
   }
   if (self === that) {
-    // A value shared by both sides can still close a cycle on one of them, which hashing it records.
+    // A shared reference can close a cycle on one side; hashing records any back-edge.
     if (pathLeft.length > 0 && !hashCache.has(self)) Hash.hash(self)
     return true
   }
@@ -221,7 +221,7 @@ function compareObjects(self: object, that: object): boolean {
       revisited = true
     }
   }
-  // One side looped before the other: let the hashes decide instead of unrolling both loops.
+  // Reject mismatched cycle lengths instead of unrolling both loops.
   if (revisited && Hash.hash(self) !== Hash.hash(that)) return false
   const seenBack = backEdges
   pathLeft.push(self)
@@ -234,7 +234,7 @@ function compareObjects(self: object, that: object): boolean {
     pathRight.pop()
     if (!depth) seen.clear()
   }
-  // Hashes of cyclic values depend on the entry point, so equal ones must still hash alike.
+  // Cyclic hashes depend on entry point; verify hash agreement.
   if (seenBack !== backEdges) return result && Hash.hash(self) === Hash.hash(that)
   // Only cache acyclic results so nested lookups never skip a back-edge.
   if (depth && prev === undefined) {
@@ -253,7 +253,6 @@ const seen = new Map<object, object>()
 const results = new WeakMap<object, WeakMap<object, boolean>>()
 
 function compareStructure(self: object, that: object): boolean {
-  // Reuse already-cached structural or custom hashes before any further dispatch.
   const selfHash = hashCache.get(self)
   if (selfHash !== undefined && selfHash !== (hashCache.get(that) ?? selfHash)) return false
   const kind = objectKind(self)
