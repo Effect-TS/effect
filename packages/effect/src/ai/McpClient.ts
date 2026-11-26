@@ -120,13 +120,19 @@ export interface McpClient {
     }
   ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, McpClientError>
   /**
-   * `listTools`, with how long the server says the snapshot stays fresh and
-   * whether a shared cache may keep it. The hint is the smallest `ttlMs` of
-   * the snapshot's pages, and `"public"` only when every page says so.
-   * Protocols before `2026-07-28` send no hint, so it is `undefined` there.
+   * Returns every tool page as one snapshot with the same bounds as `listTools`,
+   * along with the aggregated `2026-07-28` cache hint: the smallest page `ttlMs`
+   * and `"public"` only when every page is `"public"`. Protocols before `2026-07-28`
+   * and servers without the `tools` capability return `cacheHint: undefined`.
    */
   readonly listToolsWithCacheHint: (
-    options?: Parameters<McpClient["listTools"]>[0]
+    options?: {
+      readonly timeout?: Duration.Input | undefined
+      readonly limits?: {
+        readonly maxPages?: number | undefined
+        readonly maxItems?: number | undefined
+      } | undefined
+    }
   ) => Effect.Effect<
     { readonly tools: ReadonlyArray<McpSchema.Tool>; readonly cacheHint: ListCacheHint | undefined },
     McpClientError
@@ -268,8 +274,8 @@ export const isMcpClient = (value: unknown): value is McpClient => Predicate.has
  *
  * `name`, `version` and the optional `title`, `description`, `websiteUrl` and
  * `icons` identify the client to the server. `timeout` defaults to 60 seconds
- * and bounds initialization and each complete `listTools`, `listPrompts`,
- * `listResources`, `listSkills` or `readResourceDirectory` scan.
+ * and bounds initialization and each complete `listTools`, `listToolsWithCacheHint`,
+ * `listPrompts`, `listResources`, `listSkills` or `readResourceDirectory` scan.
  * `discoveryLimits` sets the default scan limits of 100 pages and 10,000
  * items. `callTool`, `getPrompt`, `readResource`, `getSkill` and
  * `readSkillResource` have no deadline unless their own `timeout` option is
@@ -347,9 +353,7 @@ export const make: (options: {
     method: string,
     params: Record<string, unknown>,
     tool?: McpSchema.Tool,
-    // Sees each result as the protocol decoded it, before the public schema
-    // drops fields it does not name, such as a page's cache hint.
-    inspect?: (validated: unknown) => void
+    onValidated?: (validated: unknown) => void
   ): Effect.fn.Return<A, McpClientError> {
     const rpc = protocol.clientRpcs.requests.get(method) as Rpc.AnyWithProps | undefined
     if (rpc === undefined) {
@@ -384,12 +388,13 @@ export const make: (options: {
     }
 
     const validated = yield* decodeUnknown(rpc.successSchema, result)
-    inspect?.(validated)
     if (isRecord(result) && result.resultType === "input_required") {
       return yield* fail(new UnsupportedError({ description: "MCP input continuation is not supported" }))
     }
     const publicRpc = publicRpcs.get(method)
-    return (publicRpc === undefined ? validated : yield* decodeUnknown(publicRpc.successSchema, result)) as A
+    const decoded = (publicRpc === undefined ? validated : yield* decodeUnknown(publicRpc.successSchema, result)) as A
+    onValidated?.(validated)
+    return decoded
   })
 
   // Initialization and discovery default to `timeout`; other operations are bounded only on request.
@@ -467,7 +472,7 @@ export const make: (options: {
     key: K,
     params: Record<string, unknown>,
     limits: typeof DEFAULT_DISCOVERY_LIMITS,
-    inspect?: (validated: unknown) => void
+    onPage?: (validated: unknown) => void
   ) {
     const items: Array<A> = []
     const cursors = new Set<string>()
@@ -477,7 +482,7 @@ export const make: (options: {
         method,
         cursor === undefined ? params : { ...params, cursor },
         undefined,
-        inspect
+        onPage
       )
       if (items.length + result[key].length > limits.maxItems) {
         return yield* limitError(`MCP ${label} discovery exceeded its item limit`)
@@ -621,31 +626,26 @@ export const make: (options: {
     (effect, _params, callOptions) => withDeadline(effect, "resources/read", callOptions?.timeout)
   )
 
-  const listTools = list<"tools", McpSchema.Tool>("tools")
-  // The snapshot's hint: the smallest page `ttlMs`, and public only when every
-  // page is. A page without a hint leaves the snapshot without one.
   const listToolsWithCacheHint = Effect.fnUntraced(
     function*(callOptions?: DiscoveryOptions) {
       const limits = yield* resolveDiscoveryLimits(callOptions?.limits, discoveryLimits)
       if (capabilities.tools === undefined) return { tools: [], cacheHint: undefined }
       let cacheHint: ListCacheHint | undefined
-      let hinted = modern
-      const tools = yield* paginate<"tools", McpSchema.Tool>("tools", "tools/list", "tools", {}, limits, (page) => {
-        if (!hinted) return
-        const ttlMs = isRecord(page) ? page.ttlMs : undefined
-        const cacheScope = isRecord(page) ? page.cacheScope : undefined
-        if (typeof ttlMs !== "number" || (cacheScope !== "public" && cacheScope !== "private")) {
-          hinted = false
-          cacheHint = undefined
-          return
+      const onPage = modern
+        ? (page: unknown) => {
+          if (
+            !isRecord(page) || typeof page.ttlMs !== "number" ||
+            (page.cacheScope !== "public" && page.cacheScope !== "private")
+          ) return
+          cacheHint = cacheHint === undefined
+            ? { ttlMs: page.ttlMs, cacheScope: page.cacheScope }
+            : {
+              ttlMs: Math.min(cacheHint.ttlMs, page.ttlMs),
+              cacheScope: cacheHint.cacheScope === "public" && page.cacheScope === "public" ? "public" : "private"
+            }
         }
-        cacheHint = cacheHint === undefined
-          ? { ttlMs, cacheScope }
-          : {
-            ttlMs: Math.min(cacheHint.ttlMs, ttlMs),
-            cacheScope: cacheHint.cacheScope === "public" && cacheScope === "public" ? "public" : "private"
-          }
-      })
+        : undefined
+      const tools = yield* paginate<"tools", McpSchema.Tool>("tools", "tools/list", "tools", {}, limits, onPage)
       return { tools: tools.filter((tool) => transport.isCallable(tool)), cacheHint }
     },
     (effect, callOptions) => withDeadline(effect, "tools discovery", callOptions?.timeout ?? timeout)
@@ -685,8 +685,7 @@ export const make: (options: {
     capabilities,
     serverInfo,
     instructions,
-    listTools: (callOptions) =>
-      listTools(callOptions).pipe(Effect.map((tools) => tools.filter((tool) => transport.isCallable(tool)))),
+    listTools: (callOptions) => listToolsWithCacheHint(callOptions).pipe(Effect.map(({ tools }) => tools)),
     listToolsWithCacheHint,
     listPrompts: list("prompts"),
     listResources: list("resources"),
