@@ -344,9 +344,9 @@ const makeFile = (() => {
       return nodeSync(this.fd)
     }
 
-    // Runs one read or write at the cursor and advances it by the byte count.
-    // Pipes, sockets and terminals reject positioned I/O with ESPIPE. Retry
-    // at the descriptor's own offset (null) and keep doing so for this handle.
+    // Runs one read or write at the cursor, then advances it. If the descriptor
+    // rejects positioned I/O with ESPIPE (pipes, sockets, terminals), retry
+    // sequentially and stay sequential for this handle.
     private atCursor(
       f: (position: bigint | null) => Effect.Effect<number, Error.PlatformError>
     ): Effect.Effect<number, Error.PlatformError> {
@@ -451,8 +451,7 @@ const makeFile = (() => {
     }
 
     private writeAllChunk(buffer: Uint8Array): Effect.Effect<void, Error.PlatformError> {
-      // The recursion stays outside `writeOnce`, so an ESPIPE retry never
-      // rewrites bytes an earlier chunk already wrote.
+      // Recurse outside `writeOnce` so an ESPIPE retry only repeats the failed chunk.
       return Effect.flatMap(this.writeOnce("writeAll", nodeWriteAll, buffer), (bytesWritten) => {
         if (bytesWritten === 0) {
           return Effect.fail(
