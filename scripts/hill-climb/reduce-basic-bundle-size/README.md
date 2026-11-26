@@ -55,4 +55,12 @@ Gotchas:
   both directly and wrapped in `Exit` and `Cause`. Each directory is a `packages/effect/src`
   or `packages/effect/dist`, for example from a worktree of `origin/main`:
   `git worktree add --detach ../main-wt origin/main`.
-- `pipe-arguments-bench.mjs`: compares the unrolled `pipeArguments` switch with a plain loop.
+- `pipe-arguments-bench.mjs [calls]`: compares the unrolled `pipeArguments` switch with a
+  switch that stops at five functions and with a plain loop, from call sites with literal
+  arguments.
+- `hot-path-bench.mjs <base dist> <current dist>`: times fiber startup (`runSync`, `runFork`),
+  flat and overlay `Context.get`, `Equal.equals` on `Cause` and `Context`, `Formatter.format`
+  and `Predicate.hasProperty` in two copies of effect. On a shared machine the ratios move
+  by up to about 50% between runs, so run it several times and in both argument orders.
+- `equality-parity.mjs <base dist> <current dist>`: checks that `Context` and `Cause` equality
+  and `Cause` hashes match between two copies of effect.
