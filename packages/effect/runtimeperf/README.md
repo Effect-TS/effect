@@ -176,10 +176,6 @@ sources, defining many schemas, and the first decode, request or OpenAPI
 document. It has its own runner; see
 [`suites/schema-boot/README.md`](suites/schema-boot/README.md).
 
-```sh
-node packages/effect/runtimeperf/suites/schema-boot/run.mts tmp/schema-boot --base main
-```
-
 ## Measurement model
 
 Each worker validates the fixture before and after measuring. The Effect

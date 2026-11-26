@@ -14,8 +14,7 @@ numbers for proportions and orders of magnitude. Use paired comparisons for deci
 
 ### Timings and heap
 
-Medians ± MAD in milliseconds over 16 processes. Heap is the median retained `heapUsed` growth of 3 processes.
-First use is every phase after `define`. Warm is per decode, component use or request.
+Medians ± MAD in milliseconds over 16 processes. Heap is the median of 3 processes. First use is every phase after `define`. Warm is per decode, component use or request.
 
 | Case             | Import    | Define      | First use                              | Total      | Warm    | Define heap KiB | First use heap KiB |
 | ---------------- | --------- | ----------- | -------------------------------------- | ---------- | ------- | --------------: | -----------------: |
@@ -31,8 +30,8 @@ First use is every phase after `define`. Warm is per decode, component use or re
 | `httpapi-large`  | 274 ± 109 | 110 ± 28    | build 156, request 22.9, openapi 531   | 1346 ± 466 | 512 µs  |           1,283 |              7,606 |
 
 Bundles are 561 KiB for `baseline`, 564–567 KiB for the graph and UI fixtures and 1,179 KiB for HttpApi. The run's
-bundles were 4–8 KiB larger, because esbuild's module comments then named the worktree path. The harness now
-normalizes those comments, and 4–8 KiB of comments is well inside the import-time noise.
+bundles were 4–8 KiB larger, from module path comments that the harness now normalizes, which is well inside the
+import-time noise.
 
 ### Where the work is
 
@@ -77,15 +76,12 @@ node packages/effect/runtimeperf/suites/schema-boot/run.mts tmp/lazy-derive --ba
 ```
 
 The comparisons ran with load averages of 45–73. Wall-time intervals were too wide to classify most phases, so the
-tables use main-thread CPU time: medians of 24 paired processes, the median paired head/base ratio with its 95%
-bootstrap interval, and the harness classification. A phase is an improvement when the interval lies below 0.98,
-a regression when it lies above 1.05, and inconclusive otherwise. Inconclusive does not mean unchanged: it admits
-every ratio in its interval. For HttpApi, `through build` and `through request` sum each process's phases from
-import through router build and through the first response, which excludes optional OpenAPI generation.
+tables use main-thread CPU time: medians of 24 paired processes, with the ratio, interval and status defined in the
+[README](README.md#protocol). Inconclusive does not mean unchanged: it admits every ratio in its interval.
 
 ### Lazy ASTs
 
-`9604133f6e` compared with main. The heap column is retained `heapUsed` growth, median of 2 processes.
+`9604133f6e` compared with main. Heap is the median of 2 processes.
 
 | Case             | Phase           | Main CPU ms | Lazy CPU ms | Ratio (95% CI)   | Status       | Heap KiB       |
 | ---------------- | --------------- | ----------: | ----------: | ---------------- | ------------ | -------------- |
@@ -112,8 +108,8 @@ import through router build and through the first response, which excludes optio
 |                  | through request |         191 |         191 | 1.02 (0.99–1.04) | inconclusive |                |
 
 No other phase was classified. Import, build, request and OpenAPI were inconclusive in every case, with intervals
-between 0.89 and 1.11: they rule out large changes, not changes of a few percent. Warm throughput is measured in wall
-time only, and its intervals were too wide to say anything about it.
+between 0.89 and 1.11: they rule out large changes, not changes of a few percent. Warm throughput, measured in wall time
+only, had intervals too wide to say anything.
 
 ### Lazy derivation
 

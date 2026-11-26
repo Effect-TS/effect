@@ -42,9 +42,8 @@ const shortSource = (source: string | undefined) => {
 const top = (counts: Map<string, number>, limit: number) =>
   [...counts].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([label, samples]) => ({ label, samples }))
 
-// Attributes CPU samples of one bundled phase to original Effect source files.
-// Self time is grouped by module; schema entry points are the outermost Schema
-// frame on each sample's stack, i.e. the operation that started the schema work.
+// Attributes CPU samples of one bundled phase to Effect source modules. A sample's
+// outermost Schema frame is the operation that started its Schema work.
 export const analyzeProfile = (profile: any, bundlePath: string) => {
   const map = new SourceMap(JSON.parse(readFileSync(`${bundlePath}.map`, "utf8")))
   const bundleDir = fileURLToPath(new URL(".", `file://${bundlePath}`))

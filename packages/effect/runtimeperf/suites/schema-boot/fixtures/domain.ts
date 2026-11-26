@@ -32,7 +32,6 @@ export const makeCore = () => {
 
 export type Core = ReturnType<typeof makeCore>
 
-// One entity with nested structs, checks, transformations, a union and reused core definitions.
 export const makeEntity = (core: Core, index: number) => {
   const Entity = Schema.Struct({
     id: core.Id,

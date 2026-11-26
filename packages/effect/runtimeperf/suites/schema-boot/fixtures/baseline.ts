@@ -1,6 +1,5 @@
 import * as Schema from "effect/Schema"
 
-// The smallest useful Schema program: one struct, decoded and encoded once.
 export const createWorkload = () => {
   let Person: ReturnType<typeof define>
   let decode: (input: unknown) => unknown

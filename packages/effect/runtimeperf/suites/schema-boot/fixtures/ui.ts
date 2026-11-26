@@ -32,8 +32,6 @@ const props = { id: "c", label: "Label", size: "md", variant: "primary", items: 
 const model = { value: "a", open: false, count: 0, selected: [] }
 const message = { _tag: "Select", value: "a" }
 
-// A UI-shaped module that defines props/model/message schemas for many components
-// and uses none, one or all of them.
 export const createWorkload = (size: string) => {
   const used = uses[size]
   if (used === undefined) throw new Error(`Unknown size: ${size}`)

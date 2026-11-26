@@ -55,8 +55,9 @@ and `<phase> cpu`. On a loaded host, wall time includes time spent waiting for a
 CPU time excludes background compilation and concurrent garbage collection threads. Medians and median absolute
 deviations are reported per phase, together with per-process sums: `total` over every phase and, for HttpApi,
 `through build` and `through request`, which exclude optional OpenAPI generation. Warm throughput is wall time only.
-Comparisons use the paired bootstrap from `../../stats.mts` and classify a phase only when its 95% interval excludes
-the 2% improvement or 5% regression threshold.
+Comparisons report the median paired head/base ratio with a 95% bootstrap interval from `../../stats.mts`. A phase
+is an improvement when the interval lies below 0.98, a regression when it lies above 1.05, and inconclusive
+otherwise. Inconclusive does not mean unchanged: it admits every ratio in its interval.
 
 Heap processes call `gc()` twice after each phase and report the change in `heapUsed`, so a phase's value is what
 it leaves reachable. Profiled processes start and stop the V8 sampling profiler around each phase. Bundle frames are
@@ -67,7 +68,7 @@ not used for timings.
 ## Limitations
 
 The workloads are synthetic. The UI cases include only Schema, not a component library, and the HttpApi cases do not
-open a socket. Timings depend on machine load; record it, which the report does, and prefer paired comparisons.
+open a socket. Timings depend on machine load, which the report records; prefer paired comparisons.
 
 ## Validation
 

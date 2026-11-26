@@ -61,7 +61,6 @@ const makeApi = (groups: number) => {
   return api
 }
 
-// An HttpApi with groups sharing request, response and error schemas.
 export const createWorkload = (size: string) => {
   const groups = sizes[size]
   if (groups === undefined) throw new Error(`Unknown size: ${size}`)

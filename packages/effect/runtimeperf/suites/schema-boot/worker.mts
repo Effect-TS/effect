@@ -8,7 +8,6 @@ const [bundlePath, size, mode, warmArgument = "300", profilePrefix] = process.ar
 assert.ok(mode === "time" || mode === "heap" || mode === "profile")
 const warmMs = Number(warmArgument)
 const now = () => Number(process.hrtime.bigint()) / 1e6
-// Main-thread CPU time does not count time spent descheduled on a loaded host.
 const cpuNow = () => {
   const { user, system } = process.threadCpuUsage()
   return (user + system) / 1e3

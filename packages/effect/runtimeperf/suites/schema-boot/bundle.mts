@@ -23,9 +23,8 @@ const effectSource = (effectDir: string) => ({
   }
 })
 
-// esbuild precedes each module with a comment naming its path from the working
-// directory. Naming the measured sources by the same path on both sides keeps
-// bundles of identical source byte-identical, wherever the revision is checked out.
+// esbuild names each module's path in a comment. Using one path for every checkout
+// keeps bundles of identical source byte-identical.
 const pathComments = (effectDir: string) => {
   const prefix = relative(repoRoot, effectDir).split(sep).join("/")
   const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
