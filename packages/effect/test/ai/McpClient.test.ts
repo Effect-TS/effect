@@ -438,18 +438,16 @@ describe("McpClient", () => {
       assert.strictEqual(error.reason._tag, "ValidationError")
     }))
 
-  it.effect("should combine the cache hints of a modern tool list's pages", () =>
+  it.effect("should combine cache hints across paginated modern tool lists", () =>
     Effect.gen(function*() {
-      const tool = (name: string) => ({ name, inputSchema: { type: "object" } })
-      const listing = (pages: ReadonlyArray<{ readonly ttlMs: number; readonly cacheScope: string }>) =>
+      const listing = (pages: ReadonlyArray<{ readonly ttlMs: number; readonly cacheScope: "public" | "private" }>) =>
         scriptedHttp((message) => {
           if (message.method !== "tools/list") return scriptedReply(McpProtocol.v2026_07_28, message)
-          const params = (message.params ?? {}) as { readonly cursor?: string }
-          const index = params.cursor === undefined ? 0 : Number(params.cursor)
+          const index = Number(message.params?.cursor ?? 0)
           return jsonRpcResult(message, {
-            resultType: "complete",
+            ...discoverResult,
             ...pages[index],
-            tools: [tool(`t${index}`)],
+            tools: [{ ...slowTool, name: `t${index}` }],
             ...(index + 1 < pages.length ? { nextCursor: String(index + 1) } : {})
           })
         })
@@ -464,24 +462,18 @@ describe("McpClient", () => {
         ttlMs: 60_000,
         cacheScope: "public"
       })
-      // The plain list is unchanged.
       assert.deepStrictEqual((yield* shared.client.listTools()).map((tool) => tool.name), ["t0", "t1"])
     }))
 
-  it.effect("should give no cache hint for a tool list on a protocol without hints", () =>
+  it.effect("should omit the cache hint when the server or protocol provides none", () =>
     Effect.gen(function*() {
-      const client = yield* connect(McpProtocol.v2025_11_25)
-      const listed = yield* client.listToolsWithCacheHint()
-      assert.isTrue(listed.tools.some((tool) => tool.name === "add"))
-      assert.isUndefined(listed.cacheHint)
-    }))
+      const legacy = yield* connect(McpProtocol.v2025_11_25)
+      const fromLegacy = yield* legacy.listToolsWithCacheHint()
+      assert.isTrue(fromLegacy.tools.some((tool) => tool.name === "add"))
+      assert.isUndefined(fromLegacy.cacheHint)
 
-  it.effect("should report a modern server's configured tool list hint", () =>
-    Effect.gen(function*() {
-      const client = yield* connect(McpProtocol.v2026_07_28)
-      const listed = yield* client.listToolsWithCacheHint()
-      assert.isTrue(listed.tools.some((tool) => tool.name === "add"))
-      assert.deepStrictEqual(listed.cacheHint, { ttlMs: 0, cacheScope: "private" })
+      const noTools = yield* scriptedHttp((message) => jsonRpcResult(message, { ...discoverResult, capabilities: {} }))
+      assert.deepStrictEqual(yield* noTools.client.listToolsWithCacheHint(), { tools: [], cacheHint: undefined })
     }))
 
   // A single page larger than the item limit must fail with LimitError, not exceed the call argument limit.
