@@ -381,8 +381,8 @@ const makeImpl = Effect.fnUntraced(function*<R>(
 
   // Routed and traced as a statement is, without the connection wait time.
   const queryTextValues = (sql: string, params?: ReadonlyArray<unknown>) =>
-    Effect.useSpan(Statement.spanName(spanAttributes), { kind: "client" }, (span) =>
-      Effect.withFiber((fiber) => {
+    Effect.withFiber((fiber) =>
+      Effect.useSpan(fiber.getRef(Statement.SpanNameGenerator)(spanAttributes), { kind: "client" }, (span) => {
         for (const [key, value] of spanAttributes) {
           span.attribute(key, value)
         }
