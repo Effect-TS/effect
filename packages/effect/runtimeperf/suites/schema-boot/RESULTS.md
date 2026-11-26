@@ -75,8 +75,8 @@ node packages/effect/runtimeperf/suites/schema-boot/run.mts tmp/lazy-derive --ba
 ```
 
 The comparisons ran with load averages of 45–73. Wall-time intervals were too wide to classify most phases, so the
-tables use main-thread CPU time: medians of 24 paired processes, the head/base ratio of the paired medians with its
-95% bootstrap interval, and the harness classification. A phase is an improvement when the interval lies below 0.98,
+tables use main-thread CPU time: medians of 24 paired processes, the median paired head/base ratio with its 95%
+bootstrap interval, and the harness classification. A phase is an improvement when the interval lies below 0.98,
 a regression when it lies above 1.05, and inconclusive otherwise. Inconclusive does not mean unchanged: it admits
 every ratio in its interval. For HttpApi, `through build` and `through request` sum each process's phases from
 import through router build and through the first response, which excludes optional OpenAPI generation.
@@ -153,8 +153,9 @@ end-to-end gain.
 
 ### Recommendation
 
-No general laziness. Lazy ASTs save 20–26% of definition CPU, but the whole process improves only where most retained
-schemas are never used (6% in `ui-one`). When every schema is used, first use costs more than definition saves, and
+No general laziness. Lazy ASTs save 20–26% of definition CPU in the UI fixtures and 11% in `graph-large`, while
+`httpapi-medium` definition regressed. The whole process improves only where most retained schemas are never used
+(6–7% in `ui-one` and `graph-large`). When every schema is used, first use costs more than definition saves, and
 HttpApi gains nothing measurable up to its first response. Both prototypes also move errors to first use.
 
 The larger fixed costs are elsewhere: V8 compiling the bundle (about 57 ms of CPU for 565 KiB), schemas that Effect
