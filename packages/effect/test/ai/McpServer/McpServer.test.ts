@@ -59,6 +59,23 @@ const OptionalStringTool = Tool.make("OptionalStringTool", {
   success: Schema.String
 })
 
+const assertHttpRejection = Effect.fnUntraced(function*(
+  response: Response,
+  status: number,
+  ...patterns: ReadonlyArray<RegExp>
+) {
+  assert.strictEqual(response.status, status)
+  const body = (yield* Effect.promise(() => response.json())) as {
+    readonly id: unknown
+    readonly error: { readonly code: number; readonly message: string }
+  }
+  assert.isNull(body.id)
+  assert.strictEqual(body.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
+  for (const pattern of patterns) {
+    assert.match(body.error.message, pattern)
+  }
+})
+
 const StrictObjectTool = Tool.make("StrictObjectTool", {
   parameters: Schema.Struct({
     config: Schema.Struct({ value: Schema.FiniteFromString })
@@ -786,28 +803,14 @@ describe("McpServer", () => {
             "mcp-session-id": sessionId,
             "mcp-protocol-version": "2025-03-26"
           })
-          assert.strictEqual(response.status, 400)
-          const body = (yield* Effect.promise(() => response.json())) as {
-            readonly id: unknown
-            readonly error: { readonly code: number; readonly message: string }
-          }
-          assert.isNull(body.id)
-          assert.strictEqual(body.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
-          assert.match(body.error.message, /batch/i)
+          yield* assertHttpRejection(response, 400, /batch/i)
 
           const pingBatch = [{ jsonrpc: "2.0", id: 4, method: "ping" }]
           const statelessVersionBatch = yield* harness.post(pingBatch, {
             "mcp-session-id": sessionId,
             "mcp-protocol-version": "2026-07-28"
           })
-          assert.strictEqual(statelessVersionBatch.status, 400)
-          const statelessBody = (yield* Effect.promise(() => statelessVersionBatch.json())) as {
-            readonly id: unknown
-            readonly error: { readonly code: number; readonly message: string }
-          }
-          assert.isNull(statelessBody.id)
-          assert.strictEqual(statelessBody.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
-          assert.match(statelessBody.error.message, /batch/i)
+          yield* assertHttpRejection(statelessVersionBatch, 400, /batch/i)
 
           const legacyVersionBatch = yield* harness.post(pingBatch, {
             "mcp-session-id": sessionId,
@@ -2829,15 +2832,7 @@ describe("McpServer", () => {
       }))
       strictEqual((yield* harness.delete()).status, 400)
       const unknown = yield* harness.delete({ "Mcp-Session-Id": "unknown" })
-      strictEqual(unknown.status, 404)
-      const body = (yield* Effect.promise(() => unknown.json())) as {
-        readonly id: unknown
-        readonly error: { readonly code: number; readonly message: string }
-      }
-      assert.isNull(body.id)
-      strictEqual(body.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
-      assert.match(body.error.message, /initialize/i)
-      assert.match(body.error.message, /MCP-Session-Id/i)
+      yield* assertHttpRejection(unknown, 404, /initialize/i, /MCP-Session-Id/i)
     }))
 
   it.effect("rejects disallowed DELETE Origins without terminating the session", () =>
