@@ -3014,7 +3014,7 @@ const addMcpHttpRoutes = Effect.fnUntraced(function*(
       request: HttpServerRequest.HttpServerRequest
     ) => Effect.Effect<HttpServerResponse.HttpServerResponse, never, R>
   ) =>
-  (request: HttpServerRequest.HttpServerRequest): Effect.Effect<HttpServerResponse.HttpServerResponse, never, R> =>
+  (request: HttpServerRequest.HttpServerRequest) =>
     isAllowedMcpOrigin(request, options.allowedOrigins)
       ? handler(request)
       : Effect.succeed(mcpTransportRejection(403, `Origin '${request.headers["origin"]}' is not allowed`))
@@ -3202,11 +3202,7 @@ const isAllowedMcpOrigin = (
 }
 
 const mcpTransportRejection = (status: 403 | 406 | 415, message: string): HttpServerResponse.HttpServerResponse =>
-  HttpServerResponse.jsonUnsafe({
-    jsonrpc: "2.0",
-    id: null,
-    error: { code: McpSchema.INVALID_REQUEST_ERROR_CODE, message }
-  }, { status })
+  McpRuntime.jsonRpcError(status, { code: McpSchema.INVALID_REQUEST_ERROR_CODE, message })
 
 const mcpMediaTypes = (header: string | undefined): ReadonlyArray<string> =>
   header === undefined

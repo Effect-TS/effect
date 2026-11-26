@@ -61,6 +61,12 @@ const routingNameKey = (method: string): "name" | "uri" | undefined => {
   }
 }
 
+/**
+ * @internal
+ */
+export const jsonRpcError = (status: number, error: unknown, id: string | number | null = null) =>
+  HttpServerResponse.jsonUnsafe({ jsonrpc: "2.0", id, error }, { status })
+
 const headerMismatch = (message: string): HttpProtocolSelection => ({
   _tag: "Rejected",
   status: 400,
@@ -274,6 +280,8 @@ export const make = Effect.fnUntraced(function*(
     }
     return { _tag: "Accepted", binding, protocol: binding?.protocol }
   }
+  const isStatelessVersion = (headers: Headers.Headers) =>
+    statelessProtocol !== undefined && headers[MCP_PROTOCOL_VERSION_HEADER] === statelessProtocol.protocolVersion
   const selectHttpProtocol = (headers: Headers.Headers, input: unknown): HttpProtocolSelection => {
     const protocolVersion = headers[MCP_PROTOCOL_VERSION_HEADER]
     const inputRecord = asRecord(input)
@@ -335,8 +343,6 @@ export const make = Effect.fnUntraced(function*(
     }
     return selectHttpSession(headers, isInitialize)
   }
-  const jsonRpcError = (status: number, error: unknown, id: string | number | null = null) =>
-    HttpServerResponse.jsonUnsafe({ jsonrpc: "2.0", id, error }, { status })
   return ServerRuntime.of({
     protocols: registry.protocols,
     clientRpcs: registry.clientRpcs,
@@ -412,11 +418,10 @@ export const make = Effect.fnUntraced(function*(
         if (version !== undefined && !protocolVersions.includes(version)) {
           return reject(400, unsupportedProtocolVersion(version))
         }
-        const admission = selectHttpProtocol(headers, undefined)
         // Session and protocol-header errors take precedence over parse errors.
-        return admission._tag === "Rejected" &&
-            (admission.status === 404 || admission.error.code === PublicMcpSchema.HEADER_MISMATCH_ERROR_CODE)
-          ? reject(admission.status, admission.error)
+        const selection = isStatelessVersion(headers) ? undefined : selectHttpSession(headers, false)
+        return selection?._tag === "Rejected"
+          ? reject(selection.status, selection.error)
           : reject(200, new PublicMcpSchema.ParseError({ message: "Parse error" }))
       }
       const input = parsed.success
@@ -428,10 +433,8 @@ export const make = Effect.fnUntraced(function*(
         if (admission._tag === "Rejected") {
           return reject(admission.status, admission.error)
         }
-        const isStatelessVersion = statelessProtocol !== undefined &&
-          headers[MCP_PROTOCOL_VERSION_HEADER] === statelessProtocol.protocolVersion
         if (
-          isStatelessVersion ||
+          isStatelessVersion(headers) ||
           input.some(hasRequestProtocolVersion) ||
           input.some((message) => Predicate.hasProperty(message, "method") && message.method === "initialize") ||
           admission.binding?.protocol.runtime.transport.jsonRpc.acceptsBatches !== true
