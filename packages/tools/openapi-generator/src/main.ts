@@ -48,7 +48,10 @@ const patch = Flag.String("patch").pipe(
 )
 
 const stringFormats = Flag.Literals("string-formats", ["encoded", "decoded"] as const).pipe(
-  Flag.withDescription("String format representation: encoded | decoded (default: encoded)"),
+  Flag.withDescription(
+    "Keep date-time, int64 and uint64 strings as wire strings (encoded) or decode them to DateTime.Utc and bigint " +
+      "in schema-backed output (decoded). Default: encoded."
+  ),
   Flag.withDefault("encoded")
 )
 

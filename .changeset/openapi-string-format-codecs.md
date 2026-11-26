@@ -2,4 +2,4 @@
 "@effect/openapi-generator": patch
 ---
 
-Use `openapigen --string-formats decoded` to decode `date-time`, `int64` and `uint64` strings to `DateTime.Utc` and `bigint` values, after the strings' own OpenAPI checks.
+Add `openapigen --string-formats decoded` (`stringFormats: "decoded"`) to decode `date-time`, `int64` and `uint64` strings to `DateTime.Utc` and range-checked `bigint` in schema-backed output, after their OpenAPI string checks.

@@ -135,7 +135,6 @@ const mapChildren = (
   }
 }
 
-// Collects through `mapChildren`, which alone knows the shape of each node.
 const children = (representation: Representation, only?: "values"): ReadonlyArray<Representation> => {
   const out: Array<Representation> = []
   const collect = (child: Representation) => {
@@ -259,8 +258,7 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
       : mapChildren(representation, rewriteWire, rewriteWire)
   }
 
-  // `useSite` marks a format from a referencing use site, which takes precedence over
-  // formats inside the inlined target.
+  // `useSite`: `inherited` comes from a referencing use site and overrides formats inside the inlined target.
   const rewriteValue = (
     representation: Representation,
     path: string,
@@ -275,8 +273,7 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
           ? representation
           : decodeTo(rewriteWire(representation), inherited)
       }
-      // The target is inlined to keep its other branches. It is no longer the named definition, and the
-      // use-site format replaces its own.
+      // Inline the target to keep its non-string branches, dropping its identifier and own format.
       if (target._tag === "Reference") return rewriteValue(target, path, inherited, true)
       const { format: _format, identifier: _identifier, ...annotations } = target.annotations ?? {}
       return rewriteValue({ ...target, annotations }, path, inherited, true)
