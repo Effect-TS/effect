@@ -1576,8 +1576,7 @@ const requestSpanOptions = (
     case "resources/read":
     case "resources/subscribe":
     case "resources/unsubscribe": {
-      // Resource URIs can be unbounded and sensitive, so they stay out of the span name,
-      // and `mcp.resource.uri` is recorded only for registered static resources.
+      // Resource URIs stay out of span names; only registered static URIs are bounded enough to record.
       const registered = options.server.resources.find(({ resource }) => resource.uri === params?.uri)
       if (registered !== undefined) attributes["mcp.resource.uri"] = registered.resource.uri
       break

@@ -3914,7 +3914,6 @@ describe("McpServer", () => {
 
     const tracedMethods: ReadonlySet<unknown> = new Set(["tools/call", "prompts/get", "resources/read"])
 
-    // Offers each ended MCP span of a traced method to `ended`.
     const makeRequestTracer = (ended: Queue.Queue<Tracer.NativeSpan>) =>
       Tracer.make({
         span(options) {
@@ -3928,7 +3927,6 @@ describe("McpServer", () => {
         }
       })
 
-    // Returns functions that send requests over HTTP and yield their ended MCP span.
     const makeTracedServer = Effect.fnUntraced(function*(recordToolArguments = false) {
       const ended = yield* Queue.unbounded<Tracer.NativeSpan>()
       const tracer = makeRequestTracer(ended)
