@@ -1323,12 +1323,15 @@ export const suite = (
               yield* Effect.gen(function*() {
                 // @effect-diagnostics-next-line floatingEffect:off
                 yield* Scope.provide(scope)(handle.unref).pipe(Effect.provide(layer))
-                yield* Scope.close(scope, Exit.void)
 
                 const exitCode = yield* handle.exitCode
                 assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(1))
 
                 yield* TestClock.withLive(Effect.sleep("100 millis"))
+
+                assert.isAbove(yield* countLiveGroupMembers, 0)
+
+                yield* Scope.close(scope, Exit.void)
 
                 assert.isAbove(yield* countLiveGroupMembers, 0)
               }).pipe(Effect.ensuring(Effect.ignore(handle.kill({ killSignal: "SIGKILL" }))))

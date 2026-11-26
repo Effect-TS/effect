@@ -747,28 +747,6 @@ describe.skipIf(process.platform === "win32")("process group cleanup", () => {
       yield* assertHeartbeatStopped(marker)
     }).pipe(Effect.scoped, Effect.provide(NodeServices)))
 
-  it.live("unref leaves descendants running after the leader exits with a non-zero code", () =>
-    Effect.gen(function*() {
-      const fs = yield* FileSystem.FileSystem
-      // The descendant writes its marker as soon as it receives the kill signal
-      const { descendantPid, handle, marker, scope } = yield* startProcessGroup("exit-on-signal", { stdin: "pipe" }, {
-        leader: 0,
-        descendant: 0
-      })
-      yield* Effect.addFinalizer(() => killDescendant(descendantPid))
-
-      // @effect-diagnostics-next-line floatingEffect:off
-      yield* handle.unref
-      yield* Stream.run(Stream.make(new TextEncoder().encode("exit 1\n")), handle.stdin)
-      assert.strictEqual(yield* handle.exitCode, 1)
-      yield* liveSleep(100)
-      assert.isFalse(yield* fs.exists(marker), "the exit of an unref'ed leader must not signal its process group")
-
-      yield* Scope.close(scope, Exit.void)
-
-      assert.isFalse(yield* fs.exists(marker), "scope release must not signal an unref'ed process group")
-    }).pipe(Effect.provide(NodeServices)))
-
   it.live("scope release cleans descendants after the leader is killed externally", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
