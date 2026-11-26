@@ -2624,6 +2624,66 @@ describe("McpServer", () => {
         }
       }))
 
+    const invalidParams = Schema.Struct({ id: Schema.String })
+    const invalidParamsToolkit = Toolkit.make(
+      Tool.make("Undeclared", { parameters: invalidParams, success: Schema.String }),
+      Tool.make("Declared", { parameters: invalidParams, success: Schema.String, failure: McpSchema.InvalidParams }),
+      Tool.make("ReturnMode", {
+        parameters: invalidParams,
+        success: Schema.String,
+        failure: McpSchema.InvalidParams,
+        failureMode: "return"
+      })
+    )
+    const rejectInvalidParams = () => Effect.fail(new McpSchema.InvalidParams({ message: "id must be numeric" }))
+    const invalidParamsRegistrations = McpServer.toolkit(invalidParamsToolkit).pipe(
+      Layer.provide(invalidParamsToolkit.toLayer({
+        Undeclared: rejectInvalidParams as () => Effect.Effect<never>,
+        Declared: rejectInvalidParams,
+        ReturnMode: rejectInvalidParams
+      }))
+    )
+
+    for (const protocol of [McpProtocol.v2025_06_18, McpProtocol.v2025_11_25]) {
+      for (const name of ["Undeclared", "Declared"] as const) {
+        it.effect(
+          `reports ${name.toLowerCase()} handler InvalidParams as invalid input on ${protocol.protocolVersion}`,
+          () =>
+            Effect.gen(function*() {
+              const client = yield* McpTest.makeClient(invalidParamsRegistrations, { protocols: [protocol] })
+
+              if (protocol === McpProtocol.v2025_06_18) {
+                const error = yield* client.callTool({ name, arguments: { id: "x" } }).pipe(Effect.flip)
+                assertTrue("code" in error)
+                assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+                assert.strictEqual(error.message, "id must be numeric")
+              } else {
+                const result = yield* client.callTool({ name, arguments: { id: "x" } })
+                assert.isTrue(result.isError)
+                assert.isUndefined(result.structuredContent)
+                assert.deepStrictEqual(result.content, [{ type: "text", text: "id must be numeric" }])
+              }
+            })
+        )
+      }
+    }
+
+    it.effect("preserves return-mode declared InvalidParams as an encoded tool failure", () =>
+      Effect.gen(function*() {
+        const client = yield* McpTest.makeClient(invalidParamsRegistrations, {
+          protocols: [McpProtocol.v2025_06_18]
+        })
+
+        const result = yield* client.callTool({ name: "ReturnMode", arguments: { id: "x" } })
+        assert.isTrue(result.isError)
+        assert.isUndefined(result.structuredContent)
+        assert.deepStrictEqual(JSON.parse(toolResultText(result)), {
+          _tag: "InvalidParams",
+          code: McpSchema.INVALID_PARAMS_ERROR_CODE,
+          message: "id must be numeric"
+        })
+      }))
+
     const modelOutputImage = new Uint8Array([1, 2, 3])
     const modelOutputUrl = new URL("https://example.com/report.png")
     const modelOutputToolkit = Toolkit.make(
