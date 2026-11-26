@@ -414,6 +414,8 @@ export function fromSchemaDraft2020_12(js: JsonSchema): Document<"draft-2020-12"
  * @category decoding
  * @since 4.0.0
  */
+export function fromSchemaOpenApi3_1(js: JsonSchema): Document<"draft-2020-12">
+export function fromSchemaOpenApi3_1(js: JsonSchema, options?: FromOpenApiOptions): Document<"draft-2020-12">
 export function fromSchemaOpenApi3_1(js: JsonSchema, options?: FromOpenApiOptions): Document<"draft-2020-12"> {
   const isRootResource = createsResource(js.$id)
   const onReference = options?.onReference
@@ -488,6 +490,8 @@ export function fromSchemaOpenApi3_1(js: JsonSchema, options?: FromOpenApiOption
  * @category decoding
  * @since 4.0.0
  */
+export function fromSchemaOpenApi3_0(schema: JsonSchema): Document<"draft-2020-12">
+export function fromSchemaOpenApi3_0(schema: JsonSchema, options?: FromOpenApiOptions): Document<"draft-2020-12">
 export function fromSchemaOpenApi3_0(schema: JsonSchema, options?: FromOpenApiOptions): Document<"draft-2020-12"> {
   return fromSchemaDraft2020_12(convertOpenApi30(schema, options))
 }
