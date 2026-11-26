@@ -46,7 +46,8 @@ const phase = async (name: string, run: () => unknown) => {
   const result: any = run()
   if (typeof result?.then === "function") await result
   timings[name] = now() - start
-  cpu[name] = cpuNow() - cpuStart
+  // Thread CPU time can read zero for phases shorter than its resolution.
+  cpu[name] = Math.max(cpuNow() - cpuStart, 0.001)
   if (mode === "profile") {
     const { profile } = await session.post("Profiler.stop")
     const path = `${profilePrefix}-${name}.cpuprofile`
