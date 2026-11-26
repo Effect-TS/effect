@@ -134,37 +134,6 @@ const makeGatedAsk = Effect.fnUntraced(function*(name: string) {
   return { entity, started, release, state }
 })
 
-const makeQueuedMailbox = Effect.fnUntraced(function*(name: string) {
-  const started = yield* Deferred.make<void>()
-  const release = yield* Deferred.make<void>()
-  const state = { queuedRuns: 0 }
-  const entity = Entity.make(name, [
-    Rpc.make("Hold", { success: Schema.String }),
-    Rpc.make("Queued", { success: Schema.String }),
-    Rpc.make("Ping", { success: Schema.String })
-  ])
-  const handlers: EntityRegistration = {
-    entity,
-    keepAliveHeartbeat: 30_000,
-    build: Effect.succeed(entity.of({
-      Hold: () => Effect.andThen(Deferred.succeed(started, undefined), Effect.as(Deferred.await(release), "held")),
-      Queued: () =>
-        Effect.sync(() => {
-          state.queuedRuns++
-          return "queued"
-        }),
-      Ping: () => Rpc.fork(Effect.succeed("pong"))
-    })),
-    options: { concurrency: 1 },
-    context: Context.empty()
-  }
-  yield* Effect.acquireRelease(
-    Effect.sync(() => registerEntity(entity.type, handlers)),
-    () => Effect.sync(() => unregisterEntity(entity.type, handlers))
-  )
-  return { entity, started, release, state }
-})
-
 // Waits on the real clock until a just-scheduled deadline has passed.
 const pastDeadline = Effect.sleep("50 millis").pipe(TestClock.withLive)
 
@@ -486,7 +455,33 @@ describe("EntityManager", () => {
 
   it.effect("interrupts a request waiting for the only permit", () =>
     Effect.gen(function*() {
-      const { entity, release, started, state } = yield* makeQueuedMailbox("QueuedMailbox")
+      const started = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      let queuedRuns = 0
+      const entity = Entity.make("QueuedMailbox", [
+        Rpc.make("Hold", { success: Schema.String }),
+        Rpc.make("Queued", { success: Schema.String }),
+        Rpc.make("Ping", { success: Schema.String })
+      ])
+      const handlers: EntityRegistration = {
+        entity,
+        keepAliveHeartbeat: 30_000,
+        build: Effect.succeed(entity.of({
+          Hold: () => Effect.andThen(Deferred.succeed(started, undefined), Effect.as(Deferred.await(release), "held")),
+          Queued: () =>
+            Effect.sync(() => {
+              queuedRuns++
+              return "queued"
+            }),
+          Ping: () => Rpc.fork(Effect.succeed("pong"))
+        })),
+        options: { concurrency: 1 },
+        context: Context.empty()
+      }
+      yield* Effect.acquireRelease(
+        Effect.sync(() => registerEntity(entity.type, handlers)),
+        () => Effect.sync(() => unregisterEntity(entity.type, handlers))
+      )
       const { envelope, manager } = yield* makeMailbox("queued", entity.type)
       const hold = yield* Effect.forkChild(manager.invoke(envelope("Hold"), false))
       yield* Deferred.await(started)
@@ -502,38 +497,26 @@ describe("EntityManager", () => {
 
       yield* Deferred.succeed(release, undefined)
       yield* Fiber.join(hold)
-      assert.strictEqual(state.queuedRuns, 0)
+      assert.strictEqual(queuedRuns, 0)
     }))
 
-  it.effect("interrupts a non-persisted request that arrives after its interrupt", () =>
+  it.effect("interrupts non-persisted and persisted asks that arrive after their interrupt", () =>
     Effect.gen(function*() {
-      const { entity, release, started, state } = yield* makeQueuedMailbox("EarlyQueuedMailbox")
-      const { envelope, manager } = yield* makeMailbox("early-queued", entity.type)
-      const hold = yield* Effect.forkChild(manager.invoke(envelope("Hold"), false))
-      yield* Deferred.await(started)
+      const { envelope, exitOf, manager, restart } = yield* makeMailbox("early-interrupt")
+      const nonPersistedId = nextRequestId()
+      yield* manager.interrupt(nonPersistedId)
+      const nonPersisted = yield* manager.invoke(envelope("Get", null, nonPersistedId), false)
+      assert.deepStrictEqual(nonPersisted, { _tag: "Success", requestId: nonPersistedId, replies: [] })
 
-      const queuedRequestId = nextRequestId()
-      yield* manager.interrupt(queuedRequestId)
-      const result = yield* manager.invoke(envelope("Queued", null, queuedRequestId), false)
-
-      yield* Deferred.succeed(release, undefined)
-      yield* Fiber.join(hold)
-      assert.deepStrictEqual(result, { _tag: "Success", requestId: queuedRequestId, replies: [] })
-      assert.strictEqual(state.queuedRuns, 0)
-    }))
-
-  it.effect("interrupts a persisted request that arrives after its interrupt without replaying it", () =>
-    Effect.gen(function*() {
-      const { envelope, exitOf, manager, restart } = yield* makeMailbox("early-persisted")
-      const requestId = nextRequestId()
-      yield* manager.interrupt(requestId)
-      const result = yield* manager.invoke(envelope("Add", { operationId: "early" }, requestId), false)
-      assert.deepStrictEqual(result, { _tag: "Success", requestId, replies: [] })
+      const persistedId = nextRequestId()
+      yield* manager.interrupt(persistedId)
+      const persisted = yield* manager.invoke(envelope("Add", { operationId: "early" }, persistedId), false)
+      assert.deepStrictEqual(persisted, { _tag: "Success", requestId: persistedId, replies: [] })
 
       const get = yield* restart().invoke(envelope("Get"), false)
       assert(get._tag === "Success")
       assert.deepStrictEqual(exitOf(get.replies[0]), { _tag: "Success", value: 0 })
-      assert.isUndefined(counts.get("early-persisted"))
+      assert.isUndefined(counts.get("early-interrupt"))
     }))
 
   it.effect("interrupts an active ask holding a SQL transaction while another persisted invoke waits on it", () =>
