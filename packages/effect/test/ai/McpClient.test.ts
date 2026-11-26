@@ -452,9 +452,13 @@ describe("McpClient", () => {
           })
         })
 
-      const mixed = yield* listing([{ ttlMs: 60_000, cacheScope: "public" }, { ttlMs: 5_000, cacheScope: "private" }])
+      const mixed = yield* listing([
+        { ttlMs: 60_000, cacheScope: "public" },
+        { ttlMs: 5_000, cacheScope: "private" },
+        { ttlMs: 30_000, cacheScope: "public" }
+      ])
       const fromMixed = yield* mixed.client.listToolsWithCacheHint()
-      assert.deepStrictEqual(fromMixed.tools.map((tool) => tool.name), ["t0", "t1"])
+      assert.deepStrictEqual(fromMixed.tools.map((tool) => tool.name), ["t0", "t1", "t2"])
       assert.deepStrictEqual(fromMixed.cacheHint, { ttlMs: 5_000, cacheScope: "private" })
 
       const shared = yield* listing([{ ttlMs: 60_000, cacheScope: "public" }, { ttlMs: 90_000, cacheScope: "public" }])
