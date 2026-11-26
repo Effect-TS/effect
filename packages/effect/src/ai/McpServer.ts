@@ -1538,6 +1538,7 @@ const requestSpanOptions = (
     readonly networkTransport: string | undefined
     readonly sessionId: string | undefined
     readonly recordToolArguments: boolean
+    readonly server: McpServer["Service"]
   }
 ): Tracer.SpanOptionsNoTrace & { readonly name: string } => {
   const params = Predicate.isReadonlyObject(request.payload)
@@ -1554,17 +1555,20 @@ const requestSpanOptions = (
   switch (method) {
     case "tools/call": {
       attributes["gen_ai.operation.name"] = "execute_tool"
-      if (typeof params?.name === "string") {
+      if (typeof params?.name === "string" && options.server.tools.some(({ tool }) => tool.name === params.name)) {
         target = params.name
         attributes["gen_ai.tool.name"] = target
-      }
-      if (options.recordToolArguments && params?.arguments !== undefined) {
-        attributes["gen_ai.tool.call.arguments"] = Toolkit.stringifyToolArguments(params.arguments)
+        if (options.recordToolArguments && params.arguments !== undefined) {
+          attributes["gen_ai.tool.call.arguments"] = Toolkit.stringifyToolArguments(params.arguments)
+        }
       }
       break
     }
     case "prompts/get": {
-      if (typeof params?.name === "string") {
+      if (
+        typeof params?.name === "string" &&
+        options.server.prompts.some(({ prompt }) => prompt.name === params.name)
+      ) {
         target = params.name
         attributes["gen_ai.prompt.name"] = target
       }
@@ -1573,8 +1577,14 @@ const requestSpanOptions = (
     case "resources/read":
     case "resources/subscribe":
     case "resources/unsubscribe": {
-      // Resource URIs can be unbounded and sensitive, so they stay out of the span name.
-      if (typeof params?.uri === "string") attributes["mcp.resource.uri"] = params.uri
+      // Resource URIs can be unbounded and sensitive, so they stay out of the span name,
+      // and `mcp.resource.uri` is recorded only for registered static resources.
+      if (
+        typeof params?.uri === "string" &&
+        options.server.resources.some(({ resource }) => resource.uri === params.uri)
+      ) {
+        attributes["mcp.resource.uri"] = params.uri
+      }
       break
     }
   }
@@ -1723,11 +1733,12 @@ const normalizeCacheHints = (
  *
  * Each request handled by the server runs in a server span that follows the
  * OpenTelemetry MCP semantic conventions. Spans are named after the JSON-RPC
- * method, with the tool or prompt name appended for `tools/call` and
- * `prompts/get` (for example `tools/call get_weather`). A W3C `traceparent` in
- * `params._meta` becomes the span's parent, and the transport span (such as
- * the HTTP server span) is linked. Tool arguments are recorded only when
- * `Toolkit.RecordToolArguments` is `true`.
+ * method, with the tool or prompt name appended for registered `tools/call`
+ * and `prompts/get` targets (for example `tools/call get_weather`).
+ * `mcp.resource.uri` is recorded only for registered static resources. A W3C
+ * `traceparent` in `params._meta` becomes the span's parent, and the transport
+ * span (such as the HTTP server span) is linked. Tool arguments are recorded
+ * only for registered tools when `Toolkit.RecordToolArguments` is `true`.
  *
  * @stability unstable
  * @category running
@@ -1806,7 +1817,8 @@ const runWithRuntime = Effect.fnUntraced(function*(
         sessionId: isHttp
           ? Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)?.headers[MCP_SESSION_ID_HEADER]
           : undefined,
-        recordToolArguments: fiber.getRef(Toolkit.RecordToolArguments)
+        recordToolArguments: fiber.getRef(Toolkit.RecordToolArguments),
+        server
       })
       const ambientParent = Context.getOrUndefined(fiber.context, Tracer.ParentSpan)
       return Effect.flatMap(
