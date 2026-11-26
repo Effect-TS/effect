@@ -12,6 +12,7 @@
  */
 import * as Context from "./Context.ts"
 import type * as Fiber from "./Fiber.ts"
+import * as FiberCachedKeys from "./internal/fiberCachedKeys.ts"
 
 /**
  * A scheduler manages the execution of Effect fibers by controlling when queued
@@ -64,7 +65,7 @@ export interface SchedulerDispatcher {
 
 /** @internal */
 export const schedulerDefinition: Context.ReferenceDefinition<Scheduler> = {
-  key: "effect/Scheduler",
+  key: FiberCachedKeys.SchedulerKey,
   defaultValue: () => new MixedScheduler()
 }
 
@@ -275,7 +276,7 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
 
 /** @internal */
 export const maxOpsBeforeYieldDefinition: Context.ReferenceDefinition<number> = {
-  key: "effect/Scheduler/MaxOpsBeforeYield",
+  key: FiberCachedKeys.MaxOpsBeforeYieldKey,
   defaultValue: () => 2048
 }
 
@@ -306,7 +307,7 @@ export const MaxOpsBeforeYield: Context.Reference<number> = Context.referenceFro
 
 /** @internal */
 export const preventSchedulerYieldDefinition: Context.ReferenceDefinition<boolean> = {
-  key: "effect/Scheduler/PreventSchedulerYield",
+  key: FiberCachedKeys.PreventSchedulerYieldKey,
   defaultValue: () => false
 }
 

@@ -13,8 +13,6 @@ import type { StackFrame } from "../References.ts"
 import type * as Types from "../Types.ts"
 import { SingleShotGen } from "../Utils.ts"
 import type { FiberImpl } from "./effect.ts"
-import * as InternalEqual from "./equal.ts"
-import * as InternalHash from "./hash.ts"
 import * as InternalRecord from "./record.ts"
 
 /** @internal */
@@ -164,15 +162,15 @@ export class CauseImpl<E> implements Cause.Cause<E> {
   [NodeInspectSymbol]() {
     return this.toJSON()
   }
-  [InternalEqual.symbol](that: any): boolean {
+  [Equal.symbol](that: any): boolean {
     return (
       isCause(that) &&
       this.reasons.length === that.reasons.length &&
-      this.reasons.every((e, i) => InternalEqual.equals(e, that.reasons[i]))
+      this.reasons.every((e, i) => Equal.equals(e, that.reasons[i]))
     )
   }
-  [InternalHash.symbol](): number {
-    return InternalHash.array(this.reasons)
+  [Hash.symbol](): number {
+    return Hash.array(this.reasons)
   }
 }
 
@@ -229,8 +227,8 @@ export abstract class ReasonBase<Tag extends string> implements Cause.Cause.Reas
   }
 
   abstract toJSON(): unknown
-  abstract [InternalEqual.symbol](that: any): boolean
-  abstract [InternalHash.symbol](): number
+  abstract [Equal.symbol](that: any): boolean
+  abstract [Hash.symbol](): number
 
   toString() {
     return format(this)
@@ -263,16 +261,16 @@ export class Fail<E> extends ReasonBase<"Fail"> implements Cause.Fail<E> {
       error: this.error
     }
   }
-  [InternalEqual.symbol](that: any): boolean {
+  [Equal.symbol](that: any): boolean {
     return (
       isFailReason(that) &&
-      InternalEqual.equals(this.error, that.error) &&
-      InternalEqual.equals(this.annotations, that.annotations)
+      Equal.equals(this.error, that.error) &&
+      Equal.equals(this.annotations, that.annotations)
     )
   }
-  [InternalHash.symbol](): number {
-    return InternalHash.combine(InternalHash.string(this._tag))(
-      InternalHash.combine(InternalHash.hash(this.error))(InternalHash.hash(this.annotations))
+  [Hash.symbol](): number {
+    return Hash.combine(Hash.string(this._tag))(
+      Hash.combine(Hash.hash(this.error))(Hash.hash(this.annotations))
     )
   }
 }
@@ -369,16 +367,16 @@ export class Die extends ReasonBase<"Die"> implements Cause.Die {
       defect: this.defect
     }
   }
-  [InternalEqual.symbol](that: any): boolean {
+  [Equal.symbol](that: any): boolean {
     return (
       isDieReason(that) &&
-      InternalEqual.equals(this.defect, that.defect) &&
-      InternalEqual.equals(this.annotations, that.annotations)
+      Equal.equals(this.defect, that.defect) &&
+      Equal.equals(this.annotations, that.annotations)
     )
   }
-  [InternalHash.symbol](): number {
-    return InternalHash.combine(InternalHash.string(this._tag))(
-      InternalHash.combine(InternalHash.hash(this.defect))(InternalHash.hash(this.annotations))
+  [Hash.symbol](): number {
+    return Hash.combine(Hash.string(this._tag))(
+      Hash.combine(Hash.hash(this.defect))(Hash.hash(this.annotations))
     )
   }
 }
@@ -559,15 +557,15 @@ export const makeExit = <
         [options.prop]: this[args]
       }
     },
-    [InternalEqual.symbol](this: any, that: any): boolean {
+    [Equal.symbol](this: any, that: any): boolean {
       return (
         isExit(that) &&
         that._tag === this._tag &&
-        InternalEqual.equals(this[args], (that as any)[args])
+        Equal.equals(this[args], (that as any)[args])
       )
     },
-    [InternalHash.symbol](this: any): number {
-      return InternalHash.combine(InternalHash.string(options.op), InternalHash.hash(this[args]))
+    [Hash.symbol](this: any): number {
+      return Hash.combine(Hash.string(options.op), Hash.hash(this[args]))
     }
   }
   const ExitPrimitive = function(this: any, value: unknown) {

@@ -5,6 +5,7 @@ import type { LogLevel, Severity } from "../LogLevel.ts"
 import type { ReadonlyRecord } from "../Record.ts"
 import type { StackFrame } from "../References.ts"
 import type { SpanLink } from "../Tracer.ts"
+import * as FiberCachedKeys from "./fiberCachedKeys.ts"
 
 /** @internal */
 export const CurrentErrorReporters = Context.Reference<ReadonlySet<ErrorReporter>>(
@@ -14,7 +15,7 @@ export const CurrentErrorReporters = Context.Reference<ReadonlySet<ErrorReporter
 
 /** @internal */
 export const currentStackFrameDefinition: Context.ReferenceDefinition<StackFrame | undefined> = {
-  key: "effect/References/CurrentStackFrame",
+  key: FiberCachedKeys.CurrentStackFrameKey,
   defaultValue: constUndefined
 }
 
@@ -25,7 +26,7 @@ export const CurrentStackFrame: Context.Reference<StackFrame | undefined> = Cont
 
 /** @internal */
 export const tracerEnabledDefinition: Context.ReferenceDefinition<boolean> = {
-  key: "effect/References/TracerEnabled",
+  key: FiberCachedKeys.TracerEnabledKey,
   defaultValue: constTrue
 }
 
@@ -56,7 +57,7 @@ export const CurrentLogAnnotations = Context.Reference<ReadonlyRecord<string, un
 
 /** @internal */
 export const currentLogLevelDefinition: Context.ReferenceDefinition<Severity> = {
-  key: "effect/References/CurrentLogLevel",
+  key: FiberCachedKeys.CurrentLogLevelKey,
   defaultValue: () => "Info"
 }
 
@@ -65,7 +66,7 @@ export const CurrentLogLevel: Context.Reference<Severity> = Context.referenceFro
 
 /** @internal */
 export const minimumLogLevelDefinition: Context.ReferenceDefinition<LogLevel> = {
-  key: "effect/References/MinimumLogLevel",
+  key: FiberCachedKeys.MinimumLogLevelKey,
   defaultValue: () => "Info"
 }
 

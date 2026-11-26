@@ -5,12 +5,14 @@ import type * as Console from "../Console.ts"
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import type * as Effect from "../Effect.ts"
+import * as Equal from "../Equal.ts"
 import type * as Exit from "../Exit.ts"
 import type * as Fiber from "../Fiber.ts"
 import * as Filter from "../Filter.ts"
 import { formatJson } from "../Formatter.ts"
 import type { LazyArg } from "../Function.ts"
 import { constant, constFalse, constTrue, constUndefined, constVoid, dual, identity } from "../Function.ts"
+import * as Hash from "../Hash.ts"
 import { toJson, toStringUnknown } from "../Inspectable.ts"
 import * as Iterable from "../Iterable.ts"
 import type * as _Latch from "../Latch.ts"
@@ -83,9 +85,7 @@ import {
   Yield
 } from "./core.ts"
 import * as doNotation from "./doNotation.ts"
-import * as InternalEqual from "./equal.ts"
-import * as InternalHash from "./hash.ts"
-import * as InternalMetric from "./metric.ts"
+import * as FiberCachedKeys from "./fiberCachedKeys.ts"
 import * as InternalRecord from "./record.ts"
 import {
   CurrentErrorReporters,
@@ -128,17 +128,17 @@ export class Interrupt extends ReasonBase<"Interrupt"> implements Cause.Interrup
       fiberId: this.fiberId
     }
   }
-  [InternalEqual.symbol](that: any): boolean {
+  [Equal.symbol](that: any): boolean {
     return (
       isInterruptReason(that) &&
       this.fiberId === that.fiberId &&
       this.annotations === that.annotations
     )
   }
-  [InternalHash.symbol](): number {
+  [Hash.symbol](): number {
     // Equality compares annotations by reference, so leave them out instead of
     // hashing them randomly.
-    return InternalHash.string(`${this._tag}:${this.fiberId}`)
+    return Hash.string(`${this._tag}:${this.fiberId}`)
   }
 }
 
@@ -798,17 +798,17 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
   // Reading by key and by definition keeps the services, and the native
   // tracer behind Tracer.Tracer's default, out of bundles that never use them
-  const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
+  const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, FiberCachedKeys.TracerKey)
   return {
     scheduler: Context.getReferenceUnsafe(context, Scheduler.schedulerDefinition),
     tracer: currentTracer,
     tracerContext: currentTracer ? currentTracer["context"] : undefined,
     tracerEnabled: Context.getReferenceUnsafe(context, tracerEnabledDefinition),
-    span: Context.getOrUndefinedUnsafe(context, Tracer.ParentSpanKey),
+    span: Context.getOrUndefinedUnsafe(context, FiberCachedKeys.ParentSpanKey),
     logLevel: Context.getReferenceUnsafe(context, currentLogLevelDefinition),
     minimumLogLevel: Context.getReferenceUnsafe(context, minimumLogLevelDefinition),
     stackFrame: Context.getReferenceUnsafe(context, currentStackFrameDefinition),
-    runtimeMetrics: Context.getOrUndefinedUnsafe(context, InternalMetric.FiberRuntimeMetricsKey),
+    runtimeMetrics: Context.getOrUndefinedUnsafe(context, FiberCachedKeys.FiberRuntimeMetricsKey),
     maxOpsBeforeYield: Context.getReferenceUnsafe(context, Scheduler.maxOpsBeforeYieldDefinition),
     preventYield: Context.getReferenceUnsafe(context, Scheduler.preventSchedulerYieldDefinition)
   }

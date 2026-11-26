@@ -12,9 +12,26 @@
  */
 import { dual } from "./Function.ts"
 import { byReferenceInstances, getAllObjectKeys, objectKind, toBytes } from "./internal/equal.ts"
-import * as InternalHash from "./internal/hash.ts"
 import { addBackEdge, backEdges, hashCache } from "./internal/hash.ts"
 import { hasProperty } from "./Predicate.ts"
+
+/**
+ * Defines the unique identifier used to identify objects that implement the Hash interface.
+ *
+ * **When to use**
+ *
+ * Use as the computed property key for the method that supplies a custom hash
+ * value on a `Hash` implementor.
+ *
+ * @see {@link Hash} for the interface implemented with this symbol
+ * @see {@link isHash} for checking whether a value implements `Hash`
+ * @see {@link hash} for computing hash values
+ *
+ * @stability stable
+ * @category symbols
+ * @since 2.0.0
+ */
+export const symbol = "~effect/Hash"
 
 /**
  * A type that represents an object that can be hashed.
@@ -519,23 +536,3 @@ const hashSet: <A>(set: Iterable<A>) => number = unordered(setSeed, (element) =>
 
 const randomHashCache = new WeakMap<any, number>()
 const visitedObjects = new WeakSet<object>()
-
-// Declared last: it provides the functions above to the data types every
-// fiber creates. See `provideHashing` in `internal/hash.ts`.
-/**
- * Defines the unique identifier used to identify objects that implement the Hash interface.
- *
- * **When to use**
- *
- * Use as the computed property key for the method that supplies a custom hash
- * value on a `Hash` implementor.
- *
- * @see {@link Hash} for the interface implemented with this symbol
- * @see {@link isHash} for checking whether a value implements `Hash`
- * @see {@link hash} for computing hash values
- *
- * @stability stable
- * @category symbols
- * @since 2.0.0
- */
-export const symbol: "~effect/Hash" = InternalHash.provideHashing({ hash, combine, string, number, array })

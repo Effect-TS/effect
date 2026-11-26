@@ -13,12 +13,12 @@
  */
 import type { Effect, EffectIterator } from "./Effect.ts"
 import * as Effectable from "./Effectable.ts"
-import type * as Equal from "./Equal.ts"
+import * as Equal from "./Equal.ts"
 import { dual, type LazyArg } from "./Function.ts"
+import * as Hash from "./Hash.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import { exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts"
-import * as InternalEqual from "./internal/equal.ts"
-import * as InternalHash from "./internal/hash.ts"
+import { fiberCachedKeys } from "./internal/fiberCachedKeys.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
@@ -275,6 +275,10 @@ export const Service: {
   return arguments.length > 0 ? init(arguments[0], arguments[1]) : init
 } as any
 
+// Built with `Object.assign` rather than object spread: Rollup keeps an object
+// literal that spreads a call result, since spreading can run getters. The
+// annotated `Object.assign` call is dropped with `ServiceProto` when no
+// service is defined, which keeps `Effectable.ts` out of such bundles.
 const ServiceProto: any = Object.assign(
   { [ServiceTypeId]: ServiceTypeId },
   Effectable.Prototype<Service<never, any>>({
@@ -311,21 +315,9 @@ const ServiceProto: any = Object.assign(
 // Keys whose services fibers cache (see `Fiber.Cache`). Adding one of them to a
 // context starts a new cache, so a fiber never reads a stale value.
 //
-// The keys the runtime caches are listed here instead of being registered by
-// their services: the runtime reads them by key, so a bundle may not contain
-// the service that would register them.
-const cacheKeys = new Set<string>([
-  "effect/Scheduler",
-  "effect/Scheduler/MaxOpsBeforeYield",
-  "effect/Scheduler/PreventSchedulerYield",
-  "effect/Tracer",
-  "effect/Tracer/ParentSpan",
-  "effect/References/TracerEnabled",
-  "effect/References/CurrentStackFrame",
-  "effect/References/CurrentLogLevel",
-  "effect/References/MinimumLogLevel",
-  "effect/Metric/FiberRuntimeMetrics"
-])
+// The runtime's own keys are known up front (see `internal/fiberCachedKeys.ts`),
+// other services join with the `fiberCached` option.
+const cacheKeys = new Set<string>(fiberCachedKeys)
 
 const ReferenceTypeId = "~effect/Context/Reference" as const
 
@@ -654,18 +646,18 @@ const Proto: Omit<
       services: Array.from(this.mapUnsafe).map(([key, value]) => ({ key, value }))
     }
   },
-  [InternalEqual.symbol]<A>(this: Context<A>, that: unknown): boolean {
+  [Equal.symbol]<A>(this: Context<A>, that: unknown): boolean {
     if (!isContext(that)) return false
     const self = this.mapUnsafe
     const other = that.mapUnsafe
     if (self.size !== other.size) return false
     for (const [key, value] of self) {
-      if (!other.has(key) || !InternalEqual.equals(value, other.get(key))) return false
+      if (!other.has(key) || !Equal.equals(value, other.get(key))) return false
     }
     return true
   },
-  [InternalHash.symbol]<A>(this: Context<A>): number {
-    return InternalHash.number(this.mapUnsafe.size)
+  [Hash.symbol]<A>(this: Context<A>): number {
+    return Hash.number(this.mapUnsafe.size)
   }
 }
 
