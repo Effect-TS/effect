@@ -62,12 +62,28 @@ Gotchas:
   flat and overlay `Context.get`, `Equal.equals` on `Cause` and `Context`, `Formatter.format`
   and `Predicate.hasProperty` in two copies of effect. On a shared machine the ratios move
   by up to about 50% between runs, so run it several times and in both argument orders.
-- `context-get-bench.mjs <dist> <flat|overlay|both> [label]`: times `Context.get` in a
-  separate process per copy and mode; `both` reads a flat and an overlay context from one
-  call site, which is where a dispatch regression shows. Alternate base and current runs.
-- `fiber-start-bench.mjs <dist> <runSync|runFork|provide> [label]`: times fiber startup in a
-  separate process per copy and case. Every start builds the fiber cache from the context, so
-  this is where a slower cache refresh or reference default shows. Alternate base and current
-  runs.
+- `isolated-bench.mjs <base dist> <current dist> [case ...]`: times fiber startup, a fiber
+  cache refresh, flat, overlay and mixed `Context.get`, `Equal.equals` and `Hash.hash` on the
+  runtime data types, `Formatter.format` and the type guards. Each sample runs in its own
+  process and base and current alternate, so the copies share neither inline caches nor
+  machine drift. All cases take about four minutes; pass case names to run a few. Check the
+  harness with the same dist on both sides when a ratio looks odd.
 - `equality-parity.mjs <base dist> <current dist>`: checks that `Context` and `Cause` equality
   and `Cause` hashes match between two copies of effect.
+- `format-parity.mjs <base dist> <current dist> [cases]`: checks that `Formatter.format` prints
+  the same text in two copies of effect on random nested values, including `toString` methods
+  that throw or return something unconvertible, throwing getters, revoked proxies, cycles and
+  redactable values.
+- `module-attribution.ts <entry.ts> [group=mod1,mod2 ...]`: gzip attribution per module and per
+  named group of modules, for questions like "what do `Equal`, `Hash` and `Formatter` cost
+  together". `attribution.mjs` answers the same per declaration.
+
+More gotchas:
+
+- A function imported from another module costs a few nanoseconds per call in unbundled ESM.
+  Moving the `Context` lookup into an internal module made `Context.get` 15% to 50% slower than
+  main; keep hot-path helpers in the module that calls them and measure with `isolated-bench.mjs`.
+- `pnpm check` also fails while `tmp/bundle-base` exists. Move the worktree out of the repository
+  first (`git worktree move tmp/bundle-base ../bundle-base`) and back before comparing.
+- Building only `packages/effect` in the base worktree and writing `.bundle-build-stamp` is enough
+  for `bundle-compare-selected` to reuse it, because every fixture imports from `effect` alone.
