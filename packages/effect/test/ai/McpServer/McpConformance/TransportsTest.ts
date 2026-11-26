@@ -376,16 +376,18 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }))
               yield* assertTransportRejection(batchResponse, 404, /initialize/i, /MCP-Session-Id/i)
 
-              const malformedResponse = yield* test.request(new Request(MCP_ENDPOINT, {
-                method: "POST",
-                headers: {
-                  accept: "application/json, text/event-stream",
-                  "content-type": "application/json",
-                  "Mcp-Protocol-Version": protocol.protocolVersion,
-                  "Mcp-Session-Id": "unknown-session"
-                },
-                body: "{"
-              }))
+              const malformedResponse = yield* test.request(
+                new Request(MCP_ENDPOINT, {
+                  method: "POST",
+                  headers: {
+                    accept: "application/json, text/event-stream",
+                    "content-type": "application/json",
+                    "Mcp-Protocol-Version": protocol.protocolVersion,
+                    "Mcp-Session-Id": "unknown-session"
+                  },
+                  body: "{"
+                })
+              )
               yield* assertTransportRejection(malformedResponse, 404, /initialize/i, /MCP-Session-Id/i)
             }))
           it.effect("SCENARIO declines client session termination without invalidating the session", () =>
@@ -592,6 +594,14 @@ export const statelessModernSuite = (
           assert.strictEqual(error.id, "unavailable")
           assert.strictEqual(error.error.code, McpSchema.METHOD_NOT_FOUND_ERROR_CODE)
           assert.strictEqual(response.status, 404)
+        }))
+
+      // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#sending-messages-to-the-server
+      it.effect("should reject JSON-RPC batches", () =>
+        Effect.gen(function*() {
+          const test = yield* McpConformance
+          const response = yield* test.request(jsonRequest("POST", [request(4)], headers()))
+          yield* assertTransportRejection(response, 400, /batch/i)
         }))
 
       // https://modelcontextprotocol.io/specification/2026-07-28/basic/transports#sending-messages-to-the-server

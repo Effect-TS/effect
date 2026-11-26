@@ -335,6 +335,8 @@ export const make = Effect.fnUntraced(function*(
     }
     return selectHttpSession(headers, isInitialize)
   }
+  const jsonRpcError = (status: number, error: unknown, id: string | number | null = null) =>
+    HttpServerResponse.jsonUnsafe({ jsonrpc: "2.0", id, error }, { status })
   return ServerRuntime.of({
     protocols: registry.protocols,
     clientRpcs: registry.clientRpcs,
@@ -403,7 +405,7 @@ export const make = Effect.fnUntraced(function*(
         _tag: "Rejected",
         response: error === undefined
           ? HttpServerResponse.empty({ status })
-          : HttpServerResponse.jsonUnsafe({ jsonrpc: "2.0", id, error }, { status })
+          : jsonRpcError(status, error, id)
       })
       if (Result.isFailure(parsed)) {
         const version = headers[MCP_PROTOCOL_VERSION_HEADER]
@@ -422,7 +424,7 @@ export const make = Effect.fnUntraced(function*(
         if (input.length === 0) {
           return reject(400, new PublicMcpSchema.InvalidRequest({ message: "Invalid Request" }))
         }
-        const admission = selectHttpProtocol(headers, input)
+        const admission = selectHttpSession(headers, false)
         if (admission._tag === "Rejected") {
           return reject(admission.status, admission.error)
         }
@@ -507,7 +509,7 @@ export const make = Effect.fnUntraced(function*(
         }
         const selection = selectHttpSession(headers, false)
         if (selection._tag === "Rejected") {
-          return Effect.succeed(HttpServerResponse.empty({ status: selection.status }))
+          return Effect.succeed(jsonRpcError(selection.status, selection.error))
         }
         const binding = selection.binding!
         stateful!.terminateSession(sessionId)

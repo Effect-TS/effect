@@ -3033,48 +3033,52 @@ const addMcpHttpRoutes = Effect.fnUntraced(function*(
       ? withAllowedOrigin((request) => runtime.terminateHttpSession(request.headers))
       : methodNotAllowed
   )
-  yield* router.add("POST", options.path, withAllowedOrigin((request) => {
-    if (mcpMediaTypes(request.headers["content-type"])[0] !== "application/json") {
-      return unsupportedContentType
-    }
-    const accepted = mcpMediaTypes(request.headers["accept"])
-    if (!accepted.includes("application/json") || !accepted.includes("text/event-stream")) {
-      return notAcceptable
-    }
-    return Effect.gen(function*() {
-      const parsed = yield* Effect.result(
-        Effect.flatMap(request.text, Schema.decodeEffect(Schema.UnknownFromJsonString))
-      )
-      const admission = runtime.admitHttp(request.headers, parsed)
-      if (admission._tag === "Rejected") {
-        return admission.response
+  yield* router.add(
+    "POST",
+    options.path,
+    withAllowedOrigin((request) => {
+      if (mcpMediaTypes(request.headers["content-type"])[0] !== "application/json") {
+        return unsupportedContentType
       }
-      const toResponse = (response: HttpServerResponse.HttpServerResponse) => {
-        // Completed responses may already contain notifications followed by the result.
-        const hasMultipleMessages = response.body._tag === "Uint8Array" &&
-          response.body.body.subarray(0, -1).includes(10)
-        return admission.isSubscription || response.body._tag === "Stream" || hasMultipleMessages
-          ? toServerSentEvents(response, admission.isSubscription)
-          : response
+      const accepted = mcpMediaTypes(request.headers["accept"])
+      if (!accepted.includes("application/json") || !accepted.includes("text/event-stream")) {
+        return notAcceptable
       }
-      if (admission.acknowledge) {
-        return yield* Effect.catchCause(
-          Effect.map(httpEffect, toResponse),
-          () => Effect.succeed(HttpServerResponse.empty({ status: 202 }))
+      return Effect.gen(function*() {
+        const parsed = yield* Effect.result(
+          Effect.flatMap(request.text, Schema.decodeEffect(Schema.UnknownFromJsonString))
         )
-      }
-      return yield* Effect.flatMap(httpEffect, (response) => {
-        if (response.body._tag !== "Uint8Array" || response.body.body.length > 0) {
-          return Effect.succeed(toResponse(response))
+        const admission = runtime.admitHttp(request.headers, parsed)
+        if (admission._tag === "Rejected") {
+          return admission.response
         }
-        // Only fully cancelled request POSTs may return an empty SSE response.
-        // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#sending-messages-to-the-server
-        return httpPostResponses.get(request)?.expected === 0
-          ? Effect.succeed(HttpServerResponse.stream(Stream.empty, { contentType: "text/event-stream" }))
-          : Effect.die(new Error("MCP request ended without writing its response"))
+        const toResponse = (response: HttpServerResponse.HttpServerResponse) => {
+          // Completed responses may already contain notifications followed by the result.
+          const hasMultipleMessages = response.body._tag === "Uint8Array" &&
+            response.body.body.subarray(0, -1).includes(10)
+          return admission.isSubscription || response.body._tag === "Stream" || hasMultipleMessages
+            ? toServerSentEvents(response, admission.isSubscription)
+            : response
+        }
+        if (admission.acknowledge) {
+          return yield* Effect.catchCause(
+            Effect.map(httpEffect, toResponse),
+            () => Effect.succeed(HttpServerResponse.empty({ status: 202 }))
+          )
+        }
+        return yield* Effect.flatMap(httpEffect, (response) => {
+          if (response.body._tag !== "Uint8Array" || response.body.body.length > 0) {
+            return Effect.succeed(toResponse(response))
+          }
+          // Only fully cancelled request POSTs may return an empty SSE response.
+          // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#sending-messages-to-the-server
+          return httpPostResponses.get(request)?.expected === 0
+            ? Effect.succeed(HttpServerResponse.stream(Stream.empty, { contentType: "text/event-stream" }))
+            : Effect.die(new Error("MCP request ended without writing its response"))
+        })
       })
     })
-  }))
+  )
 })
 
 const mcpHttpSerialization: RpcSerialization.RpcSerialization["Service"] = (() => {

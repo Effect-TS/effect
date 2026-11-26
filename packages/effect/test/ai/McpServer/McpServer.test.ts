@@ -2808,7 +2808,16 @@ describe("McpServer", () => {
         allowSessionTermination: true
       }))
       strictEqual((yield* harness.delete()).status, 400)
-      strictEqual((yield* harness.delete({ "Mcp-Session-Id": "unknown" })).status, 404)
+      const unknown = yield* harness.delete({ "Mcp-Session-Id": "unknown" })
+      strictEqual(unknown.status, 404)
+      const body = (yield* Effect.promise(() => unknown.json())) as {
+        readonly id: unknown
+        readonly error: { readonly code: number; readonly message: string }
+      }
+      assert.isNull(body.id)
+      strictEqual(body.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
+      assert.match(body.error.message, /initialize/i)
+      assert.match(body.error.message, /MCP-Session-Id/i)
     }))
 
   it.effect("rejects disallowed DELETE Origins without terminating the session", () =>
