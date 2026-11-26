@@ -12,14 +12,30 @@ export const CurrentErrorReporters = Context.Reference<ReadonlySet<ErrorReporter
   { defaultValue: () => new Set() }
 )
 
+const currentStackFrameKey = "effect/References/CurrentStackFrame"
+
 /** @internal */
-export const CurrentStackFrame = Context.Reference<StackFrame | undefined>("effect/References/CurrentStackFrame", {
+export const currentStackFrameOptions: Context.ReferenceOptions<StackFrame | undefined> = {
+  key: currentStackFrameKey,
+  defaultValue: constUndefined
+}
+
+/** @internal */
+export const CurrentStackFrame = Context.Reference<StackFrame | undefined>(currentStackFrameKey, {
   fiberCached: true,
   defaultValue: constUndefined
 })
 
+const tracerEnabledKey = "effect/References/TracerEnabled"
+
 /** @internal */
-export const TracerEnabled = Context.Reference<boolean>("effect/References/TracerEnabled", {
+export const tracerEnabledOptions: Context.ReferenceOptions<boolean> = {
+  key: tracerEnabledKey,
+  defaultValue: constTrue
+}
+
+/** @internal */
+export const TracerEnabled = Context.Reference<boolean>(tracerEnabledKey, {
   fiberCached: true,
   defaultValue: constTrue
 })
@@ -46,16 +62,35 @@ export const CurrentLogAnnotations = Context.Reference<ReadonlyRecord<string, un
   { defaultValue: () => ({}) }
 )
 
-/** @internal */
-export const CurrentLogLevel: Context.Reference<Severity> = Context.Reference<Severity>(
-  "effect/References/CurrentLogLevel",
-  { fiberCached: true, defaultValue: () => "Info" }
-)
+const currentLogLevelKey = "effect/References/CurrentLogLevel"
+
+const defaultLogLevel = (): "Info" => "Info"
 
 /** @internal */
-export const MinimumLogLevel = Context.Reference<
-  LogLevel
->("effect/References/MinimumLogLevel", { fiberCached: true, defaultValue: () => "Info" })
+export const currentLogLevelOptions: Context.ReferenceOptions<Severity> = {
+  key: currentLogLevelKey,
+  defaultValue: defaultLogLevel
+}
+
+/** @internal */
+export const CurrentLogLevel: Context.Reference<Severity> = Context.Reference<Severity>(currentLogLevelKey, {
+  fiberCached: true,
+  defaultValue: defaultLogLevel
+})
+
+const minimumLogLevelKey = "effect/References/MinimumLogLevel"
+
+/** @internal */
+export const minimumLogLevelOptions: Context.ReferenceOptions<LogLevel> = {
+  key: minimumLogLevelKey,
+  defaultValue: defaultLogLevel
+}
+
+/** @internal */
+export const MinimumLogLevel = Context.Reference<LogLevel>(minimumLogLevelKey, {
+  fiberCached: true,
+  defaultValue: defaultLogLevel
+})
 
 /** @internal */
 export const UnhandledLogLevel: Context.Reference<Severity | undefined> = Context.Reference(

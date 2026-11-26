@@ -10,8 +10,8 @@
  * @stability stable
  * @since 2.0.0
  */
-import { dual } from "./Function.ts"
 import { byReferenceInstances, getAllObjectKeys, objectKind, toBytes } from "./internal/equal.ts"
+import * as InternalHash from "./internal/hash.ts"
 import { addBackEdge, backEdges, hashCache } from "./internal/hash.ts"
 import { hasProperty } from "./Predicate.ts"
 
@@ -31,7 +31,7 @@ import { hasProperty } from "./Predicate.ts"
  * @category symbols
  * @since 2.0.0
  */
-export const symbol = "~effect/Hash"
+export const symbol: "~effect/Hash" = InternalHash.symbol
 
 /**
  * A type that represents an object that can be hashed.
@@ -143,6 +143,8 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
         let h: number
         try {
           if (isHash(self)) {
+            // Runtime data types hash their nested values through this hook.
+            InternalHash.installHash(hash)
             h = (self as Hash)[symbol]()
           } else if (typeof self === "function") {
             h = random(self)
@@ -169,7 +171,7 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
       }
     }
   }
-  return optimize(mix(string(String(self))))
+  return optimize(InternalHash.mix(string(String(self))))
 }
 
 /**
@@ -210,15 +212,6 @@ export const random: <A extends object>(self: A) => number = (self) => {
   return h
 }
 
-// 32-bit MurmurHash3 finalizer.
-const mix = (h: number): number => {
-  h ^= h >>> 16
-  h = Math.imul(h, 0x85ebca6b)
-  h ^= h >>> 13
-  h = Math.imul(h, 0xc2b2ae35)
-  return h ^ (h >>> 16)
-}
-
 /**
  * Combines two hash values into a single hash value.
  *
@@ -253,7 +246,7 @@ const mix = (h: number): number => {
 export const combine: {
   (b: number): (self: number) => number
   (self: number, b: number): number
-} = dual(2, (self: number, b: number): number => mix(Math.imul(self, 0x9e3779b1) + Math.imul(b, 0x85ebca6b)))
+} = InternalHash.combine
 
 /**
  * Applies bit manipulation techniques to optimize a hash value.
@@ -279,7 +272,7 @@ export const combine: {
  * @category hashing
  * @since 2.0.0
  */
-export const optimize = (n: number): number => (n & 0xbfffffff) | ((n >>> 1) & 0x40000000)
+export const optimize: (n: number) => number = InternalHash.optimize
 
 /**
  * Checks whether a value implements the Hash interface.
@@ -316,8 +309,6 @@ export const optimize = (n: number): number => (n & 0xbfffffff) | ((n >>> 1) & 0
  */
 export const isHash = (u: unknown): u is Hash => hasProperty(u, symbol) && typeof u[symbol] === "function"
 
-const float64 = new DataView(new ArrayBuffer(8))
-
 /**
  * Computes a hash value for a number.
  *
@@ -346,14 +337,7 @@ const float64 = new DataView(new ArrayBuffer(8))
  * @category hashing
  * @since 2.0.0
  */
-export const number = (n: number) => {
-  const h = n | 0
-  if (h === n) {
-    return optimize(h)
-  }
-  float64.setFloat64(0, n !== n ? NaN : n)
-  return optimize(combine(float64.getInt32(0), float64.getInt32(4)))
-}
+export const number: (n: number) => number = InternalHash.number
 
 /**
  * Computes a hash value for a string using the djb2 algorithm.
@@ -384,13 +368,7 @@ export const number = (n: number) => {
  * @category hashing
  * @since 2.0.0
  */
-export const string = (str: string) => {
-  let h = 5381, i = str.length
-  while (i) {
-    h = (h * 33) ^ str.charCodeAt(--i)
-  }
-  return optimize(h)
-}
+export const string: (str: string) => number = InternalHash.string
 
 /**
  * Computes a hash value for an object using only the specified keys.
@@ -512,11 +490,8 @@ const unordered = (seed: number, f: (el: any) => number) => (iter: Iterable<any>
  * @since 2.0.0
  */
 export const array = <A>(arr: Iterable<A>): number => {
-  let h = 6151
-  for (const element of arr) {
-    h = combine(h, hash(element))
-  }
-  return optimize(h)
+  InternalHash.installHash(hash)
+  return InternalHash.array(arr)
 }
 
 const hashIndexed = (arr: ArrayLike<unknown>): number => {

@@ -1,3 +1,28 @@
+/** @internal */
+export const symbol = "~effect/Equal"
+
+/**
+ * Compares nested values for the `[Equal.symbol]` methods of runtime data
+ * types (`Exit`, `Cause`, `Context`).
+ *
+ * Every fiber creates those values, so importing `Equal.ts` from them would put
+ * the structural comparison in every program that runs an effect. Instead
+ * `Equal.equals` installs itself here before it calls an `[Equal.symbol]`
+ * method, so comparisons made through `Equal.equals` behave exactly as if the
+ * methods imported it. A method called directly, before any `Equal.equals`
+ * dispatch, compares nested values by identity, treating `NaN` as equal to
+ * itself like `Equal.equals` does.
+ *
+ * @internal
+ */
+export let equals: (self: unknown, that: unknown) => boolean = (self, that) =>
+  self === that || (self !== self && that !== that)
+
+/** @internal */
+export const installEquals = (f: (self: unknown, that: unknown) => boolean): void => {
+  equals = f
+}
+
 // JavaScriptCore (Bun, Safari) stamps the construction site onto every Error as
 // non-enumerable own properties. Like `stack`, they describe where the error was
 // created, not what it is.

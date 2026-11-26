@@ -1,7 +1,43 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Deferred, Effect, Exit, Fiber, Latch, References, Result, type Scheduler, Scope } from "effect"
+import { Cause, Context, Deferred, Effect, Exit, Fiber, Latch, References, Result, Scheduler, Scope } from "effect"
 
 describe("Fiber", () => {
+  describe("cache", () => {
+    const cachedAndReferenced = Effect.withFiber((fiber) =>
+      Effect.succeed({
+        cache: fiber.cache,
+        references: {
+          scheduler: fiber.getRef(Scheduler.Scheduler),
+          tracerEnabled: fiber.getRef(References.TracerEnabled),
+          logLevel: fiber.getRef(References.CurrentLogLevel),
+          minimumLogLevel: fiber.getRef(References.MinimumLogLevel),
+          stackFrame: fiber.getRef(References.CurrentStackFrame),
+          maxOpsBeforeYield: fiber.getRef(Scheduler.MaxOpsBeforeYield),
+          preventYield: fiber.getRef(Scheduler.PreventSchedulerYield)
+        }
+      })
+    )
+
+    it("holds the reference defaults when the context provides none", () => {
+      const { cache, references } = Effect.runSync(cachedAndReferenced)
+      for (const [name, value] of Object.entries(references)) {
+        assert.strictEqual(cache[name as keyof typeof references], value, name)
+      }
+      assert.instanceOf(cache.scheduler, Scheduler.MixedScheduler)
+    })
+
+    it("holds the runFork scheduler option after a fiber ran on the same context", () => {
+      Effect.runSync(Effect.void)
+      const scheduler = new Scheduler.MixedScheduler("sync")
+      const fiber = Effect.runFork(cachedAndReferenced, { scheduler })
+      const exit = fiber.pollUnsafe()
+      assert.isTrue(exit !== undefined && Exit.isSuccess(exit))
+      const { cache, references } = (exit as Exit.Success<Effect.Success<typeof cachedAndReferenced>>).value
+      assert.strictEqual(cache.scheduler, scheduler)
+      assert.strictEqual(references.scheduler, scheduler)
+    })
+  })
+
   for (const name of ["await", "join", "awaitAll"] as const) {
     it.effect(`${name} cancellation does not interrupt an independently owned fiber`, () =>
       Effect.gen(function*() {

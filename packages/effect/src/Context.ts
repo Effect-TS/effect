@@ -13,11 +13,12 @@
  */
 import type { Effect, EffectIterator } from "./Effect.ts"
 import * as Effectable from "./Effectable.ts"
-import * as Equal from "./Equal.ts"
+import type * as Equal from "./Equal.ts"
 import { dual, type LazyArg } from "./Function.ts"
-import * as Hash from "./Hash.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import { exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts"
+import * as InternalEqual from "./internal/equal.ts"
+import * as InternalHash from "./internal/hash.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
@@ -634,18 +635,18 @@ const Proto: Omit<
       services: Array.from(this.mapUnsafe).map(([key, value]) => ({ key, value }))
     }
   },
-  [Equal.symbol]<A>(this: Context<A>, that: unknown): boolean {
+  [InternalEqual.symbol]<A>(this: Context<A>, that: unknown): boolean {
     if (!isContext(that)) return false
     const self = this.mapUnsafe
     const other = that.mapUnsafe
     if (self.size !== other.size) return false
     for (const [key, value] of self) {
-      if (!other.has(key) || !Equal.equals(value, other.get(key))) return false
+      if (!other.has(key) || !InternalEqual.equals(value, other.get(key))) return false
     }
     return true
   },
-  [Hash.symbol]<A>(this: Context<A>): number {
-    return Hash.number(this.mapUnsafe.size)
+  [InternalHash.symbol]<A>(this: Context<A>): number {
+    return InternalHash.number(this.mapUnsafe.size)
   }
 }
 
@@ -996,6 +997,55 @@ export const getOrUndefined: {
 export const getOrUndefinedUnsafe = <A, Services = never>(self: Context<Services>, key: string): A | undefined => {
   const value = lookup(self, key)
   return value === notFound ? undefined : value as A
+}
+
+/**
+ * The key and default of a `Reference`. The runtime reads fiber-cached
+ * references through these, so running an effect does not build the
+ * `Reference` services themselves.
+ *
+ * @internal
+ */
+export interface ReferenceOptions<A> {
+  readonly key: string
+  readonly defaultValue: () => A
+}
+
+/**
+ * Same result as `get` on the `Reference` created from `options`, provided
+ * its default is the same value on every call.
+ *
+ * @internal
+ */
+export const getByOptionsUnsafe = <A, Services = never>(self: Context<Services>, options: ReferenceOptions<A>): A => {
+  const value = lookup(self, options.key)
+  return value === notFound ? options.defaultValue() : value as A
+}
+
+/**
+ * Same as `get` for a `Reference`, which never reaches the missing service
+ * error.
+ *
+ * @internal
+ */
+export const getReferenceUnsafe = <A, Services = never>(self: Context<Services>, reference: Reference<A>): A => {
+  const value = lookup(self, reference.key)
+  return value === notFound ? getDefaultValue(reference) : value as A
+}
+
+/**
+ * Like `addUnsafe`, for a key the fiber caches. Its `Reference` registers the
+ * key when created, which may not have happened yet.
+ *
+ * @internal
+ */
+export const addFiberCachedUnsafe = <Services, I, S>(
+  self: Context<Services>,
+  key: string,
+  service: Types.NoInfer<S>
+): Context<Services | I> => {
+  cacheKeys.add(key)
+  return addUnsafe(self, key, service)
 }
 
 /**

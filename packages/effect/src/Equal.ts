@@ -12,6 +12,7 @@
  */
 import type { Equivalence } from "./Equivalence.ts"
 import * as Hash from "./Hash.ts"
+import * as InternalEqual from "./internal/equal.ts"
 import { byReferenceInstances, getAllObjectKeys, objectKind, toBytes } from "./internal/equal.ts"
 import { addBackEdge, backEdges, hashCache } from "./internal/hash.ts"
 import { hasProperty } from "./Predicate.ts"
@@ -55,7 +56,7 @@ import { hasProperty } from "./Predicate.ts"
  * @category symbols
  * @since 2.0.0
  */
-export const symbol = "~effect/Equal"
+export const symbol: "~effect/Equal" = InternalEqual.symbol
 
 /**
  * The interface for types that define their own equality logic.
@@ -272,6 +273,8 @@ function compareStructure(self: object, that: object): boolean {
     return false
   }
   if (bothEquals) {
+    // Runtime data types compare their nested values through this hook.
+    InternalEqual.installEquals(compareBoth)
     return (self as Equal)[symbol](that as Equal)
   }
   if (kind !== objectKind(that)) {

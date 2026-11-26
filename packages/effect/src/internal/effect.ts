@@ -5,14 +5,12 @@ import type * as Console from "../Console.ts"
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import type * as Effect from "../Effect.ts"
-import * as Equal from "../Equal.ts"
 import type * as Exit from "../Exit.ts"
 import type * as Fiber from "../Fiber.ts"
 import * as Filter from "../Filter.ts"
 import { formatJson } from "../Formatter.ts"
 import type { LazyArg } from "../Function.ts"
 import { constant, constFalse, constTrue, constUndefined, constVoid, dual, identity } from "../Function.ts"
-import * as Hash from "../Hash.ts"
 import { toJson, toStringUnknown } from "../Inspectable.ts"
 import * as Iterable from "../Iterable.ts"
 import type * as _Latch from "../Latch.ts"
@@ -85,16 +83,20 @@ import {
   Yield
 } from "./core.ts"
 import * as doNotation from "./doNotation.ts"
+import * as InternalEqual from "./equal.ts"
+import * as InternalHash from "./hash.ts"
 import * as InternalMetric from "./metric.ts"
 import * as InternalRecord from "./record.ts"
 import {
   CurrentErrorReporters,
   CurrentLogAnnotations,
-  CurrentLogLevel,
+  currentLogLevelOptions,
   CurrentLogSpans,
   CurrentStackFrame,
-  MinimumLogLevel,
+  currentStackFrameOptions,
+  minimumLogLevelOptions,
   TracerEnabled,
+  tracerEnabledOptions,
   TracerSpanAnnotations,
   TracerSpanLinks,
   TracerTimingEnabled,
@@ -126,17 +128,17 @@ export class Interrupt extends ReasonBase<"Interrupt"> implements Cause.Interrup
       fiberId: this.fiberId
     }
   }
-  [Equal.symbol](that: any): boolean {
+  [InternalEqual.symbol](that: any): boolean {
     return (
       isInterruptReason(that) &&
       this.fiberId === that.fiberId &&
       this.annotations === that.annotations
     )
   }
-  [Hash.symbol](): number {
+  [InternalHash.symbol](): number {
     // Equality compares annotations by reference, so leave them out instead of
     // hashing them randomly.
-    return Hash.string(`${this._tag}:${this.fiberId}`)
+    return InternalHash.string(`${this._tag}:${this.fiberId}`)
   }
 }
 
@@ -570,7 +572,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   }
 
   getRef<X>(ref: Context.Reference<X>): X {
-    return Context.get(this.context, ref)
+    return Context.getReferenceUnsafe(this.context, ref)
   }
   addObserver(cb: (exit: Exit.Exit<A, E>) => void): () => void {
     if (this._exit) {
@@ -642,11 +644,11 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     // the interruptChildren middleware is added in Effect.forkChild, so it can be
     // tree-shaken if not used
     const interruptChildren = fiberMiddleware.interruptChildren &&
-      fiberMiddleware.interruptChildren(this)
+      fiberMiddleware.interruptChildren(this, exit)
     if (interruptChildren !== undefined) {
       // uninterruptible, so a pending interrupt cannot replace the exit during the wait
       this.interruptible = false
-      return this.evaluate(flatMap(interruptChildren, () => exit) as any)
+      return this.evaluate(interruptChildren as any)
     }
 
     this._exit = exit
@@ -794,21 +796,21 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 }
 
 const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
-  // The string-keyed lookups keep the Tracer key values (and the native
-  // tracer behind Tracer.Tracer's default) out of every bundle
+  // Reading by key keeps the Reference services, and the native tracer
+  // behind Tracer.Tracer's default, out of bundles that never use them
   const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
   return {
-    scheduler: Context.get(context, Scheduler.Scheduler),
+    scheduler: Context.getByOptionsUnsafe(context, Scheduler.schedulerOptions),
     tracer: currentTracer,
     tracerContext: currentTracer ? currentTracer["context"] : undefined,
-    tracerEnabled: Context.get(context, TracerEnabled),
+    tracerEnabled: Context.getByOptionsUnsafe(context, tracerEnabledOptions),
     span: Context.getOrUndefinedUnsafe(context, Tracer.ParentSpanKey),
-    logLevel: Context.get(context, CurrentLogLevel),
-    minimumLogLevel: Context.get(context, MinimumLogLevel),
-    stackFrame: Context.get(context, CurrentStackFrame),
+    logLevel: Context.getByOptionsUnsafe(context, currentLogLevelOptions),
+    minimumLogLevel: Context.getByOptionsUnsafe(context, minimumLogLevelOptions),
+    stackFrame: Context.getByOptionsUnsafe(context, currentStackFrameOptions),
     runtimeMetrics: Context.getOrUndefinedUnsafe(context, InternalMetric.FiberRuntimeMetricsKey),
-    maxOpsBeforeYield: Context.get(context, Scheduler.MaxOpsBeforeYield),
-    preventYield: Context.get(context, Scheduler.PreventSchedulerYield)
+    maxOpsBeforeYield: Context.getByOptionsUnsafe(context, Scheduler.maxOpsBeforeYieldOptions),
+    preventYield: Context.getByOptionsUnsafe(context, Scheduler.preventSchedulerYieldOptions)
   }
 }
 
@@ -843,7 +845,7 @@ const currentSpanLocal = (fiber: FiberImpl): Tracer.Span | undefined => {
 
 const fiberMiddleware = {
   interruptChildren: undefined as
-    | ((fiber: FiberImpl) => Effect.Effect<void> | undefined)
+    | (<A, E>(fiber: FiberImpl<A, E>, exit: Exit.Exit<A, E>) => Effect.Effect<A, E> | undefined)
     | undefined
 }
 
@@ -854,11 +856,12 @@ const fiberStackAnnotations = (fiber: Fiber.Fiber<any, any>) => {
   return Context.makeUnsafe(annotations)
 }
 
-const fiberInterruptChildren = (fiber: FiberImpl) => {
+// Interrupts the children, then ends with the fiber's own exit
+const fiberInterruptChildren = <A, E>(fiber: FiberImpl<A, E>, exit: Exit.Exit<A, E>) => {
   if (fiber._children === undefined || fiber._children.size === 0) {
     return undefined
   }
-  return fiberInterruptAll(fiber._children)
+  return flatMap(fiberInterruptAll(fiber._children), () => exit)
 }
 
 /** @internal */
@@ -5723,7 +5726,9 @@ export const runForkWith = <R>(context: Context.Context<R>) =>
   options?: Effect.RunOptions | undefined
 ): Fiber.Fiber<A, E> => {
   const fiber = new FiberImpl<A, E>(
-    options?.scheduler ? Context.add(context, Scheduler.Scheduler, options.scheduler) : context,
+    options?.scheduler
+      ? Context.addFiberCachedUnsafe(context, Scheduler.schedulerOptions.key, options.scheduler)
+      : context,
     options?.uninterruptible !== true
   )
   fiber.evaluate(effect as any)

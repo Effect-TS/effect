@@ -40,6 +40,20 @@ describeWithFallback("Hex", () => {
     assert.isTrue(Result.isFailure(Hex.decode("zz")))
   })
 
+  it("accepts exactly the hexadecimal digits in either case", () => {
+    // Every Latin-1 code point, plus code points whose low byte is a hex digit
+    const charCodes = [...Array.from({ length: 256 }, (_, i) => i), 0x130, 0x141, 0xff10, 0xff21]
+    for (const charCode of charCodes) {
+      const char = String.fromCharCode(charCode)
+      const decoded = Hex.decode(`0${char}`)
+      if (/^[0-9a-fA-F]$/.test(char)) {
+        assert.deepStrictEqual(Result.getOrThrow(decoded), new Uint8Array([parseInt(char, 16)]))
+      } else {
+        assert.isTrue(Result.isFailure(decoded), `decoded 0x${charCode.toString(16)}`)
+      }
+    }
+  })
+
   it("round trips every byte value", () => {
     // 600 bytes encode to more than 1,024 characters, the long-input decoder cutoff
     for (const length of [256, 600]) {
