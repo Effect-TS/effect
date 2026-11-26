@@ -44,15 +44,13 @@ import * as SchemaIssue from "./SchemaIssue.ts"
  */
 export function makeEffect<S extends Schema.Constraint>(schema: S) {
   const ast = schema.ast
-  let parser: ReturnType<typeof runWithCompiler<S["Type"], never>>
-  return (input: S["~type.make.in"], options?: Schema.MakeOptions): Effect.Effect<S["Type"], SchemaIssue.Issue> => {
-    return (parser ??= runWithCompiler<S["Type"], never>(constructorCompiler, SchemaAST.toType(ast)))(
+  let entry: CompilerRegistry.Entry | undefined
+  return (input: S["~type.make.in"], options?: Schema.MakeOptions): Effect.Effect<S["Type"], SchemaIssue.Issue> =>
+    constructEffect<S["Type"]>(
+      entry ??= CompilerRegistry.resolve(SchemaAST.toType(ast)),
       input,
-      options?.disableChecks
-        ? options?.parseOptions ? { ...options.parseOptions, disableChecks: true } : { disableChecks: true }
-        : options?.parseOptions
+      constructorParseOptions(options)
     )
-  }
 }
 
 /**
@@ -76,14 +74,8 @@ export function makeEffect<S extends Schema.Constraint>(schema: S) {
  */
 export function makeOption<S extends Schema.Constraint>(schema: S) {
   const parser = makeEffect(schema)
-  return (input: S["~type.make.in"], options?: Schema.MakeOptions): Option.Option<S["Type"]> => {
-    const exit = Effect.runSyncExit(parser(input, options))
-    if (Exit.isSuccess(exit)) {
-      return Option.some(exit.value)
-    }
-    InternalSchemaCause.getSchemaIssueOrThrow(exit.cause, "Option adapter can only return none for schema issues")
-    return Option.none()
-  }
+  return (input: S["~type.make.in"], options?: Schema.MakeOptions): Option.Option<S["Type"]> =>
+    exitToOption(Effect.runSyncExit(parser(input, options)))
 }
 
 /**
@@ -275,9 +267,7 @@ export function decodeUnknownEffect<S extends Schema.Constraint>(
   options?: SchemaAST.ParseOptions
 ) => Effect.Effect<S["Type"], SchemaIssue.Issue, S["DecodingServices"]> {
   const parser = run<S["Type"], S["DecodingServices"]>(schema.ast)
-  return options === undefined
-    ? parser
-    : (input, overrideOptions) => parser(input, mergeParseOptions(options, overrideOptions))
+  return withParseOptions(parser, options)
 }
 
 /**
@@ -638,9 +628,7 @@ export function encodeUnknownEffect<S extends Schema.Constraint>(
   options?: SchemaAST.ParseOptions
 ) => Effect.Effect<S["Encoded"], SchemaIssue.Issue, S["EncodingServices"]> {
   const parser = run<S["Encoded"], S["EncodingServices"]>(SchemaAST.flip(schema.ast))
-  return options === undefined
-    ? parser
-    : (input, overrideOptions) => parser(input, mergeParseOptions(options, overrideOptions))
+  return withParseOptions(parser, options)
 }
 
 /**
@@ -965,10 +953,15 @@ export const encodeSync: <S extends Schema.ConstraintEncoder<unknown>>(
   options?: SchemaAST.ParseOptions
 ) => (input: S["Type"], options?: SchemaAST.ParseOptions) => S["Encoded"] = encodeUnknownSync
 
-const mergeParseOptions = (
-  options: SchemaAST.ParseOptions,
-  overrideOptions: SchemaAST.ParseOptions | undefined
-): SchemaAST.ParseOptions => overrideOptions ? { ...options, ...overrideOptions } : options
+function withParseOptions<T>(
+  parse: (input: unknown, options?: SchemaAST.ParseOptions) => T,
+  options?: SchemaAST.ParseOptions
+) {
+  return options === undefined ?
+    parse :
+    (input: unknown, overrides?: SchemaAST.ParseOptions) =>
+      parse(input, overrides ? { ...options, ...overrides } : options)
+}
 
 const getValue = (value: unknown): Effect.Effect<any, SchemaIssue.Issue> => {
   if (value === InternalParser.missing) {
@@ -1001,20 +994,7 @@ function parserResult<T, R>(
 function runWithCompiler<T, R>(compiler: Compiler, ast: SchemaAST.AST) {
   let parser: Parser
   return (input: unknown, options?: SchemaAST.ParseOptions): Effect.Effect<T, SchemaIssue.Issue, R> => {
-    const result = (parser ??= compiler(ast))(
-      input,
-      options ?? SchemaAST.defaultParseOptions
-    )
-    if (InternalParser.isSameExit(result)) {
-      return Effect.succeed(input) as Effect.Effect<T, SchemaIssue.Issue, R>
-    }
-    if (!effectIsExit(result)) {
-      return Effect.flatMapEager(result, getValue)
-    }
-    return (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args] ===
-        InternalParser.missing
-      ? getValue(InternalParser.missing)
-      : result as Effect.Effect<T, SchemaIssue.Issue, R>
+    return parserResult<T, R>((parser ??= compiler(ast))(input, options ?? SchemaAST.defaultParseOptions), input)
   }
 }
 
@@ -1053,6 +1033,12 @@ export function asOption<T, E, R>(
     InternalSchemaCause.getSchemaIssueOrThrow(exit.cause, "Option adapter can only return none for schema issues")
     return Option.none()
   }
+}
+
+function exitToOption<T>(exit: Exit.Exit<T, SchemaIssue.Issue>): Option.Option<T> {
+  if (Exit.isSuccess(exit)) return Option.some(exit.value)
+  InternalSchemaCause.getSchemaIssueOrThrow(exit.cause, "Option adapter can only return none for schema issues")
+  return Option.none()
 }
 
 function asResult<T, E, R>(
@@ -1102,9 +1088,7 @@ function makeSyncEntry<T>(
       if (output !== CompilerRegistry.invalid) return output as T
       return (detailed ??= makeDetailedSync<T>(entry))(input, parseOptions)
     }
-  return options === undefined
-    ? run
-    : (input, overrideOptions) => run(input, mergeParseOptions(options, overrideOptions))
+  return withParseOptions(run, options)
 }
 
 function makeDetailedSync<T>(
@@ -1116,15 +1100,7 @@ function makeDetailedSync<T>(
 function asSync<T, E>(
   parser: (input: E, options?: SchemaAST.ParseOptions) => Effect.Effect<T, SchemaIssue.Issue>
 ): (input: E, options?: SchemaAST.ParseOptions) => T {
-  const parserExit = asExit(parser)
-  return (input: E, options?: SchemaAST.ParseOptions) => {
-    const exit = parserExit(input, options)
-    if (Exit.isSuccess(exit)) {
-      return exit.value
-    }
-    const issue = InternalSchemaCause.getSchemaIssueOrThrow(exit.cause, "Sync adapter can only throw schema issues")
-    throw new Error("Schema validation failed", { cause: issue })
-  }
+  return (input, options) => runSync(parser(input, options), "Sync adapter can only throw schema issues")
 }
 
 function runSync<T>(effect: Effect.Effect<T, SchemaIssue.Issue>, message: string): T {
@@ -1149,11 +1125,19 @@ function makeConstructorSync<T, E>(
   return (input, options) => constructSync(entry ??= CompilerRegistry.resolve(ast), input, options)
 }
 
-function constructSync<T>(entry: CompilerRegistry.Entry, input: unknown, options: Schema.MakeOptions | undefined): T {
-  const parseOptions = options?.disableChecks
-    ? options.parseOptions ? { ...options.parseOptions, disableChecks: true } : { disableChecks: true }
+function constructorParseOptions(options: Schema.MakeOptions | undefined): SchemaAST.ParseOptions {
+  return options?.disableChecks
+    ? { ...options.parseOptions, disableChecks: true }
     : options?.parseOptions ?? SchemaAST.defaultParseOptions
-  const make = entry.make
+}
+
+function constructEffect<T>(entry: CompilerRegistry.Entry, input: unknown, options: SchemaAST.ParseOptions) {
+  return parserResult<T, never>(entry.makeEffect(input, options), input)
+}
+
+function constructSync<T>(entry: CompilerRegistry.Entry, input: unknown, options: Schema.MakeOptions | undefined): T {
+  const parseOptions = constructorParseOptions(options)
+  const make = CompilerRegistry.compilerAdaptersEnabled ? entry.make : undefined
   if (make !== undefined && input !== InternalParser.missing) {
     let output: unknown
     try {
@@ -1163,7 +1147,7 @@ function constructSync<T>(entry: CompilerRegistry.Entry, input: unknown, options
     }
     if (output !== CompilerRegistry.invalid && output !== InternalParser.missing) return output as T
   }
-  return runSync(parserResult<T, never>(entry.makeEffect(input, parseOptions), input), constructorDefectMessage)
+  return runSync(constructEffect<T>(entry, input, parseOptions), constructorDefectMessage)
 }
 
 /**
@@ -1209,4 +1193,3 @@ export interface Compiler {
 }
 
 const normalCompiler: Compiler = (ast) => CompilerRegistry.resolve(ast).parser
-const constructorCompiler: Compiler = (ast) => CompilerRegistry.resolve(ast).makeEffect

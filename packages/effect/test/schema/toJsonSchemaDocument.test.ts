@@ -483,6 +483,99 @@ describe("toJsonSchemaDocument", () => {
       )
     })
 
+    it("shares a recursive definition between toEncoded and toType of flip", () => {
+      interface Tree {
+        readonly children: ReadonlyArray<Tree>
+      }
+      const Tree: Schema.Codec<Tree> = Schema.Struct({
+        children: Schema.Array(Schema.suspend(() => Tree))
+      }).annotate({ identifier: "Tree" })
+      const document = Schema.toJsonSchemaDocument(Schema.Struct({
+        encoded: Schema.toEncoded(Tree),
+        flippedType: Schema.toType(Schema.flip(Tree))
+      }))
+
+      deepStrictEqual(Object.keys(document.definitions), ["Tree"])
+      deepStrictEqual(document.schema.properties, {
+        encoded: { $ref: "#/$defs/Tree" },
+        flippedType: { $ref: "#/$defs/Tree" }
+      })
+    })
+
+    it("exports a recursive schema with renamed keys and an encoded identifier", () => {
+      interface Node {
+        readonly value: string
+        readonly kids: ReadonlyArray<Node>
+      }
+      interface EncodedNode {
+        readonly wire_value: string
+        readonly kids: ReadonlyArray<EncodedNode>
+      }
+      const Node = Schema.Struct({
+        value: Schema.String,
+        kids: Schema.Array(Schema.suspend((): Schema.Codec<Node, EncodedNode> => Node))
+      }).pipe(Schema.encodeKeys({ value: "wire_value" }), Schema.annotateEncoded({ identifier: "Node" }))
+      const document = Schema.toJsonSchemaDocument(Schema.toEncoded(Node))
+      const ref = { $ref: "#/$defs/Node" }
+
+      deepStrictEqual(document.schema, ref)
+      deepStrictEqual(Object.keys(document.definitions), ["Node"])
+      deepStrictEqual(document.definitions.Node.properties, {
+        wire_value: { type: "string" },
+        kids: { type: "array", items: ref }
+      })
+    })
+
+    it("shares a recursive definition when its structural check survives projection", () => {
+      interface Node {
+        readonly kids: ReadonlyArray<Node>
+      }
+      const Node: Schema.Codec<Node> = Schema.Struct({
+        kids: Schema.toEncoded(Schema.Array(Schema.suspend(() => Node)))
+      }).check(Schema.isMinProperties(1)).annotate({ identifier: "Node" })
+      const document = Schema.toJsonSchemaDocument(Schema.toEncoded(Node))
+      const ref = { $ref: "#/$defs/Node" }
+
+      deepStrictEqual(document.schema, ref)
+      deepStrictEqual(Object.keys(document.definitions), ["Node"])
+      assert.strictEqual(document.definitions.Node.minProperties, 1)
+      deepStrictEqual(document.definitions.Node.properties, { kids: { type: "array", items: ref } })
+    })
+
+    it("reuses the decoded definition referenced by children of an encoded schema", () => {
+      interface Node {
+        readonly value: string
+        readonly kids: ReadonlyArray<Node>
+      }
+      const Node = Schema.Struct({
+        value: Schema.String,
+        kids: Schema.Array(Schema.suspend((): Schema.Codec<Node> => Schema.toType(Node)))
+      }).pipe(Schema.encodeKeys({ value: "wire_value" })).annotate({ identifier: "Node" })
+      const document = Schema.toJsonSchemaDocument(Schema.toEncoded(Node))
+      const kids = { type: "array", items: { $ref: "#/$defs/Node" } }
+
+      deepStrictEqual(document.schema.properties, { wire_value: { type: "string" }, kids })
+      deepStrictEqual(Object.keys(document.definitions), ["Node"])
+      deepStrictEqual(document.definitions.Node.properties, { value: { type: "string" }, kids })
+    })
+
+    it("shares a definition for direct and suspended fields through nested key renames", () => {
+      const Value = Schema.Struct({ data: Schema.suspend(() => Schema.String) }).annotate({ identifier: "Value" })
+      const pair = Schema.Struct({ eager: Value, lazy: Schema.suspend(() => Value) }).pipe(
+        Schema.encodeKeys({ eager: "direct" })
+      )
+      const envelope = Schema.Struct({ payload: pair }).pipe(Schema.encodeKeys({ payload: "body" }))
+      const root = Schema.Struct({ message: envelope }).pipe(Schema.encodeKeys({ message: "msg" }))
+      const document = Schema.toJsonSchemaDocument(Schema.toEncoded(root))
+      const ref = { $ref: "#/$defs/Value" }
+
+      assert.deepNestedPropertyVal(document.schema, "properties.msg.properties.body.properties", {
+        direct: ref,
+        lazy: ref
+      })
+      deepStrictEqual(Object.keys(document.definitions), ["Value"])
+    })
+
     it("suffixes duplicate identifiers on different schemas", () => {
       const S = Schema.Union([
         Schema.String.annotate({ identifier: "id", description: "a" }),

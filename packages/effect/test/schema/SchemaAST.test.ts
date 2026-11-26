@@ -1,5 +1,5 @@
 import { assert } from "@effect/vitest"
-import { Effect, Schema, SchemaAST, SchemaGetter, SchemaTransformation } from "effect"
+import { Effect, Schema, SchemaAST, SchemaGetter, SchemaParser, SchemaTransformation } from "effect"
 import { runInNewContext } from "node:vm"
 import { describe, it } from "vitest"
 import { deepStrictEqual, doesNotThrow, strictEqual, throws } from "../utils/assert.ts"
@@ -331,6 +331,37 @@ describe("SchemaAST", () => {
         ),
         "encoded"
       )
+
+      const flipped = Schema.flip(Schema.make<Schema.Codec<string>>(ast))
+      const wire = Schema.toType(flipped)
+      assert.strictEqual(Schema.decodeUnknownSync(wire)("input"), "encoded")
+      assert.strictEqual(Schema.decodeUnknownSync(Schema.toEncoded(flipped))("input"), "decoded")
+      assert.strictEqual(Schema.toEncoded(wire).ast, wire.ast)
+    })
+
+    it("projects the type parameter of a contextual declaration", () => {
+      const declaration = Schema.declareConstructor<number, string>()(
+        [Schema.NumberFromString],
+        ([value]) => {
+          const parse = SchemaParser.decodeUnknownEffect(value)
+          return (input, _ast, options) => parse(input, options)
+        }
+      )
+      const contextual = SchemaAST.optionalKey(declaration.ast)
+      const decoded = SchemaAST.toType(contextual)
+      const encoded = SchemaAST.toEncoded(contextual)
+
+      assert.strictEqual(SchemaAST.isOptional(decoded), true)
+      assert.strictEqual(SchemaAST.isOptional(encoded), true)
+      const decode = (ast: SchemaAST.AST) => Schema.decodeUnknownSync(Schema.make<Schema.Codec<unknown>>(ast))
+      const decodeType = decode(decoded)
+      strictEqual(decodeType(1), 1)
+      throws(() => decodeType("1"))
+      for (const ast of [encoded, SchemaAST.toType(SchemaAST.flip(contextual))]) {
+        const decodeEncoded = decode(ast)
+        strictEqual(decodeEncoded("1"), "1")
+        throws(() => decodeEncoded(1))
+      }
     })
 
     it("removes outer encoding and promotes checks when children are unchanged", () => {
@@ -437,9 +468,213 @@ describe("SchemaAST", () => {
 
     it("toEncoded is idempotent for suspended schemas", () => {
       const schema = Schema.suspend(() => Schema.Struct({ a: Schema.NumberFromString }))
-      const ast = SchemaAST.toEncoded(schema.ast)
+      for (const side of [schema, Schema.flip(schema)]) {
+        const ast = SchemaAST.toEncoded(side.ast)
+        strictEqual(SchemaAST.toEncoded(ast), ast)
+      }
+    })
 
-      strictEqual(SchemaAST.toEncoded(ast), ast)
+    it("preserves annotations on a flipped suspended schema", () => {
+      const schema = Schema.suspend(() => Schema.NumberFromString)
+      const wire = Schema.toType(Schema.flip(schema).annotate({ identifier: "Wire" }))
+      strictEqual(wire.ast.annotations?.identifier, "Wire")
+      strictEqual(Schema.decodeUnknownSync(wire)("1"), "1")
+    })
+
+    it("keeps unused alternatives lazy when projecting a recursive union", () => {
+      type Tree =
+        | { readonly _tag: "Branch"; readonly kids: ReadonlyArray<Tree> }
+        | { readonly _tag: "Leaf"; readonly value: string }
+      let leafCalls = 0
+      const tree: Schema.Codec<Tree> = Schema.Union([
+        Schema.TaggedStruct("Branch", {
+          kids: Schema.toEncoded(Schema.Array(Schema.suspend(() => tree)))
+        }),
+        Schema.TaggedStruct("Leaf", {
+          value: Schema.suspend(() => {
+            leafCalls++
+            return Schema.String
+          })
+        })
+      ]).annotate({ identifier: "Tree" })
+      const encoded = Schema.toEncoded(tree)
+      const branch: Tree = { _tag: "Branch", kids: [{ _tag: "Branch", kids: [] }] }
+      deepStrictEqual(Schema.decodeUnknownSync(encoded)(branch), branch)
+      strictEqual(leafCalls, 0)
+      const document = Schema.toJsonSchemaDocument(encoded)
+      deepStrictEqual(document.schema, { $ref: "#/$defs/Tree" })
+      strictEqual(leafCalls, 1)
+    })
+
+    it("shares the encoded projection of an optional field with the type of its flip", () => {
+      const field = Schema.optionalKey(Schema.Struct({ n: Schema.NumberFromString }))
+      const encoded = Schema.toEncoded(field).ast
+
+      strictEqual(SchemaAST.isOptional(encoded), true)
+      strictEqual(Schema.toType(Schema.flip(field)).ast, encoded)
+    })
+
+    it("projects type-side checks independently of earlier calls to toEncoded", () => {
+      for (const projectFlippedFirst of [false, true]) {
+        const schema = Schema.Struct({ n: Schema.suspend(() => Schema.Number) })
+          .check(Schema.makeFilter(({ n }) => n > 0))
+        const type = Schema.toType(schema)
+        if (projectFlippedFirst) {
+          const flipped = Schema.toEncoded(Schema.flip(schema))
+          assert.isFalse(Schema.is(flipped)({ n: -1 }))
+        }
+        const encoded = Schema.toEncoded(type)
+        assert.isTrue(Schema.is(encoded)({ n: -1 }))
+        assert.isFalse(Schema.is(type)({ n: -1 }))
+        strictEqual(Schema.toType(Schema.flip(type)).ast, encoded.ast)
+      }
+    })
+
+    it("preserves an encoded-side check when reprojecting the type of a flipped schema", () => {
+      function acceptsNegative(projectEncodedFirst: boolean) {
+        const schema = Schema.Struct({ n: Schema.suspend(() => Schema.Number) }).pipe(
+          Schema.flip,
+          Schema.check(Schema.makeFilter(({ n }) => n > 0)),
+          Schema.flip
+        )
+        if (projectEncodedFirst) Schema.toEncoded(schema)
+        const wire = Schema.toType(Schema.flip(schema))
+        assert.isFalse(Schema.is(wire)({ n: -1 }))
+        return Schema.is(Schema.toEncoded(wire))({ n: -1 })
+      }
+
+      deepStrictEqual({
+        withoutPriorCall: acceptsNegative(false),
+        withPriorCall: acceptsNegative(true)
+      }, { withoutPriorCall: false, withPriorCall: false })
+    })
+
+    it("toType reuses the encoded AST of a recursive schema", () => {
+      interface Tree {
+        readonly children: ReadonlyArray<Tree>
+      }
+      const Tree: Schema.Codec<Tree> = Schema.Struct({
+        children: Schema.Array(Schema.suspend(() => Tree))
+      })
+      const encoded = Schema.toEncoded(Tree)
+
+      strictEqual(Schema.toType(encoded).ast, encoded.ast)
+    })
+
+    it("preserves recursive references through an already encoded field", () => {
+      interface Node {
+        readonly kids: ReadonlyArray<Node>
+      }
+      const kids = Schema.toEncoded(Schema.Array(Schema.suspend((): Schema.Codec<Node> => Node)))
+      const Node: Schema.Codec<Node> = Schema.Struct({ kids })
+      const encoded = Schema.toEncoded(Node).ast
+      if (!SchemaAST.isObjects(encoded)) throw new Error("Expected Objects")
+      const field = encoded.propertySignatures[0].type
+      if (!SchemaAST.isArrays(field)) throw new Error("Expected Arrays")
+      const child = field.rest[0]
+      if (!SchemaAST.isSuspend(child)) throw new Error("Expected Suspend")
+      strictEqual(child.thunk(), encoded)
+    })
+
+    it("decodes shallow input through a deeply nested encoded suspended field", () => {
+      for (const project of [Schema.toType, Schema.toEncoded]) {
+        let payload: Schema.Codec<unknown> = Schema.Number
+        // Project each level as it is built, so only resolving the suspended field can overflow.
+        for (let i = 0; i < 5_000; i++) {
+          payload = project(Schema.Array(payload))
+        }
+        const kids = Schema.toEncoded(Schema.Array(Schema.suspend(() => payload)))
+        const schema = Schema.toEncoded(Schema.Struct({ kids }))
+        const input = { kids: [[]] }
+
+        deepStrictEqual(Schema.decodeUnknownSync(schema)(input), input)
+      }
+    })
+
+    it("bounds property reads when many encoded suspended fields share one schema", () => {
+      function countPropertyReads(references: number): number {
+        let reads = 0
+        const properties = Array.from({ length: 32 }, (_, i) => ({
+          name: `p${i}`,
+          get type() {
+            reads++
+            return SchemaAST.string
+          }
+        }))
+        const shared = Schema.make<Schema.Codec<unknown>>(
+          new SchemaAST.Objects(properties, [], {
+            identifier: "Shared"
+          })
+        )
+        const fields = Object.fromEntries(
+          Array.from({ length: references }, (_, i) =>
+            [
+              `field${i}`,
+              Schema.toEncoded(Schema.suspend(() => shared))
+            ] as const)
+        )
+        const document = Schema.toJsonSchemaDocument(Schema.toEncoded(Schema.Struct(fields)))
+        deepStrictEqual(Object.keys(document.definitions), ["Shared"])
+        return reads
+      }
+
+      const singleReferenceReads = countPropertyReads(1)
+      // Allow extra work for sharing, but a full scan per reference would exceed this bound.
+      assert.isAtMost(countPropertyReads(32), 2 * singleReferenceReads)
+    })
+
+    it("projects an already encoded suspended field when projecting its parent", () => {
+      const child = Schema.Struct({ n: Schema.suspend(() => Schema.Number) }).pipe(
+        Schema.flip,
+        Schema.check(Schema.makeFilter(({ n }) => n > 0)),
+        Schema.flip
+      )
+      const children = Schema.toEncoded(Schema.Array(Schema.suspend(() => child)))
+      const parent = Schema.Struct({ children })
+      const value = [{ n: -1 }]
+
+      const decodeChildren = Schema.decodeUnknownSync(children)
+      deepStrictEqual(decodeChildren([{ n: 1 }]), [{ n: 1 }])
+      throws(() => decodeChildren(value))
+      const decode = Schema.decodeUnknownSync(Schema.toEncoded(parent))
+      deepStrictEqual(decode({ children: value }), { children: value })
+      throws(() => decode({ children: [{ n: "wrong" }] }))
+    })
+
+    it("preserves parser direction at each level of a recursive encoded field", () => {
+      interface EncodedNode {
+        readonly value: string
+        readonly kids: ReadonlyArray<EncodedNode>
+      }
+      const Node: Schema.Codec<{ readonly value: number; readonly kids: ReadonlyArray<EncodedNode> }, EncodedNode> =
+        Schema.Struct({
+          value: Schema.NumberFromString,
+          kids: Schema.toEncoded(Schema.Array(Schema.suspend(() => Node)))
+        })
+      const encoded = Schema.toEncoded(Node)
+      const node = (value: string, ...kids: Array<EncodedNode>): EncodedNode => ({ value, kids })
+      const tree = node("1", node("2", node("3", node("4"))))
+      const decode = Schema.decodeUnknownSync(encoded)
+      deepStrictEqual(decode(tree), tree)
+      throws(() => decode({ value: "1", kids: [{ value: 2, kids: [] }] }))
+      assert.isNotEmpty(Schema.toJsonSchemaDocument(encoded).definitions)
+    })
+
+    it("does not restore a discarded encoding check deeper in a recursive field", () => {
+      interface Node {
+        readonly enabled: boolean
+        readonly kids: ReadonlyArray<Node>
+      }
+      const Node: Schema.Codec<Node> = Schema.Struct({
+        enabled: Schema.Boolean,
+        kids: Schema.toEncoded(Schema.Array(Schema.suspend(() => Node)))
+      }).pipe(Schema.flip, Schema.check(Schema.makeFilter((node) => node.enabled)), Schema.flip)
+      const decode = Schema.decodeUnknownSync(Schema.toEncoded(Node))
+      const disabled = { enabled: false, kids: [] }
+      const tree = { enabled: true, kids: [{ enabled: false, kids: [disabled] }] }
+
+      throws(() => decode(disabled))
+      deepStrictEqual(decode(tree), tree)
     })
 
     it("promotes encodingChecks when contained type shape is preserved", () => {
