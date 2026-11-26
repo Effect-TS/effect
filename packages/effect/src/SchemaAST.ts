@@ -4722,6 +4722,27 @@ function canPreserveEncodingChecks(ast: AST): boolean {
   return preserve
 }
 
+function keepsAllChecks(ast: AST, checks: Checks): boolean {
+  return canPromoteStructuralChecks(ast) && checks.every(isStructuralCheck) || canPreserveEncodingChecks(ast)
+}
+
+function canPromoteStructuralChecks(ast: AST): boolean {
+  return isArrays(ast) || isObjects(ast) || isDeclaration(ast) && ast.typeParameters.length > 0
+}
+
+interface TypeView {
+  // A thunk means that this type is unchanged on reversal if the type at
+  // that suspended edge is also unchanged. Keep different unknown edges distinct.
+  sameOnBothSides: boolean | Suspend["thunk"]
+  encoded?: true
+  reprojected?: true
+  reverse?: AST
+}
+
+const typeViews = new WeakMap<AST, TypeView>()
+const flippedFrom = new WeakMap<AST, AST>()
+const flippedThunks = new WeakMap<Suspend["thunk"], Suspend>()
+
 /**
  * Strips all encoding transformations from an AST, returning the decoded
  * (type-level) representation.
@@ -4748,17 +4769,63 @@ function canPreserveEncodingChecks(ast: AST): boolean {
  * @category transforming
  * @since 4.0.0
  */
-export const toType = memoizeIdempotent(<A extends AST>(ast: A): A => {
+export const toType = memoize(<A extends AST>(ast: A): A => {
+  const source = flippedFrom.get(ast)
+  // The public encoded projection is idempotent, including when requested as toType(flip(ast)).
+  if (source && typeViews.get(source)?.encoded) return source as A
+  const out = stripEncoding(ast)
+  if (source) typeViews.get(out)!.encoded = true
+  return out
+})
+
+const stripEncoding = memoizeIdempotent(<A extends AST>(ast: A): A => {
+  const source = flippedFrom.get(ast)
+  const previous = source && typeViews.get(source)
+  if (source && previous?.sameOnBothSides === true) return source as A
+  if (previous?.reverse) return previous.reverse as A
+  const info: TypeView = { sameOnBothSides: true }
+  const out = projectType(ast, info)
+  let view = typeViews.get(out)
+  if (!view) {
+    if (
+      isDeclaration(out) && out.encodingRun !== undefined && out.encodingRun !== out.run ||
+      typeof info.sameOnBothSides === "function" && "encodingChecks" in out && out.checks &&
+        !(canPromoteStructuralChecks(out) && out.checks.every(isStructuralCheck))
+    ) {
+      info.sameOnBothSides = false
+    }
+    view = info
+    typeViews.set(out, view)
+  }
+  if (source && previous) {
+    // One more projection can discard checks. After that, reversal is an involution.
+    previous.reverse = out
+    if (previous.reprojected) view.reverse = source
+    view.reprojected = true
+  }
+  return out
+})
+
+function projectType<A extends AST>(ast: A, view: TypeView): A {
   const owner = getContextOwner(ast)
   if (owner !== ast) {
-    const type = toType(owner)
+    const type = stripEncoding(owner)
+    view.sameOnBothSides = typeViews.get(type)!.sameOnBothSides
     return type === owner && ast.encoding === undefined ? ast : replaceContext(type, ast.context)
   }
-  const type = ("recur" in ast ? ast.recur(toType) : ast) as A
+  if (isSuspend(ast)) return stripSuspend(ast, view) as A
+  const projectChild = (child: AST): AST => {
+    const type = stripEncoding(child)
+    const condition = typeViews.get(type)!.sameOnBothSides
+    if (view.sameOnBothSides === true) view.sameOnBothSides = condition
+    else if (condition !== true && condition !== view.sameOnBothSides) view.sameOnBothSides = false
+    return type
+  }
+  const type = ("recur" in ast ? ast.recur(projectChild) : ast) as A
   if ("encodingChecks" in type && type.encodingChecks) {
-    const checks = canPreserveEncodingChecks(ast)
+    const checks = keepsAllChecks(ast, type.encodingChecks)
       ? type.encodingChecks
-      : isArrays(type) || isObjects(type) || isDeclaration(type) && type.typeParameters.length > 0
+      : canPromoteStructuralChecks(type)
       ? extractStructuralChecks(type.encodingChecks)
       : undefined
     return copy(type, {
@@ -4768,7 +4835,36 @@ export const toType = memoizeIdempotent(<A extends AST>(ast: A): A => {
     })
   }
   return type
-})
+}
+
+function stripSuspend(ast: Suspend, view: TypeView): Suspend {
+  const source = flippedThunks.get(ast.thunk)
+  if (!source) {
+    view.sameOnBothSides = ast.thunk
+    return ast.recur(stripEncoding)
+  }
+  const condition = typeViews.get(source)?.sameOnBothSides ?? ast.thunk
+  view.sameOnBothSides = condition
+  return new Suspend(
+    () => {
+      const body = source.thunk()
+      const inner = typeViews.get(body)
+      // Resolving the only remaining unknown back to this body closes the cycle.
+      if (
+        inner && (inner.sameOnBothSides === true || inner.sameOnBothSides === source.thunk ||
+          typeof condition === "function" && inner.sameOnBothSides === condition)
+      ) {
+        inner.reverse = body
+        return body
+      }
+      return stripEncoding(flip(body))
+    },
+    ast.annotations,
+    undefined,
+    undefined,
+    ast.context
+  )
+}
 
 /**
  * Returns the encoded (wire-format) AST by flipping and then stripping
@@ -4797,9 +4893,7 @@ export const toType = memoizeIdempotent(<A extends AST>(ast: A): A => {
  * @category transforming
  * @since 4.0.0
  */
-export const toEncoded = memoizeIdempotent((ast: AST): AST => {
-  return toType(flip(ast))
-})
+export const toEncoded = (ast: AST): AST => toType(flip(ast))
 
 function flipEncoding(ast: AST, encoding: Encoding): AST {
   const links = encoding
@@ -4838,6 +4932,12 @@ function flipEncoding(ast: AST, encoding: Encoding): AST {
  * @since 4.0.0
  */
 export const flip = memoize((ast: AST): AST => {
+  const out = flipAST(ast)
+  if (out !== ast) flippedFrom.set(out, ast)
+  return out
+})
+
+function flipAST(ast: AST): AST {
   if (ast.encoding) {
     return flipEncoding(ast, ast.encoding)
   }
@@ -4846,8 +4946,16 @@ export const flip = memoize((ast: AST): AST => {
     const flipped = flip(owner)
     return flipped === owner ? ast : replaceContext(flipped, ast.context)
   }
-  return "flip" in ast ? ast.flip(flip) : "recur" in ast ? ast.recur(flip) : ast
-})
+  if (isSuspend(ast)) {
+    const source = flippedThunks.get(ast.thunk)
+    // Reversing a thunk twice must not wrap its result in two more recursive walks.
+    if (source) return copy(ast, { thunk: source.thunk })
+    const out = ast.recur(flip)
+    flippedThunks.set(out.thunk, ast)
+    return out
+  }
+  return "flip" in ast ? ast.flip(flip) : ast
+}
 
 function fromConst<const T>(
   ast: AST,

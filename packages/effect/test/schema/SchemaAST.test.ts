@@ -462,9 +462,42 @@ describe("SchemaAST", () => {
 
     it("toEncoded is idempotent for suspended schemas", () => {
       const schema = Schema.suspend(() => Schema.Struct({ a: Schema.NumberFromString }))
-      const ast = SchemaAST.toEncoded(schema.ast)
+      for (const side of [schema, Schema.flip(schema)]) {
+        const ast = SchemaAST.toEncoded(side.ast)
+        strictEqual(SchemaAST.toEncoded(ast), ast)
+      }
+    })
 
-      strictEqual(SchemaAST.toEncoded(ast), ast)
+    it("preserves annotations on a flipped suspended schema", () => {
+      const schema = Schema.suspend(() => Schema.NumberFromString)
+      const wire = Schema.toType(Schema.flip(schema).annotate({ identifier: "Wire" }))
+      strictEqual(wire.ast.annotations?.identifier, "Wire")
+      strictEqual(Schema.decodeUnknownSync(wire)("1"), "1")
+    })
+
+    it("keeps unused alternatives lazy when projecting a recursive union", () => {
+      type Tree =
+        | { readonly _tag: "Branch"; readonly kids: ReadonlyArray<Tree> }
+        | { readonly _tag: "Leaf"; readonly value: string }
+      let leafCalls = 0
+      const tree: Schema.Codec<Tree> = Schema.Union([
+        Schema.TaggedStruct("Branch", {
+          kids: Schema.toEncoded(Schema.Array(Schema.suspend(() => tree)))
+        }),
+        Schema.TaggedStruct("Leaf", {
+          value: Schema.suspend(() => {
+            leafCalls++
+            return Schema.String
+          })
+        })
+      ]).annotate({ identifier: "Tree" })
+      const encoded = Schema.toEncoded(tree)
+      const branch: Tree = { _tag: "Branch", kids: [{ _tag: "Branch", kids: [] }] }
+      deepStrictEqual(Schema.decodeUnknownSync(encoded)(branch), branch)
+      strictEqual(leafCalls, 0)
+      const document = Schema.toJsonSchemaDocument(encoded)
+      deepStrictEqual(document.schema, { $ref: "#/$defs/Tree" })
+      strictEqual(leafCalls, 1)
     })
 
     it("shares the encoded projection of an optional field with the type of its flip", () => {
