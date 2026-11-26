@@ -18,7 +18,7 @@ type Group = typeof groups[number]
 
 const schemaGroups = new Set<Group>(["Schema", "SchemaAST", "SchemaParser", "schema-other"])
 
-export const groupOf = (source: string | undefined): Group => {
+const groupOf = (source: string | undefined): Group => {
   if (source === undefined) return "runtime"
   if (source.includes("/schema-boot/fixtures/")) return "fixture"
   const index = source.lastIndexOf("/packages/effect/src/")
