@@ -222,14 +222,18 @@ describe("ClusterCron", { concurrent: false }, () => {
     (calculateNextRunFromPrevious) =>
       Effect.gen(function*() {
         const attempts: Array<string> = []
-        const exits: Array<string> = []
+        const events: Array<string> = []
         const cron = ClusterCron.make({
           name: "test",
           cron: Cron.parseUnsafe("* * * * * *", "UTC"),
           calculateNextRunFromPrevious,
           execute: Effect.gen(function*() {
             attempts.push(DateTime.formatIso(yield* ClusterCron.CurrentScheduledTime))
-            yield* Effect.addFinalizer((exit) => Effect.sync(() => exits.push(exit._tag)))
+            yield* Effect.addFinalizer((exit) => Effect.sync(() => events.push(exit._tag)))
+            yield* Effect.forkChild(
+              Effect.never.pipe(Effect.onInterrupt(() => Effect.sync(() => events.push("child interrupted")))),
+              { startImmediately: true }
+            )
             return yield* Effect.fail("boom")
           })
         })
@@ -238,7 +242,8 @@ describe("ClusterCron", { concurrent: false }, () => {
 
         assert.isAbove(attempts.length, 1)
         assert.deepStrictEqual(attempts, [...new Set(attempts)].sort())
-        assert.deepStrictEqual(exits, attempts.map(() => "Failure"))
+        // child fibers stop before the run's resources are released
+        assert.deepStrictEqual(events, attempts.flatMap(() => ["child interrupted", "Failure"]))
       }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer))
   )
 

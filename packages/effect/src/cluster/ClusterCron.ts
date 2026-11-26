@@ -21,6 +21,7 @@ import * as Cron from "../Cron.ts"
 import * as DateTime from "../DateTime.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import * as Fiber from "../Fiber.ts"
 import * as Layer from "../Layer.ts"
 import * as PrimaryKey from "../PrimaryKey.ts"
 import * as Rpc from "../rpc/Rpc.ts"
@@ -80,7 +81,8 @@ export class CronSchedule extends Context.Service<CronSchedule, {
  * and skipping stale scheduled runs.
  *
  * A run that fails or dies is logged and not retried, and the next run is
- * scheduled as usual. To retry a failed run, apply a retry inside `execute`.
+ * scheduled as usual. To retry typed failures, apply `Effect.retry` inside
+ * `execute` with your own stopping policy.
  *
  * @stability unstable
  * @category constructors
@@ -169,17 +171,23 @@ export const make = <E, R>(options: {
     { shardGroup: options.shardGroup }
   )
 
-  const execute = Effect.fnUntraced(function*(dateTime: DateTime.Utc) {
-    const now = yield* DateTime.now
-    if (DateTime.isLessThan(dateTime, DateTime.subtractDuration(now, cronSchedule.skipIfOlderThan))) {
-      return
-    }
-    // the run's own scope, so finalizers see its exit rather than the handler's
-    return yield* Effect.scoped(Effect.provideContext(
-      options.execute,
-      Context.add(scheduleContext, CurrentScheduledTime, dateTime)
-    ))
-  }, Effect.orDie)
+  const execute = Effect.fnUntraced(
+    function*(dateTime: DateTime.Utc) {
+      const now = yield* DateTime.now
+      if (DateTime.isLessThan(dateTime, DateTime.subtractDuration(now, cronSchedule.skipIfOlderThan))) {
+        return
+      }
+      // the run gets its own fiber and scope, so its child fibers stop and its
+      // finalizers see its exit before the next run is scheduled
+      const fiber = yield* Effect.forkChild(
+        Effect.provideContext(options.execute, Context.add(scheduleContext, CurrentScheduledTime, dateTime)),
+        { uninterruptible: "inherit" }
+      )
+      return yield* Fiber.join(fiber).pipe(Effect.onInterrupt(() => Fiber.interrupt(fiber)))
+    },
+    Effect.scoped,
+    Effect.orDie
+  )
 
   const EntityLayer = CronEntity.toLayer(Effect.gen(function*() {
     const address = yield* Entity.CurrentAddress
