@@ -174,7 +174,7 @@ describe("McpClient", () => {
 
   it.effect("should connect and call tools on 2025-03-26 and 2025-06-18", () =>
     Effect.gen(function*() {
-      for (const protocol of [McpProtocol.v2025_03_26, McpProtocol.v2025_06_18] as const) {
+      for (const protocol of [McpProtocol.v2025_03_26, McpProtocol.v2025_06_18]) {
         const client = yield* connect(protocol)
         assert.strictEqual(client.protocolVersion, protocol.protocolVersion)
         const tool = yield* findTool(client, "add")
