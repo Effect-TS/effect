@@ -3,9 +3,8 @@ import type { LogLevel, Severity } from "../LogLevel.ts"
 /**
  * Runtime keys and defaults cached on every fiber's `Fiber.Cache`.
  *
- * `Context.ts` reads `fiberCachedKeys` for cache invalidation, and the services
- * that expose these keys import them from here so the runtime can read them
- * without constructing the service objects in minimal bundles.
+ * The services that expose these keys import them from here, so the runtime can
+ * read them without constructing the service objects in minimal bundles.
  */
 
 /** @internal */
@@ -39,12 +38,6 @@ export const MinimumLogLevelKey = "effect/References/MinimumLogLevel" as const
 export const FiberRuntimeMetricsKey = "effect/Metric/FiberRuntimeMetrics" as const
 
 /** @internal */
-export const currentFiberTypeId = "~effect/Fiber/currentFiber" as const
-
-/** @internal */
-export const defaultValueCacheKey = "~effect/Context/defaultValue" as const
-
-/** @internal */
 export const defaultMaxOpsBeforeYield = 2048
 
 /** @internal */
@@ -59,8 +52,16 @@ export const defaultCurrentLogLevel: Severity = "Info"
 /** @internal */
 export const defaultMinimumLogLevel: LogLevel = "Info"
 
-/** @internal */
-export const fiberCachedKeys: ReadonlySet<string> = new Set([
+/**
+ * The keys whose change makes `Context.add` start a new fiber cache.
+ *
+ * The runtime's own keys are listed here rather than registered by their
+ * services, because fibers read them even when those services are tree-shaken.
+ * Services created with `fiberCached: true` add their key.
+ *
+ * @internal
+ */
+export const fiberCachedKeys = new Set<string>([
   SchedulerKey,
   MaxOpsBeforeYieldKey,
   PreventSchedulerYieldKey,
@@ -72,19 +73,3 @@ export const fiberCachedKeys: ReadonlySet<string> = new Set([
   MinimumLogLevelKey,
   FiberRuntimeMetricsKey
 ])
-
-/**
- * Binds a freshly created `Context.Reference` to a shared lazy default getter
- * via a non-enumerable getter on `defaultValueCacheKey`, so both
- * `Context.get(Context.empty(), ref)` and the fiber runtime resolve the same
- * memoized instance while `ref.defaultValue()` still creates a fresh instance.
- *
- * @internal
- */
-export const bindMemoizedDefault = <Ref extends object, A>(
-  ref: Ref,
-  getDefault: () => A
-): Ref =>
-  Object.defineProperty(ref, defaultValueCacheKey, {
-    get: getDefault
-  })

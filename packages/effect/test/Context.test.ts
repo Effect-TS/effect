@@ -47,23 +47,29 @@ describe("Context", () => {
     ])
   })
 
-  it("invalidates the fiber cache only for the keys fibers cache", () => {
+  it("invalidates the fiber cache only for opted-in keys", () => {
+    const Cached = Context.Service<number>("ContextTest/Cached", { fiberCached: true })
+    class CachedClass extends Context.Service<CachedClass, number>()("ContextTest/CachedClass", {
+      fiberCached: true
+    }) {}
     const Ref = Context.Reference<number>("ContextTest/Ref", { defaultValue: () => 0 })
-    const Cached = Scheduler.MaxOpsBeforeYield
-    const CachedClass = Scheduler.PreventSchedulerYield
+    const CachedRef = Context.Reference<number>("ContextTest/CachedRef", {
+      fiberCached: true,
+      defaultValue: () => 0
+    })
 
     const source = Context.make(A, 1)
     assertTrue(Context.hasSameCache(source, Context.add(source, B, 1)))
     assertTrue(Context.hasSameCache(source, Context.add(source, Ref, 1)))
-    assertFalse(Context.hasSameCache(source, Context.add(source, Cached, 1)))
+    assertFalse(Context.hasSameCache(source, Context.add(source, CachedRef, 1)))
     const context = source.pipe(
       Context.add(Cached, 2),
-      Context.add(CachedClass, true)
+      Context.add(CachedClass, 3)
     )
 
     strictEqual(Context.get(context, Cached), 2)
-    strictEqual(Context.get(context, CachedClass), true)
-    assertFalse(source.mapUnsafe.has(Cached.key))
+    strictEqual(Context.get(context, CachedClass), 3)
+    assertTrue(Context.getOption(source, Cached)._tag === "None")
 
     const replaced = Context.add(context, Cached, 4)
     strictEqual(Context.get(replaced, Cached), 4)
@@ -72,16 +78,16 @@ describe("Context", () => {
     deepStrictEqual([...replaced.mapUnsafe], [
       [A.key, 1],
       [Cached.key, 4],
-      [CachedClass.key, true]
+      [CachedClass.key, 3]
     ])
     deepStrictEqual([...Context.omit(Cached)(replaced).mapUnsafe], [
       [A.key, 1],
-      [CachedClass.key, true]
+      [CachedClass.key, 3]
     ])
   })
 
   it("supports the Redactable fallback context", () => {
-    const Cached = Context.Service<number>("ContextTest/RedactableCached")
+    const Cached = Context.Service<number>("ContextTest/RedactableCached", { fiberCached: true })
     const context = Redactable.getRedacted({
       [Redactable.symbolRedactable](context: Context.Context<never>) {
         return context
@@ -97,10 +103,11 @@ describe("Context", () => {
   })
 
   it("distinguishes an undefined service from an absent service", () => {
-    const Undefined = Context.Service<number | undefined>("ContextTest/Undefined")
+    const Undefined = Context.Service<number | undefined>("ContextTest/Undefined", { fiberCached: true })
     const Missing = Context.Service<undefined>("ContextTest/Missing")
     const Ref = Context.Reference<string | undefined>("ContextTest/UndefinedRef", {
-      defaultValue: () => "default"
+      defaultValue: () => "default",
+      fiberCached: true
     })
     const context = Context.make(Undefined, 1).pipe(Context.add(Undefined, undefined), Context.add(Ref, undefined))
 
@@ -112,6 +119,12 @@ describe("Context", () => {
     deepStrictEqual([...Context.pick(Undefined)(context).mapUnsafe], [[Undefined.key, undefined]])
     deepStrictEqual([...Context.pick(Missing)(context).mapUnsafe], [])
     strictEqual(Context.get(context, Ref), undefined)
+  })
+
+  it("invalidates the fiber cache for the runtime's own cached keys", () => {
+    const source = Context.make(A, 1)
+    assertFalse(Context.hasSameCache(source, Context.add(source, Scheduler.MaxOpsBeforeYield, 1)))
+    assertFalse(Context.hasSameCache(source, Context.add(source, Scheduler.PreventSchedulerYield, true)))
   })
 
   it("bounds deep overlay chains without changing values or order", () => {
@@ -234,6 +247,9 @@ describe("Context", () => {
     assertTrue(impl._flat instanceof Map)
     strictEqual(impl.overlay, undefined)
     strictEqual(impl.depth, 0)
+    // The flattened context reads the former overlay entries from its base
+    strictEqual(Context.getUnsafe(context, B), 2)
+    assertTrue(Option.isNone(Context.getOption(context, C)))
 
     const added = Context.add(context, C, 3) as any
     strictEqual(added._flat, undefined)

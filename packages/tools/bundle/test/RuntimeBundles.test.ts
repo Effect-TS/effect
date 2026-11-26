@@ -105,7 +105,6 @@ describe("bundled", () => {
       "Predicate.ts",
       "Redactable.ts",
       "Utils.ts",
-      "internal/context.ts",
       "internal/core.ts",
       "internal/effect.ts",
       "internal/equal.ts",

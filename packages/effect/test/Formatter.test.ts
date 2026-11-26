@@ -72,6 +72,30 @@ describe("Formatter", () => {
       strictEqual(format({ toString: () => "custom" }), `custom`)
     })
 
+    it("handles toString methods that throw or return an unconvertible value", () => {
+      const throwing = {
+        toString() {
+          throw new Error("toString defect")
+        }
+      }
+      const unconvertible = { toString: () => throwing }
+
+      strictEqual(format(throwing), `[toString threw]`)
+      strictEqual(format(unconvertible), `[toString threw]`)
+      strictEqual(format({ toString: () => 42 }), `42`)
+      strictEqual(format({ a: unconvertible, b: [throwing] }), `{"a":[toString threw],"b":[[toString threw]]}`)
+    })
+
+    it("handles a throwing toString getter", () => {
+      const value = Object.defineProperty({}, "toString", {
+        get() {
+          throw new Error("getter defect")
+        }
+      })
+
+      strictEqual(format(value), `[inspection threw]`)
+    })
+
     it("handles throwing property getters", () => {
       const value = Object.defineProperty({ safe: 1 }, "unsafe", {
         enumerable: true,

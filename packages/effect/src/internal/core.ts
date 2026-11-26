@@ -164,7 +164,7 @@ export class CauseImpl<E> implements Cause.Cause<E> {
     )
   }
   [Hash.symbol](): number {
-    return Hash.hash(this.reasons)
+    return Hash.array(this.reasons)
   }
 }
 

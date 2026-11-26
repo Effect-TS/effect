@@ -34,8 +34,8 @@ const setImmediate = (f: () => void) => {
 }
 
 export class MixedScheduler implements Scheduler {
-  readonly executionMode: "sync" | "async"
-  readonly setImmediate: (f: () => void) => () => void
+  declare readonly executionMode: "sync" | "async"
+  declare readonly setImmediate: (f: () => void) => () => void
 
   constructor(
     executionMode: "sync" | "async" = "async",

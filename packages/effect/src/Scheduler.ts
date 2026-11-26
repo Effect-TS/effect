@@ -13,7 +13,6 @@
 import * as Context from "./Context.ts"
 import type * as Fiber from "./Fiber.ts"
 import {
-  bindMemoizedDefault,
   defaultMaxOpsBeforeYield,
   defaultPreventSchedulerYield,
   MaxOpsBeforeYieldKey,
@@ -88,7 +87,7 @@ export interface SchedulerDispatcher {
  * @category services
  * @since 2.0.0
  */
-export const Scheduler: Context.Reference<Scheduler> = bindMemoizedDefault(
+export const Scheduler: Context.Reference<Scheduler> = Context.shareDefaultValue(
   Context.Reference<Scheduler>(SchedulerKey, {
     defaultValue: () => new MixedScheduler()
   }),

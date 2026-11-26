@@ -23,7 +23,7 @@ import * as Order from "../Order.ts"
 import { pipeArguments } from "../Pipeable.ts"
 import type * as Predicate from "../Predicate.ts"
 import { hasProperty, isIterable, isString, isTagged } from "../Predicate.ts"
-import { redact } from "../Redactable.ts"
+import { currentFiberTypeId, redact } from "../Redactable.ts"
 import type { StackFrame } from "../References.ts"
 import * as Result from "../Result.ts"
 import type * as Scheduler from "../Scheduler.ts"
@@ -46,7 +46,6 @@ import type {
   unassigned
 } from "../Types.ts"
 import { internalCall } from "../Utils.ts"
-import { getDefaultValue, lookup, notFound } from "./context.ts"
 import type { Primitive } from "./core.ts"
 import {
   args,
@@ -88,7 +87,6 @@ import {
 } from "./core.ts"
 import * as doNotation from "./doNotation.ts"
 import {
-  currentFiberTypeId,
   CurrentLogLevelKey,
   CurrentStackFrameKey,
   defaultCurrentLogLevel,
@@ -588,8 +586,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   }
 
   getRef<X>(ref: Context.Reference<X>): X {
-    const value = lookup(this.context, ref.key)
-    return value === notFound ? getDefaultValue(ref) : value as X
+    return Context.getReferenceUnsafe(this.context, ref)
   }
   addObserver(cb: (exit: Exit.Exit<A, E>) => void): () => void {
     if (this._exit) {
@@ -811,10 +808,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
   // Reading by key keeps the service objects, and the native tracer behind
   // Tracer.Tracer's default, out of bundles that never use them.
-  const get = <A>(key: string, fallback?: A): A => {
-    const value = lookup(context, key)
-    return value === notFound ? fallback as A : value as A
-  }
+  const get = <A>(key: string, fallback?: A): A => Context.getOrElseUnsafe(context, key, fallback as A)
   const currentTracer = get<Tracer.Tracer | undefined>(TracerKey)
   return {
     scheduler: get<Scheduler.Scheduler | undefined>(SchedulerKey) ?? getDefaultScheduler(),

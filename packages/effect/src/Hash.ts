@@ -320,8 +320,7 @@ export const optimize = (n: number): number => (n & 0xbfffffff) | ((n >>> 1) & 0
  */
 export const isHash = (u: unknown): u is Hash => hasProperty(u, symbol) && typeof u[symbol] === "function"
 
-// Created on first use so loading Hash.ts does not eagerly allocate a DataView.
-let float64: DataView | undefined
+const float64 = new DataView(new ArrayBuffer(8))
 
 /**
  * Computes a hash value for a number.
@@ -356,9 +355,8 @@ export const number = (n: number) => {
   if (h === n) {
     return optimize(h)
   }
-  const view = (float64 ??= new DataView(new ArrayBuffer(8)))
-  view.setFloat64(0, n !== n ? NaN : n)
-  return optimize(combineDataFirst(view.getInt32(0), view.getInt32(4)))
+  float64.setFloat64(0, n !== n ? NaN : n)
+  return optimize(combineDataFirst(float64.getInt32(0), float64.getInt32(4)))
 }
 
 /**

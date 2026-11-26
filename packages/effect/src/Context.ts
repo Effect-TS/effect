@@ -17,7 +17,6 @@ import * as Equal from "./Equal.ts"
 import { dual, identity, type LazyArg } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import type { Inspectable } from "./Inspectable.ts"
-import { type ContextImpl, getDefaultValue, lookup, notFound, type Overlay } from "./internal/context.ts"
 import { exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts"
 import { fiberCachedKeys } from "./internal/fiberCachedKeys.ts"
 import * as Option from "./Option.ts"
@@ -209,7 +208,13 @@ export declare namespace ServiceClass {
  * @since 4.0.0
  */
 export const Service: {
-  <Identifier, Shape = Identifier>(key: string): Service<Identifier, Shape>
+  <Identifier, Shape = Identifier>(
+    key: string,
+    options?: {
+      /** @internal */
+      readonly fiberCached?: boolean | undefined
+    } | undefined
+  ): Service<Identifier, Shape>
   <Self, Shape>(): <
     const Identifier extends string,
     E,
@@ -219,6 +224,8 @@ export const Service: {
     id: Identifier,
     options?: {
       readonly make?: ((...args: Args) => Effect<Shape, E, R>) | Effect<Shape, E, R> | undefined
+      /** @internal */
+      readonly fiberCached?: boolean | undefined
     } | undefined
   ) =>
     & ServiceClass<Self, Identifier, Shape>
@@ -231,6 +238,8 @@ export const Service: {
     id: Identifier,
     options: {
       readonly make: Make
+      /** @internal */
+      readonly fiberCached?: boolean | undefined
     }
   ) =>
     & ServiceClass<
@@ -248,6 +257,7 @@ export const Service: {
   const init = (key: string, options?: {
     readonly defaultValue?: any
     readonly make?: any
+    readonly fiberCached?: boolean
   }) => {
     self.key = key
     if (options?.defaultValue) {
@@ -256,6 +266,9 @@ export const Service: {
     }
     if (options?.make) {
       ;(self as any).make = options.make
+    }
+    if (options?.fiberCached) {
+      fiberCachedKeys.add(key)
     }
     return self
   }
@@ -473,6 +486,24 @@ export interface Context<in Services> extends Equal.Equal, Pipeable, Inspectable
   readonly mapUnsafe: ReadonlyMap<string, any>
 }
 
+interface ContextImpl<in Services> extends Context<Services> {
+  cacheRoot: ContextImpl<any> | undefined
+  base: ReadonlyMap<string, any>
+  baseHits: number
+  overlay: Overlay | undefined
+  depth: number
+  _flat: ReadonlyMap<string, any> | undefined
+  maxDepth: number
+  /** Reads `key` through the overlay chain. Only contexts with an `overlay` have it. */
+  _lookup(key: string): unknown
+}
+
+interface Overlay {
+  readonly key: string
+  readonly value: unknown
+  readonly parent: Overlay | undefined
+}
+
 // Keep small bases cheap to read; larger bases are worth copying only after
 // enough fall-throughs to amortize the copy.
 const FlattenAfterBaseHits = 8
@@ -526,6 +557,19 @@ const withFlat = <B>(self: Context<any>, f: (map: Map<string, any>) => void): Co
   const map = new Map(self.mapUnsafe)
   f(map)
   return makeFlat(undefined, map, (self as ContextImpl<any>).maxDepth)
+}
+
+// A private symbol so user code cannot forge a value that reads as absent
+const notFound = Symbol()
+
+// Kept private to this module with `notFound`: exporting either makes every
+// `Context.get` measurably slower.
+const lookup = <Services>(self: Context<Services>, key: string): unknown => {
+  const impl = self as ContextImpl<Services>
+  // A flattened context no longer has an overlay and reads `base` directly
+  if (impl.overlay !== undefined) return impl._lookup(key)
+  const value = impl.base.get(key)
+  return value === undefined && !impl.base.has(key) ? notFound : value
 }
 
 /**
@@ -637,7 +681,7 @@ const OverlayProto = Object.create(Proto, {
       // base on every fiber cache refresh, which would flatten every short-lived
       // request context and reintroduce the O(services) per-request cost
       if (value === undefined && !this.base.has(key)) return notFound
-      if (this.overlay && ++this.baseHits >= this.base.size && this.baseHits >= FlattenAfterBaseHits) {
+      if (++this.baseHits >= this.base.size && this.baseHits >= FlattenAfterBaseHits) {
         this.base = flatten(this)
         this.overlay = undefined
         this.depth = 0
@@ -1085,6 +1129,50 @@ export const get: {
   <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): S
 } = getUnsafe
 
+const defaultValueCacheKey = "~effect/Context/defaultValue" as const
+
+const getDefaultValue = (ref: Reference<any>) => {
+  if (defaultValueCacheKey in ref) {
+    return ref[defaultValueCacheKey] as any
+  }
+  return (ref as any)[defaultValueCacheKey] = ref.defaultValue()
+}
+
+/**
+ * Makes `getDefaultValue(ref)` read the default from `shared` instead of
+ * keeping its own. For a default the fiber runtime also reads without the
+ * reference, so both resolve the same instance, while `ref.defaultValue()`
+ * still creates a fresh one.
+ *
+ * @internal
+ */
+export const shareDefaultValue = <Shape>(ref: Reference<Shape>, shared: () => Shape): Reference<Shape> =>
+  Object.defineProperty(ref, defaultValueCacheKey, { get: shared })
+
+/**
+ * Reads a reference, falling back to its default: `get` for a key known to be
+ * a reference.
+ *
+ * @internal
+ */
+export const getReferenceUnsafe = <Services, Shape>(self: Context<Services>, ref: Reference<Shape>): Shape => {
+  const value = lookup(self, ref.key)
+  return value === notFound ? getDefaultValue(ref) : value as Shape
+}
+
+/**
+ * Reads the service stored under `key`, or returns `orElse` when there is
+ * none. Unlike `getOrUndefinedUnsafe` it tells a stored `undefined` from an
+ * absent key. The fiber runtime reads its cached references this way, so
+ * minimal bundles do not construct them.
+ *
+ * @internal
+ */
+export const getOrElseUnsafe = <A, Services = never>(self: Context<Services>, key: string, orElse: A): A => {
+  const value = lookup(self, key)
+  return value === notFound ? orElse : value as A
+}
+
 const serviceNotFoundError = (service: Key<any, any>) => {
   const error = new Error(
     `Service not found${service.key ? `: ${String(service.key)}` : ""}`
@@ -1381,5 +1469,7 @@ export const Reference: <Service>(
   key: string,
   options: {
     readonly defaultValue: () => Service
+    /** @internal */
+    readonly fiberCached?: boolean | undefined
   }
 ) => Reference<Service> = Service as any
