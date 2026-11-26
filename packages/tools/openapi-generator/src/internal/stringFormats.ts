@@ -49,6 +49,8 @@ const codecs: ReadonlyMap<string, Representation> = new Map([
   ["uint64", bigIntCodec("0", "18446744073709551615")]
 ])
 
+const formatNames = new Map(Array.from(codecs, ([format, codec]) => [codec, format]))
+
 const codecOf = (representation: Representation): Representation | undefined => {
   const format = representation._tag === "Reference" ? undefined : representation.annotations?.format
   return typeof format === "string" ? codecs.get(format) : undefined
@@ -211,19 +213,12 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
       : undefined
   }
 
-  const hasStrings = (quantifier: "some" | "every") => {
-    const go = (representation: Representation): boolean => {
-      if (isString(representation)) return true
-      if (representation._tag === "Union") {
-        return representation.types.length > 0 && representation.types[quantifier](go)
-      }
-      const target = targetOf(representation)
-      return target !== undefined && go(target)
-    }
-    return go
+  const hasStringBranch = (representation: Representation): boolean => {
+    if (isString(representation)) return true
+    if (representation._tag === "Union") return representation.types.some(hasStringBranch)
+    const target = targetOf(representation)
+    return target !== undefined && hasStringBranch(target)
   }
-  const hasStringBranch = hasStrings("some")
-  const isStringOnly = hasStrings("every")
 
   const formatOf = (representation: Representation): Representation | undefined => {
     const target = targetOf(representation)
@@ -267,7 +262,8 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
       : mapChildren(representation, rewriteWire, rewriteWire)
   }
 
-  // `useSite`: `inherited` comes from a referencing use site and replaces formats inside the inlined target.
+  // `useSite`: `inherited` comes from a referencing use site and replaces formats inside the inlined target,
+  // including on the wire, so the exported schema describes the codec.
   const rewriteValue = (
     input: Representation,
     path: string,
@@ -277,10 +273,8 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
     if (input._tag === "Reference") {
       const target = targetOf(input)
       if (inherited === undefined || target === undefined || !hasStringBranch(target)) return input
-      if (isStringOnly(target)) {
-        return formatOf(input) === inherited ? input : decodeTo(rewriteWire(input), inherited)
-      }
-      // Inline the target to keep its non-string branches, dropping its identifier.
+      if (formatOf(input) === inherited) return input
+      // Inline the target, dropping its identifier, so the use-site format replaces its own.
       if (target._tag === "Reference") return rewriteValue(target, path, inherited, true)
       const { identifier: _identifier, ...annotations } = target.annotations ?? {}
       return rewriteValue({ ...target, annotations }, path, inherited, true)
@@ -292,7 +286,10 @@ export function decodeStringFormats(document: SchemaDocument): SchemaDocument {
       codec !== undefined &&
       (isString(representation) || (isUnion && representation.types.length > 0 && representation.types.every(isString)))
     ) {
-      return decodeTo(rewriteWire(representation), codec)
+      const wire = useSite
+        ? { ...representation, annotations: { ...representation.annotations, format: formatNames.get(codec) } }
+        : representation
+      return decodeTo(rewriteWire(wire), codec)
     }
     switch (representation._tag) {
       case "Suspend":

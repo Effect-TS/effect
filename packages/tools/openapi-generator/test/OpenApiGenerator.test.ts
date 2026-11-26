@@ -856,6 +856,7 @@ describe("OpenApiGenerator", () => {
                   changed: { type: "string", format: "date-time" },
                   deletedAt: { type: ["string", "null"], format: "date-time" },
                   balance: { $ref: "#/components/schemas/Balance" },
+                  unsignedBalance: { $ref: "#/components/schemas/Balance", format: "uint64" },
                   refInt: { $ref: "#/components/schemas/Digits", format: "int64" },
                   nullableRefInt: {
                     oneOf: [{ $ref: "#/components/schemas/Digits" }, { type: "null" }],
@@ -879,6 +880,7 @@ describe("OpenApiGenerator", () => {
                   "changed",
                   "deletedAt",
                   "balance",
+                  "unsignedBalance",
                   "refInt",
                   "nullableRefInt",
                   "plainDigits",
@@ -895,7 +897,7 @@ describe("OpenApiGenerator", () => {
               },
               Balance: { type: "string", format: "int64", pattern: "^-?[1-9][0-9]*$" },
               Digits: { type: "string", pattern: "^[0-9]+$" },
-              Signed: { oneOf: [{ type: "string", format: "int64" }, { type: "null" }] },
+              Signed: { oneOf: [{ $ref: "#/components/schemas/Balance" }, { type: "null" }] },
               Node: {
                 type: "object",
                 properties: {
@@ -926,6 +928,7 @@ describe("OpenApiGenerator", () => {
           changed: "2026-06-01T01:00:00.000+01:00",
           deletedAt: null,
           balance: "9007199254740993",
+          unsignedBalance: "18446744073709551615",
           refInt: "01",
           nullableRefInt: "01",
           plainDigits: "01",
@@ -949,6 +952,7 @@ describe("OpenApiGenerator", () => {
               changed: DateTime.makeUnsafe("2026-06-01T00:00:00.000Z"),
               deletedAt: null,
               balance: 9007199254740993n,
+              unsignedBalance: 18446744073709551615n,
               refInt: 1n,
               nullableRefInt: 1n,
               plainDigits: "01",
@@ -987,9 +991,15 @@ describe("OpenApiGenerator", () => {
             assert.isTrue(Exit.isFailure(decode({ ...wire, refInt: "-1" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, nullableRefInt: "-1" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, unsignedRef: "-1" })))
-            assert.deepStrictEqual(Schema.toJsonSchemaDocument(LedgerReading.fields.unsignedRef).schema, {
-              oneOf: [{ type: "string" }, { type: "null" }],
-              format: "uint64"
+            assert.isTrue(Exit.isFailure(decode({ ...wire, unsignedBalance: "-1" })))
+            // Use-site formats are exported on the wire, so regenerating from the document keeps unsigned bounds.
+            const unsignedBalance = { type: "string", format: "uint64", pattern: "^-?[1-9][0-9]*$" }
+            const exportField = (name: string) => Schema.toJsonSchemaDocument(LedgerReading.fields[name])
+            assert.deepStrictEqual(exportField("unsignedBalance").definitions, { Balance: unsignedBalance })
+            assert.deepStrictEqual(exportField("unsignedRef"), {
+              dialect: "draft-2020-12",
+              schema: { oneOf: [{ $ref: "#/$defs/Balance" }, { type: "null" }], format: "uint64" },
+              definitions: { Balance: unsignedBalance }
             })
             assert.isTrue(Exit.isFailure(decode({ ...wire, tier: "01" })))
             assert.isTrue(Exit.isFailure(decode({ ...wire, amounts: ["1", "1"] })))
