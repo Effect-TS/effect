@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { deepStrictEqual } from "@effect/vitest/utils"
+import { deepStrictEqual, throws } from "@effect/vitest/utils"
 import * as JsonSchema from "effect/JsonSchema"
 import * as Schema from "effect/Schema"
 
@@ -1155,6 +1155,91 @@ describe("JsonSchema", () => {
         },
         definitions: {}
       })
+    })
+  })
+
+  describe("fromSchemaOpenApi3_1 onReference", () => {
+    const input: JsonSchema.JsonSchema = {
+      type: "object",
+      properties: {
+        a: { $ref: "#/components/schemas/A" },
+        b: { type: "array", items: { $ref: "#/components/schemas/B%20C" } },
+        c: { anyOf: [{ $ref: "https://example.com/schemas/c.json" }, { type: "null" }] },
+        d: { $dynamicRef: "#node" }
+      },
+      default: { $ref: "#/components/schemas/InDefault" },
+      examples: [{ $ref: "#/components/schemas/InExample" }]
+    }
+
+    it("reports each reference in a schema position before it is rewritten", () => {
+      const references: Array<string> = []
+      JsonSchema.fromSchemaOpenApi3_1(input, { onReference: (reference) => references.push(reference) })
+      deepStrictEqual(references.sort(), [
+        "#/components/schemas/A",
+        "#/components/schemas/B%20C",
+        "#node",
+        "https://example.com/schemas/c.json"
+      ])
+    })
+
+    it("does not change the conversion", () => {
+      deepStrictEqual(
+        JsonSchema.fromSchemaOpenApi3_1(input, { onReference: () => {} }),
+        JsonSchema.fromSchemaOpenApi3_1(input)
+      )
+    })
+
+    it("propagates an exception from the callback", () => {
+      throws(
+        () =>
+          JsonSchema.fromSchemaOpenApi3_1(input, {
+            onReference: () => {
+              throw new Error("refused")
+            }
+          }),
+        new Error("refused")
+      )
+    })
+  })
+
+  describe("fromSchemaOpenApi3_0 onReference", () => {
+    const input: JsonSchema.JsonSchema = {
+      type: "object",
+      properties: {
+        a: { $ref: "#/components/schemas/A" },
+        b: { type: "array", items: { $ref: "#/components/schemas/B" }, example: { $ref: "#/components/schemas/X" } },
+        // OpenAPI 3.0 ignores the siblings of a $ref, so their references are not reported either.
+        c: { $ref: "#/components/schemas/C", properties: { d: { $ref: "#/components/schemas/Ignored" } } }
+      }
+    }
+
+    it("reports each reference in a schema position before it is rewritten", () => {
+      const references: Array<string> = []
+      JsonSchema.fromSchemaOpenApi3_0(input, { onReference: (reference) => references.push(reference) })
+      deepStrictEqual(references.sort(), [
+        "#/components/schemas/A",
+        "#/components/schemas/B",
+        "#/components/schemas/C"
+      ])
+    })
+
+    it("does not change the conversion", () => {
+      deepStrictEqual(
+        JsonSchema.fromSchemaOpenApi3_0(input, { onReference: () => {} }),
+        JsonSchema.fromSchemaOpenApi3_0(input)
+      )
+    })
+
+    it("propagates an exception from the callback", () => {
+      throws(
+        () =>
+          JsonSchema.fromSchemaOpenApi3_0(input, {
+            onReference: () => {
+              throw new Error("refused")
+            }
+          }),
+        new Error("refused")
+      )
     })
   })
 
