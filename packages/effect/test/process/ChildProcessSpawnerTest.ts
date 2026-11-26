@@ -1328,7 +1328,7 @@ export const suite = (
               // members to exit
               const killGroup = ChildProcess.make("sh", [
                 "-c",
-                "kill -KILL -- -\"$1\" 2>/dev/null; i=0; while [ $i -lt 50 ] && ps -A -o pgid= -o stat= | awk -v g=\"$1\" '$1 == g && $2 !~ /^Z/ { found = 1 } END { exit !found }'; do sleep 0.1; i=$((i + 1)); done",
+                "kill -KILL -\"$1\" 2>/dev/null; i=0; while [ $i -lt 50 ] && ps -A -o pgid= -o stat= | awk -v g=\"$1\" '$1 == g && $2 !~ /^Z/ { found = 1 } END { exit !found }'; do sleep 0.1; i=$((i + 1)); done",
                 "kill-group",
                 String(handle.pid)
               ]).pipe(Effect.flatMap((handle) => handle.exitCode))
