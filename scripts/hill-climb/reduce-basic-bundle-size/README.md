@@ -50,7 +50,9 @@ Gotchas:
   means those methods can no longer run on their own, for example when called by literal
   key or from another copy of effect.
 
-- `hash-parity.mjs <base dist> <current dist>`: checks that `Hash.hash` and `Equal.equals`
-  give the same results in two builds of effect (for example a `main` worktree's
-  `packages/effect/dist` and the current one) on random nested values.
+- `hash-parity.mjs <base dir> <current dir> [cases]`: checks that `Hash.hash` and
+  `Equal.equals` give the same results in two copies of effect on random nested values,
+  both directly and wrapped in `Exit` and `Cause`. Each directory is a `packages/effect/src`
+  or `packages/effect/dist`, for example from a worktree of `origin/main`:
+  `git worktree add --detach ../main-wt origin/main`.
 - `pipe-arguments-bench.mjs`: compares the unrolled `pipeArguments` switch with a plain loop.
