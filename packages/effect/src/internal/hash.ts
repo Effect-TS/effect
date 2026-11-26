@@ -1,41 +1,3 @@
-import type * as Hash from "../Hash.ts"
-
-/** @internal */
-export const symbol = "~effect/Hash"
-
-/**
- * The functions of `Hash.ts` used by the `[Hash.symbol]` methods of the data
- * types every fiber creates (`Exit`, `Cause` and `Context`).
- *
- * `Hash.ts` provides them, see `provideHashing`, for the same reason
- * `Equal.ts` provides `equals` in `internal/equal.ts`.
- *
- * @internal
- */
-export let hash: typeof Hash.hash
-/** @internal */
-export let combine: typeof Hash.combine
-/** @internal */
-export let string: typeof Hash.string
-/** @internal */
-export let number: typeof Hash.number
-/** @internal */
-export let array: typeof Hash.array
-
-/**
- * Provides the functions above and returns the key of the methods that use
- * them. `Hash.ts` initializes `Hash.symbol` with this call, like `Equal.ts`
- * does with `provideEquals`.
- *
- * @internal
- */
-export const provideHashing = (
-  hashing: Pick<typeof Hash, "hash" | "combine" | "string" | "number" | "array">
-): typeof symbol => {
-  ;({ hash, combine, string, number, array } = hashing)
-  return symbol
-}
-
 /**
  * Back-edge count used to avoid caching entry-point-dependent hashes and
  * comparisons.
@@ -51,3 +13,22 @@ export const addBackEdge = (): void => {
 
 /** @internal */
 export const hashCache = new WeakMap<object, number>()
+
+// 32-bit MurmurHash3 finalizer.
+/** @internal */
+export const mix = (h: number): number => {
+  h ^= h >>> 16
+  h = Math.imul(h, 0x85ebca6b)
+  h ^= h >>> 13
+  h = Math.imul(h, 0xc2b2ae35)
+  return h ^ (h >>> 16)
+}
+
+/**
+ * Data-first `Hash.combine`, for the hashing code that runs with every effect
+ * (`Hash.ts` and the `Exit` and `Cause` data types), which has no use for the
+ * data-last form that `Function.dual` adds.
+ *
+ * @internal
+ */
+export const combine = (self: number, b: number): number => mix(Math.imul(self, 0x9e3779b1) + Math.imul(b, 0x85ebca6b))

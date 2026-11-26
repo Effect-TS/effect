@@ -13,15 +13,15 @@
  */
 import type { Effect, EffectIterator } from "./Effect.ts"
 import * as Effectable from "./Effectable.ts"
-import type * as Equal from "./Equal.ts"
+import * as Equal from "./Equal.ts"
 import { dual, type LazyArg } from "./Function.ts"
+import * as Hash from "./Hash.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import { exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts"
-import * as InternalEqual from "./internal/equal.ts"
-import * as InternalHash from "./internal/hash.ts"
+import { fiberCachedKeys } from "./internal/fiberCachedKeys.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
-import { hasProperty } from "./Predicate.ts"
+import { hasPropertyDataFirst } from "./Predicate.ts"
 import type * as Types from "./Types.ts"
 
 /**
@@ -208,13 +208,7 @@ export declare namespace ServiceClass {
  * @since 4.0.0
  */
 export const Service: {
-  <Identifier, Shape = Identifier>(
-    key: string,
-    options?: {
-      /** @internal */
-      readonly fiberCached?: boolean | undefined
-    } | undefined
-  ): Service<Identifier, Shape>
+  <Identifier, Shape = Identifier>(key: string): Service<Identifier, Shape>
   <Self, Shape>(): <
     const Identifier extends string,
     E,
@@ -224,8 +218,6 @@ export const Service: {
     id: Identifier,
     options?: {
       readonly make?: ((...args: Args) => Effect<Shape, E, R>) | Effect<Shape, E, R> | undefined
-      /** @internal */
-      readonly fiberCached?: boolean | undefined
     } | undefined
   ) =>
     & ServiceClass<Self, Identifier, Shape>
@@ -238,8 +230,6 @@ export const Service: {
     id: Identifier,
     options: {
       readonly make: Make
-      /** @internal */
-      readonly fiberCached?: boolean | undefined
     }
   ) =>
     & ServiceClass<
@@ -257,7 +247,6 @@ export const Service: {
   const init = (key: string, options?: {
     readonly defaultValue?: any
     readonly make?: any
-    readonly fiberCached?: boolean
   }) => {
     self.key = key
     if (options?.defaultValue) {
@@ -267,14 +256,15 @@ export const Service: {
     if (options?.make) {
       ;(self as any).make = options.make
     }
-    if (options?.fiberCached) {
-      cacheKeys.add(key)
-    }
     return self
   }
   return arguments.length > 0 ? init(arguments[0], arguments[1]) : init
 } as any
 
+// Built with `Object.assign` rather than object spread: the build marks the
+// call pure, so bundlers drop `ServiceProto`, and `Effectable.ts` with it, from
+// programs that never create a service key. Bundlers keep a spread, because it
+// may run getters.
 const ServiceProto: any = Object.assign(
   { [ServiceTypeId]: ServiceTypeId },
   Effectable.Prototype<Service<never, any>>({
@@ -307,25 +297,6 @@ const ServiceProto: any = Object.assign(
     }
   }
 )
-
-// Keys whose services fibers cache (see `Fiber.Cache`). Adding one of them to a
-// context starts a new cache, so a fiber never reads a stale value.
-//
-// The keys the runtime caches are listed here instead of being registered by
-// their services: the runtime reads them by key, so a bundle may not contain
-// the service that would register them.
-const cacheKeys = new Set<string>([
-  "effect/Scheduler",
-  "effect/Scheduler/MaxOpsBeforeYield",
-  "effect/Scheduler/PreventSchedulerYield",
-  "effect/Tracer",
-  "effect/Tracer/ParentSpan",
-  "effect/References/TracerEnabled",
-  "effect/References/CurrentStackFrame",
-  "effect/References/CurrentLogLevel",
-  "effect/References/MinimumLogLevel",
-  "effect/Metric/FiberRuntimeMetrics"
-])
 
 const ReferenceTypeId = "~effect/Context/Reference" as const
 
@@ -654,18 +625,18 @@ const Proto: Omit<
       services: Array.from(this.mapUnsafe).map(([key, value]) => ({ key, value }))
     }
   },
-  [InternalEqual.symbol]<A>(this: Context<A>, that: unknown): boolean {
+  [Equal.symbol]<A>(this: Context<A>, that: unknown): boolean {
     if (!isContext(that)) return false
     const self = this.mapUnsafe
     const other = that.mapUnsafe
     if (self.size !== other.size) return false
     for (const [key, value] of self) {
-      if (!other.has(key) || !InternalEqual.equals(value, other.get(key))) return false
+      if (!other.has(key) || !Equal.equals(value, other.get(key))) return false
     }
     return true
   },
-  [InternalHash.symbol]<A>(this: Context<A>): number {
-    return InternalHash.number(this.mapUnsafe.size)
+  [Hash.symbol]<A>(this: Context<A>): number {
+    return Hash.number(this.mapUnsafe.size)
   }
 }
 
@@ -707,7 +678,7 @@ export const hasSameCache = <Services, Services2>(
  * @category guards
  * @since 2.0.0
  */
-export const isContext = (u: unknown): u is Context<never> => hasProperty(u, TypeId)
+export const isContext = (u: unknown): u is Context<never> => hasPropertyDataFirst(u, TypeId)
 
 /**
  * Checks whether the provided argument is a `Key`.
@@ -723,7 +694,7 @@ export const isContext = (u: unknown): u is Context<never> => hasProperty(u, Typ
  * @category guards
  * @since 4.0.0
  */
-export const isKey = (u: unknown): u is Key<any, any> => hasProperty(u, ServiceTypeId)
+export const isKey = (u: unknown): u is Key<any, any> => hasPropertyDataFirst(u, ServiceTypeId)
 
 /**
  * Checks whether the provided argument is a `Reference`.
@@ -854,7 +825,8 @@ export const addUnsafe = <Services, I, S>(
   service: Types.NoInfer<S>
 ): Context<Services | I> => {
   const impl = self as ContextImpl<Services>
-  const cacheRoot = cacheKeys.has(key) ? undefined : impl.cacheRoot
+  // A fiber never reads a stale value: adding a key fibers cache starts a new cache
+  const cacheRoot = fiberCachedKeys.has(key) ? undefined : impl.cacheRoot
   if (impl.depth >= impl.maxDepth) {
     // Avoid mapUnsafe: it would flatten the parent before copying.
     const map = new Map(impl._flat ?? impl.base)
@@ -1032,13 +1004,20 @@ export interface ReferenceDefinition<Shape> {
 }
 
 /**
- * Creates the `Reference` of a definition. Both resolve to the same default
- * value.
+ * Creates the `Reference` of a definition.
+ *
+ * The reference keeps the definition's `defaultValue`, so calling it directly
+ * still creates a new value, and memoizes its default on the definition, so the
+ * reference and the runtime, which reads the definition, resolve the same
+ * default value.
  *
  * @internal
  */
-export const referenceFromDefinition = <Shape>(definition: ReferenceDefinition<Shape>): Reference<Shape> =>
-  Reference(definition.key, { defaultValue: () => getDefaultValue(definition) })
+export const referenceFromDefinition = <Shape>(definition: ReferenceDefinition<Shape>): Reference<Shape> => {
+  const reference = Reference(definition.key, { defaultValue: definition.defaultValue })
+  ;(reference as any)[definitionKey] = definition
+  return reference
+}
 
 /**
  * Same as `get` for a `Reference` or its definition, neither of which reaches
@@ -1144,11 +1123,15 @@ export const get: {
 
 const defaultValueCacheKey = "~effect/Context/defaultValue" as const
 
+const definitionKey = "~effect/Context/definition" as const
+
 const getDefaultValue = (ref: ReferenceDefinition<any>) => {
-  if (defaultValueCacheKey in ref) {
-    return ref[defaultValueCacheKey] as any
+  // References made by `referenceFromDefinition` memoize on their definition
+  const memo: any = (ref as any)[definitionKey] ?? ref
+  if (defaultValueCacheKey in memo) {
+    return memo[defaultValueCacheKey]
   }
-  return (ref as any)[defaultValueCacheKey] = ref.defaultValue()
+  return memo[defaultValueCacheKey] = memo.defaultValue()
 }
 
 const serviceNotFoundError = (service: Key<any, any>) => {
@@ -1447,7 +1430,5 @@ export const Reference: <Service>(
   key: string,
   options: {
     readonly defaultValue: () => Service
-    /** @internal */
-    readonly fiberCached?: boolean | undefined
   }
 ) => Reference<Service> = Service as any

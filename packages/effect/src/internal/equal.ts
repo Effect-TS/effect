@@ -1,47 +1,11 @@
-/** @internal */
-export const symbol = "~effect/Equal"
-
-/**
- * `Equal.equals`, for the `[Equal.symbol]` methods of the data types every
- * fiber creates (`Exit`, `Cause` and `Context`).
- *
- * If those methods imported `Equal.ts`, every program that runs an effect would
- * carry structural equality, whether or not it compares anything. `Equal.ts`
- * provides the comparison instead, see `provideEquals`.
- *
- * @internal
- */
-export let equals: (self: unknown, that: unknown) => boolean
-
-/**
- * Provides `equals` and returns the key of the methods that use it.
- *
- * `Equal.ts` initializes `Equal.symbol` with this call. Reaching one of the
- * methods takes that key, directly or through `Equal.equals`, so the comparison
- * is provided before the first call and a bundle only drops it together with
- * every use of the key.
- *
- * @internal
- */
-export const provideEquals = (f: (self: unknown, that: unknown) => boolean): typeof symbol => {
-  equals = f
-  return symbol
-}
-
 // JavaScriptCore (Bun, Safari) stamps the construction site onto every Error as
 // non-enumerable own properties. Like `stack`, they describe where the error was
 // created, not what it is.
 const errorSiteKeys = ["line", "column", "sourceURL", "originalLine", "originalColumn"]
 
-const ownKeys = (obj: object): Array<PropertyKey> => {
-  const names = Object.getOwnPropertyNames(obj)
-  const syms = Object.getOwnPropertySymbols(obj)
-  return syms.length > 0 ? [...names, ...syms] : names
-}
-
 /** @internal */
 export const getAllObjectKeys = (obj: object): Array<PropertyKey> | Set<PropertyKey> => {
-  const own = ownKeys(obj)
+  const own = Reflect.ownKeys(obj)
   const proto = Object.getPrototypeOf(obj)
   if (proto === Object.prototype || proto === null) return own
   const keys = new Set<PropertyKey>(own)
@@ -55,7 +19,7 @@ export const getAllObjectKeys = (obj: object): Array<PropertyKey> | Set<Property
 
   let current = proto
   while (current !== null && current !== Object.prototype) {
-    for (const key of ownKeys(current)) keys.add(key)
+    for (const key of Reflect.ownKeys(current)) keys.add(key)
     current = Object.getPrototypeOf(current)
   }
   if (typeof obj.constructor === "function" && proto === obj.constructor.prototype) {

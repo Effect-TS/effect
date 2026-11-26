@@ -5,12 +5,14 @@ import type * as Console from "../Console.ts"
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import type * as Effect from "../Effect.ts"
+import * as Equal from "../Equal.ts"
 import type * as Exit from "../Exit.ts"
 import type * as Fiber from "../Fiber.ts"
 import * as Filter from "../Filter.ts"
 import { formatJson } from "../Formatter.ts"
 import type { LazyArg } from "../Function.ts"
 import { constant, constFalse, constTrue, constUndefined, constVoid, dual, identity } from "../Function.ts"
+import * as Hash from "../Hash.ts"
 import { toJson, toStringUnknown } from "../Inspectable.ts"
 import * as Iterable from "../Iterable.ts"
 import type * as _Latch from "../Latch.ts"
@@ -20,7 +22,7 @@ import * as Option from "../Option.ts"
 import * as Order from "../Order.ts"
 import { pipeArguments } from "../Pipeable.ts"
 import type * as Predicate from "../Predicate.ts"
-import { hasProperty, isIterable, isString, isTagged } from "../Predicate.ts"
+import { hasPropertyDataFirst, isIterable, isString, isTagged } from "../Predicate.ts"
 import { currentFiberTypeId, redact } from "../Redactable.ts"
 import type { StackFrame } from "../References.ts"
 import * as Result from "../Result.ts"
@@ -48,7 +50,7 @@ import type { Primitive } from "./core.ts"
 import {
   args,
   causeAddInterrupts,
-  causeAnnotate,
+  causeAnnotateMap,
   causeCombine,
   causeEmpty,
   causeFromReasons,
@@ -83,9 +85,7 @@ import {
   Yield
 } from "./core.ts"
 import * as doNotation from "./doNotation.ts"
-import * as InternalEqual from "./equal.ts"
-import * as InternalHash from "./hash.ts"
-import * as InternalMetric from "./metric.ts"
+import * as FiberCachedKeys from "./fiberCachedKeys.ts"
 import * as InternalRecord from "./record.ts"
 import {
   CurrentErrorReporters,
@@ -128,17 +128,17 @@ export class Interrupt extends ReasonBase<"Interrupt"> implements Cause.Interrup
       fiberId: this.fiberId
     }
   }
-  [InternalEqual.symbol](that: any): boolean {
+  [Equal.symbol](that: any): boolean {
     return (
       isInterruptReason(that) &&
       this.fiberId === that.fiberId &&
       this.annotations === that.annotations
     )
   }
-  [InternalHash.symbol](): number {
+  [Hash.symbol](): number {
     // Equality compares annotations by reference, so leave them out instead of
     // hashing them randomly.
-    return InternalHash.string(`${this._tag}:${this.fiberId}`)
+    return Hash.string(`${this._tag}:${this.fiberId}`)
   }
 }
 
@@ -599,10 +599,10 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     let cause = causeInterrupt(fiberId)
     if (this.cache.stackFrame) {
-      cause = causeAnnotate(cause, Context.make(CauseStackTrace, this.cache.stackFrame))
+      cause = causeAnnotateMap(cause, new Map([[CauseStackTrace.key, this.cache.stackFrame]]))
     }
     if (annotations) {
-      cause = causeAnnotate(cause, annotations)
+      cause = causeAnnotateMap(cause, annotations.mapUnsafe)
     }
     this._interruptedCause = this._interruptedCause
       ? causeAddInterrupts(this._interruptedCause, cause)
@@ -726,7 +726,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
             return Yield
           }
         } catch (error) {
-          if (!hasProperty(current, evaluate)) {
+          if (!hasPropertyDataFirst(current, evaluate)) {
             return exitDie(`Fiber.runLoop: Not a valid effect: ${String(current)}`)
           }
           current = exitDie(error) as any
@@ -798,17 +798,17 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
   // Reading by key and by definition keeps the services, and the native
   // tracer behind Tracer.Tracer's default, out of bundles that never use them
-  const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
+  const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, FiberCachedKeys.TracerKey)
   return {
     scheduler: Context.getReferenceUnsafe(context, Scheduler.schedulerDefinition),
     tracer: currentTracer,
     tracerContext: currentTracer ? currentTracer["context"] : undefined,
     tracerEnabled: Context.getReferenceUnsafe(context, tracerEnabledDefinition),
-    span: Context.getOrUndefinedUnsafe(context, Tracer.ParentSpanKey),
+    span: Context.getOrUndefinedUnsafe(context, FiberCachedKeys.ParentSpanKey),
     logLevel: Context.getReferenceUnsafe(context, currentLogLevelDefinition),
     minimumLogLevel: Context.getReferenceUnsafe(context, minimumLogLevelDefinition),
     stackFrame: Context.getReferenceUnsafe(context, currentStackFrameDefinition),
-    runtimeMetrics: Context.getOrUndefinedUnsafe(context, InternalMetric.FiberRuntimeMetricsKey),
+    runtimeMetrics: Context.getOrUndefinedUnsafe(context, FiberCachedKeys.FiberRuntimeMetricsKey),
     maxOpsBeforeYield: Context.getReferenceUnsafe(context, Scheduler.maxOpsBeforeYieldDefinition),
     preventYield: Context.getReferenceUnsafe(context, Scheduler.preventSchedulerYieldDefinition)
   }
@@ -978,7 +978,7 @@ export const fiberInterruptAs: {
     annotations?: Context.Context<never> | undefined
   ): Effect.Effect<void>
 } = dual(
-  (args) => hasProperty(args[0], FiberTypeId),
+  (args) => hasPropertyDataFirst(args[0], FiberTypeId),
   <A, E>(
     self: Fiber.Fiber<A, E>,
     fiberId: number | undefined,
@@ -2937,7 +2937,7 @@ export const tapErrorTag: {
   ): Effect.Effect<A, E | E1, R | R1> => {
     const predicate = Array.isArray(k)
       ? ((e: E): e is ExtractTag<E, K extends Arr.NonEmptyReadonlyArray<string> ? K[number] : K> =>
-        hasProperty(e, "_tag") && k.includes(e._tag))
+        hasPropertyDataFirst(e, "_tag") && k.includes(e._tag))
       : isTagged(k as string)
     return tapError(
       self,
@@ -3129,7 +3129,7 @@ export const catchTag: {
       | undefined
   ): Effect.Effect<A | A1 | A2, E1 | E2, R | R1 | R2> => {
     const pred = Array.isArray(k)
-      ? ((e: E): e is any => hasProperty(e, "_tag") && k.includes(e._tag))
+      ? ((e: E): e is any => hasPropertyDataFirst(e, "_tag") && k.includes(e._tag))
       : isTagged(k as string)
     return catchIf(self, pred, f, orElse as any) as any
   }
@@ -3204,7 +3204,7 @@ export const catchTags: {
     self,
     (e) => {
       keys ??= Object.keys(cases)
-      return hasProperty(e, "_tag") && isString(e["_tag"]) && keys.includes(e["_tag"])
+      return hasPropertyDataFirst(e, "_tag") && isString(e["_tag"]) && keys.includes(e["_tag"])
         ? Result.succeed(e)
         : Result.fail(e)
     },
@@ -3310,7 +3310,7 @@ export const catchReason: {
       self,
       ((e: any) =>
         isTagged(e, errorTag) &&
-        hasProperty(e, "reason") &&
+        hasPropertyDataFirst(e, "reason") &&
         (orElse !== undefined || isTagged(e.reason, reasonTag))) as any,
       (e: any): Effect.Effect<A2 | A3, E | E2 | E3, R2 | R3> => {
         const reason = e.reason as any
@@ -3329,8 +3329,8 @@ export const catchReasons: typeof Effect.catchReasons = dual(
       self,
       ((e: any) =>
         isTagged(e, errorTag) &&
-        hasProperty(e, "reason") &&
-        hasProperty(e.reason, "_tag") &&
+        hasPropertyDataFirst(e, "reason") &&
+        hasPropertyDataFirst(e.reason, "_tag") &&
         isString(e.reason._tag) &&
         (orElse !== undefined || (keys ??= Object.keys(cases)).includes(e.reason._tag))) as any,
       (e: any) => {
@@ -3376,7 +3376,7 @@ export const unwrapReason: {
     catchFilter(
       self,
       (e: any) => {
-        if (isTagged(e, errorTag) && hasProperty(e, "reason")) {
+        if (isTagged(e, errorTag) && hasPropertyDataFirst(e, "reason")) {
           return Result.succeed(e.reason)
         }
         return Result.fail(e)
@@ -4456,7 +4456,7 @@ export const acquireDisposable = <A extends AsyncDisposable | Disposable, E, R>(
   acquire: Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R | Scope.Scope> =>
   acquireRelease(acquire, (resource) =>
-    hasProperty(resource, Symbol.asyncDispose)
+    hasPropertyDataFirst(resource, Symbol.asyncDispose)
       ? promise(() => resource[Symbol.asyncDispose]())
       : sync(() => resource[Symbol.dispose]()))
 
@@ -6444,7 +6444,7 @@ export const monotonicTimeNanos: Effect.Effect<bigint> = clockWith((clock) => cl
 export const TimeoutErrorTypeId = "~effect/Cause/TimeoutError"
 
 /** @internal */
-export const isTimeoutError = (u: unknown): u is Cause.TimeoutError => hasProperty(u, TimeoutErrorTypeId)
+export const isTimeoutError = (u: unknown): u is Cause.TimeoutError => hasPropertyDataFirst(u, TimeoutErrorTypeId)
 
 /** @internal */
 export class TimeoutError extends TaggedError("TimeoutError") {
@@ -6460,7 +6460,7 @@ export const IllegalArgumentErrorTypeId = "~effect/Cause/IllegalArgumentError"
 /** @internal */
 export const isIllegalArgumentError = (
   u: unknown
-): u is Cause.IllegalArgumentError => hasProperty(u, IllegalArgumentErrorTypeId)
+): u is Cause.IllegalArgumentError => hasPropertyDataFirst(u, IllegalArgumentErrorTypeId)
 
 /** @internal */
 export class IllegalArgumentError extends TaggedError("IllegalArgumentError") {
@@ -6476,7 +6476,7 @@ export const ExceededCapacityErrorTypeId = "~effect/Cause/ExceededCapacityError"
 /** @internal */
 export const isExceededCapacityError = (
   u: unknown
-): u is Cause.ExceededCapacityError => hasProperty(u, ExceededCapacityErrorTypeId)
+): u is Cause.ExceededCapacityError => hasPropertyDataFirst(u, ExceededCapacityErrorTypeId)
 
 /** @internal */
 export class ExceededCapacityError extends TaggedError("ExceededCapacityError") {
@@ -6492,7 +6492,7 @@ export const AsyncFiberErrorTypeId = "~effect/Cause/AsyncFiberError"
 /** @internal */
 export const isAsyncFiberError = (
   u: unknown
-): u is Cause.AsyncFiberError => hasProperty(u, AsyncFiberErrorTypeId)
+): u is Cause.AsyncFiberError => hasPropertyDataFirst(u, AsyncFiberErrorTypeId)
 
 /** @internal */
 export class AsyncFiberError extends TaggedError("AsyncFiberError")<{
@@ -6514,7 +6514,7 @@ export const UnknownErrorTypeId = "~effect/Cause/UnknownError"
 /** @internal */
 export const isUnknownError = (
   u: unknown
-): u is Cause.UnknownError => hasProperty(u, UnknownErrorTypeId)
+): u is Cause.UnknownError => hasPropertyDataFirst(u, UnknownErrorTypeId)
 
 /** @internal */
 export class UnknownError extends TaggedError("UnknownError")<{

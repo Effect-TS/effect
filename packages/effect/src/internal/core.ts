@@ -8,13 +8,12 @@ import { dual, identity } from "../Function.ts"
 import * as Hash from "../Hash.ts"
 import { NodeInspectSymbol } from "../Inspectable.ts"
 import { pipeArguments } from "../Pipeable.ts"
-import { hasProperty } from "../Predicate.ts"
+import { hasPropertyDataFirst } from "../Predicate.ts"
 import type { StackFrame } from "../References.ts"
 import type * as Types from "../Types.ts"
 import { SingleShotGen } from "../Utils.ts"
 import type { FiberImpl } from "./effect.ts"
-import * as InternalEqual from "./equal.ts"
-import * as InternalHash from "./hash.ts"
+import { combine as combineHashes } from "./hash.ts"
 import * as InternalRecord from "./record.ts"
 
 /** @internal */
@@ -114,10 +113,11 @@ export const EffectProto = {
 }
 
 /** @internal */
-export const isEffect = (u: unknown): u is Effect.Effect<unknown, unknown, unknown> => hasProperty(u, EffectTypeId)
+export const isEffect = (u: unknown): u is Effect.Effect<unknown, unknown, unknown> =>
+  hasPropertyDataFirst(u, EffectTypeId)
 
 /** @internal */
-export const isExit = (u: unknown): u is Exit.Exit<unknown, unknown> => hasProperty(u, ExitTypeId)
+export const isExit = (u: unknown): u is Exit.Exit<unknown, unknown> => hasPropertyDataFirst(u, ExitTypeId)
 
 // ----------------------------------------------------------------------------
 // Cause
@@ -130,10 +130,11 @@ export const CauseTypeId = "~effect/Cause"
 export const CauseReasonTypeId = "~effect/Cause/Reason"
 
 /** @internal */
-export const isCause = (self: unknown): self is Cause.Cause<unknown> => hasProperty(self, CauseTypeId)
+export const isCause = (self: unknown): self is Cause.Cause<unknown> => hasPropertyDataFirst(self, CauseTypeId)
 
 /** @internal */
-export const isCauseReason = (self: unknown): self is Cause.Reason<unknown> => hasProperty(self, CauseReasonTypeId)
+export const isCauseReason = (self: unknown): self is Cause.Reason<unknown> =>
+  hasPropertyDataFirst(self, CauseReasonTypeId)
 
 /** @internal */
 export class CauseImpl<E> implements Cause.Cause<E> {
@@ -164,15 +165,15 @@ export class CauseImpl<E> implements Cause.Cause<E> {
   [NodeInspectSymbol]() {
     return this.toJSON()
   }
-  [InternalEqual.symbol](that: any): boolean {
+  [Equal.symbol](that: any): boolean {
     return (
       isCause(that) &&
       this.reasons.length === that.reasons.length &&
-      this.reasons.every((e, i) => InternalEqual.equals(e, that.reasons[i]))
+      this.reasons.every((e, i) => Equal.equals(e, that.reasons[i]))
     )
   }
-  [InternalHash.symbol](): number {
-    return InternalHash.array(this.reasons)
+  [Hash.symbol](): number {
+    return Hash.array(this.reasons)
   }
 }
 
@@ -211,17 +212,7 @@ export abstract class ReasonBase<Tag extends string> implements Cause.Cause.Reas
     annotations: Context.Context<never>,
     options?: { readonly overwrite?: boolean | undefined }
   ): this {
-    if (annotations.mapUnsafe.size === 0) return this
-    const newAnnotations = new Map(this.annotations)
-    annotations.mapUnsafe.forEach((value, key) => {
-      if (options?.overwrite !== true && newAnnotations.has(key)) return
-      newAnnotations.set(key, value)
-    })
-    // Keep the reason when nothing was added, so interrupts still match by identity.
-    if (options?.overwrite !== true && newAnnotations.size === this.annotations.size) return this
-    const self = Object.assign(Object.create(Object.getPrototypeOf(this)), this)
-    self.annotations = newAnnotations
-    return self
+    return annotateReason(this, annotations.mapUnsafe, options)
   }
 
   pipe() {
@@ -229,8 +220,8 @@ export abstract class ReasonBase<Tag extends string> implements Cause.Cause.Reas
   }
 
   abstract toJSON(): unknown
-  abstract [InternalEqual.symbol](that: any): boolean
-  abstract [InternalHash.symbol](): number
+  abstract [Equal.symbol](that: any): boolean
+  abstract [Hash.symbol](): number
 
   toString() {
     return format(this)
@@ -239,6 +230,24 @@ export abstract class ReasonBase<Tag extends string> implements Cause.Cause.Reas
   [NodeInspectSymbol]() {
     return this.toString()
   }
+}
+
+const annotateReason = <R extends ReasonBase<any>>(
+  reason: R,
+  annotations: ReadonlyMap<string, unknown>,
+  options?: { readonly overwrite?: boolean | undefined }
+): R => {
+  if (annotations.size === 0) return reason
+  const newAnnotations = new Map(reason.annotations)
+  annotations.forEach((value, key) => {
+    if (options?.overwrite !== true && newAnnotations.has(key)) return
+    newAnnotations.set(key, value)
+  })
+  // Keep the reason when nothing was added, so interrupts still match by identity.
+  if (options?.overwrite !== true && newAnnotations.size === reason.annotations.size) return reason
+  const self = Object.assign(Object.create(Object.getPrototypeOf(reason)), reason)
+  self.annotations = newAnnotations
+  return self
 }
 
 /** @internal */
@@ -263,16 +272,17 @@ export class Fail<E> extends ReasonBase<"Fail"> implements Cause.Fail<E> {
       error: this.error
     }
   }
-  [InternalEqual.symbol](that: any): boolean {
+  [Equal.symbol](that: any): boolean {
     return (
       isFailReason(that) &&
-      InternalEqual.equals(this.error, that.error) &&
-      InternalEqual.equals(this.annotations, that.annotations)
+      Equal.equals(this.error, that.error) &&
+      Equal.equals(this.annotations, that.annotations)
     )
   }
-  [InternalHash.symbol](): number {
-    return InternalHash.combine(InternalHash.string(this._tag))(
-      InternalHash.combine(InternalHash.hash(this.error))(InternalHash.hash(this.annotations))
+  [Hash.symbol](): number {
+    return combineHashes(
+      combineHashes(Hash.hash(this.annotations), Hash.hash(this.error)),
+      Hash.string(this._tag)
     )
   }
 }
@@ -369,16 +379,17 @@ export class Die extends ReasonBase<"Die"> implements Cause.Die {
       defect: this.defect
     }
   }
-  [InternalEqual.symbol](that: any): boolean {
+  [Equal.symbol](that: any): boolean {
     return (
       isDieReason(that) &&
-      InternalEqual.equals(this.defect, that.defect) &&
-      InternalEqual.equals(this.annotations, that.annotations)
+      Equal.equals(this.defect, that.defect) &&
+      Equal.equals(this.annotations, that.annotations)
     )
   }
-  [InternalHash.symbol](): number {
-    return InternalHash.combine(InternalHash.string(this._tag))(
-      InternalHash.combine(InternalHash.hash(this.defect))(InternalHash.hash(this.annotations))
+  [Hash.symbol](): number {
+    return combineHashes(
+      combineHashes(Hash.hash(this.annotations), Hash.hash(this.defect)),
+      Hash.string(this._tag)
     )
   }
 }
@@ -409,11 +420,28 @@ export const causeAnnotate: {
     options?: {
       readonly overwrite?: boolean | undefined
     }
-  ): Cause.Cause<E> => {
-    if (annotations.mapUnsafe.size === 0) return self
-    return new CauseImpl(self.reasons.map((f) => f.annotate(annotations, options)))
-  }
+  ): Cause.Cause<E> => causeAnnotateMap(self, annotations.mapUnsafe, options)
 )
+
+/**
+ * Data-first `causeAnnotate` taking the annotations as a map, for the fiber
+ * runtime, which annotates with values it already holds rather than a
+ * `Context`.
+ *
+ * @internal
+ */
+export const causeAnnotateMap = <E>(
+  self: Cause.Cause<E>,
+  annotations: ReadonlyMap<string, unknown>,
+  options?: {
+    readonly overwrite?: boolean | undefined
+  }
+): Cause.Cause<E> => {
+  if (annotations.size === 0) return self
+  return new CauseImpl(
+    self.reasons.map((reason) => annotateReason(reason as Cause.Reason<E> & ReasonBase<any>, annotations, options))
+  )
+}
 
 /** @internal */
 export const isFailReason = <E>(
@@ -559,15 +587,15 @@ export const makeExit = <
         [options.prop]: this[args]
       }
     },
-    [InternalEqual.symbol](this: any, that: any): boolean {
+    [Equal.symbol](this: any, that: any): boolean {
       return (
         isExit(that) &&
         that._tag === this._tag &&
-        InternalEqual.equals(this[args], (that as any)[args])
+        Equal.equals(this[args], (that as any)[args])
       )
     },
-    [InternalHash.symbol](this: any): number {
-      return InternalHash.combine(InternalHash.string(options.op), InternalHash.hash(this[args]))
+    [Hash.symbol](this: any): number {
+      return combineHashes(Hash.string(options.op), Hash.hash(this[args]))
     }
   }
   const ExitPrimitive = function(this: any, value: unknown) {
@@ -607,7 +635,7 @@ export const exitFailCause: <E>(cause: Cause.Cause<E>) => Exit.Exit<never, E> = 
     let cause = this[args]
     let annotated = false
     if (fiber.cache.stackFrame) {
-      cause = causeAnnotate(cause, { mapUnsafe: new Map([[StackTraceKey.key, fiber.cache.stackFrame]]) } as any)
+      cause = causeAnnotateMap(cause, new Map([[StackTraceKey.key, fiber.cache.stackFrame]]))
       annotated = true
     }
     let cont = fiber.getCont(contE)
@@ -727,7 +755,7 @@ export const NoSuchElementErrorTypeId = "~effect/Cause/NoSuchElementError"
 /** @internal */
 export const isNoSuchElementError = (
   u: unknown
-): u is Cause.NoSuchElementError => hasProperty(u, NoSuchElementErrorTypeId)
+): u is Cause.NoSuchElementError => hasPropertyDataFirst(u, NoSuchElementErrorTypeId)
 
 /** @internal */
 export class NoSuchElementError extends TaggedError("NoSuchElementError") {
@@ -743,7 +771,7 @@ export const DoneTypeId = "~effect/Cause/Done"
 /** @internal */
 export const isDone = (
   u: unknown
-): u is Cause.Done => hasProperty(u, DoneTypeId)
+): u is Cause.Done => hasPropertyDataFirst(u, DoneTypeId)
 
 const DoneVoid: Cause.Done<void> = {
   [DoneTypeId]: DoneTypeId,
