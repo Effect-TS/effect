@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Exit, Fiber, Layer, Option, Queue, Stream } from "effect"
+import { Cause, Clock, Deferred, Effect, Exit, Fiber, Layer, Option, Queue, Stream } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import type { StoreId } from "effect/eventlog/EventLogMessage"
 import type * as EventLogServerUnencrypted from "effect/eventlog/EventLogServerUnencrypted"
@@ -450,5 +450,31 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         yield* release
         yield* storage.write(storeId, [sentinel])
         assertEntries([yield* Queue.take(changes)], [sentinel], 2)
+      }))
+
+    it.effect("leaves no timer pending once a store has no open changes stream", () =>
+      Effect.gen(function*() {
+        const clock = yield* Clock.Clock
+        let pendingSleeps = 0
+        const storage = yield* makeStorage(makeOptions("idle_timers")).pipe(
+          Effect.provideService(Clock.Clock, {
+            ...clock,
+            sleep: (duration) =>
+              Effect.suspend(() => {
+                pendingSleeps++
+                return clock.sleep(duration)
+              }).pipe(Effect.ensuring(Effect.sync(() => pendingSleeps--)))
+          })
+        )
+        const storeId = makeStoreId("idle_timers")
+
+        yield* storage.write(storeId, [makeEntry("Ada")])
+        yield* Effect.yieldNow
+        assert.strictEqual(pendingSleeps, 0, "a write with no open changes stream left a timer pending")
+
+        yield* Effect.scoped(openChanges(storage, storeId))
+        yield* storage.write(storeId, [makeEntry("Grace")])
+        yield* Effect.yieldNow
+        assert.strictEqual(pendingSleeps, 0, "closing the last changes stream left a timer pending")
       }))
   })
