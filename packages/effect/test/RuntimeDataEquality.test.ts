@@ -2,11 +2,11 @@ import { assert, describe, it } from "@effect/vitest"
 import type * as EqualModule from "effect/Equal"
 import { vi } from "vitest"
 
-// Exit, Cause and Context do not import Equal.ts and Hash.ts, which provide
-// them with structural equality and hashing. Each case loads a fresh module
-// graph and calls the protocol methods first, so nothing has dispatched to them
-// through Equal.equals or Hash.hash before. This file must therefore not import
-// effect modules statically.
+// Other copies of effect, and code that names the keys, call the protocol
+// methods of Exit, Cause and Context directly. Each case loads a fresh module
+// graph and calls the methods first, so nothing has dispatched to them through
+// Equal.equals or Hash.hash before. This file must therefore not import effect
+// modules statically.
 const names = ["success", "failure", "cause", "fail", "die", "context"] as const
 type Name = typeof names[number]
 

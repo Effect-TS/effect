@@ -124,6 +124,19 @@ export function format(input: unknown, options?: {
     return ctor && ctor !== Object.prototype.constructor && ctor.name ? `${ctor.name}(${body})` : body
   }
 
+  // Lays the entries out on one line, or one per line when indenting more than
+  // one entry. `sep` separates an object key from its value.
+  const block = <A>(
+    open: string,
+    close: string,
+    entries: ReadonlyArray<A>,
+    d: number,
+    entry: (a: A, d: number, sep: string) => string
+  ): string =>
+    !gap || entries.length <= 1
+      ? `${open}${entries.map((a) => entry(a, d, ":")).join(",")}${close}`
+      : `${open}\n${entries.map((a) => ind(d + 1) + entry(a, d + 1, ": ")).join(",\n")}\n${ind(d)}${close}`
+
   const ownKeys = (o: object): Array<PropertyKey> => {
     try {
       return Reflect.ownKeys(o)
@@ -161,14 +174,12 @@ export function format(input: unknown, options?: {
       if (symbolRedactable in v) {
         output = recur(getRedacted(v as any), d)
       } else if (Array.isArray(v)) {
-        output = !gap || v.length <= 1
-          ? `[${v.map((x) => recur(x, d)).join(",")}]`
-          : `[\n${ind(d + 1)}${v.map((x) => recur(x, d + 1)).join(",\n" + ind(d + 1))}\n${ind(d)}]`
+        output = block("[", "]", v, d, recur)
       } else if (v instanceof Date) {
         output = formatDate(v)
       } else if (
         !options?.ignoreToString &&
-        Predicate.hasProperty(v, "toString") &&
+        Predicate.hasPropertyDataFirst(v, "toString") &&
         typeof v["toString"] === "function" &&
         v["toString"] !== Object.prototype.toString &&
         v["toString"] !== Array.prototype.toString
@@ -178,16 +189,10 @@ export function format(input: unknown, options?: {
       } else if (Symbol.iterator in v) {
         output = `${v.constructor.name}(${recur(Array.from(v as any), d)})`
       } else {
-        const keys = ownKeys(v)
-        if (!gap || keys.length <= 1) {
-          const body = `{${keys.map((k) => `${formatPropertyKey(k)}:${recur(safeGet(v, k), d)}`).join(",")}}`
-          output = wrap(v, body)
-        } else {
-          const body = `{\n${
-            keys.map((k) => `${ind(d + 1)}${formatPropertyKey(k)}: ${recur(safeGet(v, k), d + 1)}`).join(",\n")
-          }\n${ind(d)}}`
-          output = wrap(v, body)
-        }
+        output = wrap(
+          v,
+          block("{", "}", ownKeys(v), d, (k, d, sep) => formatPropertyKey(k) + sep + recur(safeGet(v, k), d))
+        )
       }
       ancestors.delete(v)
       return output
@@ -316,7 +321,7 @@ export function formatJson(input: unknown, options?: {
     input,
     function(this: object, key: string, value: unknown) {
       const original = Object.getOwnPropertyDescriptor(sources.get(this) ?? this, key)?.value
-      const redacted = Predicate.hasProperty(original, symbolRedactable)
+      const redacted = Predicate.hasPropertyDataFirst(original, symbolRedactable)
         ? redact(original)
         : redact(value)
       if (typeof redacted === "bigint") {
@@ -325,7 +330,7 @@ export function formatJson(input: unknown, options?: {
       if (typeof redacted !== "object" || redacted === null) {
         return redacted
       }
-      const current = redacted instanceof Error && !Predicate.hasProperty(redacted, "toJSON")
+      const current = redacted instanceof Error && !Predicate.hasPropertyDataFirst(redacted, "toJSON")
         ? { ...redacted, name: redacted.name, message: redacted.message }
         : redacted
       while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {

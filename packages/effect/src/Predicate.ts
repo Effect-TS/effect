@@ -1139,6 +1139,17 @@ export function isObjectKeyword(input: unknown): input is object {
 }
 
 /**
+ * Data-first `hasProperty`. The runtime's own type guards use it, so running an
+ * effect does not require `Function.dual`.
+ *
+ * @internal
+ */
+export const hasPropertyDataFirst = <P extends PropertyKey>(
+  self: unknown,
+  property: P
+): self is { [K in P]: unknown } => isObjectKeyword(self) && (property in self)
+
+/**
  * Checks whether a value has a given property key.
  *
  * **When to use**
@@ -1173,11 +1184,7 @@ export function isObjectKeyword(input: unknown): input is object {
 export const hasProperty: {
   <P extends PropertyKey>(property: P): (self: unknown) => self is { [K in P]: unknown }
   <P extends PropertyKey>(self: unknown, property: P): self is { [K in P]: unknown }
-} = dual(
-  2,
-  <P extends PropertyKey>(self: unknown, property: P): self is { [K in P]: unknown } =>
-    isObjectKeyword(self) && (property in self)
-)
+} = dual(2, hasPropertyDataFirst)
 
 /**
  * Checks whether a value has a `_tag` property equal to the given tag.

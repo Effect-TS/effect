@@ -12,13 +12,10 @@
  */
 import type { Equivalence } from "./Equivalence.ts"
 import * as Hash from "./Hash.ts"
-import * as InternalEqual from "./internal/equal.ts"
 import { byReferenceInstances, getAllObjectKeys, objectKind, toBytes } from "./internal/equal.ts"
 import { addBackEdge, backEdges, hashCache } from "./internal/hash.ts"
-import { hasProperty } from "./Predicate.ts"
+import { hasPropertyDataFirst } from "./Predicate.ts"
 
-// Provides the comparison to the data types every fiber creates. See
-// `provideEquals` in `internal/equal.ts`.
 /**
  * Defines the unique string identifier for the `Equal` interface.
  *
@@ -58,7 +55,7 @@ import { hasProperty } from "./Predicate.ts"
  * @category symbols
  * @since 2.0.0
  */
-export const symbol: "~effect/Equal" = InternalEqual.provideEquals(compareBoth)
+export const symbol = "~effect/Equal"
 
 /**
  * The interface for types that define their own equality logic.
@@ -437,7 +434,7 @@ export function makeCompareSet<A>(equivalence: Equivalence<A>) {
  * @category guards
  * @since 2.0.0
  */
-export const isEqual = (u: unknown): u is Equal => hasProperty(u, symbol) && typeof u[symbol] === "function"
+export const isEqual = (u: unknown): u is Equal => hasPropertyDataFirst(u, symbol) && typeof u[symbol] === "function"
 
 /**
  * Wraps {@link equals} as an `Equivalence<A>`.

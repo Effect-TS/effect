@@ -12,6 +12,7 @@
  */
 import * as Context from "./Context.ts"
 import type * as Fiber from "./Fiber.ts"
+import * as FiberCachedKeys from "./internal/fiberCachedKeys.ts"
 
 /**
  * A scheduler manages the execution of Effect fibers by controlling when queued
@@ -64,7 +65,7 @@ export interface SchedulerDispatcher {
 
 /** @internal */
 export const schedulerDefinition: Context.ReferenceDefinition<Scheduler> = {
-  key: "effect/Scheduler",
+  key: FiberCachedKeys.SchedulerKey,
   defaultValue: () => new MixedScheduler()
 }
 
@@ -273,12 +274,6 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
   }
 }
 
-/** @internal */
-export const maxOpsBeforeYieldDefinition: Context.ReferenceDefinition<number> = {
-  key: "effect/Scheduler/MaxOpsBeforeYield",
-  defaultValue: () => 2048
-}
-
 /**
  * Context reference that controls the maximum number of operations a fiber
  * can perform before yielding control back to the scheduler.
@@ -301,14 +296,8 @@ export const maxOpsBeforeYieldDefinition: Context.ReferenceDefinition<number> = 
  * @since 4.0.0
  */
 export const MaxOpsBeforeYield: Context.Reference<number> = Context.referenceFromDefinition(
-  maxOpsBeforeYieldDefinition
+  FiberCachedKeys.maxOpsBeforeYield
 )
-
-/** @internal */
-export const preventSchedulerYieldDefinition: Context.ReferenceDefinition<boolean> = {
-  key: "effect/Scheduler/PreventSchedulerYield",
-  defaultValue: () => false
-}
 
 /**
  * Context reference that controls whether the runtime should bypass scheduler
@@ -333,5 +322,5 @@ export const preventSchedulerYieldDefinition: Context.ReferenceDefinition<boolea
  * @since 4.0.0
  */
 export const PreventSchedulerYield: Context.Reference<boolean> = Context.referenceFromDefinition(
-  preventSchedulerYieldDefinition
+  FiberCachedKeys.preventSchedulerYield
 )

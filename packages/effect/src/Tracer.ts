@@ -16,6 +16,7 @@ import type * as Exit from "./Exit.ts"
 import type { Fiber } from "./Fiber.ts"
 import { constFalse, type LazyArg } from "./Function.ts"
 import type * as core from "./internal/core.ts"
+import * as FiberCachedKeys from "./internal/fiberCachedKeys.ts"
 import type { LogLevel } from "./LogLevel.ts"
 import * as Option from "./Option.ts"
 
@@ -150,7 +151,7 @@ export type AnySpan = Span | ExternalSpan
  * @category constants
  * @since 4.0.0
  */
-export const ParentSpanKey = "effect/Tracer/ParentSpan"
+export const ParentSpanKey = FiberCachedKeys.ParentSpanKey
 
 /**
  * Context service containing the `Span` or `ExternalSpan` to use as the parent
@@ -643,7 +644,7 @@ export const MinimumTraceLevel = Context.Reference<
  * @category constants
  * @since 4.0.0
  */
-export const TracerKey = "effect/Tracer"
+export const TracerKey = FiberCachedKeys.TracerKey
 
 /**
  * Context reference for the active tracer service. By default it uses the

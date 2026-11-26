@@ -1,33 +1,3 @@
-/** @internal */
-export const symbol = "~effect/Equal"
-
-/**
- * `Equal.equals`, for the `[Equal.symbol]` methods of the data types every
- * fiber creates (`Exit`, `Cause` and `Context`).
- *
- * If those methods imported `Equal.ts`, every program that runs an effect would
- * carry structural equality, whether or not it compares anything. `Equal.ts`
- * provides the comparison instead, see `provideEquals`.
- *
- * @internal
- */
-export let equals: (self: unknown, that: unknown) => boolean
-
-/**
- * Provides `equals` and returns the key of the methods that use it.
- *
- * `Equal.ts` initializes `Equal.symbol` with this call. Reaching one of the
- * methods takes that key, directly or through `Equal.equals`, so the comparison
- * is provided before the first call and a bundle only drops it together with
- * every use of the key.
- *
- * @internal
- */
-export const provideEquals = (f: (self: unknown, that: unknown) => boolean): typeof symbol => {
-  equals = f
-  return symbol
-}
-
 // JavaScriptCore (Bun, Safari) stamps the construction site onto every Error as
 // non-enumerable own properties. Like `stack`, they describe where the error was
 // created, not what it is.

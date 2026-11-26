@@ -12,9 +12,26 @@
  */
 import { dual } from "./Function.ts"
 import { byReferenceInstances, getAllObjectKeys, objectKind, toBytes } from "./internal/equal.ts"
-import * as InternalHash from "./internal/hash.ts"
-import { addBackEdge, backEdges, hashCache } from "./internal/hash.ts"
-import { hasProperty } from "./Predicate.ts"
+import { addBackEdge, backEdges, combine as combineDataFirst, hashCache, mix } from "./internal/hash.ts"
+import { hasPropertyDataFirst } from "./Predicate.ts"
+
+/**
+ * Defines the unique identifier used to identify objects that implement the Hash interface.
+ *
+ * **When to use**
+ *
+ * Use as the computed property key for the method that supplies a custom hash
+ * value on a `Hash` implementor.
+ *
+ * @see {@link Hash} for the interface implemented with this symbol
+ * @see {@link isHash} for checking whether a value implements `Hash`
+ * @see {@link hash} for computing hash values
+ *
+ * @stability stable
+ * @category symbols
+ * @since 2.0.0
+ */
+export const symbol = "~effect/Hash"
 
 /**
  * A type that represents an object that can be hashed.
@@ -193,15 +210,6 @@ export const random: <A extends object>(self: A) => number = (self) => {
   return h
 }
 
-// 32-bit MurmurHash3 finalizer.
-const mix = (h: number): number => {
-  h ^= h >>> 16
-  h = Math.imul(h, 0x85ebca6b)
-  h ^= h >>> 13
-  h = Math.imul(h, 0xc2b2ae35)
-  return h ^ (h >>> 16)
-}
-
 /**
  * Combines two hash values into a single hash value.
  *
@@ -236,7 +244,7 @@ const mix = (h: number): number => {
 export const combine: {
   (b: number): (self: number) => number
   (self: number, b: number): number
-} = dual(2, (self: number, b: number): number => mix(Math.imul(self, 0x9e3779b1) + Math.imul(b, 0x85ebca6b)))
+} = dual(2, combineDataFirst)
 
 /**
  * Applies bit manipulation techniques to optimize a hash value.
@@ -297,7 +305,7 @@ export const optimize = (n: number): number => (n & 0xbfffffff) | ((n >>> 1) & 0
  * @category guards
  * @since 2.0.0
  */
-export const isHash = (u: unknown): u is Hash => hasProperty(u, symbol) && typeof u[symbol] === "function"
+export const isHash = (u: unknown): u is Hash => hasPropertyDataFirst(u, symbol) && typeof u[symbol] === "function"
 
 const float64 = new DataView(new ArrayBuffer(8))
 
@@ -335,7 +343,7 @@ export const number = (n: number) => {
     return optimize(h)
   }
   float64.setFloat64(0, n !== n ? NaN : n)
-  return optimize(combine(float64.getInt32(0), float64.getInt32(4)))
+  return optimize(combineDataFirst(float64.getInt32(0), float64.getInt32(4)))
 }
 
 /**
@@ -413,7 +421,7 @@ export const string = (str: string) => {
 export const structureKeys = (o: object, keys: Iterable<PropertyKey>) => {
   let h = 12289
   for (const key of keys) {
-    h ^= combine(hash(key), hash((o as any)[key]))
+    h ^= combineDataFirst(hash(key), hash((o as any)[key]))
   }
   return optimize(h)
 }
@@ -497,7 +505,7 @@ const unordered = (seed: number, f: (el: any) => number) => (iter: Iterable<any>
 export const array = <A>(arr: Iterable<A>): number => {
   let h = 6151
   for (const element of arr) {
-    h = combine(h, hash(element))
+    h = combineDataFirst(h, hash(element))
   }
   return optimize(h)
 }
@@ -505,37 +513,20 @@ export const array = <A>(arr: Iterable<A>): number => {
 const hashIndexed = (arr: ArrayLike<unknown>): number => {
   let h = 6151
   for (let i = 0; i < arr.length; i++) {
-    h = combine(h, hash(arr[i]))
+    h = combineDataFirst(h, hash(arr[i]))
   }
   return optimize(h)
 }
 
 const hashMap: <K, V>(map: Iterable<readonly [K, V]>) => number = unordered(
   string("Map"),
-  ([k, v]) => combine(hash(k), hash(v))
+  ([k, v]) => combineDataFirst(hash(k), hash(v))
 )
 const setSeed = string("Set")
-const hashSet: <A>(set: Iterable<A>) => number = unordered(setSeed, (element) => combine(setSeed, hash(element)))
+const hashSet: <A>(set: Iterable<A>) => number = unordered(
+  setSeed,
+  (element) => combineDataFirst(setSeed, hash(element))
+)
 
 const randomHashCache = new WeakMap<any, number>()
 const visitedObjects = new WeakSet<object>()
-
-// Declared last: it provides the functions above to the data types every
-// fiber creates. See `provideHashing` in `internal/hash.ts`.
-/**
- * Defines the unique identifier used to identify objects that implement the Hash interface.
- *
- * **When to use**
- *
- * Use as the computed property key for the method that supplies a custom hash
- * value on a `Hash` implementor.
- *
- * @see {@link Hash} for the interface implemented with this symbol
- * @see {@link isHash} for checking whether a value implements `Hash`
- * @see {@link hash} for computing hash values
- *
- * @stability stable
- * @category symbols
- * @since 2.0.0
- */
-export const symbol: "~effect/Hash" = InternalHash.provideHashing({ hash, combine, string, number, array })

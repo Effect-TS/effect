@@ -11,7 +11,7 @@
  */
 import type * as Context from "./Context.ts"
 import { pipeArguments } from "./Pipeable.ts"
-import { hasProperty } from "./Predicate.ts"
+import { hasPropertyDataFirst } from "./Predicate.ts"
 
 /**
  * Defines the symbol used to identify objects that implement the {@link Redactable}
@@ -106,7 +106,7 @@ export interface Redactable {
  * @category guards
  * @since 3.10.0
  */
-export const isRedactable = (u: unknown): u is Redactable => hasProperty(u, symbolRedactable)
+export const isRedactable = (u: unknown): u is Redactable => hasPropertyDataFirst(u, symbolRedactable)
 
 /**
  * Returns a redacted value if it implements {@link Redactable}, otherwise returns it
