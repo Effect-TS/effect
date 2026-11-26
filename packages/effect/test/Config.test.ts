@@ -37,6 +37,14 @@ async function assertFailure<T>(config: Config.Config<T>, provider: ConfigProvid
 }
 
 describe("Config", () => {
+  it.effect("keeps ConfigError.message when its cause is replaced", () =>
+    Effect.gen(function*() {
+      const error = yield* Config.String("PORT").parse(ConfigProvider.fromUnknown({})).pipe(Effect.flip)
+      Object.assign(error, { cause: Object.assign(Object.create(null), error.cause) })
+
+      assert.strictEqual(error.message, `SchemaError(Expected string\n  at ["PORT"])`)
+    }))
+
   it("recognizes SourceError defects from a reloaded module copy", async () => {
     vi.resetModules()
     const ForeignConfigProvider = await vi.importActual<typeof ConfigProviderModule>(
