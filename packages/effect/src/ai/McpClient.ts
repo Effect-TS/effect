@@ -631,18 +631,14 @@ export const make: (options: {
       const limits = yield* resolveDiscoveryLimits(callOptions?.limits, discoveryLimits)
       if (capabilities.tools === undefined) return { tools: [], cacheHint: undefined }
       let cacheHint: ListCacheHint | undefined
+      // The `2026-07-28` decoder already requires `ttlMs` and `cacheScope` on every page.
       const onPage = modern
         ? (page: unknown) => {
-          if (
-            !isRecord(page) || typeof page.ttlMs !== "number" ||
-            (page.cacheScope !== "public" && page.cacheScope !== "private")
-          ) return
-          cacheHint = cacheHint === undefined
-            ? { ttlMs: page.ttlMs, cacheScope: page.cacheScope }
-            : {
-              ttlMs: Math.min(cacheHint.ttlMs, page.ttlMs),
-              cacheScope: cacheHint.cacheScope === "public" && page.cacheScope === "public" ? "public" : "private"
-            }
+          const { cacheScope, ttlMs } = page as ListCacheHint
+          cacheHint = {
+            ttlMs: Math.min(cacheHint?.ttlMs ?? ttlMs, ttlMs),
+            cacheScope: cacheHint?.cacheScope === "private" ? "private" : cacheScope
+          }
         }
         : undefined
       const tools = yield* paginate<"tools", McpSchema.Tool>("tools", "tools/list", "tools", {}, limits, onPage)
