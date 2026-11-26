@@ -1102,6 +1102,7 @@ export class McpServer extends Context.Service<McpServer, {
    */
   static readonly make = Effect.gen(function*() {
     const internalCore = yield* McpCore.make
+    const toolIndex = new Map<string, number>()
     const tools = Arr.empty<{
       readonly tool: McpTool
       readonly annotations: Context.Context<never>
@@ -1245,8 +1246,9 @@ export class McpServer extends Context.Service<McpServer, {
         return tools
       },
       addTool: Effect.fnUntraced(function*(options) {
-        const existingIndex = tools.findIndex(({ tool }) => tool.name === options.tool.name)
-        if (existingIndex === -1) {
+        const existingIndex = toolIndex.get(options.tool.name)
+        if (existingIndex === undefined) {
+          toolIndex.set(options.tool.name, tools.length)
           tools.push(options)
         } else {
           tools[existingIndex] = options
