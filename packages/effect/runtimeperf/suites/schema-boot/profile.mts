@@ -14,7 +14,7 @@ export const groups = [
   "gc",
   "runtime"
 ] as const
-export type Group = typeof groups[number]
+type Group = typeof groups[number]
 
 const schemaGroups = new Set<Group>(["Schema", "SchemaAST", "SchemaParser", "schema-other"])
 
@@ -38,6 +38,9 @@ const shortSource = (source: string | undefined) => {
   const index = source.lastIndexOf("/packages/effect/")
   return index === -1 ? source : source.slice(index + "/packages/effect/".length)
 }
+
+const top = (counts: Map<string, number>, limit: number) =>
+  [...counts].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([label, samples]) => ({ label, samples }))
 
 // Attributes CPU samples of one bundled phase to original Effect source files.
 // Self time is grouped by module; schema entry points are the outermost Schema
@@ -90,14 +93,12 @@ export const analyzeProfile = (profile: any, bundlePath: string) => {
       entries.set(outermost, (entries.get(outermost) ?? 0) + 1)
     }
   }
-  const top = (counts: Map<string, number>) =>
-    [...counts].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([label, samples]) => ({ label, samples }))
   return {
     samples: profile.samples.length,
     schemaSamples,
     self,
-    selfFunctions: top(selfFunctions),
-    schemaEntries: top(entries)
+    selfFunctions: top(selfFunctions, 25),
+    schemaEntries: top(entries, 25)
   }
 }
 
@@ -107,7 +108,7 @@ export const mergeProfiles = (analyses: Array<ReturnType<typeof analyzeProfile>>
     for (const analysis of analyses) {
       for (const { label, samples } of analysis[key]) counts.set(label, (counts.get(label) ?? 0) + samples)
     }
-    return [...counts].sort((a, b) => b[1] - a[1]).slice(0, 15).map(([label, samples]) => ({ label, samples }))
+    return top(counts, 15)
   }
   const samples = analyses.reduce((total, analysis) => total + analysis.samples, 0)
   const self = Object.fromEntries(

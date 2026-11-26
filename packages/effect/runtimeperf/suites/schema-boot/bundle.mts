@@ -1,14 +1,11 @@
-import { build, version } from "esbuild"
-import { createHash } from "node:crypto"
+import { build } from "esbuild"
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { repoRoot, sha256 } from "../../utils.mts"
 
-export const fixturesDir = fileURLToPath(new URL("./fixtures/", import.meta.url))
-export const entries = ["baseline", "graph", "ui", "httpapi"]
-export const esbuildVersion = version
-
-const repoRoot = fileURLToPath(new URL("../../../../../", import.meta.url))
+const fixturesDir = fileURLToPath(new URL("./fixtures/", import.meta.url))
+const entries = ["baseline", "graph", "ui", "httpapi"]
 
 // Resolves `effect` and `effect/*` to the TypeScript sources of the measured
 // revision, so both sides of a comparison bundle identical fixtures.
@@ -26,9 +23,8 @@ const effectSource = (effectDir: string) => ({
   }
 })
 
-export const bundle = async (effectDir: string, outDir: string) => {
-  const result: Record<string, { path: string; bytes: number; sha256: string }> = {}
-  for (const name of entries) {
+export const bundle = async (effectDir: string, outDir: string) =>
+  Object.fromEntries(await Promise.all(entries.map(async (name) => {
     const outfile = join(outDir, `${name}.mjs`)
     await build({
       entryPoints: [join(fixturesDir, `${name}.ts`)],
@@ -45,11 +41,5 @@ export const bundle = async (effectDir: string, outDir: string) => {
       nodePaths: [join(repoRoot, "packages/effect/node_modules"), join(repoRoot, "node_modules")]
     })
     const contents = readFileSync(outfile)
-    result[name] = {
-      path: outfile,
-      bytes: contents.length,
-      sha256: createHash("sha256").update(contents).digest("hex")
-    }
-  }
-  return result
-}
+    return [name, { path: outfile, bytes: contents.length, sha256: sha256(contents) }] as const
+  })))

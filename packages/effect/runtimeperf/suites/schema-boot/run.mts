@@ -1,16 +1,17 @@
 import assert from "node:assert/strict"
+import { version as esbuildVersion } from "esbuild"
 import { execFileSync } from "node:child_process"
-import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs"
 import os from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import { fileURLToPath } from "node:url"
 import { aggregate, analyzePairs, median } from "../../stats.mts"
-import { bundle, entries, esbuildVersion } from "./bundle.mts"
+import { effectDir, hashFile, readJson, repoRoot, writeJson } from "../../utils.mts"
+import { bundle } from "./bundle.mts"
 import { analyzeProfile, groups, mergeProfiles } from "./profile.mts"
 
-export const cases = [
+const cases = [
   { name: "baseline", entry: "baseline", size: "" },
   ...["small", "medium", "large"].map((size) => ({ name: `graph-${size}`, entry: "graph", size })),
   ...["none", "one", "all"].map((size) => ({ name: `ui-${size}`, entry: "ui", size })),
@@ -45,12 +46,10 @@ const selected = values.cases ? values.cases.split(",") : cases.map((item) => it
 for (const name of selected) assert.ok(cases.some((item) => item.name === name), `Unknown case: ${name}`)
 const measured = cases.filter((item) => selected.includes(item.name))
 
-const repoRoot = fileURLToPath(new URL("../../../../../", import.meta.url))
+const suiteDir = dirname(fileURLToPath(import.meta.url))
 const output = resolve(outputArgument)
 assert.ok(!existsSync(output), `${output} already exists`)
-const worker = fileURLToPath(new URL("./worker.mts", import.meta.url))
 const git = (...args: Array<string>) => execFileSync("git", args, { cwd: repoRoot, encoding: "utf8" }).trim()
-const sha256 = (path: string) => createHash("sha256").update(readFileSync(path)).digest("hex")
 
 mkdirSync(dirname(output), { recursive: true })
 mkdirSync(output)
@@ -63,7 +62,7 @@ const variant = (name: string, ref: string | undefined) => {
       ref: "worktree",
       revision: git("rev-parse", "HEAD"),
       dirty: git("status", "--porcelain", "--", "packages/effect/src") !== "",
-      effectDir: join(repoRoot, "packages/effect")
+      effectDir
     }
   }
   const revision = git("rev-parse", "--verify", `${ref}^{commit}`)
@@ -86,21 +85,16 @@ const report: any = {
     loadAverageStart: os.loadavg()
   },
   harness: Object.fromEntries(
-    ["run.mts", "worker.mts", "bundle.mts", "profile.mts", ...entries.map((name) => `fixtures/${name}.ts`), "fixtures/domain.ts"]
-      .map((file) => [file, sha256(fileURLToPath(new URL(file, import.meta.url)))])
+    readdirSync(suiteDir, { recursive: true, encoding: "utf8" })
+      .filter((file) => /\.m?ts$/.test(file))
+      .sort()
+      .map((file) => [file, hashFile(join(suiteDir, file))])
   ),
   settings: { rounds, heapRounds, profileRounds, warmTime, cases: selected, profileIntervalUs: 100 },
   variants: [] as Array<any>,
   samples: [] as Array<any>
 }
-const save = () => writeFileSync(join(output, "results.json"), JSON.stringify(report, null, 2))
-
-const runWorker = (bundlePath: string, size: string, mode: string, extra: Array<string> = []) =>
-  JSON.parse(execFileSync(
-    process.execPath,
-    [...(mode === "heap" ? ["--expose-gc"] : []), worker, bundlePath, size, mode, ...extra],
-    { encoding: "utf8", timeout: 300_000, maxBuffer: 64 * 1024 * 1024 }
-  ))
+const save = () => writeJson(join(output, "results.json"), report)
 
 try {
   const variants = values.base === undefined
@@ -112,42 +106,47 @@ try {
     report.variants.push({ ...item, bundles: await bundle(item.effectDir, bundles) })
   }
   save()
-  const bundleOf = (variantIndex: number, entry: string) => report.variants[variantIndex].bundles[entry].path
-  const order = (round: number) => {
-    const indexes = report.variants.map((_: unknown, index: number) => index)
-    return round % 2 === 0 ? indexes : indexes.reverse()
-  }
   const rotate = <A,>(items: Array<A>, round: number) => {
     const shift = round % items.length
     return [...items.slice(shift), ...items.slice(0, shift)]
   }
-  const pass = (mode: string, total: number, extra: (round: number, item: any, variantIndex: number) => Array<string>) => {
+  const pass = (mode: string, total: number) => {
     for (let round = 0; round < total; round++) {
       for (const item of rotate(measured, round)) {
-        for (const variantIndex of order(round)) {
-          const result = runWorker(bundleOf(variantIndex, item.entry), item.size, mode, extra(round, item, variantIndex))
-          report.samples.push({ mode, round, case: item.name, variant: report.variants[variantIndex].name, ...result })
+        for (const current of round % 2 === 0 ? report.variants : [...report.variants].reverse()) {
+          const bundlePath = current.bundles[item.entry].path
+          // The worker ignores the warm time and profile prefix in modes that do not use them.
+          const result = JSON.parse(execFileSync(
+            process.execPath,
+            [
+              ...(mode === "heap" ? ["--expose-gc"] : []),
+              join(suiteDir, "worker.mts"),
+              bundlePath,
+              item.size,
+              mode,
+              String(warmTime),
+              join(output, "profiles", `${current.name}-${item.name}-${round}`)
+            ],
+            { encoding: "utf8", timeout: 300_000, maxBuffer: 64 * 1024 * 1024 }
+          ))
+          if (mode === "profile") {
+            // The worker writes one profile per phase, in phase order.
+            result.analyses = Object.fromEntries(Object.keys(result.timings).map((phase, index) => [
+              phase,
+              analyzeProfile(readJson(result.profiles[index]), bundlePath)
+            ]))
+          }
+          report.samples.push({ mode, round, case: item.name, variant: current.name, ...result })
         }
       }
       save()
       process.stderr.write(`${mode} round ${round + 1}/${total}\n`)
     }
   }
-  pass("time", rounds, () => [String(warmTime)])
-  pass("heap", heapRounds, () => ["0"])
   mkdirSync(join(output, "profiles"))
-  pass("profile", profileRounds, (round, item, variantIndex) => [
-    "0",
-    join(output, "profiles", `${report.variants[variantIndex].name}-${item.name}-${round}`)
-  ])
-  for (const sample of report.samples.filter((sample: any) => sample.mode === "profile")) {
-    const variantIndex = report.variants.findIndex((item: any) => item.name === sample.variant)
-    const entry = measured.find((item) => item.name === sample.case)!.entry
-    sample.analyses = Object.fromEntries(sample.profiles.map((path: string) => [
-      path.slice(path.lastIndexOf("-") + 1, -".cpuprofile".length),
-      analyzeProfile(JSON.parse(readFileSync(path, "utf8")), bundleOf(variantIndex, entry))
-    ]))
-  }
+  pass("time", rounds)
+  pass("heap", heapRounds)
+  pass("profile", profileRounds)
   report.environment.loadAverageEnd = os.loadavg()
   report.summary = summarize()
   report.complete = true
@@ -177,14 +176,15 @@ function summarize() {
         return time.map((sample: any) => included.reduce((sum, phase) => sum + sample[key][phase], 0))
       }
       const milestones = ["build", "request"].filter((phase) => phases.includes(phase))
+      const seriesOf = (key: "timings" | "cpu", suffix: string) => [
+        ...phases.map((phase) => [`${phase}${suffix}`, time.map((sample: any) => sample[key][phase])]),
+        ...milestones.map((phase) => [`through ${phase}${suffix}`, through(key, phase)]),
+        [`total${suffix}`, through(key, phases.at(-1)!)]
+      ]
       const series = Object.fromEntries([
-        ...phases.map((phase) => [phase, time.map((sample: any) => sample.timings[phase])]),
-        ...milestones.map((phase) => [`through ${phase}`, through("timings", phase)]),
-        ["total", through("timings", phases.at(-1)!)],
+        ...seriesOf("timings", ""),
         ...(time[0].warm ? [["warm", time.map((sample: any) => sample.warm.nsPerOp)]] : []),
-        ...phases.map((phase) => [`${phase} cpu`, time.map((sample: any) => sample.cpu[phase])]),
-        ...milestones.map((phase) => [`through ${phase} cpu`, through("cpu", phase)]),
-        ["total cpu", through("cpu", phases.at(-1)!)]
+        ...seriesOf("cpu", " cpu")
       ])
       const heapDelta = heap.length === 0 ? {} : Object.fromEntries(phases.map((phase, index) => [
         phase,
