@@ -3423,6 +3423,9 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
         if (origin === "parameters" && isParameterValidationError(error)) {
           return Effect.fail(new InvalidParams({ message: error.reason.message }))
         }
+        if (origin === "handler" && error instanceof InvalidParams) {
+          return Effect.fail(error)
+        }
         if (origin === "handler" && isDeclaredFailure(error)) {
           return Effect.catchCause(declaredFailureResult(error), internalToolError)
         }

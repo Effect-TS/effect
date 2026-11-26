@@ -258,6 +258,10 @@ A tool result is sent to the client in its JSON encoding, the same encoding its 
 `failure` schema. In the default `"error"` failure mode, a declared `Error` with a non-empty
 `message` is sent as that message instead.
 
+In the default `"error"` failure mode, a handler that fails with `McpSchema.InvalidParams` reports
+invalid input (JSON-RPC `-32602` before `2025-11-25`, or an `isError` tool result from `2025-11-25`
+onward), matching `McpServer.addTool` and parameter validation, whether or not the tool declares it.
+
 In `tools/list`, an explicit `Tool.Destructive` value takes precedence. Otherwise,
 `destructiveHint` is `false` when `Tool.Readonly` is `true`, and `true` when `Tool.Readonly`
 is `false` or unset.
