@@ -10,7 +10,7 @@ import * as InternalMake from "./make.ts"
 
 /** @internal */
 export function toCodecJson<S extends PublicSchema.Constraint>(schema: S): PublicSchema.toCodecJson<S> {
-  return InternalMake.make(toCodecJsonAST(schema.ast), { schema })
+  return InternalMake.makeLazy(() => toCodecJsonAST(schema.ast), { schema }, [schema])
 }
 
 /** @internal */
@@ -163,14 +163,14 @@ function toCodecIsoASTStep(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Sc
 export function toCodecStringTree<S extends PublicSchema.Constraint>(
   schema: S
 ): PublicSchema.toCodecStringTree<S> {
-  return InternalMake.make(toCodecStringTreeAST(schema.ast), { schema })
+  return InternalMake.makeLazy(() => toCodecStringTreeAST(schema.ast), { schema }, [schema])
 }
 
 /** @internal */
 export function toCodecArrayFromSingle<S extends PublicSchema.Constraint>(
   schema: S
 ): PublicSchema.toCodecArrayFromSingle<S> {
-  return InternalMake.make(toCodecArrayFromSingleAST(schema.ast))
+  return InternalMake.makeLazy(() => toCodecArrayFromSingleAST(schema.ast), undefined, [schema])
 }
 
 const toStringTreeReorder = makeReorder((ast: SchemaAST.AST) => {
