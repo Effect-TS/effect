@@ -39,18 +39,15 @@ export interface JsonSchema {
  *
  * **When to use**
  *
- * Use with {@link fromSchemaOpenApi3_1} or {@link fromSchemaOpenApi3_0} when
- * you need to observe referenced schemas during conversion without walking the
- * schema a second time.
+ * Use when collecting referenced schemas during OpenAPI conversion without a
+ * second traversal.
  *
  * **Details**
  *
- * `onReference` is called with each `$ref` (and, in OpenAPI 3.1, `$dynamicRef`)
- * in a schema position, with its original string before any rewrite. It does
- * not resolve or deduplicate targets, and skips data keywords such as
- * `default`, `examples`, and `example`, as well as siblings ignored beside an
- * OpenAPI 3.0 `$ref`. Errors thrown by `onReference` propagate out of
- * conversion.
+ * `onReference` receives each original `$ref` (and `$dynamicRef` in OpenAPI
+ * 3.1) in a schema position before rewriting, skipping data keywords (`default`,
+ * `examples`, `example`) and ignored OpenAPI 3.0 `$ref` siblings. Targets are
+ * not resolved or deduplicated, and callback errors propagate.
  *
  * @see {@link fromSchemaOpenApi3_1}
  * @see {@link fromSchemaOpenApi3_0}
@@ -59,9 +56,6 @@ export interface JsonSchema {
  * @since 4.1.7
  */
 export interface FromOpenApiOptions {
-  /**
-   * Called with each reference in a schema position before it is rewritten.
-   */
   readonly onReference?: ((reference: string) => void) | undefined
 }
 
