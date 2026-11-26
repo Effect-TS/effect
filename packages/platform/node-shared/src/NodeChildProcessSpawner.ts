@@ -700,8 +700,8 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
           exitSignal: ExitSignal
         ) {
           // A child whose exit status can no longer be observed may have exited
-          // and its ID been reused, so it is left alone. An unref'ed child,
-          // including its process group, is no longer owned by the scope.
+          // and its ID been reused, so it is left alone. An unref'ed child and its
+          // process group are no longer owned by the scope.
           if (childProcess.lost === true || !isReferenced) {
             return
           }

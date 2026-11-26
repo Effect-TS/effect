@@ -1311,7 +1311,7 @@ export const suite = (
                 return yield* ChildProcess.make({ cwd })`./parent-exits-early.sh`
               })).pipe(Effect.provide(layer))
 
-              // Counts the live members of the process group led by the parent
+              // Live (non-zombie) members of the parent's process group
               const countLiveGroupMembers = ChildProcess.make("sh", [
                 "-c",
                 `ps -A -o pgid= -o stat= | awk '$1 == ${handle.pid} && $2 !~ /^Z/' | wc -l`
@@ -1336,7 +1336,7 @@ export const suite = (
                 assert.isAbove(yield* countLiveGroupMembers, 0)
               }).pipe(Effect.ensuring(Effect.ignore(handle.kill({ killSignal: "SIGKILL" }))))
 
-              // An explicit kill still signals the process group
+              // `handle.kill` still signals the unref'ed group
               assert.strictEqual(yield* countLiveGroupMembers, 0)
             }).pipe(Effect.provide(layer))
         )
