@@ -20,9 +20,9 @@ import type { Inspectable } from "./Inspectable.ts"
 import { type ContextImpl, getDefaultValue, lookup, notFound, type Overlay } from "./internal/context.ts"
 import { exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts"
 import { fiberCachedKeys } from "./internal/fiberCachedKeys.ts"
+import { hasProperty } from "./internal/predicate.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
-import { hasProperty } from "./Predicate.ts"
 import type * as Types from "./Types.ts"
 
 /**
@@ -209,7 +209,18 @@ export declare namespace ServiceClass {
  * @since 4.0.0
  */
 export const Service: {
-  <Identifier, Shape = Identifier>(key: string): Service<Identifier, Shape>
+  <Identifier, Shape = Identifier>(
+    key: string,
+    options?: {
+      /**
+       * Has no effect. Kept so code written against earlier declarations still
+       * compiles; the runtime caches a fixed set of keys on each fiber.
+       *
+       * @internal
+       */
+      readonly fiberCached?: boolean | undefined
+    } | undefined
+  ): Service<Identifier, Shape>
   <Self, Shape>(): <
     const Identifier extends string,
     E,
@@ -219,6 +230,13 @@ export const Service: {
     id: Identifier,
     options?: {
       readonly make?: ((...args: Args) => Effect<Shape, E, R>) | Effect<Shape, E, R> | undefined
+      /**
+       * Has no effect. Kept so code written against earlier declarations still
+       * compiles; the runtime caches a fixed set of keys on each fiber.
+       *
+       * @internal
+       */
+      readonly fiberCached?: boolean | undefined
     } | undefined
   ) =>
     & ServiceClass<Self, Identifier, Shape>
@@ -231,6 +249,13 @@ export const Service: {
     id: Identifier,
     options: {
       readonly make: Make
+      /**
+       * Has no effect. Kept so code written against earlier declarations still
+       * compiles; the runtime caches a fixed set of keys on each fiber.
+       *
+       * @internal
+       */
+      readonly fiberCached?: boolean | undefined
     }
   ) =>
     & ServiceClass<
@@ -602,14 +627,7 @@ const Proto: Omit<
     }
   },
   [Equal.symbol]<A>(this: Context<A>, that: unknown): boolean {
-    if (!isContext(that)) return false
-    const self = this.mapUnsafe
-    const other = that.mapUnsafe
-    if (self.size !== other.size) return false
-    for (const [key, value] of self) {
-      if (!other.has(key) || !Equal.equals(value, other.get(key))) return false
-    }
-    return true
+    return isContext(that) && Equal.equals(this.mapUnsafe, that.mapUnsafe)
   },
   [Hash.symbol]<A>(this: Context<A>): number {
     return Hash.number(this.mapUnsafe.size)
@@ -1381,5 +1399,12 @@ export const Reference: <Service>(
   key: string,
   options: {
     readonly defaultValue: () => Service
+    /**
+     * Has no effect. Kept so code written against earlier declarations still
+     * compiles; the runtime caches a fixed set of keys on each fiber.
+     *
+     * @internal
+     */
+    readonly fiberCached?: boolean | undefined
   }
 ) => Reference<Service> = Service as any

@@ -8,12 +8,12 @@ import { dual, identity } from "../Function.ts"
 import * as Hash from "../Hash.ts"
 import { NodeInspectSymbol } from "../Inspectable.ts"
 import { pipeArguments } from "../Pipeable.ts"
-import { hasProperty } from "../Predicate.ts"
 import type { StackFrame } from "../References.ts"
 import type * as Types from "../Types.ts"
 import { SingleShotGen } from "../Utils.ts"
 import type { FiberImpl } from "./effect.ts"
 import { combine as hashCombine } from "./equal.ts"
+import { hasProperty } from "./predicate.ts"
 import * as InternalRecord from "./record.ts"
 
 /** @internal */
@@ -157,11 +157,7 @@ export class CauseImpl<E> implements Cause.Cause<E> {
     return this.toJSON()
   }
   [Equal.symbol](that: any): boolean {
-    return (
-      isCause(that) &&
-      this.reasons.length === that.reasons.length &&
-      this.reasons.every((e, i) => Equal.equals(e, that.reasons[i]))
-    )
+    return isCause(that) && Equal.equals(this.reasons, that.reasons)
   }
   [Hash.symbol](): number {
     return Hash.hash(this.reasons)
@@ -620,6 +616,14 @@ export const StackTraceKey = {
   key: StackTraceKeyName
 } as Context.Service<Cause.StackTrace, StackFrame>
 
+/**
+ * Adds the stack frame of the code that produced a cause, when there is one.
+ *
+ * @internal
+ */
+export const causeAnnotateStackFrame = <E>(cause: Cause.Cause<E>, stackFrame: StackFrame | undefined): Cause.Cause<E> =>
+  stackFrame ? causeAnnotateMap(cause, new Map([[StackTraceKeyName, stackFrame]])) : cause
+
 /** @internal */
 export const InterruptorStackTrace = {
   key: "effect/Cause/InterruptorStackTrace" satisfies typeof Cause.InterruptorStackTrace.key
@@ -630,12 +634,8 @@ export const exitFailCause: <E>(cause: Cause.Cause<E>) => Exit.Exit<never, E> = 
   op: "Failure",
   prop: "cause",
   [evaluate](fiber) {
-    let cause = this[args]
-    let annotated = false
-    if (fiber.cache.stackFrame) {
-      cause = causeAnnotateMap(cause, new Map([[StackTraceKeyName, fiber.cache.stackFrame]]))
-      annotated = true
-    }
+    let cause = causeAnnotateStackFrame(this[args], fiber.cache.stackFrame)
+    let annotated = cause !== this[args]
     let cont = fiber.getCont(contE)
     const interruptedCause = fiber._interruptedCause
     if (interruptedCause && fiber.interruptible) {

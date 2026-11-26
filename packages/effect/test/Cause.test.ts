@@ -518,6 +518,21 @@ describe("Cause", () => {
     })
   })
 
+  describe("equality", () => {
+    it("compares reasons structurally and in order", () => {
+      const cause = Cause.fromReasons([Cause.makeFailReason({ n: 1 }), Cause.makeDieReason([2])])
+      const same = Cause.fromReasons([Cause.makeFailReason({ n: 1 }), Cause.makeDieReason([2])])
+      const reordered = Cause.fromReasons([Cause.makeDieReason([2]), Cause.makeFailReason({ n: 1 })])
+      const shorter = Cause.fromReasons([Cause.makeFailReason({ n: 1 })])
+
+      assert.strictEqual(Equal.equals(cause, same), true)
+      assert.strictEqual(Hash.hash(cause), Hash.hash(same))
+      assert.strictEqual(Equal.equals(cause, reordered), false)
+      assert.strictEqual(Equal.equals(cause, shorter), false)
+      assert.strictEqual(Equal.equals(cause, cause.reasons), false)
+    })
+  })
+
   describe("combine", () => {
     it("preserves unequal reasons with colliding hashes while removing duplicates", () => {
       class Collision implements Equal.Equal {

@@ -11,8 +11,8 @@
  */
 import type * as Context from "./Context.ts"
 import { currentFiberTypeId as InternalCurrentFiberTypeId } from "./internal/fiberCachedKeys.ts"
+import { hasProperty } from "./internal/predicate.ts"
 import { pipeArguments } from "./Pipeable.ts"
-import { hasProperty } from "./Predicate.ts"
 
 /**
  * Defines the symbol used to identify objects that implement the {@link Redactable}

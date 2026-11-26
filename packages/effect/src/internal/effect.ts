@@ -22,7 +22,7 @@ import * as Option from "../Option.ts"
 import * as Order from "../Order.ts"
 import { pipeArguments } from "../Pipeable.ts"
 import type * as Predicate from "../Predicate.ts"
-import { hasProperty, isIterable, isString, isTagged } from "../Predicate.ts"
+import { isIterable, isString, isTagged } from "../Predicate.ts"
 import { redact } from "../Redactable.ts"
 import type { StackFrame } from "../References.ts"
 import * as Result from "../Result.ts"
@@ -52,6 +52,7 @@ import {
   args,
   causeAddInterrupts,
   causeAnnotateMap,
+  causeAnnotateStackFrame,
   causeCombine,
   causeEmpty,
   causeFromReasons,
@@ -81,7 +82,6 @@ import {
   NoSuchElementError,
   ReasonBase,
   StackTraceKey as CauseStackTrace,
-  StackTraceKeyName as CauseStackTraceKeyName,
   TaggedError,
   withFiber,
   Yield
@@ -105,6 +105,7 @@ import {
   TracerEnabledKey,
   TracerKey
 } from "./fiberCachedKeys.ts"
+import { hasProperty } from "./predicate.ts"
 import * as InternalRecord from "./record.ts"
 import {
   CurrentErrorReporters,
@@ -610,10 +611,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     if (this._exit) {
       return
     }
-    let cause = causeInterrupt(fiberId)
-    if (this.cache.stackFrame) {
-      cause = causeAnnotateMap(cause, new Map([[CauseStackTraceKeyName, this.cache.stackFrame]]))
-    }
+    let cause = causeAnnotateStackFrame(causeInterrupt(fiberId), this.cache.stackFrame)
     if (annotations) {
       cause = causeAnnotateMap(cause, annotations.mapUnsafe)
     }

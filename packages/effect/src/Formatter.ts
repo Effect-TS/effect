@@ -147,7 +147,7 @@ export function format(input: unknown, options?: {
       if (symbolRedactable in v) {
         output = recur(getRedacted(v as any), d)
       } else if (Array.isArray(v)) {
-        output = formatBlock("[", "]", v, d, (x, next) => recur(x, next))
+        output = formatBlock("[", "]", v, d, recur)
       } else if (v instanceof Date) {
         output = formatDate(v)
       } else {

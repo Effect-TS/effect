@@ -295,6 +295,27 @@ describe("Context", () => {
     })
   })
 
+  it("compares services by key and structural value, in any insertion order", () => {
+    const entries = (pairs: ReadonlyArray<readonly [string, unknown]>) => Context.makeUnsafe(new Map(pairs))
+    const context = entries([[A.key, { n: 1 }], [B.key, [2]]])
+
+    assertTrue(Equal.equals(context, entries([[B.key, [2]], [A.key, { n: 1 }]])))
+    assertTrue(Equal.equals(context, Context.make(A, { n: 1 } as any).pipe(Context.add(B, [2] as any))))
+    assertFalse(Equal.equals(context, entries([[A.key, { n: 1 }], [C.key, [2]]])))
+    assertFalse(Equal.equals(context, entries([[A.key, { n: 1 }]])))
+    assertFalse(Equal.equals(context, entries([[A.key, { n: 2 }], [B.key, [2]]])))
+    // A map with the same entries is not a context
+    assertFalse(Equal.equals(context, new Map([[A.key, { n: 1 }], [B.key, [2]]])))
+  })
+
+  it("accepts the fiberCached option from earlier declarations", () => {
+    const Ref = Context.Reference("ContextTest/FiberCached", { defaultValue: () => 1, fiberCached: true })
+    const Key = Context.Service<number>("ContextTest/FiberCachedService", { fiberCached: true })
+
+    strictEqual(Context.get(Context.empty(), Ref), 1)
+    strictEqual(Context.get(Context.make(Key, 2), Key), 2)
+  })
+
   it("merges with right bias and preserves empty operand identity", () => {
     const left = Context.make(A, 1).pipe(Context.add(B, 2))
     const right = Context.make(A, 3).pipe(Context.add(C, 4))
