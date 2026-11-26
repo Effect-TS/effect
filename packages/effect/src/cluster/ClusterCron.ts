@@ -15,12 +15,13 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Cron from "../Cron.ts"
 import * as DateTime from "../DateTime.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
-import * as Exit from "../Exit.ts"
+import * as Fiber from "../Fiber.ts"
 import * as Layer from "../Layer.ts"
 import * as PrimaryKey from "../PrimaryKey.ts"
 import * as Rpc from "../rpc/Rpc.ts"
@@ -79,6 +80,10 @@ export class CronSchedule extends Context.Service<CronSchedule, {
  * scheduling step and optional controls for shard group, next-run calculation,
  * and skipping stale scheduled runs.
  *
+ * A run that fails or dies is logged and not retried, and the next run is
+ * scheduled as usual. To retry typed failures, apply `Effect.retry` inside
+ * `execute` with your own stopping policy.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -103,9 +108,7 @@ export const make = <E, R>(options: {
    * current time.
    *
    * When enabled, all runs are processed one at a time by a single entity, so
-   * missed runs are caught up in order without overlapping. A run that fails
-   * is retried in place and blocks later runs until it succeeds or is older
-   * than `skipIfOlderThan`.
+   * missed runs are caught up in order without overlapping.
    */
   readonly calculateNextRunFromPrevious?: boolean | undefined
 
@@ -168,16 +171,23 @@ export const make = <E, R>(options: {
     { shardGroup: options.shardGroup }
   )
 
-  const execute = Effect.fnUntraced(function*(dateTime: DateTime.Utc) {
-    const now = yield* DateTime.now
-    if (DateTime.isLessThan(dateTime, DateTime.subtractDuration(now, cronSchedule.skipIfOlderThan))) {
-      return
-    }
-    return yield* Effect.provideContext(
-      options.execute,
-      Context.add(scheduleContext, CurrentScheduledTime, dateTime)
-    )
-  }, Effect.orDie)
+  const execute = Effect.fnUntraced(
+    function*(dateTime: DateTime.Utc) {
+      const now = yield* DateTime.now
+      if (DateTime.isLessThan(dateTime, DateTime.subtractDuration(now, cronSchedule.skipIfOlderThan))) {
+        return
+      }
+      // the run gets its own fiber and scope, so its child fibers stop and its
+      // finalizers see its exit before the next run is scheduled
+      const fiber = yield* Effect.forkChild(
+        Effect.provideContext(options.execute, Context.add(scheduleContext, CurrentScheduledTime, dateTime)),
+        { uninterruptible: "inherit" }
+      )
+      return yield* Fiber.join(fiber).pipe(Effect.onInterrupt(() => Fiber.interrupt(fiber)))
+    },
+    Effect.scoped,
+    Effect.orDie
+  )
 
   const EntityLayer = CronEntity.toLayer(Effect.gen(function*() {
     const address = yield* Entity.CurrentAddress
@@ -193,12 +203,13 @@ export const make = <E, R>(options: {
         }
         processedRun = true
         return Effect.onExitPrimitive(
-          execute(dateTime),
-          (exit) =>
-            Effect.andThen(
-              Exit.isFailure(exit) ? Effect.logWarning(exit.cause) : Effect.void,
-              fromPrevious ? schedule(nextRun(dateTime)) : Effect.flatMap(DateTime.now, (now) => schedule(nextRun(now)))
-            ),
+          execute(dateTime).pipe(
+            Effect.tapCause(Effect.logWarning),
+            // interrupted runs are left for the entity manager to replay
+            Effect.catchCauseIf((cause) => !Cause.hasInterrupts(cause), () => Effect.void)
+          ),
+          () =>
+            fromPrevious ? schedule(nextRun(dateTime)) : Effect.flatMap(DateTime.now, (now) => schedule(nextRun(now))),
           true
         ).pipe(
           Effect.annotateLogs({

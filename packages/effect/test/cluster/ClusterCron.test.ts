@@ -217,27 +217,35 @@ describe("ClusterCron", { concurrent: false }, () => {
       assert.deepStrictEqual(scheduled, [...scheduled].sort())
     }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
 
-  it.effect("retries a failed run with calculateNextRunFromPrevious before later instants", () =>
-    Effect.gen(function*() {
-      const attempts: Array<string> = []
-      const cron = ClusterCron.make({
-        name: "test",
-        cron: Cron.parseUnsafe("* * * * * *", "UTC"),
-        calculateNextRunFromPrevious: true,
-        execute: Effect.gen(function*() {
-          attempts.push(DateTime.formatIso(yield* ClusterCron.CurrentScheduledTime))
-          if (attempts.length === 1) {
+  it.effect.each([false, true])(
+    "runs a failed instant once and moves on to the next (calculateNextRunFromPrevious: %s)",
+    (calculateNextRunFromPrevious) =>
+      Effect.gen(function*() {
+        const attempts: Array<string> = []
+        const events: Array<string> = []
+        const cron = ClusterCron.make({
+          name: "test",
+          cron: Cron.parseUnsafe("* * * * * *", "UTC"),
+          calculateNextRunFromPrevious,
+          execute: Effect.gen(function*() {
+            attempts.push(DateTime.formatIso(yield* ClusterCron.CurrentScheduledTime))
+            yield* Effect.addFinalizer((exit) => Effect.sync(() => events.push(exit._tag)))
+            yield* Effect.forkChild(
+              Effect.never.pipe(Effect.onInterrupt(() => Effect.sync(() => events.push("child interrupted")))),
+              { startImmediately: true }
+            )
             return yield* Effect.fail("boom")
-          }
+          })
         })
-      })
 
-      yield* deploy(cron, 3500)
+        yield* deploy(cron, 3500)
 
-      assert.isAbove(attempts.length, 2)
-      assert.strictEqual(attempts[1], attempts[0])
-      assert.deepStrictEqual(attempts, [...attempts].sort())
-    }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
+        assert.isAbove(attempts.length, 1)
+        assert.deepStrictEqual(attempts, [...new Set(attempts)].sort())
+        // child fibers stop before the run's resources are released
+        assert.deepStrictEqual(events, attempts.flatMap(() => ["child interrupted", "Failure"]))
+      }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer))
+  )
 
   it.effect("replays an interrupted run with calculateNextRunFromPrevious when its finalizer fails", () =>
     Effect.gen(function*() {
