@@ -2339,6 +2339,11 @@ export const encodeSync: <S extends ConstraintEncoder<unknown>>(
  * @since 3.10.0
  */
 export const make: <S extends Constraint>(ast: S["ast"], options?: object) => S = InternalMake.make
+const makeLazy: <S extends Constraint>(
+  thunk: () => S["ast"],
+  options: object | undefined,
+  dependencies: ReadonlyArray<Constraint>
+) => S = InternalMake.makeLazy
 /**
  * Checks whether a value is a `Schema`.
  *
@@ -2405,7 +2410,7 @@ interface optionalKeyLambda extends Lambda {
  * @since 4.0.0
  */
 export const optionalKey: optionalKeyLambda = Struct_.lambda<optionalKeyLambda>((schema) =>
-  make(SchemaAST.optionalKey(schema.ast), { schema })
+  makeLazy(() => SchemaAST.optionalKey(schema.ast), { schema }, [schema])
 )
 interface requiredKeyLambda extends Lambda {
   <S extends Constraint>(self: optionalKey<S>): S
@@ -2471,7 +2476,7 @@ interface optionalLambda extends Lambda {
  */
 export const optional: optionalLambda = Struct_.lambda<optionalLambda>((self) => {
   const schema = UndefinedOr(self)
-  return make(SchemaAST.optional(self.ast), { schema })
+  return makeLazy(() => SchemaAST.optional(self.ast), { schema }, [schema])
 })
 interface requiredLambda extends Lambda {
   <S extends Constraint>(self: optional<S>): S
@@ -2536,7 +2541,7 @@ interface mutableKeyLambda extends Lambda {
  * @since 4.0.0
  */
 export const mutableKey: mutableKeyLambda = Struct_.lambda<mutableKeyLambda>((schema) =>
-  make(SchemaAST.mutableKey(schema.ast), { schema })
+  makeLazy(() => SchemaAST.mutableKey(schema.ast), { schema }, [schema])
 )
 interface readonlyKeyLambda extends Lambda {
   <S extends Constraint>(self: mutableKey<S>): S
@@ -2597,7 +2602,7 @@ interface toTypeLambda extends Lambda {
  * @since 4.0.0
  */
 export const toType: toTypeLambda = Struct_.lambda<toTypeLambda>((schema) =>
-  make(SchemaAST.toType(schema.ast), { schema })
+  makeLazy(() => SchemaAST.toType(schema.ast), { schema }, [schema])
 )
 /**
  * Type-level representation returned by {@link toEncoded}.
@@ -2640,7 +2645,7 @@ interface toEncodedLambda extends Lambda {
  * @since 4.0.0
  */
 export const toEncoded: toEncodedLambda = Struct_.lambda<toEncodedLambda>((schema) =>
-  make(SchemaAST.toEncoded(schema.ast), { schema })
+  makeLazy(() => SchemaAST.toEncoded(schema.ast), { schema }, [schema])
 )
 const FlipTypeId = "~effect/Schema/flip"
 /**
@@ -3552,8 +3557,11 @@ export interface Struct<Fields extends Struct.Fields> extends BottomLazy<SchemaA
   ): Struct<Simplify<Readonly<To>>>
 }
 
-function makeStruct<const Fields extends Struct.Fields>(ast: SchemaAST.Objects, fields: Fields): Struct<Fields> {
-  return make(ast, {
+function makeStruct<const Fields extends Struct.Fields>(
+  ast: () => SchemaAST.Objects,
+  fields: Fields
+): Struct<Fields> {
+  return makeLazy(ast, {
     fields,
     mapFields<To extends Struct.Fields>(
       this: Struct<Fields>,
@@ -3563,9 +3571,12 @@ function makeStruct<const Fields extends Struct.Fields>(ast: SchemaAST.Objects, 
       } | undefined
     ): Struct<To> {
       const fields = f(this.fields)
-      return makeStruct(SchemaAST.struct(fields, options?.unsafePreserveChecks ? this.ast.checks : undefined), fields)
+      return makeStruct(
+        () => SchemaAST.struct(fields, options?.unsafePreserveChecks ? this.ast.checks : undefined),
+        fields
+      )
     }
-  })
+  }, Object.values(fields))
 }
 /**
  * Defines a struct schema from a map of field schemas.
@@ -3606,7 +3617,7 @@ function makeStruct<const Fields extends Struct.Fields>(ast: SchemaAST.Objects, 
  * @since 3.10.0
  */
 export function Struct<const Fields extends Struct.Fields>(fields: Fields): Struct<Fields> {
-  return makeStruct(SchemaAST.struct(fields, undefined), fields)
+  return makeStruct(() => SchemaAST.struct(fields, undefined), fields)
 }
 interface fieldsAssign<NewFields extends Struct.Fields> extends Lambda {
   <Fields extends Struct.Fields>(
@@ -4706,7 +4717,7 @@ interface ArrayLambda extends Lambda {
  * @since 4.0.0
  */
 const ArraySchema: ArrayLambda = Struct_.lambda<ArrayLambda>((schema) =>
-  make(new SchemaAST.Arrays(false, [], [schema.ast]), { value: schema })
+  makeLazy(() => new SchemaAST.Arrays(false, [], [schema.ast]), { value: schema }, [schema])
 )
 export {
   /**
@@ -4787,7 +4798,7 @@ interface NonEmptyArrayLambda extends Lambda {
  * @since 3.10.0
  */
 export const NonEmptyArray: NonEmptyArrayLambda = Struct_.lambda<NonEmptyArrayLambda>((schema) =>
-  make(new SchemaAST.Arrays(false, [schema.ast], [schema.ast]), { value: schema })
+  makeLazy(() => new SchemaAST.Arrays(false, [schema.ast], [schema.ast]), { value: schema }, [schema])
 )
 /**
  * Type-level representation returned by {@link ArrayEnsure}.
@@ -4978,10 +4989,10 @@ export interface Union<Members extends ReadonlyArray<Constraint>> extends
 }
 
 function makeUnion<Members extends ReadonlyArray<Constraint>>(
-  ast: SchemaAST.Union<Members[number]["ast"]>,
+  ast: () => SchemaAST.Union<Members[number]["ast"]>,
   members: Members
 ): Union<Members> {
-  return make(ast, {
+  return makeLazy(ast, {
     members,
     mapMembers<To extends ReadonlyArray<Constraint>>(
       this: Union<Members>,
@@ -4992,11 +5003,11 @@ function makeUnion<Members extends ReadonlyArray<Constraint>>(
     ): Union<Simplify<Readonly<To>>> {
       const members = f(this.members)
       return makeUnion(
-        SchemaAST.union(members, this.ast.options, options?.unsafePreserveChecks ? this.ast.checks : undefined),
+        () => SchemaAST.union(members, this.ast.options, options?.unsafePreserveChecks ? this.ast.checks : undefined),
         members
       )
     }
-  })
+  }, members)
 }
 /**
  * Creates a union schema from a fixed-length tuple of member schemas. Members
@@ -5033,7 +5044,7 @@ export function Union<const Members extends ReadonlyArray<Constraint>>(
   members: Members,
   options?: SchemaAST.UnionOptions
 ): Union<Members> {
-  return makeUnion(SchemaAST.union(members, options, undefined), members)
+  return makeUnion(() => SchemaAST.union(members, options, undefined), members)
 }
 /**
  * Type-level representation returned by {@link Literals}.
@@ -5091,7 +5102,7 @@ export interface Literals<L extends ReadonlyArray<SchemaAST.LiteralValue>>
  */
 export function Literals<const L extends ReadonlyArray<SchemaAST.LiteralValue>>(literals: L): Literals<L> {
   const members = literals.map(Literal) as { readonly [K in keyof L]: Literal<L[K]> }
-  return make(SchemaAST.union(members, undefined, undefined), {
+  return makeLazy(() => SchemaAST.union(members, undefined, undefined), {
     literals,
     members,
     mapMembers<To extends ReadonlyArray<Constraint>>(
@@ -5108,7 +5119,7 @@ export function Literals<const L extends ReadonlyArray<SchemaAST.LiteralValue>>(
     ): Union<{ [I in keyof L]: decodeTo<Literal<L2[I]>, Literal<L[I]>> }> {
       return Union(members.map((member, index) => member.transform(to[index]))) as any
     }
-  })
+  }, members)
 }
 /**
  * Type-level representation returned by {@link NullOr}.
@@ -5306,7 +5317,11 @@ export function refine<S extends Constraint, T extends S["Type"]>(
   annotations?: Annotations.Filter
 ): (schema: S) => refine<T, S> {
   return (schema: S): refine<T, S> =>
-    make(SchemaAST.appendChecks(schema.ast, [SchemaAST.makeFilterByGuard(refinement, annotations)]), { schema })
+    InternalMake.makeDerived(
+      schema,
+      (ast) => SchemaAST.appendChecks(ast, [SchemaAST.makeFilterByGuard(refinement, annotations)]),
+      { schema }
+    )
 }
 // A concrete key requires a property; broad and open template keys do not.
 type EnsureSingleBrandKey<K extends PropertyKey> = IsUnion<K> extends false
@@ -5370,7 +5385,7 @@ export interface brand<S extends Constraint, B extends string> extends
  */
 export function brand<B extends string>(identifier: B & EnsureSingleBrandKey<B>) {
   return <S extends ConstraintRebuildable>(schema: S): brand<S["Rebuild"], B> =>
-    make(schema.ast, { schema, identifier })
+    makeLazy(() => schema.ast, { schema, identifier }, [schema])
 }
 /**
  * Creates a branded schema from a {@link Brand.Constructor}, applying the
@@ -5743,16 +5758,15 @@ export function decodeTo<To extends Constraint, From extends Constraint, RD = ne
   } | undefined
 ) {
   return (from: From) => {
-    return make(
-      SchemaAST.decodeTo(
-        from.ast,
-        to.ast,
-        transformation ? SchemaTransformation.makeTransformation(transformation) : SchemaTransformation.passthrough()
-      ),
-      {
-        from,
-        to
-      }
+    return makeLazy(
+      () =>
+        SchemaAST.decodeTo(
+          from.ast,
+          to.ast,
+          transformation ? SchemaTransformation.makeTransformation(transformation) : SchemaTransformation.passthrough()
+        ),
+      { from, to },
+      [from, to]
     )
   }
 }
@@ -6003,7 +6017,7 @@ export function withConstructorDefault<S extends Constraint & WithoutConstructor
   defaultValue: Effect.Effect<S["~type.make.in"], SchemaIssue.Issue>
 ) {
   return (schema: S): withConstructorDefault<S> =>
-    make(SchemaAST.withConstructorDefault(schema.ast, defaultValue), { schema })
+    makeLazy(() => SchemaAST.withConstructorDefault(schema.ast, defaultValue), { schema }, [schema])
 }
 /**
  * Type-level representation returned by {@link withDecodingDefaultKey}.
@@ -6642,7 +6656,7 @@ export function TaggedUnion<const CasesByTag extends Record<string, Struct.Field
   }
   const union = Union(members)
   const { tag, guards, isAnyOf, match, matchOrElse } = toTaggedUnion("_tag")(union)
-  return make(union.ast, { tag, cases, isAnyOf, guards, match, matchOrElse })
+  return makeLazy(() => union.ast, { tag, cases, isAnyOf, guards, match, matchOrElse }, [union])
 }
 /**
  * Type-level representation returned by {@link Opaque}.
@@ -9453,7 +9467,7 @@ export function ReadonlyMap<Key extends Constraint, Value extends Constraint>(
         )
     }
   )
-  return make(schema.ast, { key, value })
+  return makeLazy(() => schema.ast, { key, value }, [schema])
 }
 /**
  * Type-level representation returned by {@link ReadonlySet}.
@@ -9527,7 +9541,7 @@ export function ReadonlySet<Value extends Constraint>(value: Value): $ReadonlySe
         )
     }
   )
-  return make(schema.ast, { value })
+  return makeLazy(() => schema.ast, { value }, [schema])
 }
 /**
  * Type-level representation of {@link RegExp}.
@@ -11291,7 +11305,7 @@ export function CauseReason<E extends Constraint, D extends Constraint>(
         )
     }
   )
-  return make(schema.ast, { error, defect })
+  return makeLazy(() => schema.ast, { error, defect }, [schema])
 }
 /**
  * Type-level representation returned by {@link Cause}.
@@ -11382,7 +11396,7 @@ export function Cause<E extends Constraint, D extends Constraint>(error: E, defe
         )
     }
   )
-  return make(schema.ast, { error, defect })
+  return makeLazy(() => schema.ast, { error, defect }, [schema])
 }
 
 // -----------------------------------------------------------------------------
@@ -11479,7 +11493,7 @@ export function Chunk<Value extends Constraint>(value: Value): Chunk<Value> {
       toEquivalence: ([value]) => Chunk_.makeEquivalence(value)
     }
   )
-  return make(schema.ast, { value })
+  return makeLazy(() => schema.ast, { value }, [schema])
 }
 
 // -----------------------------------------------------------------------------
@@ -15531,7 +15545,7 @@ export function Exit<
         )
     }
   )
-  return make(schema.ast, { value, error, defect })
+  return makeLazy(() => schema.ast, { value, error, defect }, [schema])
 }
 
 // -----------------------------------------------------------------------------
@@ -15800,7 +15814,7 @@ export function Graph<T extends Graph_.Kind, Node extends Constraint, Edge exten
       toEquivalence: ([node, edge]) => graphToEquivalence(node, edge)
     }
   )
-  return make(schema.ast, { type, node, edge })
+  return makeLazy(() => schema.ast, { type, node, edge }, [schema])
 }
 
 // -----------------------------------------------------------------------------
@@ -15893,7 +15907,7 @@ export function HashMap<Key extends Constraint, Value extends Constraint>(key: K
       toEquivalence: ([key, value]) => Equal.makeCompareMap(key, value)
     }
   )
-  return make(schema.ast, { key, value })
+  return makeLazy(() => schema.ast, { key, value }, [schema])
 }
 
 // -----------------------------------------------------------------------------
@@ -15983,7 +15997,7 @@ export function HashSet<Value extends Constraint>(value: Value): HashSet<Value> 
       toEquivalence: ([value]) => Equal.makeCompareSet(value)
     }
   )
-  return make(schema.ast, { value })
+  return makeLazy(() => schema.ast, { value }, [schema])
 }
 
 // -----------------------------------------------------------------------------
@@ -16074,7 +16088,7 @@ export function Option<A extends Constraint>(value: A): Option<A> {
         )
     }
   )
-  return make(schema.ast, { value })
+  return makeLazy(() => schema.ast, { value }, [schema])
 }
 /**
  * Type-level representation returned by {@link OptionFromNullOr}.
@@ -16882,7 +16896,7 @@ export function Redacted<S extends Constraint>(value: S, options?: {
       toEquivalence: ([value]) => Redacted_.makeEquivalence(value)
     }
   )
-  return make(schema.ast, { value })
+  return makeLazy(() => schema.ast, { value }, [schema])
 }
 /**
  * Type-level representation returned by {@link RedactedFromValue}.
@@ -17024,7 +17038,7 @@ export function Result<A extends Constraint, E extends Constraint>(
         )
     }
   )
-  return make(schema.ast, { success, failure })
+  return makeLazy(() => schema.ast, { success, failure }, [schema])
 }
 
 // -----------------------------------------------------------------------------
@@ -17406,7 +17420,7 @@ function makeClass<
         return makeClass(
           this,
           identifier,
-          makeStruct(SchemaAST.appendChecks(ast, extension.ast.checks), fields),
+          makeStruct(() => SchemaAST.appendChecks(ast, extension.ast.checks), fields),
           annotations,
           proto
         )
