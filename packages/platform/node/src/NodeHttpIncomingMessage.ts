@@ -74,6 +74,7 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
     this.remoteAddressOverride = remoteAddressOverride
   }
 
+  // Structural hashing would evaluate the `*Unsafe` body getters, which can throw.
   [Hash.symbol](): number {
     return Hash.random(this)
   }
