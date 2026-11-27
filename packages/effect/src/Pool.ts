@@ -39,7 +39,7 @@ interface PoolImpl<A, E> extends Pool<A, E> {
   readonly [PoolClock]: Clock
   /** Counts failed acquisitions. */
   [Failures]: number
-  /** Whether a borrower's resize is waiting for the resize permit. */
+  /** Whether a borrower forked a resize that has not read the target yet. */
   [ResizePending]: boolean
 }
 
@@ -638,11 +638,11 @@ const getSlowWith = <A, E, X, R>(
       }
       const impl = self as PoolImpl<A, E>
       waiter.failures = impl[Failures]
-      // A pending resize checks the target once it starts, so it counts this
-      // borrower. A running one may have checked already.
+      // A pending resize has yet to read the target, so it counts this
+      // borrower. A running one may have read it already.
       if (impl[ResizePending] || targetSize(self) <= activeSize(self)) return step
       impl[ResizePending] = true
-      return internal.flatMap(Effect.forkIn(Effect.interruptible(resizePending(self)), state.scope), () => step)
+      return internal.flatMap(Effect.forkIn(Effect.interruptible(resize(self)), state.scope), () => step)
     })
     return loop
   })
@@ -1022,14 +1022,10 @@ const invalidatePoolItem = <A, E>(self: Pool<A, E>, poolItem: PoolItem<A, E>): E
 const resize = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
   self.state.resizeSemaphore.withPermits(1)(resizeLoop(self))
 
-const resizePending = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
-  self.state.resizeSemaphore.withPermits(1)(Effect.suspend(() => {
-    ;(self as PoolImpl<A, E>)[ResizePending] = false
-    return resizeLoop(self)
-  }))
-
 const resizeLoop = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
   Effect.suspend(() => {
+    // This pass reads the target, so it counts every borrower so far.
+    ;(self as PoolImpl<A, E>)[ResizePending] = false
     const active = activeSize(self)
     const target = targetSize(self)
     if (active >= target) {

@@ -302,9 +302,9 @@ describe("Pool", () => {
       const pool = yield* Pool.make({ acquire, size: 2 })
       const fibers = yield* Effect.forEach([1, 2], () =>
         Effect.forkChild(Effect.exit(Pool.get(pool)), { startImmediately: true }))
-      while ((yield* Pool.stats(pool)).pending < 2) {
-        yield* Effect.yieldNow
-      }
+      yield* waitUntil(() =>
+        pool.state.waiters.size === 2
+      )
       yield* Deferred.succeed(gate, void 0)
       // The first lease stays open, so the second borrower cannot wait for it.
       yield* Effect.timeout(Fiber.joinAll(fibers), Duration.seconds(1))
