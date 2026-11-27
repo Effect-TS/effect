@@ -67,7 +67,7 @@ import * as Toolkit from "./Toolkit.ts"
  * @category models
  * @since 4.0.6
  */
-export type ProtocolVersion = "2025-11-25" | "2026-07-28"
+export type ProtocolVersion = "2025-03-26" | "2025-06-18" | "2025-11-25" | "2026-07-28"
 
 /**
  * Service tag for applications that provide one default MCP connection.
@@ -192,7 +192,8 @@ export interface McpClient {
     options?: { readonly timeout?: Duration.Input | undefined }
   ) => Effect.Effect<McpSchema.ReadResourceResult, McpClientError>
   /**
-   * Calls a discovered tool, optionally decoding with a schema. Errors retain the full result.
+   * Calls a discovered tool, optionally decoding `structuredContent` with a schema. Errors retain
+   * the full result. `2025-03-26` has no structured results, so `schema` decodes `undefined`.
    * Unbounded unless `timeout` is supplied.
    */
   readonly callTool: {

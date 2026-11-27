@@ -63,7 +63,7 @@ const serverLayer = Layer.mergeAll(
   })),
   Layer.provideMerge(makeServerLayer({
     name: "test-server",
-    protocols: [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25]
+    protocols: [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25, McpProtocol.v2025_06_18, McpProtocol.v2025_03_26]
   }))
 )
 
@@ -171,6 +171,21 @@ describe("McpClient", () => {
         }))
     })
   }
+
+  it.effect("should connect and call tools on 2025-03-26 and 2025-06-18", () =>
+    Effect.gen(function*() {
+      for (const protocol of [McpProtocol.v2025_03_26, McpProtocol.v2025_06_18]) {
+        const client = yield* connect(protocol)
+        assert.strictEqual(client.protocolVersion, protocol.protocolVersion)
+        const tool = yield* findTool(client, "add")
+        const raw = yield* client.callTool({ tool, arguments: { a: 20, b: 22 } })
+        assert.deepStrictEqual(raw.content, [{ type: "text", text: JSON.stringify({ total: 42 }) }])
+        assert.deepStrictEqual(
+          raw.structuredContent,
+          protocol.protocolVersion === "2025-03-26" ? undefined : { total: 42 }
+        )
+      }
+    }))
 
   describe("discovery limits", () => {
     it.effect("should expose server capabilities when initialization succeeds", () =>
