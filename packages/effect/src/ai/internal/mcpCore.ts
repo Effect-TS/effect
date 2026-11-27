@@ -596,14 +596,22 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       if (toolSources.length === 0) {
         return registered
       }
+      // Tools registered at this point (even hidden) take precedence over the
+      // sources, and each name is listed once.
+      const seen = new Set(registrations.keys())
       return Effect.map(
         Effect.all([
           registered,
-          // Registered tools (even hidden) take precedence; list only tools this source owns.
           ...toolSources.map((source) =>
             Effect.map(
               source.list(invocation),
-              (tools) => tools.filter(({ name }) => !registrations.has(name) && toolSource(name) === source)
+              Arr.filter(({ name }) => {
+                if (seen.has(name) || toolSource(name) !== source) {
+                  return false
+                }
+                seen.add(name)
+                return true
+              })
             )
           )
         ], { concurrency: "unbounded" }),

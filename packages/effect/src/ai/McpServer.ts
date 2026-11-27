@@ -360,12 +360,12 @@ export type MiddlewareMethod =
  * per registration) or a {@link toolSource}. For visibility checks, `target`
  * is the tool name, resource URI, URI template, or prompt name, and `payload`
  * is `undefined`. For a tool source's `list`, non-visibility middleware runs
- * once with `target: ""` and `payload: undefined`, then visibility checks run
- * per returned tool. `skills/list` and `resources/directory/read` are list
- * requests whose `target` is the `SKILL.md` URI of each skill; a directory
- * read checks only the skills that have the directory. A skill's files are
- * resources, checked as `resources/list` and `resources/read` with their own
- * URIs.
+ * once with `target: ""` and `payload: undefined`, then visibility checks and
+ * the middleware outside them run per returned tool. `skills/list` and
+ * `resources/directory/read` are list requests whose `target` is the
+ * `SKILL.md` URI of each skill; a directory read checks only the skills that
+ * have the directory. A skill's files are resources, checked as
+ * `resources/list` and `resources/read` with their own URIs.
  *
  * `headers` are the HTTP request headers. They are empty on stdio, on custom
  * transports and for in-process calls. `sessionId` is the `Mcp-Session-Id`
@@ -463,7 +463,8 @@ export interface Middleware<Config extends MiddlewareConfig> {
  * Local middleware runs inside global middleware, and middleware provided both
  * locally and globally runs once. Middleware never runs for `initialize`. It
  * runs for list requests only when it wraps a {@link visibility}, so that the
- * visibility check can read the services it provides.
+ * visibility check can read the services it provides, or when it is provided
+ * to a {@link toolSource}, around its `list`.
  *
  * **Example** (Resolving the current user per request)
  *
@@ -582,7 +583,9 @@ export declare namespace middleware {
  * On a list request, the check and the middleware outside the innermost
  * visibility run once for each registration. Middleware inside it does not
  * run. A failure of that middleware or of a check fails the whole list
- * request. It never hides a registration.
+ * request. It never hides a registration. For a {@link toolSource} they run
+ * once for each tool its `list` returns, after all of its other middleware
+ * has run once around `list`.
  *
  * Unlike `EnabledWhen`, a visibility runs the middleware around it on list
  * requests, and middleware sees requests for hidden registrations.
@@ -669,9 +672,10 @@ export declare namespace visibility {
 
 type AnyVisibilityCheck = visibility.Check<any, any>
 
-// Raised by a visibility gate. It is left out of the types because `makeInvoke`
-// replaces it with the not-found error of the request. It still has the shape
-// of an MCP error, since middleware outside the gate sees it as one.
+// Raised by a visibility gate, and by a tool source that does not know a tool.
+// It is left out of the types because `makeInvoke` replaces it with the
+// not-found error of the request. It still has the shape of an MCP error,
+// since the middleware around it sees it as one.
 class Hidden extends Data.TaggedError("effect/ai/McpServer/Hidden")<{
   readonly code: number
   readonly message: string
@@ -1010,14 +1014,13 @@ const withAnnotationTitle = (tool: McpTool): McpTool => {
 const toolOutcome = (
   self: Effect.Effect<
     CallToolResult | McpSchema.InputRequired,
-    InternalError | InvalidParams | Cause.NoSuchElementError | McpCore.ToolNotFound | McpCore.RequestRejected
+    InternalError | InvalidParams | McpCore.ToolNotFound | McpCore.RequestRejected
   >,
   name: string,
   invocation: McpCore.McpInvocation
 ): Effect.Effect<McpCore.OperationOutcome<CallToolResult>, McpCore.ToolError> =>
   self.pipe(
     Effect.catchTags({
-      NoSuchElementError: () => Effect.fail(new McpCore.ToolNotFound({ name })),
       InternalError: (error) => Effect.fail(new McpCore.ToolExecutionError({ name, message: error.message })),
       InvalidParams: (error) =>
         Effect.fail(
@@ -3736,9 +3739,10 @@ export type ToolSourceRequirements<R> = RegistrationRequirements<never, R>
  * **Details**
  *
  * - `list`: runs on every `tools/list` (uncached). Failures fail the list
- *   request as JSON-RPC errors.
+ *   request as JSON-RPC errors. A name returned more than once is listed once.
  * - `call`: handles unregistered tool names accepted by `owns`. Fail with
- *   `Cause.NoSuchElementError` to report an unknown tool (`ToolNotFound`).
+ *   `Cause.NoSuchElementError` to report an unknown tool. Middleware sees that
+ *   failure as an error with code `-32602`, as it does for a hidden tool.
  * - `owns`: selects which unregistered names this source handles (defaults to
  *   all).
  *
@@ -3768,10 +3772,11 @@ export interface ToolSourceOptions<RList = never, RCall = never> {
  * hidden). Each listed tool appears only from the first source whose `owns`
  * accepts its name, matching `tools/call` routing without a prior list.
  *
- * Non-visibility middleware wraps `list` with `target: ""`, and visibility
- * checks filter each returned tool by name. Because the server has no input
- * schema at call time, argument and `2026-07-28` parameter-header validation
- * are skipped; the source validates its own inputs.
+ * Non-visibility middleware wraps `list` with `target: ""`. Visibility checks
+ * then filter each returned tool by name, and the middleware outside a check
+ * runs again for each of those tools. Because the server has no input schema
+ * at call time, argument and `2026-07-28` parameter-header validation are
+ * skipped; the source validates its own inputs.
  *
  * @see {@link toolSource} for the layer-based registration wrapper
  *
@@ -3795,11 +3800,15 @@ export const registerToolSource = <RList = never, RCall = never>(
         ),
       handle: (call, invocation) =>
         toolOutcome(
-          invoke(Effect.suspend(() => options.call(call.name, call.arguments ?? {})), invocation, {
-            method: "tools/call",
-            target: call.name,
-            payload: call
-          }),
+          invoke(
+            Effect.catchTag(
+              Effect.suspend(() => options.call(call.name, call.arguments ?? {})),
+              "NoSuchElementError",
+              () => failHidden
+            ),
+            invocation,
+            { method: "tools/call", target: call.name, payload: call }
+          ),
           call.name,
           invocation
         )

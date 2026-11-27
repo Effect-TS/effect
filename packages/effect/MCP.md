@@ -295,11 +295,12 @@ const Upstream = McpServer.toolSource({
 - `list` runs on every `tools/list` without caching; `call` handles unregistered names accepted by
   `owns` (all unregistered names by default) without a prior list.
 - Registered tools always take precedence (even when hidden), and a tool is listed only from the
-  first source whose `owns` accepts it.
-- Non-visibility middleware wraps `list` with `target: ""`; visibility checks filter each returned
-  tool by name.
+  first source whose `owns` accepts it, once per name.
+- Non-visibility middleware wraps `list` with `target: ""`. Visibility checks then filter each
+  returned tool by name, and the middleware outside a check runs again for each of those tools.
 - Fail `call` with `Cause.NoSuchElementError` to return unknown-tool (`-32602`) without falling
-  through to later sources.
+  through to later sources. Middleware sees that failure as an error with code `-32602`, as it
+  does for a hidden tool.
 - Argument validation and `2026-07-28` parameter-header checks are skipped for sourced tools.
 
 ## Request-level dependencies
@@ -433,8 +434,9 @@ const Registrations = Layer.mergeAll(
 - On list requests only the middleware outside the innermost visibility runs, once for each
   registration, with that registration as `target` and an `undefined` `payload`.
   `audit.combine(adminOnly)` keeps `audit` off list requests and `adminOnly.combine(audit)` runs it
-  there. Middleware wrapping no visibility never runs on list requests. Cache expensive lookups,
-  such as resolving the user from a token, in the middleware itself.
+  there. Middleware wrapping no visibility never runs on list requests, except around the `list`
+  of a [tool source](#tools-known-per-request). Cache expensive lookups, such as resolving the
+  user from a token, in the middleware itself.
 - A failure of that middleware or of a check fails the whole list request rather than hiding
   anything. A global visibility makes global middleware such as authentication run on every list
   request, so make it succeed for anonymous clients if they should still see public registrations.
