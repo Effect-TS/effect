@@ -76,18 +76,20 @@ export class MetricProducerImpl implements MetricProducer {
 
   collect(_options?: MetricCollectOptions): Promise<CollectionResult> {
     const context = this.context
-    const registry = Context.get(context, Metric.MetricRegistry)
+    // Capture the series before calling any hook, as a hook may change the registry.
+    const registered = Array.from(Context.get(context, Metric.MetricRegistry).values())
     const hrTimeNow = currentHrTime()
-    // Only series still in the registry carry their delta state forward, so removed
-    // series do not leak state or report a negative delta when recreated.
+    // Only series in this collection carry their delta state forward, so removed
+    // series do not leak state or report a negative delta when recreated. The
+    // state is replaced only once every hook has been read successfully.
     const previousCounterState = this.previousCounterState
     const previousHistogramState = this.previousHistogramState
     const previousFrequencyState = this.previousFrequencyState
     const previousSummaryState = this.previousSummaryState
-    this.previousCounterState = new Map()
-    this.previousHistogramState = new Map()
-    this.previousFrequencyState = new Map()
-    this.previousSummaryState = new Map()
+    const nextCounterState = new Map<string, number | bigint>()
+    const nextHistogramState = new Map<string, PreviousHistogramState>()
+    const nextFrequencyState = new Map<string, Map<string, number>>()
+    const nextSummaryState = new Map<string, PreviousSummaryState>()
     const metricData: Array<MetricData> = []
     const metricDataByName = new Map<string, MetricData>()
     const addMetricData = (data: MetricDataWithInstrumentDescriptor) => {
@@ -103,8 +105,8 @@ export class MetricProducerImpl implements MetricProducer {
       ? this.previousExportTimeNanos
       : this.startTimeNanos
 
-    // The registry key identifies the series, so it also keys the delta state.
-    for (const [metricKey, metadata] of registry) {
+    for (let i = 0, len = registered.length; i < len; i++) {
+      const metadata = registered[i]
       const state = {
         id: metadata.id,
         type: metadata.type,
@@ -112,7 +114,7 @@ export class MetricProducerImpl implements MetricProducer {
         attributes: metadata.attributes,
         state: metadata.hooks.get(context)
       } as Metric.Metric.Snapshot
-      const attributes = reportedAttributes(metadata.attributes)
+      const { attributes, key: metricKey } = seriesOf(metadata)
 
       switch (state.type) {
         case "Counter": {
@@ -138,7 +140,7 @@ export class MetricProducerImpl implements MetricProducer {
                 }
               }
             }
-            this.previousCounterState.set(metricKey, currentCount)
+            nextCounterState.set(metricKey, currentCount)
           }
 
           const descriptor = descriptorFromState(state, attributes)
@@ -216,7 +218,7 @@ export class MetricProducerImpl implements MetricProducer {
               // so omit the optional fields rather than report stale values
               reportExtrema = false
             }
-            this.previousHistogramState.set(metricKey, {
+            nextHistogramState.set(metricKey, {
               count: state.state.count,
               sum: state.state.sum,
               bucketCounts: currentBuckets.counts.slice()
@@ -282,7 +284,7 @@ export class MetricProducerImpl implements MetricProducer {
           }
 
           if (isDelta) {
-            this.previousFrequencyState.set(metricKey, currentOccurrences)
+            nextFrequencyState.set(metricKey, currentOccurrences)
           }
 
           if (metricDataByName.has(state.id)) {
@@ -332,7 +334,7 @@ export class MetricProducerImpl implements MetricProducer {
               reportCount = state.state.count - previousState.count
               reportSum = state.state.sum - previousState.sum
             }
-            this.previousSummaryState.set(metricKey, {
+            nextSummaryState.set(metricKey, {
               count: state.state.count,
               sum: state.state.sum
             })
@@ -402,6 +404,10 @@ export class MetricProducerImpl implements MetricProducer {
       }
     }
 
+    this.previousCounterState = nextCounterState
+    this.previousHistogramState = nextHistogramState
+    this.previousFrequencyState = nextFrequencyState
+    this.previousSummaryState = nextSummaryState
     // Update the previous export time for delta calculations
     if (isDelta) {
       this.previousExportTimeNanos = hrTimeNow
@@ -420,27 +426,34 @@ export class MetricProducerImpl implements MetricProducer {
   }
 }
 
-const noAttributes: Readonly<Record<string, string>> = Object.freeze({})
+interface Series {
+  /** Keys the delta state of the series. */
+  readonly key: string
+  /** Reported on the data points of the series, frozen as they are shared. */
+  readonly attributes: Readonly<Record<string, string>>
+}
 
-// A series keeps its attribute set for its lifetime, so the reported
-// attributes are converted once and shared, frozen so a consumer cannot alter
-// them for later collections or other readers.
-const reportedAttributesCache = new WeakMap<Metric.Metric.AttributeSet, Readonly<Record<string, string>>>()
+// A registry entry keeps its metadata for its lifetime, so each series is
+// derived once rather than on every collection.
+const seriesCache = new WeakMap<Metric.Metric.Metadata<any, any>, Series>()
 
-const reportedAttributes = (attributes: Metric.Metric.AttributeSet | undefined): Readonly<Record<string, string>> => {
-  if (attributes === undefined) {
-    return noAttributes
-  }
-  let reported = reportedAttributesCache.get(attributes)
-  if (reported === undefined) {
-    const converted: Record<string, string> = {}
-    for (const key of Object.keys(attributes)) {
-      Rec.assignProperty(converted, key, String(attributes[key]))
+const seriesOf = (metadata: Metric.Metric.Metadata<any, any>): Series => {
+  let series = seriesCache.get(metadata)
+  if (series === undefined) {
+    const entries = metadata.attributes === undefined ? [] : Object.entries(metadata.attributes)
+    const attributes: Record<string, string> = {}
+    for (const [key, value] of entries) {
+      Rec.assignProperty(attributes, key, String(value))
     }
-    reported = Object.freeze(converted)
-    reportedAttributesCache.set(attributes, reported)
+    series = {
+      key: entries.length === 0
+        ? metadata.id
+        : `${metadata.id}:${JSON.stringify(entries.sort((a, b) => a[0].localeCompare(b[0])))}`,
+      attributes: Object.freeze(attributes)
+    }
+    seriesCache.set(metadata, series)
   }
-  return reported
+  return series
 }
 
 const currentHrTime = (): HrTime => {

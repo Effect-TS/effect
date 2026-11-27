@@ -428,6 +428,27 @@ describe("Metrics", () => {
       ])
     }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 
+  it.effect("keeps counter deltas across a failed collection", () =>
+    Effect.gen(function*() {
+      const services = yield* Effect.context<never>()
+      const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services, "delta")
+      let fail = true
+      yield* Metric.update(Metric.counter("requests", { incremental: true }), 3)
+      Metric.registerUnsafe(Metric.gauge("flaky"), services, {
+        get: () => {
+          if (fail) throw new Error("read failed")
+          return { value: 0 }
+        },
+        update: () => {},
+        modify: () => {}
+      })
+
+      assert.throws(() => producer.collect())
+      fail = false
+      const result = yield* Effect.promise(() => producer.collect())
+      assert.strictEqual(findMetric(result, "requests").dataPoints[0].value, 3)
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
   it.effect("reports a removed and recreated series from zero with delta temporality", () =>
     Effect.gen(function*() {
       const services = yield* Effect.context<never>()
