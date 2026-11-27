@@ -640,13 +640,27 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     } else if (this._asyncContext !== undefined) {
       const asyncContext = this._asyncContext
       this._asyncContext = undefined
+      let entered = false
       try {
-        return asyncContext.runInAsyncScope(this.evaluate, this, effect)
+        return asyncContext.runInAsyncScope(
+          function(this: FiberImpl<A, E>, effect: Primitive) {
+            entered = true
+            return this.evaluate(effect)
+          },
+          this,
+          effect
+        )
+      } catch (error) {
+        // Runtimes that tie async context to a request, like Cloudflare Workers,
+        // refuse to enter one captured during a request that has since finished.
+        // Resume without it rather than failing the fiber.
+        if (entered) throw error
       } finally {
         // Each captured context is resumed once, so release it for async_hooks
         // consumers like vitest's detectAsyncLeaks.
         asyncContext.emitDestroy()
       }
+      return this.evaluate(effect)
     } else if (this._yielded !== undefined) {
       const yielded = this._yielded as () => void
       this._yielded = undefined
