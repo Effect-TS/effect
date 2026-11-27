@@ -395,6 +395,27 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       assert.deepStrictEqual(rows.map((row) => row[0]), [BigInt(1755000000000), BigInt("12345678901234")])
     }))
 
+  it.effect("binds a decoded interval back as an interval", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      const [[interval]] = yield* connection.queryValues("SELECT '1 mon 2 days 3 seconds'::interval")
+      const result = yield* connection.queryValues("SELECT $1 = '1 mon 2 days 3 seconds'::interval, $2", [
+        interval,
+        [interval]
+      ])
+      assert.deepStrictEqual(result, [[true, [interval]]])
+    }))
+
+  it.effect("fails to infer an object with more keys than an interval", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      const error = yield* Effect.flip(
+        connection.query("SELECT $1", [{ months: 0, days: 0, microseconds: BigInt(0), extra: 1 }])
+      )
+      assert.instanceOf(error.reason.cause, PgTypes.CodecError)
+      assert.include((error.reason.cause as PgTypes.CodecError).message, "Cannot infer a PostgreSQL type")
+    }))
+
   it.effect("reparses a statement whose first execution failed at bind", () =>
     Effect.gen(function*() {
       const connection = yield* makeConnection()
