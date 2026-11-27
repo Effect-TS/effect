@@ -23,6 +23,7 @@
     "typeperf-compare": "pnpm --dir packages/effect exec node typeperf/compare.mjs",
     "runtimeperf": "pnpm --dir packages/effect exec node runtimeperf/run.mts",
     "runtimeperf-compare": "pnpm --dir packages/effect exec node runtimeperf/compare.mts",
+    "hostperf": "node packages/effect/benchmark/hostperf/run.ts",
     "check-recursive": "pnpm --recursive --filter \"./packages/**/*\" exec tsc -b tsconfig.json",
     "check-dist-types": "node scripts/check-dist-types.mjs",
     "jsdocs": "effect-jsdocs",
