@@ -575,10 +575,10 @@ describe("HttpEffect", () => {
       const respondable = Object.assign(new Cause.NoSuchElementError("respondable"), {
         [HttpServerRespondable.symbol]: () => Effect.succeed(HttpServerResponse.empty({ status: 409 }))
       })
-      const result = await serve(Effect.failCause(Cause.fromReasons([
+      const result = await serve(Effect.failCause(Cause.fromReasons<unknown>([
         Cause.makeFailReason(schemaError),
         Cause.makeFailReason(respondable),
-        Cause.makeFailReason(new Error("boom"))
+        Cause.makeFailReason("boom")
       ])))
       deepStrictEqual(result.reported, ["respondable", "boom"])
     })

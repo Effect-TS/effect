@@ -233,9 +233,18 @@ const handledSymbol = Symbol.for("effect/http/HttpEffect/handled")
 // are client errors, so they are left out of error reporting.
 const isClientError = (u: unknown) => !isRespondable(u) && (isSchemaError(u) || Cause.isNoSuchElementError(u))
 
+// Reuses the filtered cause when both reporting paths see the same cause, so
+// reporters can tell it was already reported.
+const reportableCauses = new WeakMap<Cause.Cause<unknown>, Cause.Cause<unknown>>()
+
 const reportServerCauseUnsafe = (fiber: Fiber.Fiber<unknown, unknown>, cause: Cause.Cause<unknown>) => {
-  const reasons = cause.reasons.filter((reason) => reason._tag !== "Fail" || !isClientError(reason.error))
-  reportCauseUnsafe(fiber, reasons.length === cause.reasons.length ? cause : Cause.fromReasons(reasons))
+  let reportable = reportableCauses.get(cause)
+  if (reportable === undefined) {
+    const reasons = cause.reasons.filter((reason) => reason._tag !== "Fail" || !isClientError(reason.error))
+    reportable = reasons.length === cause.reasons.length ? cause : Cause.fromReasons(reasons)
+    reportableCauses.set(cause, reportable)
+  }
+  reportCauseUnsafe(fiber, reportable)
 }
 
 /**
