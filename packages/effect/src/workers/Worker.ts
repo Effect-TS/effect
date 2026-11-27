@@ -155,9 +155,10 @@ export const layerSpawner: <W = unknown>(
  *
  * **Details**
  *
- * The Node and Bun platforms read it when a worker starts running, so provide
- * it to the effect that runs the worker. Browser workers are not terminated
- * when they are closed.
+ * The Node and Bun platforms read it when a worker starts running, falling
+ * back to any value provided when the worker was spawned. Provide it when
+ * spawning or running a worker, or when building a worker pool. Browser
+ * workers are not terminated when they are closed.
  *
  * @stability unstable
  * @category references
@@ -197,7 +198,9 @@ export const makePlatform = <W>() =>
   WorkerPlatform.of({
     spawn<O, I>(id: number) {
       return Effect.gen(function*() {
-        const spawn = (yield* Spawner) as SpawnerFn<W>
+        const context = yield* Effect.context<Spawner>()
+        const spawn = Context.get(context, Spawner) as SpawnerFn<W>
+        const closeTimeout = Context.getOrUndefined(context, CloseTimeout)
         let currentPort: P | undefined
         const buffer: Array<[unknown, ReadonlyArray<unknown> | undefined]> = []
         const sendToPort = (port: P, message: unknown, transfers?: ReadonlyArray<unknown>) =>
@@ -219,10 +222,17 @@ export const makePlatform = <W>() =>
           Effect.uninterruptibleMask((restore) =>
             Effect.scopedWith(
               Effect.fnUntraced(function*(scope) {
-                const port = yield* options.setup({
+                let setup = options.setup({
                   worker: spawn(id),
                   scope
                 })
+                if (
+                  closeTimeout !== undefined &&
+                  Context.getOrUndefined(yield* Effect.context(), CloseTimeout) === undefined
+                ) {
+                  setup = Effect.provideService(setup, CloseTimeout, closeTimeout)
+                }
+                const port = yield* setup
                 yield* Scope.addFinalizer(
                   scope,
                   Effect.sync(() => {

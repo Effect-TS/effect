@@ -28,10 +28,11 @@ describe("NodeWorker", () => {
       native.on("exit", (code) => Deferred.doneUnsafe(exited, Exit.succeed(code)))
       const scope = yield* Scope.make()
       const ready = yield* Deferred.make<void>()
-      yield* Worker.WorkerPlatform.use((platform) => platform.spawn(0)).pipe(
-        Effect.flatMap((worker) => worker.run(() => Effect.void, { onSpawn: Deferred.succeed(ready, undefined) })),
+      const worker = yield* Worker.WorkerPlatform.use((platform) => platform.spawn(0)).pipe(
         Effect.provide(NodeWorker.layer(() => native)),
-        Effect.provideService(Worker.CloseTimeout, Duration.seconds(1)),
+        Effect.provideService(Worker.CloseTimeout, Duration.seconds(1))
+      )
+      yield* worker.run(() => Effect.void, { onSpawn: Deferred.succeed(ready, undefined) }).pipe(
         Effect.forkIn(scope)
       )
       yield* Deferred.await(ready)
