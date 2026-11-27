@@ -5,16 +5,11 @@ import { fileURLToPath } from "node:url"
 
 const packageDir = fileURLToPath(new URL("../..", import.meta.url))
 
-/**
- * Path of the effect sources, which fixtures resolve to in tests.
- */
 export const effectSrcDir = fileURLToPath(new URL("../../../../effect/src/", import.meta.url))
 
 /**
- * The published build runs babel with annotate-pure-calls over the compiler
- * output. Bundlers rely on those annotations to drop unused module-scope
- * calls, so tests reproduce the same step for every effect source module.
- * Without it bundlers shake source differently from the published package.
+ * Match the published build's pure-call annotations so tests exercise the same
+ * tree-shaking as consumers.
  */
 export const annotatePureCalls = async (code: string, filename: string): Promise<string> => {
   const annotated = await babel.transformAsync(code, {
@@ -28,9 +23,6 @@ export const annotatePureCalls = async (code: string, filename: string): Promise
   return annotated!.code!
 }
 
-/**
- * `annotatePureCalls` as an esbuild plugin.
- */
 export const annotatePureCallsPlugin: esbuild.Plugin = {
   name: "annotate-pure-calls",
   setup(build) {

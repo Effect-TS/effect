@@ -870,7 +870,6 @@ const fiberStackAnnotations = (fiber: Fiber.Fiber<any, any>) => {
   return Context.makeUnsafe(annotations)
 }
 
-// Interrupts the children, then ends with the fiber's own exit
 const fiberInterruptChildren = <A, E>(fiber: FiberImpl<A, E>, exit: Exit.Exit<A, E>) => {
   if (fiber._children === undefined || fiber._children.size === 0) {
     return undefined

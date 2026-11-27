@@ -275,9 +275,8 @@ export const Service: {
   return arguments.length > 0 ? init(arguments[0], arguments[1]) : init
 } as any
 
-// Built with `Object.assign` rather than object spread so the build marks the
-// call pure and bundlers drop `ServiceProto` (and `Effectable.ts`) when no
-// service key is constructed.
+// The build annotates `Object.assign` as pure, allowing bundles without service
+// keys to drop `ServiceProto` and `Effectable.ts`.
 const ServiceProto: any = Object.assign(
   { [ServiceTypeId]: ServiceTypeId },
   Effectable.Prototype<Service<never, any>>({
@@ -560,12 +559,9 @@ const withFlat = <B>(self: Context<any>, f: (map: Map<string, any>) => void): Co
 // A private symbol so user code cannot forge a value that reads as absent
 const notFound = Symbol()
 
-// Kept private to this module with `notFound`: exporting either makes every
-// `Context.get` measurably slower. It reads context fields rather than calling
-// a method, so contexts made by another copy of effect read the same way.
+// Read fields rather than dispatching through a method for contexts from other copies of effect.
 const lookup = <Services>(self: Context<Services>, key: string): unknown => {
   const impl = self as ContextImpl<Services>
-  // A flattened context no longer has an overlay and reads `base` directly
   if (impl.overlay !== undefined) return overlayLookup(impl, key)
   const value = impl.base.get(key)
   return value === undefined && !impl.base.has(key) ? notFound : value
@@ -877,7 +873,6 @@ export const addUnsafe = <Services, I, S>(
   service: Types.NoInfer<S>
 ): Context<Services | I> => {
   const impl = self as ContextImpl<Services>
-  // Adding a fiber-cached key starts a new cache so fibers never read stale values
   const cacheRoot = fiberCachedKeys.has(key) ? undefined : impl.cacheRoot
   if (impl.depth >= impl.maxDepth) {
     // Avoid mapUnsafe: it would flatten the parent before copying.
@@ -1140,10 +1135,8 @@ const getDefaultValue = (ref: Reference<any>) => {
 }
 
 /**
- * Makes `getDefaultValue(ref)` read the default from `shared` instead of
- * keeping its own. For a default the fiber runtime also reads without the
- * reference, so both resolve the same instance, while `ref.defaultValue()`
- * still creates a fresh one.
+ * Shares the runtime default with reference lookups without changing
+ * `ref.defaultValue()`.
  *
  * @internal
  */
@@ -1151,8 +1144,7 @@ export const shareDefaultValue = <Shape>(ref: Reference<Shape>, shared: () => Sh
   Object.defineProperty(ref, defaultValueCacheKey, { get: shared })
 
 /**
- * Reads a reference, falling back to its default: `get` for a key known to be
- * a reference.
+ * Reads a reference, falling back to its cached default.
  *
  * @internal
  */

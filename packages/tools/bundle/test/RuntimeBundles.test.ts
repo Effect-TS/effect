@@ -8,8 +8,6 @@ import { type OutputChunk, rollup } from "rollup"
 import esbuildPlugin from "rollup-plugin-esbuild"
 import { annotatePureCalls, annotatePureCallsPlugin, effectSrcDir } from "./utils/annotatePureCalls.ts"
 
-// Bundles a file with Rollup, as the bundle size report does. Rollup transpiles
-// and Babel annotates every module reachable from it, which takes a while.
 const rollupBundle = async (file: URL, format: "esm" | "iife", minify: boolean): Promise<OutputChunk> => {
   const build = await rollup({
     input: fileURLToPath(file),
@@ -34,8 +32,7 @@ const rollupBundle = async (file: URL, format: "esm" | "iife", minify: boolean):
 
 const resolving = Symbol()
 
-// Marks every effect module as free of side effects, the strictest setting a
-// bundler can apply: a module is kept only for the bindings that are used.
+// Exercise protocol methods even when unused module side effects are discarded.
 const sideEffectsFreePlugin: esbuild.Plugin = {
   name: "side-effects-free",
   setup(build) {
@@ -92,7 +89,6 @@ describe("bundled", () => {
     const chunk = await rollupBundle(new URL("../fixtures/basic.ts", import.meta.url), "esm", true)
     const rendered = Object.entries(chunk.modules)
       .filter(([id, module]) => id.startsWith(effectSrcDir) && module.renderedLength > 0)
-      // Module ids use native separators, the list below uses "/"
       .map(([id, module]) => [path.relative(effectSrcDir, id).split(path.sep).join("/"), module] as const)
     // A module joining this list needs a reason to be in every program
     assert.deepStrictEqual(rendered.map(([file]) => file).sort(), [
@@ -113,7 +109,6 @@ describe("bundled", () => {
       "internal/fiberCachedKeys.ts",
       "internal/predicate.ts"
     ])
-    // The runtime calls the data-first forms of dual APIs and stays on flat contexts
     const [, functionModule] = rendered.find(([file]) => file === "Function.ts")!
     assert.notInclude(functionModule.renderedExports, "dual")
     const [, contextModule] = rendered.find(([file]) => file === "Context.ts")!

@@ -2,11 +2,7 @@ import type { LogLevel, Severity } from "../LogLevel.ts"
 import type * as Tracer from "../Tracer.ts"
 
 /**
- * The context keys and defaults behind a fiber's `Fiber.Cache`.
- *
- * The fiber reads its cache by key, so bundles that never use one of these
- * services do not construct it. The services take their key and default from
- * here, except `Tracer`, whose public key constants these are checked against.
+ * Reading cached services by key lets bundlers drop unused service constructors.
  */
 
 /** @internal */
@@ -55,9 +51,8 @@ export const defaultCurrentLogLevel: Severity = "Info"
 export const defaultMinimumLogLevel: LogLevel = "Info"
 
 /**
- * The key of every `Fiber.Cache` field the fiber reads from its context
- * (`tracerContext` is derived from `tracer`). The fiber reads its cache only
- * through `FiberCacheKey`, so a key missing here fails typechecking there.
+ * Constrains fiber cache reads to registered keys. `tracerContext` is derived
+ * from `tracer`, not read from the context.
  *
  * @internal
  */
@@ -78,12 +73,8 @@ const runtimeKeys = [
 export type FiberCacheKey = typeof runtimeKeys[number]
 
 /**
- * Keys whose values fibers cache, so adding one to a context starts a new
- * cache.
- *
- * Seeded with every `FiberCacheKey`, so a key invalidates the cache even
- * in bundles where the service declaring it was tree-shaken. Services declared
- * with `fiberCached: true` add their own key.
+ * Pre-register runtime keys so cache invalidation survives tree-shaking of
+ * their service constructors. `fiberCached: true` registers additional keys.
  *
  * @internal
  */
