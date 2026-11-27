@@ -326,14 +326,18 @@ describe("IndexedDbDatabase", { concurrent: false }, () => {
 
       // Queries on the closed old connection fail with a typed IndexedDbQueryError instead of a defect
       const selectResult = yield* Effect.result(oldApi.from("notes").select())
-      assert.isTrue(Result.isFailure(selectResult))
+      if (!Result.isFailure(selectResult)) {
+        return assert.fail("expected select on closed connection to fail")
+      }
       assert.equal(selectResult.failure._tag, "IndexedDbQueryError")
       assert.equal(selectResult.failure.reason, "TransactionError")
 
       const txResult = yield* Effect.result(
         oldApi.withTransaction({ tables: ["notes"], mode: "readonly" })(oldApi.from("notes").select())
       )
-      assert.isTrue(Result.isFailure(txResult))
+      if (!Result.isFailure(txResult)) {
+        return assert.fail("expected withTransaction on closed connection to fail")
+      }
       assert.equal(txResult.failure._tag, "IndexedDbQueryError")
       assert.equal(txResult.failure.reason, "TransactionError")
 
