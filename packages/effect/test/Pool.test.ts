@@ -262,6 +262,35 @@ describe("Pool", () => {
       strictEqual(result, "error")
     }))
 
+  it.live("every borrower gets a failed acquisition wherever it yields", () =>
+    Effect.gen(function*() {
+      for (const borrowers of [1, 3]) {
+        for (let budget = 1; budget <= 32; budget++) {
+          const pool = yield* Pool.makeWithTTL({
+            acquire: Effect.fail("error"),
+            min: 0,
+            max: 1,
+            timeToLive: Duration.infinity
+          })
+          const fibers = yield* Effect.forEach(Array.from({ length: borrowers }), () =>
+            Effect.forkChild(
+              Effect.flip(Effect.scoped(Pool.get(pool))).pipe(
+                Effect.provideService(Scheduler.MaxOpsBeforeYield, budget)
+              ),
+              { startImmediately: true }
+            ))
+          const results = yield* Fiber.joinAll(fibers).pipe(
+            Effect.timeoutOrElse({ duration: Duration.seconds(1), orElse: () => Effect.succeed("timeout") })
+          )
+          deepStrictEqual(
+            results,
+            Array(borrowers).fill("error"),
+            `${borrowers} borrowers, MaxOpsBeforeYield ${budget}`
+          )
+        }
+      }
+    }))
+
   it.effect("compositional retry", () =>
     Effect.gen(function*() {
       const cond = (i: number) => (i <= 10 ? Effect.fail(i) : Effect.succeed(i))

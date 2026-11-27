@@ -30,11 +30,17 @@ const TypeId = "~effect/Pool"
 const Acquire = Symbol()
 const AcquireContext = Symbol()
 const PoolClock = Symbol()
+const Failures = Symbol()
+const ResizePending = Symbol()
 
 interface PoolImpl<A, E> extends Pool<A, E> {
   readonly [Acquire]: Effect.Effect<A, E, Scope.Scope>
   readonly [AcquireContext]: Context.Context<Scope.Scope>
   readonly [PoolClock]: Clock
+  /** Counts failed acquisitions. */
+  [Failures]: number
+  /** Whether a borrower's resize is waiting for the resize permit. */
+  [ResizePending]: boolean
 }
 
 /**
@@ -412,6 +418,8 @@ export const makeWithStrategy = <A, E, R>(options: {
       [Acquire]: options.acquire as Effect.Effect<A, E, Scope.Scope>,
       [AcquireContext]: services as Context.Context<Scope.Scope>,
       [PoolClock]: yield* Clock,
+      [Failures]: 0,
+      [ResizePending]: false,
       config,
       state,
       pipe() {
@@ -609,12 +617,14 @@ const getSlowWith = <A, E, X, R>(
         return wait
       }
       // Replace failed slots only when the pool cannot grow.
-      const item = firstHealthyAvailable(self) ??
+      const item = firstAvailable(self, "Success") ??
         (targetSize(self) <= activeSize(self) ? state.availableHead : undefined)
       if (item === undefined) {
         return wait
       }
       if (item.exit._tag === "Failure") {
+        // A failure since the last check is this borrower's to take.
+        if (waiter.failures !== (self as PoolImpl<A, E>)[Failures]) return wait
         removeFailedItem(self, item)
         return loop
       }
@@ -626,14 +636,13 @@ const getSlowWith = <A, E, X, R>(
         state.usage--
         return internal.interrupt
       }
-      return targetSize(self) > activeSize(self)
-        ? internal.flatMap(
-          state.resizeSemaphore.withPermitsIfAvailable(1)(
-            Effect.forkIn(Effect.interruptible(resize(self)), state.scope)
-          ),
-          () => step
-        )
-        : step
+      const impl = self as PoolImpl<A, E>
+      waiter.failures = impl[Failures]
+      // A pending resize checks the target once it starts, so it counts this
+      // borrower. A running one may have checked already.
+      if (impl[ResizePending] || targetSize(self) <= activeSize(self)) return step
+      impl[ResizePending] = true
+      return internal.flatMap(Effect.forkIn(Effect.interruptible(resizePending(self)), state.scope), () => step)
     })
     return loop
   })
@@ -695,9 +704,9 @@ const releaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effec
     return internal.void
   })
 
-const firstHealthyAvailable = <A, E>(self: Pool<A, E>): PoolItem<A, E> | undefined => {
+const firstAvailable = <A, E>(self: Pool<A, E>, tag: Exit.Exit<A, E>["_tag"]): PoolItem<A, E> | undefined => {
   let item = self.state.availableHead
-  while (item !== undefined && item.exit._tag === "Failure") item = item.availableNext
+  while (item !== undefined && item.exit._tag !== tag) item = item.availableNext
   return item
 }
 
@@ -708,10 +717,15 @@ const firstHealthyAvailable = <A, E>(self: Pool<A, E>): PoolItem<A, E> | undefin
  *
  * `resume` is set while the borrower is asleep. A registered waiter without
  * one has been woken and has yet to take an item, wait again or leave.
+ *
+ * `failures` is the pool's failure count when the borrower last checked the
+ * pool. A failure while the borrower is awake cannot be delivered to it, so
+ * it compares the count before sleeping.
  */
 interface Waiter<A, E> {
   (failure?: Exit.Failure<A, E>): void
   resume: ((effect: Effect.Effect<void, E>) => void) | undefined
+  failures: number
 }
 
 const makeWaiter = <A, E>(): Waiter<A, E> => {
@@ -722,6 +736,7 @@ const makeWaiter = <A, E>(): Waiter<A, E> => {
     resume(failure ?? internal.void)
   }) as Waiter<A, E>
   waiter.resume = undefined
+  waiter.failures = 0
   return waiter
 }
 
@@ -730,9 +745,17 @@ const waitForItem = <A, E>(self: Pool<A, E>, waiter: Waiter<A, E>): Effect.Effec
     const state = self.state
     if (
       state.isShuttingDown ||
-      (state.waiters.size === 0 && firstHealthyAvailable(self) !== undefined)
+      (state.waiters.size === 0 && firstAvailable(self, "Success") !== undefined)
     ) {
       return resume(internal.void)
+    }
+    if (waiter.failures !== (self as PoolImpl<A, E>)[Failures]) {
+      // An acquisition failed since the last check. Take the failure if it was
+      // kept, or check the pool again.
+      const failed = firstAvailable(self, "Failure")
+      if (failed === undefined) return resume(internal.void)
+      removeFailedItem(self, failed)
+      return resume(failed.exit as Exit.Failure<A, E>)
     }
     waiter.resume = resume
     // Re-adding a registered waiter keeps its position.
@@ -771,16 +794,10 @@ const firstSleepingWaiter = <A, E>(self: Pool<A, E>) => {
   return undefined
 }
 
-// Wakes every waiter so it can retry after a failed acquisition. A waiter that
-// could not start a resize while another was running depends on this. Waking
-// a waiter that is already awake is a no-op.
-const wakeAll = <A, E>(self: Pool<A, E>, fiber: Fiber.Fiber<unknown, unknown>) => {
-  const waiters = self.state.waiters
-  if (waiters.size === 0) return
-  fiber.currentDispatcher.scheduleTask(() => {
-    for (const notify of Array.from(waiters)) notify()
-  }, 0)
-}
+// The borrower a failed acquisition is delivered to: the first one asleep,
+// unless a healthy item can serve it instead.
+const failureRecipient = <A, E>(self: Pool<A, E>) =>
+  firstAvailable(self, "Success") === undefined ? firstSleepingWaiter(self) : undefined
 
 // Reservations prevent reuse without extending the lifetime of borrowed items.
 const reservations = new WeakMap<PoolItem<unknown, unknown>, number>()
@@ -1005,6 +1022,12 @@ const invalidatePoolItem = <A, E>(self: Pool<A, E>, poolItem: PoolItem<A, E>): E
 const resize = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
   self.state.resizeSemaphore.withPermits(1)(resizeLoop(self))
 
+const resizePending = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
+  self.state.resizeSemaphore.withPermits(1)(Effect.suspend(() => {
+    ;(self as PoolImpl<A, E>)[ResizePending] = false
+    return resizeLoop(self)
+  }))
+
 const resizeLoop = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
   Effect.suspend(() => {
     const active = activeSize(self)
@@ -1032,24 +1055,19 @@ const resizeLoop = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
         ),
       (item) =>
         core.withFiber((fiber) => {
-          // A failed acquisition wakes everyone so they can retry it. A new
-          // item can only serve as many waiters as it has slots.
-          if (item.exit._tag === "Failure") wakeAll(self, fiber)
-          else wakeWaiters(self, fiber, self.config.concurrency)
+          // A new item can only serve as many waiters as it has slots.
+          if (item.exit._tag === "Success") wakeWaiters(self, fiber, self.config.concurrency)
           return internal.void
         })
     )
-    if (toAcquire === 1) {
-      return self.config.isFixed
-        ? Effect.asVoid(acquireOne)
-        : Effect.flatMap(acquireOne, (item) => item.exit._tag === "Failure" ? Effect.void : resizeLoop(self))
-    }
-    const acquired = Effect.replicateEffect(acquireOne, toAcquire, { concurrency: toAcquire })
-    return self.config.isFixed
-      ? Effect.asVoid(acquired)
+    // After a failure, keep acquiring only while a borrower is asleep to take
+    // the next result. Each failure is delivered to one of them, so this ends.
+    const next = (failed: boolean) => failed && failureRecipient(self) === undefined ? Effect.void : resizeLoop(self)
+    return toAcquire === 1
+      ? Effect.flatMap(acquireOne, (item) => next(item.exit._tag === "Failure"))
       : Effect.flatMap(
-        acquired,
-        (items) => items.some((_) => _.exit._tag === "Failure") ? Effect.void : resizeLoop(self)
+        Effect.replicateEffect(acquireOne, toAcquire, { concurrency: toAcquire }),
+        (items) => next(items.some((_) => _.exit._tag === "Failure"))
       )
   })
 
@@ -1085,8 +1103,9 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           addAvailable(self, item)
           return self.config.strategy === strategyNoop ? Effect.succeed(item) : Effect.as(onAcquire, item)
         }
+        impl[Failures]++
         // Deliver a waiting borrower its own failure; otherwise retain the slot.
-        const waiter = firstHealthyAvailable(self) === undefined ? firstSleepingWaiter(self) : undefined
+        const waiter = failureRecipient(self)
         if (waiter !== undefined) {
           waiter(exit)
         } else {
