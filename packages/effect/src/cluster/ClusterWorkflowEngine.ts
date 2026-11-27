@@ -568,8 +568,10 @@ export const make = Effect.gen(function*() {
                           request.requestId,
                           // A storage failure fails the transaction, which the
                           // manager retries; a send failure cannot succeed on retry.
-                          Effect.catch(wakeParents, (error) =>
-                            error._tag === "PersistenceError" ? Effect.fail(error) : Effect.die(error))
+                          Effect.catch(
+                            wakeParents,
+                            (error) => error._tag === "PersistenceError" ? Effect.fail(error) : Effect.die(error)
+                          )
                         )
                       })
                       : ensureSuccess(Effect.suspend(() => {

@@ -470,6 +470,48 @@ describe("MessageStorage", () => {
           })
         ).toEqual([])
       }).pipe(Effect.provide(MemoryLayer)))
+
+    it.effect("withTransaction defers new and reset requests until commit and rolls back on failure", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const existing = yield* makeRequest({
+          rpc: PrimaryKeyTest,
+          payload: PrimaryKeyTest.payloadSchema.make({ id: 1 })
+        })
+        yield* storage.saveRequest(existing)
+        yield* storage.saveReply(yield* makeReply(existing))
+        const shardId = existing.envelope.address.shardId
+
+        // A failed transaction leaves neither new nor reset requests pollable or deduplicated.
+        const rolledBack = yield* makeRequest({
+          rpc: PrimaryKeyTest,
+          payload: PrimaryKeyTest.payloadSchema.make({ id: 2 })
+        })
+        yield* Effect.ignore(storage.withTransaction(Effect.gen(function*() {
+          yield* storage.saveRequest(rolledBack)
+          yield* storage.clearReplies(existing.envelope.requestId)
+          expect(yield* storage.unprocessedMessages([shardId])).toHaveLength(0)
+          return yield* Effect.fail("abort")
+        })))
+        expect(yield* storage.unprocessedMessages([shardId])).toHaveLength(0)
+        expect(yield* storage.repliesForUnfiltered([existing.envelope.requestId])).toHaveLength(1)
+
+        // On commit, both the new request (now free of the rolled-back primary key) and reset become pollable.
+        const committed = yield* makeRequest({
+          rpc: PrimaryKeyTest,
+          payload: PrimaryKeyTest.payloadSchema.make({ id: 2 })
+        })
+        yield* storage.withTransaction(Effect.gen(function*() {
+          expect((yield* storage.saveRequest(committed))._tag).toEqual("Success")
+          yield* storage.clearReplies(existing.envelope.requestId)
+          expect(yield* storage.unprocessedMessages([shardId])).toHaveLength(0)
+        }))
+        const messages = yield* storage.unprocessedMessages([shardId])
+        expect(messages.map((message) => message.envelope.requestId)).toEqual([
+          existing.envelope.requestId,
+          committed.envelope.requestId
+        ])
+      }).pipe(Effect.provide(MemoryLayer)))
   })
 })
 

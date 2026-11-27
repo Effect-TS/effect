@@ -1044,6 +1044,11 @@ export const MemoryTransaction = Context.Reference<boolean>("effect/cluster/Mess
   defaultValue: constFalse
 })
 
+const MemoryTransactionRollbacks = Context.Reference<Array<() => void> | undefined>(
+  "effect/cluster/MessageStorage/MemoryTransactionRollbacks",
+  { defaultValue: () => undefined }
+)
+
 // the same claim window the SQL driver uses (`last_read < ten minutes ago`)
 const claimExpirationMillis = 10 * 60 * 1000
 
@@ -1141,41 +1146,70 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
 
     const encoded: Encoded = {
       saveEnvelope: ({ deliverAt, envelope: envelope_, primaryKey }) =>
-        Effect.sync(() => {
-          const envelope = JSON.parse(JSON.stringify(envelope_)) as Envelope.Encoded
-          const existing = primaryKey
-            ? requestsByPrimaryKey.get(primaryKey)
-            : envelope._tag === "Request" && requests.get(envelope.requestId)
-          if (existing) {
-            return SaveResultEncoded.Duplicate({
-              originalId: Snowflake.Snowflake(existing.envelope.requestId),
-              lastReceivedReply: Option.fromNullishOr(
-                existing.replies.length === 1 && existing.replies[0]._tag === "WithExit"
-                  ? existing.replies[0]
-                  : existing.lastReceivedChunk
-              )
+        TransactionNotifications.use((notifications) =>
+          MemoryTransactionRollbacks.use((rollbacks) =>
+            Effect.sync(() => {
+              const envelope = JSON.parse(JSON.stringify(envelope_)) as Envelope.Encoded
+              const existing = primaryKey
+                ? requestsByPrimaryKey.get(primaryKey)
+                : envelope._tag === "Request" && requests.get(envelope.requestId)
+              if (existing) {
+                return SaveResultEncoded.Duplicate({
+                  originalId: Snowflake.Snowflake(existing.envelope.requestId),
+                  lastReceivedReply: Option.fromNullishOr(
+                    existing.replies.length === 1 && existing.replies[0]._tag === "WithExit"
+                      ? existing.replies[0]
+                      : existing.lastReceivedChunk
+                  )
+                })
+              }
+              if (envelope._tag === "Request") {
+                const entry: MemoryEntry = { envelope, replies: [], lastReceivedChunk: undefined, deliverAt }
+                requests.set(envelope.requestId, entry)
+                if (primaryKey) {
+                  requestsByPrimaryKey.set(primaryKey, entry)
+                }
+                if (rollbacks) {
+                  rollbacks.push(() => {
+                    if (requests.get(envelope.requestId) === entry) {
+                      requests.delete(envelope.requestId)
+                    }
+                    if (primaryKey && requestsByPrimaryKey.get(primaryKey) === entry) {
+                      requestsByPrimaryKey.delete(primaryKey)
+                    }
+                  })
+                }
+              } else {
+                const entry = requests.get(envelope.requestId)
+                // the request was deleted, so there is nothing left to acknowledge or interrupt
+                if (!entry) return SaveResultEncoded.Success()
+                if (envelope._tag === "AckChunk") {
+                  const prevChunk = entry.lastReceivedChunk
+                  entry.lastReceivedChunk = entry.replies.find((r): r is Reply.ChunkEncoded =>
+                    r._tag === "Chunk" && r.id === envelope.replyId
+                  ) ?? entry.lastReceivedChunk
+                  if (rollbacks) {
+                    rollbacks.push(() => {
+                      entry.lastReceivedChunk = prevChunk
+                    })
+                  }
+                }
+              }
+              // Defer poll visibility until the outer commit so readers cannot
+              // observe a queued message before earlier writes in the transaction.
+              if (notifications) {
+                notifications.push(Effect.sync(() => {
+                  unprocessed.add(envelope)
+                  journal.push(envelope)
+                }))
+              } else {
+                unprocessed.add(envelope)
+                journal.push(envelope)
+              }
+              return SaveResultEncoded.Success()
             })
-          }
-          if (envelope._tag === "Request") {
-            const entry: MemoryEntry = { envelope, replies: [], lastReceivedChunk: undefined, deliverAt }
-            requests.set(envelope.requestId, entry)
-            if (primaryKey) {
-              requestsByPrimaryKey.set(primaryKey, entry)
-            }
-          } else {
-            const entry = requests.get(envelope.requestId)
-            // the request was deleted, so there is nothing left to acknowledge or interrupt
-            if (!entry) return SaveResultEncoded.Success()
-            if (envelope._tag === "AckChunk") {
-              entry.lastReceivedChunk = entry.replies.find((r): r is Reply.ChunkEncoded =>
-                r._tag === "Chunk" && r.id === envelope.replyId
-              ) ?? entry.lastReceivedChunk
-            }
-          }
-          unprocessed.add(envelope)
-          journal.push(envelope)
-          return SaveResultEncoded.Success()
-        }),
+          )
+        ),
       saveReply: (reply_) => {
         const save = Effect.sync(() => {
           const reply = JSON.parse(JSON.stringify(reply_)) as Reply.Encoded
@@ -1200,8 +1234,8 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
             : save
         )
       },
-      clearReplies: (id, options) =>
-        Effect.sync(() => {
+      clearReplies: (id, options) => {
+        const clear = Effect.sync(() => {
           const entry = requests.get(String(id))
           if (!entry) return
           if (
@@ -1211,7 +1245,15 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           entry.lastReceivedChunk = undefined
           unprocessed.add(entry.envelope)
           lastRead.delete(entry.envelope)
-        }),
+        })
+        return TransactionNotifications.use((notifications) =>
+          notifications
+            ? Effect.sync(() => {
+              notifications.push(clear)
+            })
+            : clear
+        )
+      },
       requestIdForPrimaryKey: (primaryKey) =>
         Effect.sync(() => {
           const entry = requestsByPrimaryKey.get(primaryKey)
@@ -1354,7 +1396,24 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
             }
           }
         }),
-      withTransaction: Effect.provideService(MemoryTransaction, true)
+      withTransaction: (effect) =>
+        MemoryTransactionRollbacks.use((outer) => {
+          const rollbacks: Array<() => void> = []
+          return effect.pipe(
+            Effect.provideService(MemoryTransaction, true),
+            Effect.provideService(MemoryTransactionRollbacks, rollbacks),
+            Effect.onExit((exit) => {
+              if (Exit.isSuccess(exit)) {
+                if (outer) outer.push(...rollbacks)
+                return Effect.void
+              }
+              for (let i = rollbacks.length - 1; i >= 0; i--) {
+                rollbacks[i]()
+              }
+              return Effect.void
+            })
+          )
+        })
     }
 
     const storage = yield* makeEncoded(encoded)
