@@ -804,6 +804,78 @@ export const suite = (
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(output, "error")
           }))
+
+        it.effect("should not block on large stderr from a non-final stage", () =>
+          Effect.gen(function*() {
+            const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+            const output = yield* spawner.string(
+              ChildProcess.make("sh", ["-c", "head -c 2000000 /dev/zero >&2; echo payload"]).pipe(
+                ChildProcess.pipeTo(ChildProcess.make`cat`)
+              )
+            ).pipe(Effect.timeout("2 seconds"), TestClock.withLive)
+
+            assert.strictEqual(output, "payload\n")
+          }))
+
+        it.effect("should not block on large stdout with { from: 'stderr' }", () =>
+          Effect.gen(function*() {
+            const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+            const output = yield* spawner.string(
+              ChildProcess.make("sh", ["-c", "head -c 2000000 /dev/zero; echo error >&2"]).pipe(
+                ChildProcess.pipeTo(ChildProcess.make`cat`, { from: "stderr" })
+              )
+            ).pipe(Effect.timeout("2 seconds"), TestClock.withLive)
+
+            assert.strictEqual(output, "error\n")
+          }))
+
+        it.effect("should keep draining a non-final stage after its forwarded output ends", () =>
+          Effect.gen(function*() {
+            const fs = yield* FileSystem.FileSystem
+            const path = yield* Path.Path
+            const directory = yield* fs.makeTempDirectoryScoped()
+            const done = path.join(directory, "done")
+            const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+            const output = yield* spawner.string(
+              ChildProcess.make("sh", ["-c", "exec 1>&-; head -c 2000000 /dev/zero >&2 && : > \"$1\"", "stage", done])
+                .pipe(
+                  ChildProcess.pipeTo(
+                    ChildProcess.make("sh", [
+                      "-c",
+                      "cat; while [ ! -e \"$1\" ]; do sleep 0.01; done; echo done",
+                      "stage",
+                      done
+                    ])
+                  )
+                )
+            ).pipe(Effect.timeout("2 seconds"), TestClock.withLive)
+
+            assert.strictEqual(output, "done\n")
+          }))
+
+        it.effect("should keep the unforwarded output of an unrefed non-final stage open after the scope closes", () =>
+          Effect.gen(function*() {
+            const fs = yield* FileSystem.FileSystem
+            const path = yield* Path.Path
+            const directory = yield* fs.makeTempDirectoryScoped()
+            const done = path.join(directory, "done")
+            const scope = yield* Scope.make()
+            const handle = yield* Scope.provide(scope)(
+              ChildProcess.make("sh", ["-c", "sleep 0.2; echo late >&2 && : > \"$1\"", "stage", done]).pipe(
+                ChildProcess.pipeTo(ChildProcess.make`cat`)
+              )
+            )
+            // @effect-diagnostics-next-line floatingEffect:off
+            yield* Scope.provide(scope)(handle.unref)
+            yield* TestClock.withLive(Effect.sleep("50 millis"))
+            yield* Scope.close(scope, Exit.void)
+
+            yield* fs.exists(done).pipe(
+              Effect.repeat({ until: (exists) => exists, schedule: Schedule.spaced("20 millis") }),
+              Effect.timeout("2 seconds"),
+              TestClock.withLive
+            )
+          }))
       })
 
       describe("error handling", () => {
