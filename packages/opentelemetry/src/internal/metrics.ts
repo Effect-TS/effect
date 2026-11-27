@@ -76,8 +76,8 @@ export class MetricProducerImpl implements MetricProducer {
 
   collect(_options?: MetricCollectOptions): Promise<CollectionResult> {
     const context = this.context
-    // Read every hook before exporting, as a hook may change the registry or
-    // the state of another series.
+    // Read every hook before exporting: a hook may change the registry or
+    // another series' state.
     const registered = Array.from(Context.get(context, Metric.MetricRegistry).values())
     const states = registered.map((metadata) => metadata.hooks.get(context))
     const hrTimeNow = currentHrTime()
@@ -426,12 +426,11 @@ export class MetricProducerImpl implements MetricProducer {
 interface Series {
   /** Keys the delta state of the series. */
   readonly key: string
-  /** Reported on the data points of the series, frozen as they are shared. */
+  /** Shared by the series' data points, so frozen. */
   readonly attributes: Readonly<Record<string, string>>
 }
 
-// A registry entry keeps its metadata for its lifetime, so each series is
-// derived once rather than on every collection.
+// Registry metadata lives as long as its series, so each series is derived once.
 const seriesCache = new WeakMap<Metric.Metric.Metadata<any, any>, Series>()
 
 const seriesOf = (metadata: Metric.Metric.Metadata<any, any>): Series => {
