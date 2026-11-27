@@ -1,6 +1,6 @@
 {
   "name": "@effect/chat-discord",
-  "version": "4.1.6",
+  "version": "4.1.7",
   "type": "module",
   "license": "MIT",
   "description": "The Discord adapter for effect/chat",
