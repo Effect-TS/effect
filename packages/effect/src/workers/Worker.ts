@@ -13,6 +13,7 @@
  */
 import * as Context from "../Context.ts"
 import type * as Deferred from "../Deferred.ts"
+import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as FiberSet from "../FiberSet.ts"
 import * as Latch from "../Latch.ts"
@@ -142,6 +143,30 @@ export interface SpawnerFn<W = unknown> {
 export const layerSpawner: <W = unknown>(
   spawner: SpawnerFn<W>
 ) => Layer.Layer<Spawner> = Layer.succeed(Spawner)
+
+/**
+ * Context reference for how long a closing worker may take to exit before its
+ * platform terminates it.
+ *
+ * **When to use**
+ *
+ * Use to shorten or lengthen graceful worker shutdown, for example to stop
+ * workers well within a process shutdown deadline.
+ *
+ * **Details**
+ *
+ * Defaults to 5 seconds. Node and Bun read it when a worker starts running, so
+ * provide it where the worker is run or where a worker pool is built. Browser
+ * workers are not terminated when closed.
+ *
+ * @stability unstable
+ * @category references
+ * @since 4.1.7
+ */
+export const CloseTimeout = Context.Reference<Duration.Duration>(
+  "effect/workers/Worker/CloseTimeout",
+  { defaultValue: () => Duration.seconds(5) }
+)
 
 /**
  * Creates a `WorkerPlatform` from platform-specific setup and listen hooks,

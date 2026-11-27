@@ -38,7 +38,8 @@ export const layer = (
 /**
  * Provides the Bun `WorkerPlatform`, wiring worker messages and errors into
  * Effect workers and requesting graceful worker shutdown during scope
- * finalization before terminating on timeout.
+ * finalization before terminating workers that have not closed within
+ * `Worker.CloseTimeout`.
  *
  * @stability unstable
  * @category layers
@@ -51,20 +52,21 @@ export const layerPlatform = Layer.succeed(Worker.WorkerPlatform)(
       worker.addEventListener("close", () => {
         Deferred.doneUnsafe(closeDeferred, Exit.void)
       })
-      return Effect.as(
-        Scope.addFinalizer(
-          scope,
-          Effect.suspend(() => {
-            worker.postMessage([1])
-            return Deferred.await(closeDeferred)
-          }).pipe(
-            Effect.interruptible,
-            Effect.timeout(5000),
-            Effect.catchCause(() => Effect.sync(() => worker.terminate()))
-          )
-        ),
-        worker
-      )
+      return Effect.flatMap(Worker.CloseTimeout, (closeTimeout) =>
+        Effect.as(
+          Scope.addFinalizer(
+            scope,
+            Effect.suspend(() => {
+              worker.postMessage([1])
+              return Deferred.await(closeDeferred)
+            }).pipe(
+              Effect.interruptible,
+              Effect.timeout(closeTimeout),
+              Effect.catchCause(() => Effect.sync(() => worker.terminate()))
+            )
+          ),
+          worker
+        ))
     },
     listen({ deferred, emit, port, scope }) {
       function onMessage(event: MessageEvent) {
