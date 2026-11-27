@@ -1,6 +1,7 @@
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
 import * as Base64 from "../../encoding/Base64.ts"
+import { memoize } from "../../Function.ts"
 import type * as Headers from "../../http/Headers.ts"
 import type * as LogLevel from "../../LogLevel.ts"
 import * as Match from "../../Match.ts"
@@ -356,6 +357,20 @@ export const transcodeStrict = <
   Schema.encodeEffect(from)(input).pipe(
     Effect.flatMap(Schema.decodeUnknownEffect(to, { onExcessProperty: "error" }))
   )
+
+/**
+ * Encodes each tool descriptor instance to its JSON wire form once. A
+ * replaced tool is a new instance, so it is encoded afresh.
+ *
+ * @internal
+ */
+export const makeToolProjector = <A>(
+  schema: Schema.Codec<A, unknown>,
+  project: (tool: PublicMcpSchema.Tool) => A
+) => {
+  const encode = Schema.encodeExit(Schema.toCodecJson(schema))
+  return memoize((tool: PublicMcpSchema.Tool) => encode(project(tool)))
+}
 
 /**
  * @internal

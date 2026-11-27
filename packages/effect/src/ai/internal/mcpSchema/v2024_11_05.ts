@@ -408,7 +408,8 @@ export const GetPromptResult = Schema.Struct({
  */
 export const ListToolsResult = Schema.Struct({
   ...PaginatedResult.fields,
-  tools: Schema.Array(Tool)
+  // Already JSON-encoded by the protocol adapter.
+  tools: Schema.Any
 })
 
 /**

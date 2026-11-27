@@ -209,7 +209,7 @@ const projectResourceTemplate = (resourceTemplate: PublicMcpSchema.ResourceTempl
 
 const projectPrompt = (prompt: PublicMcpSchema.Prompt) => Schema.encodeEffect(McpSchema.Prompt)(prompt)
 
-const projectTool = (tool: PublicMcpSchema.Tool) => McpProtocol.transcode(PublicMcpSchema.Tool, McpSchema.Tool, tool)
+const projectTool = McpProtocol.makeToolProjector(McpSchema.Tool, (tool) => tool)
 
 const privateStaleCache = {
   ttlMs: 0,
