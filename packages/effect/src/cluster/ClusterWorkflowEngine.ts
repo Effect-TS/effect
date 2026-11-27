@@ -317,7 +317,7 @@ export const make = Effect.gen(function*() {
         pending.results.has(InterruptSignal.name)
     })
 
-  const sendResumeParent = Effect.fnUntraced(function*(parent: ParentRef, childExecutionId: string) {
+  const sendResumeParent = Effect.fnUntraced(function*(parent: ParentRef, child: ParentRef) {
     // Parents saved before `shardGroup` existed, or in the default group, omit it.
     const workflow = workflows.get(parent.workflowName)
     const address = entityAddress(
@@ -328,19 +328,83 @@ export const make = Effect.gen(function*() {
     const requestId = yield* storage.requestIdForPrimaryKey({
       address,
       tag: "resume",
-      id: childExecutionId
+      id: child.executionId
     })
     if (Option.isNone(requestId)) {
       return yield* sendDiscard({
         rpc: ResumeRpc,
         address,
-        payload: { childExecutionId }
+        payload: {
+          childExecutionId: child.executionId,
+          childWorkflowName: child.workflowName,
+          childShardGroup: child.shardGroup
+        }
       })
     }
     const reply = yield* replyForRequestId(requestId.value)
     if (Option.isNone(reply)) return
     yield* sharding.reset(requestId.value, { expectedReplyId: Snowflake.Snowflake(reply.value.id) })
   })
+
+  // Older wakes do not name the child's workflow and proceed immediately.
+  // While the child's result is unsettled, schedule a delayed follow-up wake
+  // and release this request so the parent's mailbox stays open.
+  const childResultReady = (
+    workflow: Workflow.Any,
+    address: EntityAddress.EntityAddress,
+    executionId: string,
+    payload: ResumePayload,
+    retired?: Latch.Latch
+  ) => {
+    if (payload.childWorkflowName === undefined || payload.childExecutionId === undefined) {
+      return Effect.succeed(true)
+    }
+    const childExecutionId = payload.childExecutionId
+    const childWorkflowName = payload.childWorkflowName
+    const childAddress = entityAddress(
+      `Workflow/${childWorkflowName}`,
+      childExecutionId,
+      payload.childShardGroup ?? "default"
+    )
+    const check = Effect.interruptible(
+      Effect.gen(function*() {
+        const requestId = yield* storage.requestIdForPrimaryKey({ address: childAddress, tag: "run", id: "" })
+        if (Option.isNone(requestId)) return true
+        if (isRunSettled(yield* replyForRequestId(requestId.value))) return true
+        if (isRunSettled(yield* runReply(workflow, executionId))) return false
+        let attempt = (payload.attempt ?? 0) + 1
+        while (true) {
+          const id = `${childExecutionId}:${attempt}`
+          const existing = yield* storage.requestIdForPrimaryKey({ address, tag: "resume", id })
+          if (Option.isNone(existing)) break
+          if (Option.isNone(yield* replyForRequestId(existing.value))) return false
+          attempt++
+        }
+        const now = yield* DateTime.now
+        const delay = Math.min(Math.ceil(200 * 1.5 ** (attempt - 1)), 60_000)
+        yield* sendDiscard({
+          rpc: ResumeRpc,
+          address,
+          payload: {
+            childExecutionId,
+            childWorkflowName,
+            childShardGroup: payload.childShardGroup,
+            deliverAt: DateTime.mapEpochMillis(DateTime.addDuration(now, Duration.millis(delay)), Math.ceil),
+            attempt
+          }
+        })
+        return false
+      }).pipe(Effect.retry(retryPolicy), Effect.orDie)
+    )
+    if (!retired) return check
+    return Effect.flatMap(
+      Effect.raceFirst(
+        Effect.as(Effect.interruptible(retired.await), Option.none<boolean>()),
+        Effect.map(check, Option.some)
+      ),
+      Option.match({ onNone: () => ClusterAbandon.interrupt, onSome: Effect.succeed })
+    )
+  }
 
   // Subscribe to the run's next reply before reading storage, so a reply
   // cannot fall between the read and the subscription. Returns `true` when the
@@ -441,6 +505,11 @@ export const make = Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
             const activation = yield* CurrentActivationScope
+            const self: ParentRef = {
+              workflowName: workflow._tag,
+              executionId,
+              ...(address.shardId.group === "default" ? undefined : { shardGroup: address.shardId.group })
+            }
             let pending = pendingByActivation.get(activation)
             if (!pending) {
               const results = new Map<string, Exit.Exit<unknown, unknown>>()
@@ -550,7 +619,7 @@ export const make = Effect.gen(function*() {
                         parents.push(parent)
                       }
                       for (const ref of parents) {
-                        yield* sendResumeParent(ref, executionId)
+                        yield* sendResumeParent(ref, self)
                       }
                     }))
                     if (
@@ -686,7 +755,14 @@ export const make = Effect.gen(function*() {
                 return forkReply(Effect.as(wake, payload.exit as Exit.Exit<unknown, unknown>))
               },
 
-              resume: () => resumeCurrentRun("automatic").pipe(Rpc.wrap({ fork: true, uninterruptible: true })),
+              // A child sends its wake before its result is saved; defer the
+              // wake if the result is not stored yet so replay sees it without
+              // holding the parent's mailbox.
+              resume: (request: Entity.Request<any>) =>
+                Effect.flatMap(
+                  childResultReady(workflow, address, executionId, request.payload as ResumePayload, pending.retired),
+                  (ready) => ready ? resumeCurrentRun("automatic") : Effect.void
+                ).pipe(Rpc.wrap({ fork: true, uninterruptible: true })),
 
               parent: (request: Entity.Request<any>) => {
                 const ref = request.payload as ParentRef
@@ -695,13 +771,13 @@ export const make = Effect.gen(function*() {
                 if (currentRun?.completing) {
                   return forkReply(
                     ensureSuccess(
-                      Effect.andThen(waitForRunReply(workflow, currentRun.request), sendResumeParent(ref, executionId))
+                      Effect.andThen(waitForRunReply(workflow, currentRun.request), sendResumeParent(ref, self))
                     )
                   )
                 }
                 return Effect.gen(function*() {
                   if (isRunSettled(yield* retryPersistence(runReply(workflow, executionId)))) {
-                    yield* ensureSuccess(sendResumeParent(ref, executionId))
+                    yield* ensureSuccess(sendResumeParent(ref, self))
                   }
                 }).pipe(Rpc.wrap({ fork: true }))
               }
@@ -1073,13 +1149,26 @@ const deferredReplyExit = (reply: WithExitEncoded<Workflow.ResultEncoded<any, an
   return decoded.exit._tag === "Success" ? decoded.exit.value : decoded.exit
 }
 
-const ResumeRpc = Rpc.make("resume", {
+class ResumePayload extends Schema.Class<ResumePayload>("effect/cluster/ClusterWorkflowEngine/ResumePayload")({
+  childExecutionId: Schema.optional(Schema.String),
+  childWorkflowName: Schema.optional(Schema.String),
+  childShardGroup: Schema.optional(Schema.String),
+  deliverAt: Schema.optional(Schema.DateTimeUtcFromMillis),
+  attempt: Schema.optional(Schema.Int)
+}) {
   // Older persisted resume envelopes have an empty payload and use the empty key.
-  payload: { childExecutionId: Schema.optional(Schema.String) },
   // Different children must not share an in-flight wake: the parent may have
   // already started another run when the next child finishes.
-  primaryKey: ({ childExecutionId }) => childExecutionId ?? ""
-})
+  [PrimaryKey.symbol]() {
+    if (this.childExecutionId === undefined) return ""
+    return this.attempt !== undefined ? `${this.childExecutionId}:${this.attempt}` : this.childExecutionId
+  }
+  [DeliverAt.symbol]() {
+    return this.deliverAt ?? DateTime.makeUnsafe(0)
+  }
+}
+
+const ResumeRpc = Rpc.make("resume", { payload: ResumePayload })
   .annotate(ClusterSchema.Persisted, true)
   .annotate(ClusterSchema.Uninterruptible, "server")
 
