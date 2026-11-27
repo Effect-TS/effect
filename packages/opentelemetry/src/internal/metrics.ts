@@ -10,7 +10,7 @@ import type {
 } from "@opentelemetry/sdk-metrics"
 import { AggregationTemporality, DataPointType, InstrumentType } from "@opentelemetry/sdk-metrics"
 import type { InstrumentDescriptor } from "@opentelemetry/sdk-metrics/build/src/InstrumentDescriptor.js"
-import type * as Context from "effect/Context"
+import * as Context from "effect/Context"
 import * as Metric from "effect/Metric"
 import * as Rec from "effect/Record"
 import type * as Metrics from "../OtelMetrics.ts"
@@ -75,9 +75,10 @@ export class MetricProducerImpl implements MetricProducer {
   }
 
   collect(_options?: MetricCollectOptions): Promise<CollectionResult> {
-    const snapshot = Metric.snapshotUnsafe(this.context)
+    const context = this.context
+    const registry = Context.get(context, Metric.MetricRegistry)
     const hrTimeNow = currentHrTime()
-    // Only series in this snapshot carry their delta state forward, so removed
+    // Only series still in the registry carry their delta state forward, so removed
     // series do not leak state or report a negative delta when recreated.
     const previousCounterState = this.previousCounterState
     const previousHistogramState = this.previousHistogramState
@@ -102,11 +103,16 @@ export class MetricProducerImpl implements MetricProducer {
       ? this.previousExportTimeNanos
       : this.startTimeNanos
 
-    for (let i = 0, len = snapshot.length; i < len; i++) {
-      const state = snapshot[i]
-      const series = seriesAttributes(state.attributes)
-      const attributes = series.attributes
-      const metricKey = state.id + series.keySuffix
+    // The registry key identifies the series, so it also keys the delta state.
+    for (const [metricKey, metadata] of registry) {
+      const state = {
+        id: metadata.id,
+        type: metadata.type,
+        description: metadata.description,
+        attributes: metadata.attributes,
+        state: metadata.hooks.get(context)
+      } as Metric.Metric.Snapshot
+      const attributes = reportedAttributes(metadata.attributes)
 
       switch (state.type) {
         case "Counter": {
@@ -414,42 +420,27 @@ export class MetricProducerImpl implements MetricProducer {
   }
 }
 
-interface SeriesAttributes {
-  /** The attributes reported on every data point of the series. */
-  readonly attributes: Record<string, string>
-  /** Appended to the metric id to key the series; empty when it has no attributes. */
-  readonly keySuffix: string
-}
+const noAttributes: Readonly<Record<string, string>> = Object.freeze({})
 
-const noSeriesAttributes: SeriesAttributes = { attributes: {}, keySuffix: "" }
+// A series keeps its attribute set for its lifetime, so the reported
+// attributes are converted once and shared, frozen so a consumer cannot alter
+// them for later collections or other readers.
+const reportedAttributesCache = new WeakMap<Metric.Metric.AttributeSet, Readonly<Record<string, string>>>()
 
-/**
- * A registered series keeps the same attribute set for its lifetime, so the
- * converted attributes and key are derived once per series rather than on
- * every collection. Entries are released with the attribute set.
- */
-const seriesAttributesCache = new WeakMap<Metric.Metric.AttributeSet, SeriesAttributes>()
-
-const seriesAttributes = (attributes: Metric.Metric.AttributeSet | undefined): SeriesAttributes => {
+const reportedAttributes = (attributes: Metric.Metric.AttributeSet | undefined): Readonly<Record<string, string>> => {
   if (attributes === undefined) {
-    return noSeriesAttributes
+    return noAttributes
   }
-  let cached = seriesAttributesCache.get(attributes)
-  if (cached === undefined) {
-    const entries = Object.entries(attributes)
+  let reported = reportedAttributesCache.get(attributes)
+  if (reported === undefined) {
     const converted: Record<string, string> = {}
-    for (const [key, value] of entries) {
-      Rec.assignProperty(converted, key, String(value))
+    for (const key of Object.keys(attributes)) {
+      Rec.assignProperty(converted, key, String(attributes[key]))
     }
-    cached = {
-      attributes: converted,
-      keySuffix: entries.length === 0
-        ? ""
-        : `:${JSON.stringify(entries.sort((a, b) => a[0].localeCompare(b[0])))}`
-    }
-    seriesAttributesCache.set(attributes, cached)
+    reported = Object.freeze(converted)
+    reportedAttributesCache.set(attributes, reported)
   }
-  return cached
+  return reported
 }
 
 const currentHrTime = (): HrTime => {
