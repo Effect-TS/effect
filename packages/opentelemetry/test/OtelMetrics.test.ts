@@ -407,16 +407,20 @@ describe("Metrics", () => {
         (result) => findMetric(result, "requests").dataPoints.map((point: any) => [point.attributes, point.value])
       )
       const requests = Metric.counter("requests", { incremental: true })
-      const ok = Metric.withAttributes(requests, { route: "/users", status: 200 })
-      const failed = Metric.withAttributes(requests, { route: "/users", status: 500 })
+      // untyped callers can pass numeric values, which are reported as strings
+      const ok = Metric.withAttributes(requests, { route: "/users", status: 200 } as any)
+      const failed = Metric.withAttributes(requests, { route: "/users", status: 500 } as any)
 
       yield* Metric.update(ok, 3)
       yield* Metric.update(failed, 1)
-      assert.deepStrictEqual(yield* collect, [
+      const first = yield* collect
+      assert.deepStrictEqual(first, [
         [{ route: "/users", status: "200" }, 3],
         [{ route: "/users", status: "500" }, 1]
       ])
 
+      // an exporter mutating reported attributes must not affect later collections
+      Reflect.set(first[0][0], "status", "mutated")
       yield* Metric.update(failed, 4)
       assert.deepStrictEqual(yield* collect, [
         [{ route: "/users", status: "200" }, 0],
