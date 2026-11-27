@@ -886,6 +886,26 @@ describe("Cron", () => {
     })
   })
 
+  it("next and prev follow host DST transitions when no time zone is set", () => {
+    const previous = process.env.TZ
+    try {
+      process.env.TZ = "Europe/Berlin"
+      // Europe/Berlin falls back from +02:00 to +01:00 on 2026-10-25.
+      const cron = Cron.parseUnsafe("0 9 10 * *")
+      deepStrictEqual(next(cron, new Date("2026-10-20T12:00:00+02:00")), new Date("2026-11-10T09:00:00+01:00"))
+      deepStrictEqual(prev(cron, new Date("2026-11-01T12:00:00+01:00")), new Date("2026-10-10T09:00:00+02:00"))
+
+      const tokyo = DateTime.makeZonedUnsafe(new Date("2026-10-20T12:00:00+09:00"), { timeZone: "Asia/Tokyo" })
+      deepStrictEqual(next(cron, tokyo), new Date("2026-11-10T09:00:00+09:00"))
+    } finally {
+      if (previous === undefined) {
+        delete process.env.TZ
+      } else {
+        process.env.TZ = previous
+      }
+    }
+  })
+
   it("handles utc timezone", () => {
     const utc = DateTime.zoneMakeNamedUnsafe("UTC")
     const make = (date: string): DateTime.Zoned => Option.getOrThrow(DateTime.makeZonedFromString(date))
