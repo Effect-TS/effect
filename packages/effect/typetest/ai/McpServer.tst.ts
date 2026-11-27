@@ -511,4 +511,30 @@ describe("McpServer", () => {
       expect<Parameters<typeof McpServer.skill>>().type.toBe<[options: McpServer.SkillOptions]>()
     })
   })
+
+  describe("toolSource", () => {
+    class CurrentUser extends Context.Service<CurrentUser, { readonly id: string }>()("CurrentUser") {}
+    class AuditLog extends Context.Service<AuditLog, { readonly write: (entry: string) => void }>()("AuditLog") {}
+
+    it("should lift list and call services to McpRequest requirements", () => {
+      const options = {
+        list: Effect.gen(function*() {
+          yield* CurrentUser
+          yield* McpSchema.McpRequestContext
+          return [] as ReadonlyArray<McpSchema.Tool>
+        }),
+        call: (_name: string, _args: Readonly<Record<string, unknown>>) =>
+          Effect.gen(function*() {
+            yield* AuditLog
+            return hole<McpSchema.CallToolResult>()
+          })
+      }
+      const registered = McpServer.registerToolSource(options)
+      const layer = McpServer.toolSource(options)
+      type Requirements = McpServer.McpServer | Requires<CurrentUser> | Requires<AuditLog>
+
+      expect<Effect.Services<typeof registered>>().type.toBe<Requirements>()
+      expect<Layer.Services<typeof layer>>().type.toBe<Requirements>()
+    })
+  })
 })
