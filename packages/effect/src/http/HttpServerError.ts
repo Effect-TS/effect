@@ -289,7 +289,7 @@ const formatRequestMessage = (reason: string, description: string | undefined, i
 
 /**
  * Converts a failed handler cause into the HTTP response that should be sent and
- * the cause that should be reported.
+ * the cause to propagate.
  *
  * **Details**
  *

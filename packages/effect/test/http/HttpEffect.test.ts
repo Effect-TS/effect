@@ -1,8 +1,8 @@
 import { describe, it, test } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Cause, Context, Effect, Exit, Option, References, Scope, Stream, Tracer } from "effect"
+import { Cause, Context, Effect, ErrorReporter, Exit, Option, References, Schema, Scope, Stream, Tracer } from "effect"
 import { identity } from "effect/Function"
-import { HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
+import { HttpEffect, HttpRouter, HttpServerRequest, HttpServerRespondable, HttpServerResponse } from "effect/http"
 import * as Layer from "effect/Layer"
 
 const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: () => 0 })
@@ -518,6 +518,30 @@ describe("HttpEffect", () => {
         await dispose()
       }
     })
+  })
+
+  test("reports a failed cause without the built-in client errors", async () => {
+    const schemaError = Effect.runSync(Effect.flip(Schema.decodeUnknownEffect(Schema.Number)("abc")))
+    const respondable = Object.assign(new Cause.NoSuchElementError("respondable"), {
+      [HttpServerRespondable.symbol]: () => Effect.succeed(HttpServerResponse.empty({ status: 409 }))
+    })
+    const reported: Array<string> = []
+    let seen: Cause.Cause<unknown> | undefined
+    const { dispose, handler } = HttpEffect.toWebHandlerLayer(
+      Effect.failCause(Cause.fromReasons<unknown>([
+        Cause.makeFailReason(schemaError),
+        Cause.makeFailReason(new Cause.NoSuchElementError()),
+        Cause.makeFailReason(respondable),
+        Cause.makeFailReason("boom")
+      ])),
+      ErrorReporter.layer([ErrorReporter.make(({ error }) => reported.push(error.message))]),
+      // The middleware propagates the cause, so both reporting paths see it.
+      { middleware: (app) => Effect.tapCause(app, (cause) => Effect.sync(() => seen = cause)) }
+    )
+    await handler(new Request("http://localhost/"))
+    await dispose()
+    deepStrictEqual(reported, ["respondable", "boom"])
+    assertTrue(seen!.reasons.some((reason) => reason._tag === "Fail" && reason.error === schemaError))
   })
 
   test("custom context", async () => {
