@@ -581,7 +581,8 @@ const overlayLookup = (self: ContextImpl<any>, key: string): unknown => {
   // request context and reintroduce the O(services) per-request cost
   if (value === undefined && !self.base.has(key)) return notFound
   if (++self.baseHits >= self.base.size && self.baseHits >= FlattenAfterBaseHits) {
-    // The overlay prototype's `mapUnsafe` flattens the chain
+    // Flatten through `OverlayProto.mapUnsafe` rather than calling `flatten`,
+    // so flat-only bundles never reach `flatten`
     self.base = self.mapUnsafe
     self.overlay = undefined
     self.depth = 0
@@ -678,7 +679,7 @@ const Proto: Omit<
 }
 
 // Separate prototype for contexts carrying an overlay chain (`Context.add`), so
-// bundles that never call `add` or `addUnsafe` drop `fiberCachedKeys`.
+// bundles that only build flat contexts drop `flatten` and `applyOverlays`.
 const OverlayProto = Object.create(Proto, {
   mapUnsafe: {
     get(this: ContextImpl<any>) {
@@ -1156,19 +1157,6 @@ export const shareDefaultValue = <Shape>(ref: Reference<Shape>, shared: () => Sh
 export const getReferenceUnsafe = <Services, Shape>(self: Context<Services>, ref: Reference<Shape>): Shape => {
   const value = lookup(self, ref.key)
   return value === notFound ? getDefaultValue(ref) : value as Shape
-}
-
-/**
- * Reads the service stored under `key`, or returns `orElse` when there is
- * none. Unlike `getOrUndefinedUnsafe` it tells a stored `undefined` from an
- * absent key. The fiber runtime reads its cached references this way, so
- * minimal bundles do not construct them.
- *
- * @internal
- */
-export const getOrElseUnsafe = <A, Services = never>(self: Context<Services>, key: string, orElse: A): A => {
-  const value = lookup(self, key)
-  return value === notFound ? orElse : value as A
 }
 
 const serviceNotFoundError = (service: Key<any, any>) => {

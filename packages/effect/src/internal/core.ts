@@ -613,12 +613,7 @@ export const exitSucceed: <A>(a: A) => Exit.Exit<A> = makeExit({
 })
 
 /** @internal */
-export const StackTraceKeyName = "effect/Cause/StackTrace" satisfies typeof Cause.StackTrace.key
-
-/** @internal */
-export const StackTraceKey = {
-  key: StackTraceKeyName
-} as Context.Service<Cause.StackTrace, StackFrame>
+export const StackTraceKey = "effect/Cause/StackTrace" satisfies typeof Cause.StackTrace.key
 
 /** @internal */
 export const InterruptorStackTrace = {
@@ -633,7 +628,7 @@ export const exitFailCause: <E>(cause: Cause.Cause<E>) => Exit.Exit<never, E> = 
     let cause = this[args]
     let annotated = false
     if (fiber.cache.stackFrame) {
-      cause = causeAnnotateMap(cause, new Map([[StackTraceKeyName, fiber.cache.stackFrame]]))
+      cause = causeAnnotateMap(cause, new Map([[StackTraceKey, fiber.cache.stackFrame]]))
       annotated = true
     }
     let cont = fiber.getCont(contE)

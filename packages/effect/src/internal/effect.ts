@@ -80,7 +80,6 @@ import {
   NoSuchElementError,
   ReasonBase,
   StackTraceKey as CauseStackTrace,
-  StackTraceKeyName as CauseStackTraceKeyName,
   TaggedError,
   withFiber,
   Yield
@@ -439,7 +438,7 @@ const cleanErrorStack = (
 }
 
 const addStackAnnotations = (stack: string, annotations: ReadonlyMap<string, unknown>) => {
-  const frame = annotations?.get(CauseStackTrace.key) as StackFrame | undefined
+  const frame = annotations?.get(CauseStackTrace) as StackFrame | undefined
   if (frame) {
     stack = `${stack}\n${currentStackTrace(frame)}`
   }
@@ -610,7 +609,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     let cause = causeInterrupt(fiberId)
     if (this.cache.stackFrame) {
-      cause = causeAnnotateMap(cause, new Map([[CauseStackTraceKeyName, this.cache.stackFrame]]))
+      cause = causeAnnotateMap(cause, new Map([[CauseStackTrace, this.cache.stackFrame]]))
     }
     if (annotations) {
       cause = causeAnnotateMap(cause, annotations.mapUnsafe)
@@ -809,20 +808,20 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
   // Reading by key keeps the service objects, and the native tracer behind
   // Tracer.Tracer's default, out of bundles that never use them.
-  const get = <A>(key: FiberCacheKey, fallback?: A): A => Context.getOrElseUnsafe(context, key, fallback as A)
-  const currentTracer = get<Tracer.Tracer | undefined>(TracerKey)
+  const get = <A>(key: FiberCacheKey): A | undefined => Context.getOrUndefinedUnsafe(context, key)
+  const currentTracer = get<Tracer.Tracer>(TracerKey)
   return {
-    scheduler: get<Scheduler.Scheduler | undefined>(SchedulerKey) ?? Scheduler.getDefaultScheduler(),
+    scheduler: get<Scheduler.Scheduler>(SchedulerKey) ?? Scheduler.getDefaultScheduler(),
     tracer: currentTracer,
     tracerContext: currentTracer?.["context"],
-    tracerEnabled: get(TracerEnabledKey, defaultTracerEnabled),
+    tracerEnabled: get<boolean>(TracerEnabledKey) ?? defaultTracerEnabled,
     span: get(ParentSpanKey),
-    logLevel: get<LogLevel.Severity>(CurrentLogLevelKey, defaultCurrentLogLevel),
-    minimumLogLevel: get<LogLevel.LogLevel>(MinimumLogLevelKey, defaultMinimumLogLevel),
+    logLevel: get<LogLevel.Severity>(CurrentLogLevelKey) ?? defaultCurrentLogLevel,
+    minimumLogLevel: get<LogLevel.LogLevel>(MinimumLogLevelKey) ?? defaultMinimumLogLevel,
     stackFrame: get(CurrentStackFrameKey),
     runtimeMetrics: get(FiberRuntimeMetricsKey),
-    maxOpsBeforeYield: get(MaxOpsBeforeYieldKey, defaultMaxOpsBeforeYield),
-    preventYield: get(PreventSchedulerYieldKey, defaultPreventSchedulerYield)
+    maxOpsBeforeYield: get<number>(MaxOpsBeforeYieldKey) ?? defaultMaxOpsBeforeYield,
+    preventYield: get<boolean>(PreventSchedulerYieldKey) ?? defaultPreventSchedulerYield
   }
 }
 

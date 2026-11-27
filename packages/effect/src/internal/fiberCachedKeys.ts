@@ -61,7 +61,7 @@ export const defaultMinimumLogLevel: LogLevel = "Info"
  *
  * @internal
  */
-export const fiberCacheKeys = [
+const runtimeKeys = [
   SchedulerKey,
   TracerKey,
   TracerEnabledKey,
@@ -75,16 +75,16 @@ export const fiberCacheKeys = [
 ] as const
 
 /** @internal */
-export type FiberCacheKey = typeof fiberCacheKeys[number]
+export type FiberCacheKey = typeof runtimeKeys[number]
 
 /**
  * Keys whose values fibers cache, so adding one to a context starts a new
  * cache.
  *
- * Seeded with every `fiberCacheKeys` entry, so a key invalidates the cache even
+ * Seeded with every `FiberCacheKey`, so a key invalidates the cache even
  * in bundles where the service declaring it was tree-shaken. Services declared
  * with `fiberCached: true` add their own key.
  *
  * @internal
  */
-export const fiberCachedKeys: Set<string> = new Set(fiberCacheKeys)
+export const fiberCachedKeys: Set<string> = new Set(runtimeKeys)
