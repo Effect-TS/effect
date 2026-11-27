@@ -623,7 +623,7 @@ const getSlowWith = <A, E, X, R>(
         return wait
       }
       if (item.exit._tag === "Failure") {
-        // A failure since the last check is this borrower's to take.
+        // A failure kept since the last check is this borrower's; `wait` delivers it.
         if (waiter.failures !== (self as PoolImpl<A, E>)[Failures]) return wait
         removeFailedItem(self, item)
         return loop
@@ -638,8 +638,8 @@ const getSlowWith = <A, E, X, R>(
       }
       const impl = self as PoolImpl<A, E>
       waiter.failures = impl[Failures]
-      // A pending resize has yet to read the target, so it counts this
-      // borrower. A running one may have read it already.
+      // A pending resize has yet to read the target, so it will count this
+      // borrower. A running one may not.
       if (impl[ResizePending] || targetSize(self) <= activeSize(self)) return step
       impl[ResizePending] = true
       return internal.flatMap(Effect.forkIn(Effect.interruptible(resize(self)), state.scope), () => step)
@@ -718,9 +718,9 @@ const firstAvailable = <A, E>(self: Pool<A, E>, tag: Exit.Exit<A, E>["_tag"]): P
  * `resume` is set while the borrower is asleep. A registered waiter without
  * one has been woken and has yet to take an item, wait again or leave.
  *
- * `failures` is the pool's failure count when the borrower last checked the
- * pool. A failure while the borrower is awake cannot be delivered to it, so
- * it compares the count before sleeping.
+ * `failures` is the pool's failure count at the borrower's last check. A
+ * failure while the borrower is awake is not delivered to it, so it compares
+ * the count before sleeping.
  */
 interface Waiter<A, E> {
   (failure?: Exit.Failure<A, E>): void
@@ -750,8 +750,8 @@ const waitForItem = <A, E>(self: Pool<A, E>, waiter: Waiter<A, E>): Effect.Effec
       return resume(internal.void)
     }
     if (waiter.failures !== (self as PoolImpl<A, E>)[Failures]) {
-      // An acquisition failed since the last check. Take the failure if it was
-      // kept, or check the pool again.
+      // An acquisition failed since the last check: take the kept failure, or
+      // check the pool again.
       const failed = firstAvailable(self, "Failure")
       if (failed === undefined) return resume(internal.void)
       removeFailedItem(self, failed)
@@ -1024,7 +1024,7 @@ const resize = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
 
 const resizeLoop = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
   Effect.suspend(() => {
-    // This pass reads the target, so it counts every borrower so far.
+    // The target read below counts every borrower so far.
     ;(self as PoolImpl<A, E>)[ResizePending] = false
     const active = activeSize(self)
     const target = targetSize(self)
@@ -1107,8 +1107,8 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
         } else {
           self.state.items.add(item)
           addAvailable(self, item)
-          // A kept failure serves one borrower, by failing it or by being
-          // replaced. A healthy item can leave a sleeper without a wake.
+          // Wake one sleeper to take or replace the failure. Wakes from a
+          // healthy item beside it may not reach that sleeper.
           wakeWaiters(self, fiber, 1)
         }
         // Do not let cleanup delay a replacement acquisition.
