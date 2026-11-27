@@ -4,7 +4,7 @@
 
 Base: `cab7f2e3493e4a3dceda27cb1b6d28c4599cb939` (`cab7f2e3493e4a3dceda27cb1b6d28c4599cb939`)
 
-Head: `ca9de3c912ddb035a52b0f3f24e36ac453e417ae` (`ca9de3c912ddb035a52b0f3f24e36ac453e417ae`)
+Head: `db1629c6266951eec5cc477519b474fe828f85b6` (`db1629c6266951eec5cc477519b474fe828f85b6`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -5963,11 +5963,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/cluster/MessageStorage`
 
-- `MessageStorage.Encoded` -> `effect/cluster/MessageStorage#Encoded`: Moved into core Effect; use the v4 Envelope.Encoded and Reply.Encoded aliases. Custom drivers now implement batched resetAddresses, and unprocessedMessages receives optional limit and address filters.
+- `MessageStorage.Encoded` -> `effect/cluster/MessageStorage#Encoded`: Moved into core Effect; use the v4 Envelope.Encoded and Reply.Encoded aliases. Custom drivers now implement batched resetAddresses and requestsForAddress, and unprocessedMessages receives optional limit and address filters.
 
-- `MessageStorage.make` -> `effect/cluster/MessageStorage#make`: Moved into core Effect. Context service projections now use the Service property instead of Type. Custom service implementations must also provide resetAddresses for batched mailbox resets.
+- `MessageStorage.make` -> `effect/cluster/MessageStorage#make`: Moved into core Effect. Context service projections now use the Service property instead of Type. Custom service implementations must also provide resetAddresses for batched mailbox resets and requestsForAddress, which returns every saved request for an address and RPC tag.
 
-- `MessageStorage.makeEncoded` -> `effect/cluster/MessageStorage#makeEncoded`: Moved into core Effect. Custom encoded drivers must replace resetAddress with resetAddresses and may use the new limit and addresses options passed to unprocessedMessages.
+- `MessageStorage.makeEncoded` -> `effect/cluster/MessageStorage#makeEncoded`: Moved into core Effect. Custom encoded drivers must replace resetAddress with resetAddresses, add requestsForAddress, and may use the new limit and addresses options passed to unprocessedMessages.
 
 ### `@effect/cluster/Reply`
 
