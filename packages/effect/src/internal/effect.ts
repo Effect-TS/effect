@@ -891,10 +891,10 @@ export const fiberAwait = <A, E>(
 ): Effect.Effect<Exit.Exit<A, E>> => {
   const impl = self as FiberImpl<A, E>
   if (impl._exit) return succeed(impl._exit)
-  return callback((resume) => {
+  return callbackNoSignal((resume) => {
     if (impl._exit) return resume(succeed(impl._exit))
     return sync(self.addObserver((exit) => resume(succeed(exit))))
-  }, { blockedOn: impl })
+  }, impl)
 }
 
 /** @internal */
@@ -912,7 +912,7 @@ export const fiberAwaitAll = <Fiber extends Fiber.Fiber<any, any>>(
     // Read once, when the effect runs: the Supervisor gets this array, and a
     // one-shot iterable is not consumed twice
     const fibers = Array.from(self as Iterable<any>) as Array<FiberImpl>
-    return callback((resume) => {
+    return callbackNoSignal((resume) => {
       const exits: Array<Exit.Exit<any, any>> = []
       let cancel: (() => void) | undefined = undefined
       function loop() {
@@ -932,17 +932,17 @@ export const fiberAwaitAll = <Fiber extends Fiber.Fiber<any, any>>(
       }
       loop()
       return sync(() => cancel?.())
-    }, { blockedOn: fibers })
+    }, fibers)
   })
 
 /** @internal */
 export const fiberJoin = <A, E>(self: Fiber.Fiber<A, E>): Effect.Effect<A, E> => {
   const impl = self as FiberImpl<A, E>
   if (impl._exit) return impl._exit
-  return callback((resume) => {
+  return callbackNoSignal((resume) => {
     if (impl._exit) return resume(impl._exit)
     return sync(self.addObserver(resume))
-  }, { blockedOn: impl })
+  }, impl)
 }
 
 /** @internal */
@@ -953,7 +953,7 @@ export const fiberJoinAll = <A extends Iterable<Fiber.Fiber<any, any>>>(self: A)
   suspend(() => {
     const fibers = Array.from(self) as Array<FiberImpl>
     if (fibers.length === 0) return succeed(Arr.empty() as any)
-    return callback((resume) => {
+    return callbackNoSignal((resume) => {
       const out = new Array<any>(fibers.length) as Arr.NonEmptyArray<any>
       const observers = Arr.empty<(exit: Exit.Exit<any, any>) => void>()
       const removeObservers = () => {
@@ -984,7 +984,7 @@ export const fiberJoinAll = <A extends Iterable<Fiber.Fiber<any, any>>>(self: A)
         failed = true
         removeObservers()
       })
-    }, { blockedOn: fibers })
+    }, fibers)
   })
 
 /** @internal */
@@ -1326,6 +1326,18 @@ export const callback = <A, E = never, R = never>(
   } | undefined
 ): Effect.Effect<A, E, R> => callbackOptions(register as any, register.length >= 2, options?.blockedOn)
 
+/**
+ * `callback` for a register that never reads the AbortSignal. Internal waits
+ * use it because reading `length` from a fresh closure, as `callback` does to
+ * decide whether to create a signal, is slow in JavaScriptCore.
+ *
+ * @internal
+ */
+export const callbackNoSignal = <A, E = never, R = never>(
+  register: (resume: (effect: Effect.Effect<A, E, R>) => void) => void | Effect.Effect<void, E, R>,
+  blockedOn?: object
+): Effect.Effect<A, E, R> => callbackOptions(register, false, blockedOn)
+
 /** @internal */
 export const never: Effect.Effect<never> = (() => {
   // A fiber blocked on `never` reports `never` itself to its Supervisor; built
@@ -1375,10 +1387,11 @@ export const fnUntraced: Effect.fn.Untraced = (
     ? function(this: any) {
       return suspend(() => fromIteratorUnsafe(body.apply(this, arguments)))
     }
-    : function(this: any) {
-      let effect = suspend(() => fromIteratorUnsafe(body.apply(this, arguments)))
+    // Rest parameters, because V8 spreads a captured `arguments` object slowly
+    : function(this: any, ...args: Array<any>) {
+      let effect = suspend(() => fromIteratorUnsafe(body.apply(this, args)))
       for (let i = 0; i < pipeables.length; i++) {
-        effect = pipeables[i](effect, ...arguments)
+        effect = pipeables[i](effect, ...args)
       }
       return effect
     }
@@ -1447,7 +1460,7 @@ const makeFn = (
 
   return defineFunctionLength(body.length, function(this: any, ...args: Array<any>) {
     let result = suspend(() => {
-      const iter = body.apply(this, arguments)
+      const iter = body.apply(this, args)
       return isEffect(iter) ? iter : fromIteratorUnsafe(iter)
     })
     for (let i = 0; i < pipeables.length; i++) {
@@ -1485,10 +1498,11 @@ export const fnUntracedEager: Effect.fn.Untraced = (
       ? function(this: any) {
         return fromIteratorEagerUnsafe(() => body.apply(this, arguments))
       }
-      : function(this: any) {
-        let effect = fromIteratorEagerUnsafe(() => body.apply(this, arguments))
+      // see fnUntraced
+      : function(this: any, ...args: Array<any>) {
+        let effect = fromIteratorEagerUnsafe(() => body.apply(this, args))
         for (const pipeable of pipeables) {
-          effect = pipeable(effect, ...arguments)
+          effect = pipeable(effect, ...args)
         }
         return effect
       }
@@ -1753,7 +1767,7 @@ export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
   withFiber((parent) => {
     const fibers = new Set<Fiber.Fiber<any, any>>()
     onExitUnsafe(parent, () => fibers.size === 0 ? undefined : fiberInterruptAll(fibers))
-    return callback((resume) => {
+    return callbackNoSignal((resume) => {
       const effects = Arr.fromIterable(all)
       const len = effects.length
       let doneCount = 0
@@ -1791,7 +1805,7 @@ export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
         else fiber.evaluate(effects[i] as any)
         if (done) break
       }
-    }, { blockedOn: fibers })
+    }, fibers)
   })
 
 /** @internal */
@@ -1812,7 +1826,7 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
   withFiber((parent) => {
     const fibers = new Set<Fiber.Fiber<any, any>>()
     onExitUnsafe(parent, () => fibers.size === 0 ? undefined : fiberInterruptAll(fibers))
-    return callback((resume) => {
+    return callbackNoSignal((resume) => {
       let done = false
       let i = 0
       for (const effect of all) {
@@ -1837,7 +1851,7 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
         else fiber.evaluate(effect as any)
         if (done) break
       }
-    }, { blockedOn: fibers })
+    }, fibers)
   })
 
 // Interrupt the losers as soon as the race settles. Waiting for the parent to
@@ -5186,7 +5200,7 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
           if (terminal) break
         } else if (!parentFiber) {
           fibers = new Set()
-          return callback((cb) => {
+          return callbackNoSignal((cb) => {
             parentFiber = getCurrentFiber()!
             effect = eff
             resume = cb
@@ -5204,7 +5218,7 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
                 () => terminal?._tag === "Failure" ? terminal : void_
               )
             })
-          }, { blockedOn: fibers })
+          }, fibers)
         } else {
           // Clear the effect cached before the parent fiber was available.
           effect = undefined
@@ -5995,7 +6009,7 @@ class Latch implements _Latch.Latch {
     this.flushWaiters()
     return true
   }
-  await = callback<void>((resume) => {
+  await = callbackNoSignal<void>((resume) => {
     if (this._isOpen) {
       return resume(void_)
     }
@@ -6011,7 +6025,7 @@ class Latch implements _Latch.Latch {
         }
       }
     })
-  }, { blockedOn: this })
+  }, this)
   closeUnsafe() {
     if (!this._isOpen) return false
     this._isOpen = false
@@ -6442,7 +6456,7 @@ class ClockImpl implements Clock.Clock {
   private sleepMillis(millis: number): Effect.Effect<void> {
     if (millis <= 0) return yieldNow
     else if (!Number.isFinite(millis)) return never
-    return callback((resume) => {
+    return callbackNoSignal((resume) => {
       const continuation = millis > MAX_TIMER_MILLIS
         ? this.sleepMillis(millis - MAX_TIMER_MILLIS)
         : void_

@@ -385,7 +385,7 @@ class CollisionNode<K, V> extends Node<K, V> {
           this.entries[i] = [key, value]
           return this
         }
-        const newEntries = [...this.entries]
+        const newEntries = this.entries.slice()
         newEntries[i] = [key, value]
         return new CollisionNode(edit, this.hash, newEntries)
       }
@@ -432,7 +432,7 @@ class CollisionNode<K, V> extends Node<K, V> {
       return this
     }
 
-    const newEntries = [...this.entries]
+    const newEntries = this.entries.slice()
     newEntries.splice(idx, 1)
     return new CollisionNode(edit, this.hash, newEntries)
   }
@@ -517,7 +517,7 @@ class IndexedNode<K, V> extends Node<K, V> {
         return this
       }
 
-      const newChildren = [...this.children]
+      const newChildren = this.children.slice()
       newChildren[idx] = newChild
       return new IndexedNode(edit, this.bitmap, newChildren)
     } else {
@@ -537,7 +537,7 @@ class IndexedNode<K, V> extends Node<K, V> {
         return this
       }
 
-      const newChildren = [...this.children]
+      const newChildren = this.children.slice()
       newChildren.splice(idx, 0, newChild)
 
       if (newChildren.length > MAX_INDEX_NODE) {
@@ -589,7 +589,7 @@ class IndexedNode<K, V> extends Node<K, V> {
         return this
       }
 
-      const newChildren = [...this.children]
+      const newChildren = this.children.slice()
       newChildren.splice(idx, 1)
       return new IndexedNode(edit, newBitmap, newChildren)
     }
@@ -603,7 +603,7 @@ class IndexedNode<K, V> extends Node<K, V> {
       return this
     }
 
-    const newChildren = [...this.children]
+    const newChildren = this.children.slice()
     newChildren[idx] = newChild
     return new IndexedNode(edit, this.bitmap, newChildren)
   }
@@ -686,7 +686,7 @@ class ArrayNode<K, V> extends Node<K, V> {
         return this
       }
 
-      const newChildren = [...this.children]
+      const newChildren = this.children.slice()
       newChildren[idx] = newChild
       return new ArrayNode(edit, this.count, newChildren)
     } else {
@@ -700,7 +700,7 @@ class ArrayNode<K, V> extends Node<K, V> {
         return this
       }
 
-      const newChildren = [...this.children]
+      const newChildren = this.children.slice()
       newChildren[idx] = newChild
       return new ArrayNode(edit, this.count + 1, newChildren)
     }
@@ -746,7 +746,7 @@ class ArrayNode<K, V> extends Node<K, V> {
       return this
     }
 
-    const newChildren = [...this.children]
+    const newChildren = this.children.slice()
     newChildren[idx] = newChild
     return new ArrayNode(edit, newCount, newChildren)
   }

@@ -200,4 +200,56 @@ describe("Scheduler", () => {
       setImmediate.mockRestore()
     }
   })
+
+  describe("without setImmediate (browsers)", () => {
+    it("yields through a MessageChannel", async () => {
+      const { Effect, Scheduler } = await browserModules
+      const postMessage = vi.spyOn(MessagePort.prototype, "postMessage")
+      try {
+        const count = Scheduler.MaxOpsBeforeYield.defaultValue() * 3
+        const result = await Effect.runPromise(
+          Effect.forEach(Array.from({ length: count }, (_, i) => i), (i) => Effect.as(Effect.yieldNow, i))
+        )
+        assert.strictEqual(result.length, count)
+        assert.isAbove(postMessage.mock.calls.length, 0)
+      } finally {
+        postMessage.mockRestore()
+      }
+    })
+
+    it("runs dispatchers in scheduling order and skips cancelled runs", async () => {
+      const { Scheduler } = await browserModules
+      const a = new Scheduler.MixedScheduler().makeDispatcher()
+      const b = new Scheduler.MixedScheduler().makeDispatcher()
+      const order: Array<string> = []
+
+      a.scheduleTask(() => order.push("a1"), 0)
+      b.scheduleTask(() => order.push("b1"), 0)
+      // Flushing runs a1 now and cancels its pending run, which would otherwise
+      // run a2 ahead of b1
+      a.flush()
+      a.scheduleTask(() => order.push("a2"), 0)
+      assert.deepStrictEqual(order, ["a1"])
+
+      const nextMacrotask = () => new Promise((resolve) => setTimeout(resolve, 0))
+      while (order.length < 3) await nextMacrotask()
+      await nextMacrotask()
+      assert.deepStrictEqual(order, ["a1", "b1", "a2"])
+    })
+  })
 })
+
+// The timer function is chosen when the module loads, so load a fresh copy
+// while setImmediate is missing. This runs during collection, before the
+// (concurrent) tests touch globals.
+const browserModules = await (async () => {
+  const original = globalThis.setImmediate
+  delete (globalThis as any).setImmediate
+  vi.resetModules()
+  try {
+    const [Effect, Scheduler] = await Promise.all([import("effect/Effect"), import("effect/Scheduler")])
+    return { Effect, Scheduler }
+  } finally {
+    globalThis.setImmediate = original
+  }
+})()

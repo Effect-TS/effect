@@ -113,6 +113,29 @@ const setMicrotask = (f: () => void) => {
   }
 }
 
+let messageChannel: MessageChannel | undefined
+const messageTasks: Array<() => void> = []
+
+// Browsers clamp nested `setTimeout(f, 0)` calls to 4ms, so a fiber that
+// yields repeatedly would wait that long on every yield. Messages posted to a
+// MessageChannel run as unclamped macrotasks, one per message in post order,
+// so each message runs the oldest queued task. A cancelled task stays queued
+// as a no-op to keep the queue matching the pending messages.
+const setMessage = (f: () => void) => {
+  if (!messageChannel) {
+    messageChannel = new MessageChannel()
+    messageChannel.port1.onmessage = () => messageTasks.shift()!()
+  }
+  messageChannel.port2.postMessage(0)
+  let cancelled = false
+  messageTasks.push(() => {
+    if (!cancelled) f()
+  })
+  return (): void => {
+    cancelled = true
+  }
+}
+
 const setTimer: (f: () => void) => () => void = "setImmediate" in globalThis
   ? (f) => {
     // @ts-ignore
@@ -120,6 +143,8 @@ const setTimer: (f: () => void) => () => void = "setImmediate" in globalThis
     // @ts-ignore
     return (): void => globalThis.clearImmediate(timer)
   }
+  : typeof MessageChannel === "function"
+  ? setMessage
   : (f) => {
     const timer = setTimeout(f, 0)
     return (): void => clearTimeout(timer)
@@ -139,18 +164,14 @@ class PriorityBuckets {
   buckets: Array<[priority: number, tasks: Array<() => void>]> = []
 
   scheduleTask(task: () => void, priority: number): void {
+    // Buckets stay sorted by priority: find the first bucket that is not lower
     const buckets = this.buckets
-    const len = buckets.length
-    let bucket: [number, Array<() => void>] | undefined
     let index = 0
-    for (; index < len; index++) {
-      if (buckets[index][0] > priority) break
-      bucket = buckets[index]
-    }
-    if (bucket && bucket[0] === priority) {
-      bucket[1].push(task)
-    } else if (index === len) {
+    while (index < buckets.length && buckets[index][0] < priority) index++
+    if (index === buckets.length) {
       buckets.push([priority, [task]])
+    } else if (buckets[index][0] === priority) {
+      buckets[index][1].push(task)
     } else {
       buckets.splice(index, 0, [priority, [task]])
     }
@@ -238,9 +259,7 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
   private running: (() => void) | undefined = undefined
   readonly setImmediate: (f: () => void) => () => void
 
-  constructor(
-    setImmediateFn: (f: () => void) => () => void = setImmediate
-  ) {
+  constructor(setImmediateFn: (f: () => void) => () => void) {
     this.setImmediate = setImmediateFn
   }
 

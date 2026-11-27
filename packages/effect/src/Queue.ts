@@ -819,13 +819,13 @@ export const offerAll: {
 } = dual(2, <A, E>(self: Enqueue<A, E>, messages: Iterable<A>): Effect<Array<A>> =>
   // Admitting what fits and registering the rest are one step, so no take can
   // free capacity between them
-  internalEffect.callback<Array<A>>((resume) => {
+  internalEffect.callbackNoSignal<Array<A>>((resume) => {
     const remaining = offerAllUnsafe(self, messages)
     if (remaining.length === 0 || self.strategy === "dropping") {
       return resume(core.exitSucceed(remaining))
     }
     return waitToOffer(self, { _tag: "Array", remaining, offset: 0, resume })
-  }, { blockedOn: self }))
+  }, self))
 
 /**
  * Adds multiple messages to the queue synchronously. Returns the remaining messages that
@@ -1739,7 +1739,7 @@ export const flushUnsafe = <A, E>(self: Enqueue<A, E>): void => releaseTakers(se
 export const flush = <A, E>(self: Enqueue<A, E>): Effect<void> => internalEffect.sync(() => flushUnsafe(self))
 
 const await_ = <A, E>(self: Dequeue<A, E>): Effect<void, Exclude<E, Done>> =>
-  internalEffect.callback<void, Exclude<E, Done>>((resume) => {
+  internalEffect.callbackNoSignal<void, Exclude<E, Done>>((resume) => {
     const awaiter = (effect: Effect<void, E>) => resume(Pull.catchDone(effect, () => internalEffect.exitVoid))
     if (self.state._tag === "Done") {
       return awaiter(self.state.exit)
@@ -1750,7 +1750,7 @@ const await_ = <A, E>(self: Dequeue<A, E>): Effect<void, Exclude<E, Done>> =>
         self.state.awaiters.delete(awaiter)
       }
     })
-  }, { blockedOn: self })
+  }, self)
 
 export {
   /**
@@ -2074,7 +2074,7 @@ const canTake = <A, E>(self: Dequeue<A, E>, min: number): boolean =>
 // message can arrive between them. Wake-ups resume with void and the caller
 // retries, which keeps the fiber stack flat across spurious wake-ups.
 const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
-  internalEffect.callback<void, E>((resume) => {
+  internalEffect.callbackNoSignal<void, E>((resume) => {
     if (self.state._tag === "Done") return resume(self.state.exit)
     if (ready()) return resume(internalEffect.exitVoid)
     const taker = { ready, resume }
@@ -2082,12 +2082,12 @@ const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
     return internalEffect.sync(() => {
       if (self.state._tag !== "Done") self.state.takers.delete(taker)
     })
-  }, { blockedOn: self })
+  }, self)
 
 const offerOrWait = <A, E>(self: Enqueue<A, E>, message: A) =>
-  internalEffect.callback<boolean>(
+  internalEffect.callbackNoSignal<boolean>(
     (resume) => offerUnsafe(self, message) ? resume(exitTrue) : waitToOffer(self, { _tag: "Single", message, resume }),
-    { blockedOn: self }
+    self
   )
 
 const waitToOffer = <A, E>(self: Enqueue<A, E>, entry: Queue.OfferEntry<A>) => {

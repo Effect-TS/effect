@@ -113,10 +113,12 @@ export const dual: {
   ): DataLast & DataFirst
 } = function(arity, body) {
   if (typeof arity === "function") {
-    return function(this: any) {
+    // The data-last closure spreads `args` rather than capturing `arguments`:
+    // V8 spreads a captured arguments object through the slow iterator path.
+    return function(this: any, ...args: Array<any>) {
       return arity(arguments)
-        ? body.apply(this, arguments as any)
-        : ((self: any) => body(self, ...arguments)) as any
+        ? body.apply(this, args)
+        : ((self: any) => body(self, ...args)) as any
     }
   }
 
