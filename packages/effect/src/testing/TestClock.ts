@@ -432,7 +432,7 @@ class TestClockImpl implements TestClock {
     return Effect.suspend(() => {
       const tracker: WakeTracker = { pending: 0, onIdle: undefined }
       this.runTracked(tracker, () => latch.openUnsafe())
-      // The woken fiber and the caller can be on different schedulers
+      // The woken fiber may run on another scheduler, so wait for both
       if (idle !== undefined) return this.timeoutBusy(Effect.andThen(awaitTracker(tracker), awaitIdle(idle)))
       if (tracker.pending === 0) return Effect.yieldNow
       return Effect.andThen(this.timeoutBusy(awaitTracker(tracker)), Effect.yieldNow)

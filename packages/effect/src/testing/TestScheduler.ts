@@ -1,11 +1,10 @@
 /**
  * Seeded `Scheduler` for finding races between fibers in tests.
  *
- * The default scheduler runs short concurrent fibers to completion one after
- * another, so races rarely show in tests. `TestScheduler` makes fibers yield at
- * random operations and runs their queued work in a random order chosen by a
- * seed. Running the same program with the same seed replays the same
- * interleaving.
+ * The default scheduler often runs short concurrent fibers one after another,
+ * so races rarely show in tests. `TestScheduler` makes fibers yield at random
+ * and runs their queued work in a seeded random order. The same seed replays
+ * the same interleaving.
  *
  * @stability unstable
  * @since 4.1.7
@@ -42,23 +41,20 @@ export interface Options {
  *
  * **Details**
  *
- * Each fiber keeps the default dispatcher, so tasks queued by one fiber still
- * run by priority and in FIFO order. What changes is the order in which fibers'
- * batches run: each host turn runs up to as many batches as were pending at its
- * start, each drawn at random from the current pool. A batch queued during the
- * turn can run before one that was already waiting, and a fiber can be held back
- * for several turns. With `preempt: 0`
- * fibers only yield at the default operation budget, but batches are still
- * shuffled. To get the default order, do not provide a `TestScheduler`.
+ * Each fiber keeps the default dispatcher, so one fiber's tasks still run by
+ * priority and in FIFO order. Only the order of batches across fibers is
+ * random: each host turn runs up to as many batches as were pending at its
+ * start, drawing each from the current pool, including batches queued during
+ * the turn. A fiber can be held back for several turns. With `preempt: 0`,
+ * fibers yield only at the default operation budget, but batches are still
+ * shuffled. For the default order, do not provide a `TestScheduler`.
  *
  * **Gotchas**
  *
  * - A scheduler holds random state. Use {@link layer} or a fresh `make` per run
  *   to replay a seed.
- * - Replay covers work queued through the scheduler. Callbacks from real timers,
- *   I/O, or other host sources resume fibers whenever the host calls them, and
- *   unseeded randomness changes the program, so a replay needs `TestClock`
- *   time and no real I/O.
+ * - Replay covers only work queued through the scheduler. Real timers, I/O and
+ *   unseeded randomness break it, so use `TestClock` time and no real I/O.
  * - `Effect.yieldNow` does not let other fibers finish. Wait on a
  *   `Deferred`, a `Latch`, `Fiber.await`, or `TestClock.adjust` instead.
  *
@@ -119,10 +115,10 @@ class TestSchedulerImpl implements Scheduler.Scheduler, IdleAware {
   readonly threshold: number
   readonly base: Scheduler.MixedScheduler
   readonly host: (f: () => void) => () => void
-  // Pending dispatcher batches, one per dispatcher at most
+  // Pending batches, at most one per dispatcher
   readonly pool: Array<() => void> = []
   readonly idleWaiters = new Set<() => void>()
-  // Set from scheduling a host turn until that turn has run its batches
+  // A host turn is scheduled and has not finished
   scheduled = false
 
   constructor(options: Options) {
@@ -151,7 +147,7 @@ class TestSchedulerImpl implements Scheduler.Scheduler, IdleAware {
   readonly enqueue = (batch: () => void): () => void => {
     this.pool.push(batch)
     this.schedule()
-    // Called by `flush`, which runs the batch synchronously instead
+    // Called by `flush`, which runs the batch synchronously
     return () => {
       const index = this.pool.indexOf(batch)
       if (index !== -1) this.pool.splice(index, 1)
