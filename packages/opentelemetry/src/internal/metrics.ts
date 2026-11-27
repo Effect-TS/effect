@@ -76,20 +76,21 @@ export class MetricProducerImpl implements MetricProducer {
 
   collect(_options?: MetricCollectOptions): Promise<CollectionResult> {
     const context = this.context
-    // Capture the series before calling any hook, as a hook may change the registry.
+    // Read every hook before exporting, as a hook may change the registry or
+    // the state of another series.
     const registered = Array.from(Context.get(context, Metric.MetricRegistry).values())
+    const states = registered.map((metadata) => metadata.hooks.get(context))
     const hrTimeNow = currentHrTime()
-    // Only series in this collection carry their delta state forward, so removed
-    // series do not leak state or report a negative delta when recreated. The
-    // state is replaced only once every hook has been read successfully.
+    // Only series in this snapshot carry their delta state forward, so removed
+    // series do not leak state or report a negative delta when recreated.
     const previousCounterState = this.previousCounterState
     const previousHistogramState = this.previousHistogramState
     const previousFrequencyState = this.previousFrequencyState
     const previousSummaryState = this.previousSummaryState
-    const nextCounterState = new Map<string, number | bigint>()
-    const nextHistogramState = new Map<string, PreviousHistogramState>()
-    const nextFrequencyState = new Map<string, Map<string, number>>()
-    const nextSummaryState = new Map<string, PreviousSummaryState>()
+    this.previousCounterState = new Map()
+    this.previousHistogramState = new Map()
+    this.previousFrequencyState = new Map()
+    this.previousSummaryState = new Map()
     const metricData: Array<MetricData> = []
     const metricDataByName = new Map<string, MetricData>()
     const addMetricData = (data: MetricDataWithInstrumentDescriptor) => {
@@ -112,7 +113,7 @@ export class MetricProducerImpl implements MetricProducer {
         type: metadata.type,
         description: metadata.description,
         attributes: metadata.attributes,
-        state: metadata.hooks.get(context)
+        state: states[i]
       } as Metric.Metric.Snapshot
       const { attributes, key: metricKey } = seriesOf(metadata)
 
@@ -140,7 +141,7 @@ export class MetricProducerImpl implements MetricProducer {
                 }
               }
             }
-            nextCounterState.set(metricKey, currentCount)
+            this.previousCounterState.set(metricKey, currentCount)
           }
 
           const descriptor = descriptorFromState(state, attributes)
@@ -218,7 +219,7 @@ export class MetricProducerImpl implements MetricProducer {
               // so omit the optional fields rather than report stale values
               reportExtrema = false
             }
-            nextHistogramState.set(metricKey, {
+            this.previousHistogramState.set(metricKey, {
               count: state.state.count,
               sum: state.state.sum,
               bucketCounts: currentBuckets.counts.slice()
@@ -284,7 +285,7 @@ export class MetricProducerImpl implements MetricProducer {
           }
 
           if (isDelta) {
-            nextFrequencyState.set(metricKey, currentOccurrences)
+            this.previousFrequencyState.set(metricKey, currentOccurrences)
           }
 
           if (metricDataByName.has(state.id)) {
@@ -334,7 +335,7 @@ export class MetricProducerImpl implements MetricProducer {
               reportCount = state.state.count - previousState.count
               reportSum = state.state.sum - previousState.sum
             }
-            nextSummaryState.set(metricKey, {
+            this.previousSummaryState.set(metricKey, {
               count: state.state.count,
               sum: state.state.sum
             })
@@ -404,10 +405,6 @@ export class MetricProducerImpl implements MetricProducer {
       }
     }
 
-    this.previousCounterState = nextCounterState
-    this.previousHistogramState = nextHistogramState
-    this.previousFrequencyState = nextFrequencyState
-    this.previousSummaryState = nextSummaryState
     // Update the previous export time for delta calculations
     if (isDelta) {
       this.previousExportTimeNanos = hrTimeNow
