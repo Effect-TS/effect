@@ -270,10 +270,9 @@ export class Fail<E> extends ReasonBase<"Fail"> implements Cause.Fail<E> {
     )
   }
   [Hash.symbol](): number {
-    return hashCombine(
-      hashCombine(Hash.hash(this.annotations), Hash.hash(this.error)),
-      Hash.string(this._tag)
-    )
+    // The error is hashed before the annotations, as both can run user code
+    const error = Hash.hash(this.error)
+    return hashCombine(hashCombine(Hash.hash(this.annotations), error), Hash.string(this._tag))
   }
 }
 
@@ -377,10 +376,9 @@ export class Die extends ReasonBase<"Die"> implements Cause.Die {
     )
   }
   [Hash.symbol](): number {
-    return hashCombine(
-      hashCombine(Hash.hash(this.annotations), Hash.hash(this.defect)),
-      Hash.string(this._tag)
-    )
+    // The defect is hashed before the annotations, as both can run user code
+    const defect = Hash.hash(this.defect)
+    return hashCombine(hashCombine(Hash.hash(this.annotations), defect), Hash.string(this._tag))
   }
 }
 
@@ -388,18 +386,33 @@ export class Die extends ReasonBase<"Die"> implements Cause.Die {
 export const causeDie = (defect: unknown): Cause.Cause<never> => new CauseImpl([new Die(defect)])
 
 /**
+ * Context.ts imports this module, so it registers `makeUnsafe` here instead.
+ *
+ * @internal
+ */
+export const contextMaker: {
+  makeUnsafe?: (mapUnsafe: ReadonlyMap<string, unknown>) => Context.Context<never>
+} = {}
+
+/**
  * Data-first `causeAnnotate` taking a plain annotation map, so the fiber
  * runtime does not pull in `Function.dual` or wrap maps in a `Context`.
+ * Only reasons with their own `annotate` method receive a `Context`.
  *
  * @internal
  */
 export const causeAnnotateMap = <E>(
   self: Cause.Cause<E>,
   annotations: ReadonlyMap<string, unknown>,
-  options?: { readonly overwrite?: boolean | undefined }
+  options?: { readonly overwrite?: boolean | undefined },
+  context?: Context.Context<never>
 ): Cause.Cause<E> => {
   if (annotations.size === 0) return self
-  return new CauseImpl(self.reasons.map((f) => annotateReasonMap(f as any, annotations, options)))
+  return new CauseImpl(self.reasons.map((f) =>
+    f.annotate as unknown === ReasonBase.prototype.annotate
+      ? annotateReasonMap(f as any, annotations, options)
+      : f.annotate(context ?? contextMaker.makeUnsafe!(annotations), options)
+  ))
 }
 
 /** @internal */
@@ -425,7 +438,7 @@ export const causeAnnotate: {
     options?: {
       readonly overwrite?: boolean | undefined
     }
-  ): Cause.Cause<E> => causeAnnotateMap(self, annotations.mapUnsafe, options)
+  ): Cause.Cause<E> => causeAnnotateMap(self, annotations.mapUnsafe, options, annotations)
 )
 
 /** @internal */

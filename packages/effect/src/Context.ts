@@ -17,7 +17,7 @@ import * as Equal from "./Equal.ts"
 import { dual, identity, type LazyArg } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import type { Inspectable } from "./Inspectable.ts"
-import { exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts"
+import { contextMaker, exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts"
 import { fiberCachedKeys } from "./internal/fiberCachedKeys.ts"
 import { hasProperty } from "./internal/predicate.ts"
 import * as Option from "./Option.ts"
@@ -645,6 +645,8 @@ export const makeUnsafe = <Services = never>(
   // NaN or Infinity would never trigger a rebase, so fall back to the default
   return makeFlat(undefined, mapUnsafe, Number.isInteger(maxDepth) && maxDepth! >= 0 ? maxDepth! : 8)
 }
+
+contextMaker.makeUnsafe = (mapUnsafe) => makeFlat(undefined, mapUnsafe, 8)
 
 const Proto: Omit<
   ContextImpl<never>,

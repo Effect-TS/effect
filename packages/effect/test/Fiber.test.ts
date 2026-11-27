@@ -129,6 +129,17 @@ describe("Fiber", () => {
       }))
   }
 
+  // Primitives built by another version of effect call these on the fiber
+  // running them
+  it.effect("keeps the members that primitives from other versions call", () =>
+    Effect.gen(function*() {
+      const child = yield* Effect.forkChild(Effect.never)
+      const result = yield* Effect.withFiber((fiber: any) =>
+        fiber.succeedWith([fiber.children().has(child), fiber.currentSpanLocal?.name])
+      ).pipe(Effect.withSpan("span"))
+      assert.deepStrictEqual(result, [true, "span"])
+    }))
+
   it("is a fiber", async () => {
     const result = Effect.runFork(Effect.succeed(1))
     assert.isTrue(Fiber.isFiber(result))

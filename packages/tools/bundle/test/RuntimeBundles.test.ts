@@ -92,8 +92,10 @@ describe("bundled", () => {
     const chunk = await rollupBundle(new URL("../fixtures/basic.ts", import.meta.url), "esm", true)
     const rendered = Object.entries(chunk.modules)
       .filter(([id, module]) => id.startsWith(effectSrcDir) && module.renderedLength > 0)
+      // Module ids use native separators, the list below uses "/"
+      .map(([id, module]) => [path.relative(effectSrcDir, id).split(path.sep).join("/"), module] as const)
     // A module joining this list needs a reason to be in every program
-    assert.deepStrictEqual(rendered.map(([id]) => path.relative(effectSrcDir, id)).sort(), [
+    assert.deepStrictEqual(rendered.map(([file]) => file).sort(), [
       "Context.ts",
       "Effect.ts",
       "Equal.ts",
@@ -112,9 +114,9 @@ describe("bundled", () => {
       "internal/predicate.ts"
     ])
     // The runtime calls the data-first forms of dual APIs and stays on flat contexts
-    const [, functionModule] = rendered.find(([id]) => path.relative(effectSrcDir, id) === "Function.ts")!
+    const [, functionModule] = rendered.find(([file]) => file === "Function.ts")!
     assert.notInclude(functionModule.renderedExports, "dual")
-    const [, contextModule] = rendered.find(([id]) => path.relative(effectSrcDir, id) === "Context.ts")!
+    const [, contextModule] = rendered.find(([file]) => file === "Context.ts")!
     assert.notInclude(contextModule.renderedExports, "addUnsafe")
   })
 
