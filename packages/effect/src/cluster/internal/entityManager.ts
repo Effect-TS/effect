@@ -44,12 +44,11 @@ import type { Sharding } from "../Sharding.ts"
 import { ShardingConfig } from "../ShardingConfig.ts"
 import * as Snowflake from "../Snowflake.ts"
 import * as ClusterAbandon from "./clusterAbandon.ts"
-import { CurrentActivationScope, CurrentRetirementLatch, ExitReplyWrites } from "./entityActivation.ts"
+import { ActiveRequests, CurrentActivationScope, CurrentRetirementLatch } from "./entityActivation.ts"
 import { EntityReaper } from "./entityReaper.ts"
 import { acquireEntity, releaseEntity } from "./interruptors.ts"
 import { ResourceMap } from "./resourceMap.ts"
 import { ResourceRef } from "./resourceRef.ts"
-import { StageTransactionWrites } from "./transactionNotifications.ts"
 
 /**
  * @internal
@@ -122,6 +121,8 @@ export type EntityState = {
     /** Set when the request should not outlive its caller. */
     callerScope?: Scope.Scope | undefined
     transaction?: RequestTransaction | undefined
+    /** Set by a handler, see `ActiveRequests`. */
+    exitWrites?: Effect.Effect<void> | undefined
     /** Set when an interrupt arrives while no handlers are ready. */
     interrupted?: boolean | undefined
     /** The handler generation the remembered interrupt was last sent to. */
@@ -273,12 +274,10 @@ export const make = Effect.fnUntraced(function*<
     // Finalizers run in reverse, so the mailbox series and the resident
     // mailbox are removed only after the drain finalizer below has finished.
     const activeRequests: EntityState["activeRequests"] = new Map()
-    const exitReplyWrites: ExitReplyWrites["Service"] = new Map()
     // Drops a request that has left this entity, starting the idle timer when
     // it was the last one.
     const removeActiveRequest = (requestId: Snowflake.Snowflake) => {
       activeRequests.delete(requestId)
-      exitReplyWrites.delete(requestId)
       if (activeRequests.size === 0) {
         state.lastActiveCheck = clock.currentTimeMillisUnsafe()
       }
@@ -352,7 +351,7 @@ export const make = Effect.fnUntraced(function*<
           Context.add(KeepAliveLatch, keepAliveLatch),
           Context.add(CurrentActivationScope, scope),
           Context.add(CurrentRetirementLatch, retired),
-          Context.add(ExitReplyWrites, exitReplyWrites),
+          Context.add(ActiveRequests, activeRequests),
           Context.add(Scope.Scope, handlerScope),
           Context.add(CurrentLogAnnotations, {})
         )
@@ -420,16 +419,14 @@ export const make = Effect.fnUntraced(function*<
                     })
                   )
                 )
-                // Writes the handler attached to the reply commit with it.
-                const writes = persisted ? exitReplyWrites.get(Snowflake.Snowflake(response.requestId)) : undefined
+                const exitWrites = persisted ? request.exitWrites : undefined
                 const write = retryRespond(
                   persisted && request.transaction && Exit.isSuccess(response.exit) ? 0 : 4,
-                  writes === undefined
+                  exitWrites === undefined
                     ? respondExit
-                    : options.storage.withTransaction(Effect.andThen(respondExit, writes)).pipe(
-                      Effect.provideService(StageTransactionWrites, true),
-                      // A failed commit is a defect. Treat it as a failed save, so
-                      // the stored reply decides whether it committed.
+                    : options.storage.withTransaction(Effect.andThen(respondExit, exitWrites)).pipe(
+                      // A failed write or commit is a defect. Treat it as a failed
+                      // save, so the stored reply decides whether it committed.
                       Effect.catchDefect((defect) => Effect.fail(new PersistenceError({ cause: defect })))
                     )
                 )

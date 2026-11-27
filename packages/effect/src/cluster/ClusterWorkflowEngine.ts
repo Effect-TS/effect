@@ -43,7 +43,7 @@ import * as EntityId from "./EntityId.ts"
 import * as EntityType from "./EntityType.ts"
 import * as Envelope from "./Envelope.ts"
 import * as ClusterAbandon from "./internal/clusterAbandon.ts"
-import { CurrentActivationScope, CurrentRetirementLatch, ExitReplyWrites } from "./internal/entityActivation.ts"
+import { ActiveRequests, CurrentActivationScope, CurrentRetirementLatch } from "./internal/entityActivation.ts"
 import * as Message from "./Message.ts"
 import { MessageStorage } from "./MessageStorage.ts"
 import type { WithExitEncoded } from "./Reply.ts"
@@ -442,7 +442,7 @@ export const make = Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
             const activation = yield* CurrentActivationScope
-            const exitReplyWrites = Option.getOrUndefined(yield* Effect.serviceOption(ExitReplyWrites))
+            const activeRequests = yield* ActiveRequests
             let pending = pendingByActivation.get(activation)
             if (!pending) {
               const results = new Map<string, Exit.Exit<unknown, unknown>>()
@@ -483,8 +483,8 @@ export const make = Effect.gen(function*() {
               readonly instance: WorkflowEngine.WorkflowInstance["Service"]
               // Activity awaits must wake the run after suspension without preempting it.
               readonly activityAwaits: Map<string, number>
-              // Set once the terminal reply carries the parent wakes, so a
-              // concurrent `parent` registration waits for the reply and wakes.
+              // Set once the exiting run starts listing its parents, so a later
+              // `parent` registration waits for the reply and wakes its own parent.
               completing: boolean
             } | undefined
             // Concurrent automatic wakes share one wait for the current run to
@@ -529,7 +529,9 @@ export const make = Effect.gen(function*() {
                 })
                 const current = { request, instance, activityAwaits: new Map<string, number>(), completing: false }
                 currentRun = current
-                exitReplyWrites?.delete(request.requestId)
+                // A rerun must not inherit the wakes of the run it replaces.
+                const active = activeRequests.get(request.requestId)!
+                active.exitWrites = undefined
                 const parent = (request.payload as any)[payloadParentKey] as
                   | (ParentRef & { readonly detached?: boolean })
                   | undefined
@@ -543,41 +545,23 @@ export const make = Effect.gen(function*() {
                     if (instance.abandoned) {
                       instance.suspended = false
                     }
-                    const wakeParents = Effect.gen(function*() {
+                    // Abandoned runs never wake parents; another owner replays them.
+                    const resumeParent = instance.abandoned ? Effect.void : ensureSuccess(Effect.gen(function*() {
+                      current.completing = true
                       const parents = (yield* storage.requestsForAddress({ address, tag: "parent" }))
                         .map((registration) => registration.payload as ParentRef)
                       // Registrations are unique by parent; only an older caller's payload parent can repeat one.
                       if (parent && !parent.detached && !parents.some((ref) => sameParent(ref, parent))) {
                         parents.push(parent)
                       }
-                      for (const ref of parents) {
-                        yield* sendResumeParent(ref, executionId)
-                      }
-                    })
-                    // Save parent wakes in the same storage transaction as the
-                    // terminal reply, so a parent cannot replay before the
-                    // result is visible and a runner that stops after commit
-                    // leaves the wakes in storage. Abandoned runs never wake
-                    // parents; another owner replays them.
-                    const resumeParent = instance.abandoned
-                      ? Effect.void
-                      : exitReplyWrites
-                      ? Effect.sync(() => {
-                        current.completing = true
-                        exitReplyWrites.set(
-                          request.requestId,
-                          // A storage failure fails the transaction, which the
-                          // manager retries; a send failure cannot succeed on retry.
-                          Effect.catch(
-                            wakeParents,
-                            (error) => error._tag === "PersistenceError" ? Effect.fail(error) : Effect.die(error)
-                          )
-                        )
-                      })
-                      : ensureSuccess(Effect.suspend(() => {
-                        current.completing = true
-                        return wakeParents
-                      }))
+                      if (parents.length === 0) return
+                      // Save the wakes in the terminal reply's transaction, so a
+                      // parent cannot replay before the result is visible, and a
+                      // runner that stops after the commit leaves them in storage.
+                      active.exitWrites = Effect.orDie(
+                        Effect.forEach(parents, (ref) => sendResumeParent(ref, executionId), { discard: true })
+                      )
+                    }))
                     if (
                       !instance.suspended &&
                       !instance.abandoned &&
@@ -715,8 +699,8 @@ export const make = Effect.gen(function*() {
 
               parent: (request: Entity.Request<any>) => {
                 const ref = request.payload as ParentRef
-                // The exiting run's reply transaction may have listed parents
-                // before this registration; wait for the reply, then wake.
+                // The exiting run may have listed parents before this
+                // registration; wait for its reply, then wake.
                 if (currentRun?.completing) {
                   return forkReply(
                     ensureSuccess(
