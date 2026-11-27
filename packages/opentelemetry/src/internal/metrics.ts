@@ -108,13 +108,13 @@ export class MetricProducerImpl implements MetricProducer {
 
     for (let i = 0, len = registered.length; i < len; i++) {
       const metadata = registered[i]
-      const state = {
+      const state: Metric.Metric.Snapshot = {
         id: metadata.id,
         type: metadata.type,
         description: metadata.description,
         attributes: metadata.attributes,
         state: states[i]
-      } as Metric.Metric.Snapshot
+      }
       const { attributes, key: metricKey } = seriesOf(metadata)
 
       switch (state.type) {
