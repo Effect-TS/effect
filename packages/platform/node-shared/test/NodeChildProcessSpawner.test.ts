@@ -22,7 +22,7 @@ import * as Stream from "effect/Stream"
 import NodeChildProcess, { spawnSync } from "node:child_process"
 import NodeFs from "node:fs"
 import { syncBuiltinESMExports } from "node:module"
-import * as Net from "node:net"
+import Net from "node:net"
 import { join } from "node:path"
 import { vi } from "vitest"
 
@@ -364,6 +364,57 @@ ${proxyProcessSource}`
       while (isAlive(first) || isAlive(second)) yield* Effect.sleep("10 millis")
       assert.isAbove(denied.length, 0)
     }).pipe(Effect.provide(ProxyServices), Effect.scoped, Effect.timeout("5 seconds")))
+
+  it.live("reports a duplex write failure to a later reader when EOF arrives before Spawned", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const directory = yield* fs.makeTempDirectoryScoped()
+      const hold = join(directory, "hold")
+      yield* fs.writeFileString(hold, "")
+      const createServer = Net.createServer
+      const wrapCreateServer = (listener: (socket: Net.Socket) => void) =>
+        createServer((socket) => {
+          listener(socket)
+          socket.once("end", () => {
+            // Let Node's own end handler finish before releasing `Spawned`
+            setImmediate(() => NodeFs.rmSync(hold, { force: true }))
+          })
+        })
+      const spy = vi.spyOn(Net, "createServer").mockImplementation(wrapCreateServer as typeof Net.createServer)
+      syncBuiltinESMExports()
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          spy.mockRestore()
+          syncBuiltinESMExports()
+        })
+      )
+
+      const program = `const fs = process.getBuiltinModule("node:fs")
+const sendMessage = process.send.bind(process)
+process.send = (message, ...rest) => {
+  if (message._tag !== "Spawned") return sendMessage(message, ...rest)
+  const release = () => fs.existsSync(${JSON.stringify(hold)}) ? setTimeout(release, 10) : sendMessage(message, ...rest)
+  release()
+  return true
+}
+${proxyProcessSource}`
+
+      yield* Effect.gen(function*() {
+        const handle = yield* ChildProcess.make("sh", ["-c", "exec 3>&-; exec sleep 10"], {
+          stdin: "ignore",
+          stdout: "ignore",
+          stderr: "ignore",
+          additionalFds: { fd3: { type: "duplex" } }
+        })
+        const writeError = yield* Effect.flip(
+          Stream.run(Stream.make(new TextEncoder().encode("request")), handle.getInputFd(3))
+        )
+        const readError = yield* Effect.flip(Stream.runDrain(handle.getOutputFd(3)).pipe(Effect.timeout("2 seconds")))
+
+        assert.strictEqual(writeError._tag, "PlatformError")
+        assert.strictEqual(readError._tag, "PlatformError")
+      }).pipe(Effect.scoped, Effect.provide(proxyServices({ args: ["--input-type=module", "-e", program] })))
+    }).pipe(Effect.provide(NodeFileSystem.layer), Effect.scoped))
 
   it("fails a spawn whose exit is lost while its stdio sockets are pending", () => {
     const released: Array<number> = []
