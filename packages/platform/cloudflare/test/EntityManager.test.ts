@@ -1,4 +1,5 @@
 import type { DurableObjectStorage } from "@cloudflare/workers-types"
+import * as CloudflareCluster from "@effect/platform-cloudflare/CloudflareCluster"
 import { makeEntityKeepAlive } from "@effect/platform-cloudflare/internal/entityKeepAlive"
 import { loadNextReply } from "@effect/platform-cloudflare/internal/entityMailbox"
 import { registerEntity, unregisterEntity } from "@effect/platform-cloudflare/internal/entityRegistry"
@@ -365,29 +366,52 @@ describe("EntityManager", () => {
 
   it.effect("interrupts only the matching waiter of a deduplicated delayed ask", () =>
     Effect.gen(function*() {
-      const { envelope, manager } = yield* makeMailbox("waiters")
+      const { envelope, manager, storage } = yield* makeMailbox("waiters")
       const delivery = { deliverAt: Date.now() + 60_000, primaryKey: "Mailbox/waiters/Add/same" }
       const firstRequestId = nextRequestId()
       const secondRequestId = nextRequestId()
+      const secondEnvelope = envelope("Add", { operationId: "same" }, secondRequestId)
       const first = yield* Effect.forkChild(
-        manager.invoke(envelope("Add", { operationId: "same" }, firstRequestId), false, delivery)
+        manager.invoke(envelope("Add", { operationId: "same" }, firstRequestId), false, delivery),
+        { startImmediately: true }
       )
       const second = yield* Effect.forkChild(
-        manager.invoke(envelope("Add", { operationId: "same" }, secondRequestId), false, delivery)
+        manager.invoke(secondEnvelope, false, delivery),
+        { startImmediately: true }
       )
-      // The duplicate waits on the original row, so it is interrupted through
-      // the original's storage id and its own client id. Interrupting a waiter
-      // that has not registered yet is a no-op, so retry until it ends.
-      yield* Effect.gen(function*() {
-        while (second.pollUnsafe() === undefined) {
-          yield* manager.interrupt(firstRequestId, secondRequestId)
-          yield* settle
-        }
-      }).pipe(Effect.timeout("2 seconds"), TestClock.withLive)
-      yield* settle
+      const secondShared = yield* Effect.forkChild(
+        manager.invoke(secondEnvelope, false, delivery),
+        { startImmediately: true }
+      )
+      yield* manager.invoke(envelope("Get"), false).pipe(Effect.timeout("1 second"), TestClock.withLive)
+
+      // Hold the entry permit so a redelivery of B stays queued during interrupt.
+      const entryHeld = yield* Deferred.make<void>()
+      const releaseEntry = yield* Deferred.make<void>()
+      const getAlarm = storage.getAlarm.bind(storage)
+      storage.getAlarm = () => {
+        storage.getAlarm = getAlarm
+        Deferred.doneUnsafe(entryHeld, Effect.void)
+        return Effect.runPromise(Effect.andThen(Deferred.await(releaseEntry), Effect.promise(getAlarm)))
+      }
+      const blocker = yield* Effect.forkChild(manager.saveKeepAlive(true), { startImmediately: true })
+      yield* Deferred.await(entryHeld)
+      const secondInFlight = yield* Effect.forkChild(
+        manager.invoke(secondEnvelope, false, delivery),
+        { startImmediately: true }
+      )
+
+      // Before `invoke` returns, the Worker still knows only the duplicate's own id.
+      yield* manager.interrupt(secondRequestId, secondRequestId)
+      yield* Deferred.succeed(releaseEntry, undefined)
+      yield* Fiber.join(blocker)
+      yield* Fiber.await(second).pipe(Effect.timeout("1 second"), TestClock.withLive)
+      yield* Fiber.await(secondShared).pipe(Effect.timeout("1 second"), TestClock.withLive)
+      yield* Fiber.await(secondInFlight).pipe(Effect.timeout("1 second"), TestClock.withLive)
 
       assert.isUndefined(first.pollUnsafe(), "Interrupting the duplicate also ended the original waiter")
       yield* manager.interrupt(firstRequestId)
+      yield* Fiber.await(first).pipe(Effect.timeout("1 second"), TestClock.withLive)
     }))
 
   it.effect("runs an Rpc.fork handler while another handler holds the only permit", () =>
@@ -434,7 +458,8 @@ describe("EntityManager", () => {
       let queuedRuns = 0
       const entity = Entity.make("QueuedMailbox", [
         Rpc.make("Hold", { success: Schema.String }),
-        Rpc.make("Queued", { success: Schema.String })
+        Rpc.make("Queued", { success: Schema.String }),
+        Rpc.make("Ping", { success: Schema.String })
       ])
       const handlers: EntityRegistration = {
         entity,
@@ -445,7 +470,8 @@ describe("EntityManager", () => {
             Effect.sync(() => {
               queuedRuns++
               return "queued"
-            })
+            }),
+          Ping: () => Rpc.fork(Effect.succeed("pong"))
         })),
         options: { concurrency: 1 },
         context: Context.empty()
@@ -458,8 +484,11 @@ describe("EntityManager", () => {
       const hold = yield* Effect.forkChild(manager.invoke(envelope("Hold"), false))
       yield* Deferred.await(started)
       const queuedRequestId = nextRequestId()
-      const queued = yield* Effect.forkChild(manager.invoke(envelope("Queued", null, queuedRequestId), false))
-      yield* settle
+      const queued = yield* Effect.forkChild(
+        manager.invoke(envelope("Queued", null, queuedRequestId), false),
+        { startImmediately: true }
+      )
+      yield* admitted(manager, envelope)
 
       yield* manager.interrupt(queuedRequestId).pipe(Effect.timeout("1 second"), TestClock.withLive)
       yield* Fiber.join(queued)
@@ -467,6 +496,159 @@ describe("EntityManager", () => {
       yield* Deferred.succeed(release, undefined)
       yield* Fiber.join(hold)
       assert.strictEqual(queuedRuns, 0)
+    }))
+
+  it.effect("interrupts non-persisted and persisted asks that arrive after their interrupt", () =>
+    Effect.gen(function*() {
+      const { envelope, exitOf, manager, restart } = yield* makeMailbox("early-interrupt")
+      const nonPersistedId = nextRequestId()
+      yield* manager.interrupt(nonPersistedId)
+      const nonPersisted = yield* manager.invoke(envelope("Get", null, nonPersistedId), false)
+      assert.deepStrictEqual(nonPersisted, { _tag: "Success", requestId: nonPersistedId, replies: [] })
+
+      const persistedId = nextRequestId()
+      yield* manager.interrupt(persistedId)
+      const persisted = yield* manager.invoke(envelope("Add", { operationId: "early" }, persistedId), false)
+      assert.deepStrictEqual(persisted, { _tag: "Success", requestId: persistedId, replies: [] })
+
+      const get = yield* restart().invoke(envelope("Get"), false)
+      assert(get._tag === "Success")
+      assert.deepStrictEqual(exitOf(get.replies[0]), { _tag: "Success", value: 0 })
+      assert.isUndefined(counts.get("early-interrupt"))
+    }))
+
+  it.effect("interrupts an active ask holding a SQL transaction while another persisted invoke waits on it", () =>
+    Effect.gen(function*() {
+      const inTransaction = yield* Deferred.make<void>()
+      const never = yield* Deferred.make<void>()
+      const entity = Entity.make("TransactionInterruptMailbox", [
+        Rpc.make("HoldTx", { success: Schema.String }).annotate(ClusterSchema.Persisted, true),
+        Rpc.make("Write", { success: Schema.String }).annotate(ClusterSchema.Persisted, true)
+      ])
+      const handlers: EntityRegistration = {
+        entity,
+        keepAliveHeartbeat: 30_000,
+        build: Effect.gen(function*() {
+          const sql = yield* CloudflareCluster.DurableObjectSqlClient
+          return entity.of({
+            HoldTx: () =>
+              sql.withTransaction(
+                Effect.andThen(Deferred.succeed(inTransaction, undefined), Effect.as(Deferred.await(never), "held"))
+              ).pipe(Effect.orDie),
+            Write: () => Effect.succeed("written")
+          })
+        }).pipe(Effect.orDie) as unknown as EntityRegistration["build"],
+        options: undefined,
+        context: Context.empty()
+      }
+      yield* Effect.acquireRelease(
+        Effect.sync(() => registerEntity(entity.type, handlers)),
+        () => Effect.sync(() => unregisterEntity(entity.type, handlers))
+      )
+      const { envelope, exitOf, manager, storage } = yield* makeMailbox("tx-interrupt", entity.type)
+      const holdRequestId = nextRequestId()
+      const hold = yield* Effect.forkChild(manager.invoke(envelope("HoldTx", null, holdRequestId), false))
+      yield* Deferred.await(inTransaction)
+
+      // Persisted invoke takes the entry permit and blocks on the SQL transaction gate.
+      const write = yield* Effect.forkChild(manager.invoke(envelope("Write"), false), { startImmediately: true })
+
+      yield* manager.interrupt(holdRequestId).pipe(Effect.timeout("1 second"), TestClock.withLive)
+      const holdResult = yield* Fiber.join(hold).pipe(Effect.timeout("1 second"), TestClock.withLive)
+      const writeResult = yield* Fiber.join(write).pipe(Effect.timeout("1 second"), TestClock.withLive)
+
+      assert.deepStrictEqual(holdResult, { _tag: "Success", requestId: holdRequestId, replies: [] })
+      assert(writeResult._tag === "Success")
+      assert.deepStrictEqual(exitOf(writeResult.replies[0]), { _tag: "Success", value: "written" })
+      const reply = yield* loadNextReply(storage.sql, holdRequestId)
+      assert.strictEqual(exitOf(reply!.reply)._tag, "Failure")
+    }))
+
+  it.effect("keeps ownership when an interrupt during persisted startup fails its terminal write", () =>
+    Effect.gen(function*() {
+      const inStart = yield* Deferred.make<void>()
+      const releaseStart = yield* Deferred.make<void>()
+      const { envelope, exitOf, manager, storage } = yield* makeMailbox("failed-startup-cancel")
+      const getAlarm = storage.getAlarm.bind(storage)
+      storage.getAlarm = () => {
+        storage.getAlarm = getAlarm
+        Deferred.doneUnsafe(inStart, Effect.void)
+        return Effect.runPromise(Effect.andThen(Deferred.await(releaseStart), Effect.promise(getAlarm)))
+      }
+      const requestId = nextRequestId()
+      const first = yield* Effect.forkChild(
+        manager.invoke(envelope("Add", { operationId: "fail-write" }, requestId), false),
+        { startImmediately: true }
+      )
+      yield* Deferred.await(inStart)
+      yield* manager.interrupt(requestId)
+
+      const transactionSync = storage.transactionSync.bind(storage)
+      storage.transactionSync = () => {
+        storage.transactionSync = transactionSync
+        throw new Error("terminal write failed")
+      }
+      yield* Deferred.succeed(releaseStart, undefined)
+      const exit = yield* Fiber.await(first).pipe(Effect.timeout("1 second"), TestClock.withLive)
+      assert.isTrue(Exit.isFailure(exit))
+
+      const get = yield* manager.invoke(envelope("Get"), false)
+      assert(get._tag === "Success")
+      assert.deepStrictEqual(exitOf(get.replies[0]), { _tag: "Success", value: 0 })
+      assert.isUndefined(counts.get("failed-startup-cancel"))
+    }))
+
+  it.effect("decrements in-flight persisted count when interrupted before the handler fiber starts", () =>
+    Effect.gen(function*() {
+      const { entity, release, started } = yield* makeGatedAsk("PreStartInterrupt")
+      const { envelope, manager, storage, waitUntilFibers } = yield* makeMailbox("pre-start", entity.type)
+      const firstRequestId = nextRequestId()
+      let interrupting: Fiber.Fiber<void> | undefined
+      const push = waitUntilFibers.push.bind(waitUntilFibers)
+      waitUntilFibers.push = (...items) => {
+        waitUntilFibers.push = push
+        // Fires after session publication, before the deferred handler fiber starts.
+        interrupting = Effect.runFork(manager.interrupt(firstRequestId))
+        return push(...items)
+      }
+
+      const first = yield* manager.invoke(envelope("Add", { operationId: "first" }, firstRequestId), false).pipe(
+        Effect.timeout("1 second"),
+        TestClock.withLive
+      )
+      assert.deepStrictEqual(first, { _tag: "Success", requestId: firstRequestId, replies: [] })
+      assert.isDefined(interrupting)
+      yield* Fiber.join(interrupting!).pipe(Effect.timeout("1 second"), TestClock.withLive)
+      assert.isNull(storage.alarm, "In-flight persisted count leaked after pre-start interrupt")
+
+      const second = yield* Effect.forkChild(manager.invoke(envelope("Add", { operationId: "second" }), false))
+      yield* Deferred.await(started)
+      assert.isNotNull(storage.alarm, "Next persisted ask skipped arming its recovery heartbeat")
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(second)
+    }))
+
+  it.effect("replays an interrupted persisted ask in the same manager after reset", () =>
+    Effect.gen(function*() {
+      const { entity, release, started, state } = yield* makeGatedAsk("ResetAfterInterrupt")
+      const { envelope, exitOf, manager, storage } = yield* makeMailbox("reset-after-interrupt", entity.type)
+      const requestId = nextRequestId()
+      const first = yield* Effect.forkChild(
+        manager.invoke(envelope("Add", { operationId: "same" }, requestId), false)
+      )
+      yield* Deferred.await(started)
+      assert.strictEqual(state.runs, 1)
+
+      yield* manager.interrupt(requestId)
+      yield* Fiber.join(first)
+      yield* Deferred.succeed(release, undefined)
+
+      yield* manager.reset(requestId)
+      yield* manager.alarm
+
+      assert.strictEqual(state.runs, 2)
+      const reply = yield* loadNextReply(storage.sql, requestId)
+      assert.deepStrictEqual(exitOf(reply!.reply), { _tag: "Success", value: 2 })
     }))
 
   it.effect("lets an Rpc.uninterruptible handler finish after an interrupt", () =>
