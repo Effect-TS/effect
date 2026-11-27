@@ -13,6 +13,8 @@
  * @since 4.0.0
  */
 import * as Effect from "effect/Effect"
+import * as Equal from "effect/Equal"
+import * as Hash from "effect/Hash"
 import * as Headers from "effect/http/Headers"
 import * as IncomingMessage from "effect/http/HttpIncomingMessage"
 import * as UrlParams from "effect/http/UrlParams"
@@ -70,6 +72,15 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
     this.source = source
     this.onError = onError
     this.remoteAddressOverride = remoteAddressOverride
+  }
+
+  // Structural hashing would evaluate the `*Unsafe` body getters, which can throw.
+  [Hash.symbol](): number {
+    return Hash.random(this)
+  }
+
+  [Equal.symbol](that: unknown): boolean {
+    return this === that
   }
 
   get headers() {

@@ -1035,6 +1035,35 @@ describe("HttpApi", () => {
     })
   })
 
+  it.effect("declared error status with a non-JSON body fails with a StatusCodeError", () => {
+    const Api = HttpApi.make("api").add(
+      HttpApiGroup.make("group").add(HttpApiEndpoint.get("get", "/get", { error: HttpApiError.NotFound }))
+    )
+    const GroupLayer = HttpApiBuilder.group(
+      Api,
+      "group",
+      (handlers) =>
+        handlers.handleRaw(
+          "get",
+          () => Effect.succeed(HttpServerResponse.text("<html>404</html>", { status: 404, contentType: "text/html" }))
+        )
+    )
+    const ApiLayer = HttpRouter.serve(
+      HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
+      { disableListenLog: true, disableLogger: true }
+    ).pipe(
+      Layer.provideMerge(HttpServer.layerTestClient),
+      Layer.provide(NodeHttpClient.layerNodeHttp),
+      Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+    )
+    return Effect.gen(function*() {
+      const client = yield* HttpApiClient.make(Api)
+      const error = yield* Effect.flip(client.group.get())
+      assert(error._tag === "HttpClientError")
+      assert.strictEqual(error.reason._tag, "StatusCodeError")
+    }).pipe(Effect.provide(ApiLayer))
+  })
+
   describe("params option", () => {
     it.effect("should accept a record of schemas", () => {
       const Api = HttpApi.make("api").add(
