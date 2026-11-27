@@ -2243,7 +2243,7 @@ describe("McpServer", () => {
         Effect.gen(function*() {
           const requiredMessage = yield* register(Tool.make("bad-required", {
             parameters: Schema.Any.check(Schema.makeFilter(() => true, {
-              toJsonSchema: () => ({ type: "object", required: [1] })
+              toJsonSchema: () => ({ type: "object", required: new Array(1) })
             })),
             success: Schema.String
           }))
@@ -2293,6 +2293,24 @@ describe("McpServer", () => {
         assert.isFalse("outputSchema" in untypedTool)
         assertTrue(annotatedVoidTool !== undefined)
         assert.isFalse("outputSchema" in annotatedVoidTool)
+      }))
+
+    it.effect("lists a dynamic tool as registered when its schema and metadata are mutated later", () =>
+      Effect.gen(function*() {
+        const parameters = { type: "object", properties: { id: { type: "string" } } }
+        const meta: Record<string, unknown> = { owner: "a" }
+        const Lookup = Tool.dynamic("lookup", { parameters, success: Schema.String }).annotate(Tool.Meta, meta)
+        const toolkit = Toolkit.make(Lookup)
+        const client = yield* McpTest.makeClient(
+          McpServer.toolkit(toolkit).pipe(Layer.provide(toolkit.toLayer({ lookup: () => Effect.succeed("ok") }))),
+          { protocols: [McpProtocol.v2025_11_25] }
+        )
+
+        parameters.properties.id.type = "number"
+        meta.owner = "b"
+        const [tool] = (yield* client.listTools()).tools
+        assert.deepStrictEqual(tool.inputSchema.properties, { id: { type: "string" } })
+        assert.deepStrictEqual(tool._meta, { owner: "a" })
       }))
 
     it.effect("lists the replacement after a listed tool is re-registered", () =>

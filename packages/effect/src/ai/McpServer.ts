@@ -3434,7 +3434,14 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
     }
     const content = options?.content
     const mapper = content && Object.hasOwn(content, tool.name) ? content[tool.name as Names] : undefined
-    const inputSchema = rawJsonSchema ?? toolJsonSchema(tool.parametersSchema, strict)
+    // Decoding copies a caller-owned raw schema, so later mutation does not change the descriptor.
+    const inputSchema = rawJsonSchema === undefined
+      ? toolJsonSchema(tool.parametersSchema, strict)
+      : yield* Effect.catch(Schema.decodeUnknownEffect(ToolJson)(rawJsonSchema), (cause) =>
+        Effect.die(
+          `McpServer cannot register tool '${tool.name}': its raw JSON Schema must have an object root ` +
+            `(type: "object").\n\n${cause.message}`
+        ))
     const title = Context.getOrUndefined(tool.annotations, Tool.Title)
     const readOnlyHint = Context.get(tool.annotations, Tool.Readonly)
     const fields = {
@@ -3450,7 +3457,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
         idempotentHint: Context.get(tool.annotations, Tool.Idempotent),
         openWorldHint: Context.get(tool.annotations, Tool.OpenWorld)
       },
-      _meta: toolMeta
+      _meta: Predicate.isReadonlyObject(toolMeta) ? { ...toolMeta } : toolMeta
     }
     let mcpTool: McpTool
     if (isValidTool(fields)) {
@@ -3462,12 +3469,9 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
         // Name the tool when the input schema lacks an object root; rethrow anything else.
         yield* Effect.catch(Schema.decodeUnknownEffect(ToolJson)(inputSchema), (cause) =>
           Effect.die(
-            rawJsonSchema !== undefined
-              ? `McpServer cannot register tool '${tool.name}': its raw JSON Schema must have an object root ` +
-                `(type: "object").\n\n${cause.message}`
-              : `McpServer cannot register tool '${tool.name}': its parameters must encode to a JSON Schema with an ` +
-                `object root (type: "object"), such as a Schema.Struct. Use Tool.EmptyParams for a tool without ` +
-                `parameters.\n\n${cause.message}`
+            `McpServer cannot register tool '${tool.name}': its parameters must encode to a JSON Schema with an ` +
+              `object root (type: "object"), such as a Schema.Struct. Use Tool.EmptyParams for a tool without ` +
+              `parameters.\n\n${cause.message}`
           ))
         throw error
       }
@@ -3560,13 +3564,21 @@ const isValidTool = (fields: {
     inputSchema.type === "object" &&
     (properties === undefined || (Predicate.isReadonlyObject(properties) &&
       Object.values(properties).every((value) => typeof value === "boolean" || Predicate.isReadonlyObject(value)))) &&
-    (required === undefined || (Array.isArray(required) && required.every(Predicate.isString))) &&
+    (required === undefined || (Array.isArray(required) && isStringArray(required))) &&
     (fields.outputSchema === undefined || Predicate.isReadonlyObject(fields.outputSchema)) &&
     typeof annotations.readOnlyHint === "boolean" &&
     typeof annotations.destructiveHint === "boolean" &&
     typeof annotations.idempotentHint === "boolean" &&
     typeof annotations.openWorldHint === "boolean" &&
     (fields._meta === undefined || Predicate.isReadonlyObject(fields._meta))
+}
+
+// Unlike `Array.prototype.every`, this also rejects holes in sparse arrays.
+const isStringArray = (array: ReadonlyArray<unknown>): boolean => {
+  for (let i = 0; i < array.length; i++) {
+    if (typeof array[i] !== "string") return false
+  }
+  return true
 }
 
 // MCP requires an object root. A non-recursive root is compiled inline rather
