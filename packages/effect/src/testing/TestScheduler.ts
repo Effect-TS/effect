@@ -57,6 +57,9 @@ export interface Options {
  *   unseeded randomness break it, so use `TestClock` time and no real I/O.
  * - `Effect.yieldNow` does not let other fibers finish. Wait on a
  *   `Deferred`, a `Latch`, `Fiber.await`, or `TestClock.adjust` instead.
+ * - `TestClock.adjust` waits only for the `TestScheduler` of the fiber that
+ *   calls it. Provide one `TestScheduler` around both the forked fibers and
+ *   the clock adjustment.
  *
  * @see {@link layer} for providing the scheduler to an effect
  *
