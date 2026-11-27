@@ -1036,11 +1036,8 @@ describe("HttpApi", () => {
   })
 
   it.effect("declared error status with a non-JSON body fails with a StatusCodeError", () => {
-    class NotFound extends Schema.Error<NotFound>("NotFound")({ _tag: Schema.tag("NotFound") }, {
-      httpApiStatus: 404
-    }) {}
     const Api = HttpApi.make("api").add(
-      HttpApiGroup.make("group").add(HttpApiEndpoint.get("get", "/get", { error: NotFound }))
+      HttpApiGroup.make("group").add(HttpApiEndpoint.get("get", "/get", { error: HttpApiError.NotFound }))
     )
     const GroupLayer = HttpApiBuilder.group(
       Api,
@@ -1061,11 +1058,9 @@ describe("HttpApi", () => {
     )
     return Effect.gen(function*() {
       const client = yield* HttpApiClient.make(Api)
-      const cause = yield* client.group.get().pipe(Effect.sandbox, Effect.flip)
-      assert.isFalse(Cause.hasDies(cause))
-      const error = Cause.findErrorOption(cause)
-      assert(Option.isSome(error) && error.value._tag === "HttpClientError")
-      assert.strictEqual(error.value.reason._tag, "StatusCodeError")
+      const error = yield* Effect.flip(client.group.get())
+      assert(error._tag === "HttpClientError")
+      assert.strictEqual(error.reason._tag, "StatusCodeError")
     }).pipe(Effect.provide(ApiLayer))
   })
 
