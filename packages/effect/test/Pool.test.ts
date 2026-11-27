@@ -300,16 +300,14 @@ describe("Pool", () => {
         Effect.suspend(() => acquired++ === 1 ? Effect.fail("error") : Effect.succeed(acquired))
       )
       const pool = yield* Pool.make({ acquire, size: 2 })
-      const scope = yield* Scope.make()
       const fibers = yield* Effect.forEach([1, 2], () =>
-        Effect.forkChild(Effect.exit(Scope.provide(Pool.get(pool), scope)), { startImmediately: true }))
+        Effect.forkChild(Effect.exit(Pool.get(pool)), { startImmediately: true }))
       while ((yield* Pool.stats(pool)).pending < 2) {
         yield* Effect.yieldNow
       }
       yield* Deferred.succeed(gate, void 0)
       // The first lease stays open, so the second borrower cannot wait for it.
       yield* Effect.timeout(Fiber.joinAll(fibers), Duration.seconds(1))
-      yield* Scope.close(scope, Exit.void)
     }))
 
   it.effect("compositional retry", () =>
