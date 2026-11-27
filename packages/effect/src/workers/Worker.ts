@@ -155,9 +155,9 @@ export const layerSpawner: <W = unknown>(
  *
  * **Details**
  *
- * The Node and Bun platforms read it when a worker starts running, so provide
- * it where the worker is run, or where a worker pool is built. Browser workers
- * are not terminated when they are closed.
+ * Defaults to 5 seconds. Node and Bun read it when a worker starts running, so
+ * provide it where the worker is run or where a worker pool is built. Browser
+ * workers are not terminated when closed.
  *
  * @stability unstable
  * @category references
