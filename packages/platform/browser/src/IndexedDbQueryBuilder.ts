@@ -758,7 +758,7 @@ type IndexedDbValidNumberKeys<
   : never
 
 const applyDelete = (query: IndexedDbQuery.Delete<any, never>) =>
-  Effect.callback<any, IndexedDbQueryError>((resume) => {
+  transactionCallback<any>((resume) => {
     const database = query.delete.from.database
     const IDBKeyRange = query.delete.from.IDBKeyRange
     const transaction = getOrCreateTransaction(database.current, [query.delete.from.table.tableName], "readwrite", {
@@ -912,7 +912,7 @@ const applySelect = Effect.fnUntraced(function*(
   const predicate = query.predicate
 
   const data = predicate || keyPath === undefined || query.offsetValue !== undefined || query.reverseValue ?
-    yield* Effect.callback<Array<any>, IndexedDbQueryError>((resume) => {
+    yield* transactionCallback<Array<any>>((resume) => {
       const { keyRange, store } = getReadonlyObjectStore(query)
 
       const cursorRequest = store.openCursor(keyRange, query.reverseValue ? "prev" : "next")
@@ -958,7 +958,7 @@ const applySelect = Effect.fnUntraced(function*(
         resume(Effect.succeed(results))
       }
     }) :
-    yield* Effect.callback<Array<any>, IndexedDbQueryError>((resume) => {
+    yield* transactionCallback<Array<any>>((resume) => {
       const { keyRange, store } = getReadonlyObjectStore(query)
       const request = store.getAll(keyRange, query.limitValue)
       request.onerror = (event) => {
@@ -997,7 +997,7 @@ const applyFirst = Effect.fnUntraced(function*(
 ) {
   const keyPath = query.select.from.table.keyPath
 
-  const data = yield* Effect.callback<any, IndexedDbQueryError | Cause.NoSuchElementError>((resume) => {
+  const data = yield* transactionCallback<any, Cause.NoSuchElementError>((resume) => {
     const { keyRange, store } = getReadonlyObjectStore(query.select)
 
     if (keyRange !== undefined && keyPath !== undefined) {
@@ -1092,7 +1092,7 @@ const applyModify = Effect.fnUntraced(function*({
     )
   )
 
-  return yield* Effect.callback<any, IndexedDbQueryError>((resume) => {
+  return yield* transactionCallback<any>((resume) => {
     const database = query.from.database
     const transaction = getOrCreateTransaction(database.current, [query.from.table.tableName], "readwrite", {
       durability: query.from.table.durability
@@ -1158,9 +1158,8 @@ const applyModifyAll = Effect.fnUntraced(
       }
     }
 
-    return yield* Effect.callback<
-      Array<globalThis.IDBValidKey>,
-      IndexedDbQueryError
+    return yield* transactionCallback<
+      Array<globalThis.IDBValidKey>
     >((resume) => {
       if (encodedValues.length === 0) {
         return resume(Effect.succeed([]))
@@ -1253,7 +1252,7 @@ const applyClear = (options: {
   readonly database: globalThis.IDBDatabase
   readonly table: IndexedDbTable.AnyWithProps
 }) =>
-  Effect.callback<void, IndexedDbQueryError>((resume) => {
+  transactionCallback<void>((resume) => {
     const database = options.database
     const transaction = getOrCreateTransaction(database, [options.table.tableName], "readwrite", {
       durability: options.table.durability
@@ -1281,7 +1280,7 @@ const applyClear = (options: {
 const applyClearAll = (options: {
   readonly database: globalThis.IDBDatabase
 }) =>
-  Effect.callback<void, IndexedDbQueryError>((resume) => {
+  transactionCallback<void>((resume) => {
     const database = options.database
     const tables = database.objectStoreNames
     const transaction = getOrCreateTransaction(database, [...tables], "readwrite")
@@ -1319,7 +1318,7 @@ const applyClearAll = (options: {
   })
 
 const getCount = (query: IndexedDbQuery.Count<any, never>) =>
-  Effect.callback<number, IndexedDbQueryError>((resume) => {
+  transactionCallback<number>((resume) => {
     const { keyRange, store } = getReadonlyObjectStore(query)
 
     const request = store.count(keyRange)
@@ -2011,7 +2010,17 @@ const QueryBuilderProto: Omit<
   }) {
     return (effect) =>
       Effect.suspend(() => {
-        const transaction = this.database.current.transaction(options.tables, options.mode, options)
+        let transaction: globalThis.IDBTransaction
+        try {
+          transaction = this.database.current.transaction(options.tables, options.mode, options)
+        } catch (cause) {
+          return Effect.fail(
+            new IndexedDbQueryError({
+              reason: "TransactionError",
+              cause
+            })
+          )
+        }
         return Effect.provideService(effect, IndexedDbTransaction, transaction).pipe(
           Effect.onExit((exit) =>
             exit._tag === "Success" ? awaitTransaction(transaction) : abortTransaction(transaction)
@@ -2074,6 +2083,24 @@ export const make = <Source extends IndexedDbVersion.AnyWithProps>({
   self.fromCache = new Map()
   return self
 }
+
+const transactionCallback = <A, E = never>(
+  f: (resume: (effect: Effect.Effect<A, IndexedDbQueryError | E>) => void) => void
+): Effect.Effect<A, IndexedDbQueryError | E> =>
+  Effect.callback<A, IndexedDbQueryError | E>((resume) => {
+    try {
+      f(resume)
+    } catch (cause) {
+      resume(
+        Effect.fail(
+          new IndexedDbQueryError({
+            reason: "TransactionError",
+            cause
+          })
+        )
+      )
+    }
+  })
 
 const getOrCreateTransaction = (
   database: globalThis.IDBDatabase,

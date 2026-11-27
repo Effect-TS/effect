@@ -501,6 +501,9 @@ const layer = <DatabaseName extends string>(
         request.onsuccess = (event) => {
           const idbRequest = event.target as IDBRequest<IDBDatabase>
           const db = idbRequest.result
+          db.onversionchange = () => {
+            db.close()
+          }
           MutableRef.set(database, db)
           if (fiber) {
             // ensure migration errors are propagated
@@ -512,7 +515,10 @@ const layer = <DatabaseName extends string>(
       })
 
       yield* Effect.addFinalizer(() => {
-        database.current?.close()
+        if (database.current) {
+          database.current.onversionchange = null
+          database.current.close()
+        }
         return Effect.void
       })
       yield* open

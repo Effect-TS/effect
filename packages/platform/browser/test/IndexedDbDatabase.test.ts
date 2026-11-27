@@ -1,6 +1,6 @@
 import { IndexedDb, IndexedDbDatabase, IndexedDbTable, IndexedDbVersion } from "@effect/platform-browser"
 import { afterEach, assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Result, Schema } from "effect"
+import { Context, Effect, Exit, Layer, Result, Schema, Scope } from "effect"
 import { IDBKeyRange, indexedDB } from "fake-indexeddb"
 
 const databaseName = "db"
@@ -280,6 +280,83 @@ describe("IndexedDbDatabase", { concurrent: false }, () => {
       const database = yield* open
       assert.deepStrictEqual(Array.from(database.objectStoreNames), [])
       database.close()
+    })
+  })
+
+  it.effect("closes open connection on versionchange and fails subsequent queries cleanly", () => {
+    const Notes = IndexedDbTable.make({
+      name: "notes",
+      schema: Schema.Struct({ id: Schema.String }),
+      keyPath: "id"
+    })
+    const Tags = IndexedDbTable.make({
+      name: "tags",
+      schema: Schema.Struct({ id: Schema.String }),
+      keyPath: "id"
+    })
+    const V1 = IndexedDbVersion.make(Notes)
+    const V2 = IndexedDbVersion.make(Notes, Tags)
+
+    class OldDb extends IndexedDbDatabase.make(V1, (api) => api.createObjectStore("notes")) {}
+    class NewDb extends IndexedDbDatabase.make(V1, (api) => api.createObjectStore("notes")).add(
+      V2,
+      (_from, to) => to.createObjectStore("tags")
+    ) {}
+
+    return Effect.gen(function*() {
+      const oldScope = yield* Scope.make()
+      const oldCtx = yield* Layer.buildWithScope(
+        OldDb.layer(databaseName).pipe(Layer.provide(layerFakeIndexedDb)),
+        oldScope
+      )
+      const oldApi = yield* OldDb.getQueryBuilder.pipe(Effect.provide(oldCtx))
+      yield* oldApi.from("notes").insert({ id: "note-1" })
+
+      // Opening a newer schema version while the old connection is still alive triggers versionchange
+      const newScope = yield* Scope.make()
+      const newCtx = yield* Layer.buildWithScope(
+        NewDb.layer(databaseName).pipe(Layer.provide(layerFakeIndexedDb)),
+        newScope
+      )
+      const newApi = yield* NewDb.getQueryBuilder.pipe(Effect.provide(newCtx))
+
+      assert.deepStrictEqual(yield* newApi.from("notes").select(), [{ id: "note-1" }])
+      yield* newApi.from("tags").insert({ id: "tag-1" })
+      assert.deepStrictEqual(yield* newApi.from("tags").select(), [{ id: "tag-1" }])
+
+      // Queries on the closed old connection fail with a typed IndexedDbQueryError instead of a defect
+      const selectResult = yield* Effect.result(oldApi.from("notes").select())
+      assert.isTrue(Result.isFailure(selectResult))
+      assert.equal(selectResult.failure._tag, "IndexedDbQueryError")
+      assert.equal(selectResult.failure.reason, "TransactionError")
+
+      const txResult = yield* Effect.result(
+        oldApi.withTransaction({ tables: ["notes"], mode: "readonly" })(oldApi.from("notes").select())
+      )
+      assert.isTrue(Result.isFailure(txResult))
+      assert.equal(txResult.failure._tag, "IndexedDbQueryError")
+      assert.equal(txResult.failure.reason, "TransactionError")
+
+      // After rebuild on the new connection, the versionchange handler remains attached
+      const newDb = Context.get(newCtx, IndexedDbDatabase.IndexedDbDatabase)
+      yield* newDb.rebuild
+      const V3 = IndexedDbVersion.make(
+        Notes,
+        Tags,
+        IndexedDbTable.make({ name: "extra", schema: Schema.Struct({ id: Schema.String }), keyPath: "id" })
+      )
+      class NextDb extends NewDb.add(V3, (_from, to) => to.createObjectStore("extra")) {}
+      const nextScope = yield* Scope.make()
+      const nextCtx = yield* Layer.buildWithScope(
+        NextDb.layer(databaseName).pipe(Layer.provide(layerFakeIndexedDb)),
+        nextScope
+      )
+      const nextApi = yield* NextDb.getQueryBuilder.pipe(Effect.provide(nextCtx))
+      assert.deepStrictEqual(yield* nextApi.from("extra").select(), [])
+
+      yield* Scope.close(nextScope, Exit.void)
+      yield* Scope.close(newScope, Exit.void)
+      yield* Scope.close(oldScope, Exit.void)
     })
   })
 })
