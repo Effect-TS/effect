@@ -289,6 +289,7 @@ export const PromptMessage = Schema.Struct({
  */
 export const ToolInputSchema = Schema.Struct({
   type: Schema.Literal("object"),
+  $defs: optional(Schema.Record(Schema.String, Schema.Union([UnknownObject, Schema.Boolean]))),
   properties: optional(Schema.Record(Schema.String, UnknownObject)),
   required: optional(Schema.Array(Schema.String))
 })
