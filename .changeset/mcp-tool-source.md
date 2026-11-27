@@ -2,4 +2,4 @@
 "effect": minor
 ---
 
-Add `McpServer.toolSource` and `McpServer.registerToolSource` to resolve and invoke MCP tools per request without mutating server-wide registrations.
+Add `McpServer.toolSource` and `McpServer.registerToolSource` for per-request MCP tool resolution and dispatch.

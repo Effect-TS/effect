@@ -356,17 +356,16 @@ export type MiddlewareMethod =
  * resource template being completed. For `skills/get` it is the URI of the
  * skill's `SKILL.md`. `payload` holds the request parameters.
  *
- * On list requests, middleware runs when it wraps a {@link visibility}, once
- * for each registration it wraps, or when it wraps a {@link toolSource}. For
- * visibility checks, `target` is the tool name, the resource URI, the URI
- * template or the prompt name of that registration, and `payload` is
- * `undefined`. For a tool source's `list` effect, non-visibility middleware
- * runs once with `target: ""` and `payload: undefined`, then visibility checks
- * run per returned tool with that tool's name. `skills/list` and
- * `resources/directory/read` are list requests whose `target` is the `SKILL.md`
- * URI of each skill; a directory read checks only the skills that have the
- * directory. A skill's files are resources, checked as `resources/list` and
- * `resources/read` with their own URIs.
+ * On list requests, middleware runs when it wraps a {@link visibility} (once
+ * per registration) or a {@link toolSource}. For visibility checks, `target`
+ * is the tool name, resource URI, URI template, or prompt name, and `payload`
+ * is `undefined`. For a tool source's `list`, non-visibility middleware runs
+ * once with `target: ""` and `payload: undefined`, then visibility checks run
+ * per returned tool. `skills/list` and `resources/directory/read` are list
+ * requests whose `target` is the `SKILL.md` URI of each skill; a directory
+ * read checks only the skills that have the directory. A skill's files are
+ * resources, checked as `resources/list` and `resources/read` with their own
+ * URIs.
  *
  * `headers` are the HTTP request headers. They are empty on stdio, on custom
  * transports and for in-process calls. `sessionId` is the `Mcp-Session-Id`
@@ -957,9 +956,8 @@ const makeInvoke = (
     ).pipe(
       catchHidden(() => Effect.fail(notFound(request.method, request.target) as NotFoundErrors[M]))
     ) as Effect.Effect<A, E | NotFoundErrors[M] | McpCore.RequestRejected>
-  // Runs a tool source's `list` inside its middleware, which provides the
-  // request services. Visibility gates are left out: they have no target here,
-  // and check each listed tool by name instead.
+  // Runs a tool source's `list` inside non-visibility middleware; visibility
+  // gates check each returned tool by name instead of an empty target.
   const invokeList = <A>(
     handler: Effect.Effect<A, McpErrorBase, any>,
     invocation: McpCore.McpInvocation
@@ -1001,7 +999,6 @@ const isEnabled = (annotations: Context.Context<never>) => {
 
 const rejectedError = (rejected: McpCore.RequestRejected) => Effect.fail(rejected.error)
 
-// The top-level title of a listed tool falls back to its annotation title.
 const withAnnotationTitle = (tool: McpTool): McpTool => {
   const title = tool.title ?? tool.annotations?.title
   // Reuse a validated descriptor whose title is already resolved.
@@ -1010,7 +1007,6 @@ const withAnnotationTitle = (tool: McpTool): McpTool => {
     : new McpTool({ ...tool, title })
 }
 
-// Maps the result of a tool handler, or of a tool source's `call`, to a core outcome.
 const toolOutcome = (
   self: Effect.Effect<
     CallToolResult | McpSchema.InputRequired,
@@ -3725,8 +3721,8 @@ export const toolkit = <Tools extends Record<string, Tool.Any>, Names extends ke
 ): Layer.Layer<never, never, ToolkitRequirements<Tools>> => Layer.effectDiscard(registerToolkit(toolkit, options))
 
 /**
- * The requirements of a tool source registration: services read by `list` and
- * `call`, other than `McpRequestContext`, are request-level.
+ * Request-level requirements of a tool source: services read by `list` and
+ * `call`, other than `McpRequestContext`, become `McpRequest` markers.
  *
  * @stability unstable
  * @category utility types
@@ -3739,11 +3735,12 @@ export type ToolSourceRequirements<R> = RegistrationRequirements<never, R>
  *
  * **Details**
  *
- * `list` runs on every `tools/list` and returns the source's complete list for
- * the current request; nothing is cached between requests. `call` runs for a
- * `tools/call` whose name is not statically registered when `owns` accepts the
- * name (by default, every unregistered name). Fail `call` with
- * `Cause.NoSuchElementError` to report an unknown tool (`ToolNotFound`).
+ * - `list`: runs on every `tools/list` (uncached). Failures fail the list
+ *   request as JSON-RPC errors.
+ * - `call`: handles unregistered tool names accepted by `owns`. Fail with
+ *   `Cause.NoSuchElementError` to report an unknown tool (`ToolNotFound`).
+ * - `owns`: selects which unregistered names this source handles (defaults to
+ *   all).
  *
  * @stability unstable
  * @category models
@@ -3767,22 +3764,14 @@ export interface ToolSourceOptions<RList = never, RCall = never> {
  *
  * **Details**
  *
- * Services read by `list` and `call`, other than `McpRequestContext`, are
- * request-level and must be provided by MCP middleware or the transport.
- * Statically registered tools always take precedence over sourced tools, even
- * when hidden by visibility. A listed tool appears only from the first source
- * whose `owns` accepts its name, matching `tools/call` routing without
- * requiring a preceding `tools/list`.
+ * Registered tools always take precedence over sourced tools (even when
+ * hidden). Each listed tool appears only from the first source whose `owns`
+ * accepts its name, matching `tools/call` routing without a prior list.
  *
  * Non-visibility middleware wraps `list` with `target: ""`, and visibility
- * checks then filter each returned tool by name. Failures from `list` fail the
- * `tools/list` request with their JSON-RPC error code and message. Failures
- * from `call` map like `addTool`, except `Cause.NoSuchElementError` maps to
- * unknown-tool (`ToolNotFound`) without falling through to later sources.
- *
- * The server has no input schema for a sourced tool at call time, so it skips
- * argument validation and `2026-07-28` parameter-header validation; the source
- * must validate its own inputs.
+ * checks filter each returned tool by name. Because the server has no input
+ * schema at call time, argument and `2026-07-28` parameter-header validation
+ * are skipped; the source validates its own inputs.
  *
  * @see {@link toolSource} for the layer-based registration wrapper
  *
@@ -3824,10 +3813,8 @@ export const registerToolSource = <RList = never, RCall = never>(
  *
  * **Details**
  *
- * Services read by `list` and `call` are request-level, so providing them with
- * `Layer.provide` doesn't satisfy them. Read construction-time services in an
- * enclosing `Layer.unwrap` and close over them, and provide per-request
- * services with MCP middleware.
+ * Services read by `list` and `call` are request-level; provide them with MCP
+ * middleware and close over construction-time services via `Layer.unwrap`.
  *
  * @see {@link registerToolSource} for the Effect-level registration API
  * @see {@link middleware} for providing request-level dependencies

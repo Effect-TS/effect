@@ -266,10 +266,8 @@ is `false` or unset.
 
 ### Tools known per request
 
-Use `McpServer.toolSource` (or `McpServer.registerToolSource`) when tools are discovered per
-request or vary by caller, such as proxying an upstream MCP server with the caller's credentials.
-`list` runs on every `tools/list` without caching between requests, and `call` handles
-unregistered tool names accepted by `owns` (by default, all unregistered names).
+Use `McpServer.toolSource` (or `McpServer.registerToolSource`) when tools vary by caller or are
+discovered per request, such as proxying an upstream MCP server.
 
 ```typescript
 import { Cause, Context, Effect, Layer } from "effect"
@@ -294,13 +292,15 @@ const Upstream = McpServer.toolSource({
 }).pipe(Layer.provide(Auth.layer))
 ```
 
-Statically registered tools always take precedence over sourced tools (even when hidden by
-visibility), and a sourced tool is listed only from the first source whose `owns` accepts its name.
-Non-visibility middleware wraps `list` with `target: ""` and per-tool visibility filters the
-returned tools by name. Fail `call` with `Cause.NoSuchElementError` to return unknown-tool
-(`-32602`) without falling through to later sources. Because the server has no input schema at call
-time, it skips argument validation and `2026-07-28` parameter-header checks; the source validates
-its own inputs.
+- `list` runs on every `tools/list` without caching; `call` handles unregistered names accepted by
+  `owns` (all unregistered names by default) without a prior list.
+- Registered tools always take precedence (even when hidden), and a tool is listed only from the
+  first source whose `owns` accepts it.
+- Non-visibility middleware wraps `list` with `target: ""`; visibility checks filter each returned
+  tool by name.
+- Fail `call` with `Cause.NoSuchElementError` to return unknown-tool (`-32602`) without falling
+  through to later sources.
+- Argument validation and `2026-07-28` parameter-header checks are skipped for sourced tools.
 
 ## Request-level dependencies
 

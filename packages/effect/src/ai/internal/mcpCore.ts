@@ -194,9 +194,6 @@ export interface ToolRegistration {
 }
 
 /**
- * Tools resolved per request: `list` runs on every `tools/list`, and calls for
- * unregistered names reach `handle` when `owns` accepts them.
- *
  * @internal
  */
 export interface ToolSourceRegistration {
@@ -583,7 +580,6 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       (entries) => entries.map((entry) => entry.descriptor)
     )
 
-  // The source that calls of an unregistered tool name go to.
   const toolSource = (name: string) => toolSources.find((source) => source.owns(name))
 
   const tools: Tools = {
@@ -603,8 +599,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       return Effect.map(
         Effect.all([
           registered,
-          // A sourced tool is listed only by the source its calls go to. A
-          // registered tool shadows it, even when hidden.
+          // Registered tools (even hidden) take precedence; list only tools this source owns.
           ...toolSources.map((source) =>
             Effect.map(
               source.list(invocation),
