@@ -10,7 +10,6 @@ import type {
 } from "@opentelemetry/sdk-metrics"
 import { AggregationTemporality, DataPointType, InstrumentType } from "@opentelemetry/sdk-metrics"
 import type { InstrumentDescriptor } from "@opentelemetry/sdk-metrics/build/src/InstrumentDescriptor.js"
-import * as Arr from "effect/Array"
 import type * as Context from "effect/Context"
 import * as Metric from "effect/Metric"
 import * as Rec from "effect/Record"
@@ -105,13 +104,9 @@ export class MetricProducerImpl implements MetricProducer {
 
     for (let i = 0, len = snapshot.length; i < len; i++) {
       const state = snapshot[i]
-      const attributes = state.attributes
-        ? Arr.reduce(Object.entries(state.attributes), {} as Record<string, string>, (acc, [key, value]) => {
-          Rec.assignProperty(acc, key, String(value))
-          return acc
-        })
-        : {}
-      const metricKey = makeMetricKey(state.id, state.attributes)
+      const series = seriesAttributes(state.attributes)
+      const attributes = series.attributes
+      const metricKey = state.id + series.keySuffix
 
       switch (state.type) {
         case "Counter": {
@@ -419,13 +414,42 @@ export class MetricProducerImpl implements MetricProducer {
   }
 }
 
-/** Creates a unique key for a metric including its attributes */
-const makeMetricKey = (id: string, attributes: Metric.Metric.AttributeSet | undefined): string => {
-  if (attributes === undefined || Object.keys(attributes).length === 0) {
-    return id
+interface SeriesAttributes {
+  /** The attributes reported on every data point of the series. */
+  readonly attributes: Record<string, string>
+  /** Appended to the metric id to key the series; empty when it has no attributes. */
+  readonly keySuffix: string
+}
+
+const noSeriesAttributes: SeriesAttributes = { attributes: {}, keySuffix: "" }
+
+/**
+ * A registered series keeps the same attribute set for its lifetime, so the
+ * converted attributes and key are derived once per series rather than on
+ * every collection. Entries are released with the attribute set.
+ */
+const seriesAttributesCache = new WeakMap<Metric.Metric.AttributeSet, SeriesAttributes>()
+
+const seriesAttributes = (attributes: Metric.Metric.AttributeSet | undefined): SeriesAttributes => {
+  if (attributes === undefined) {
+    return noSeriesAttributes
   }
-  const sortedEntries = Object.entries(attributes).sort((a, b) => a[0].localeCompare(b[0]))
-  return `${id}:${JSON.stringify(sortedEntries)}`
+  let cached = seriesAttributesCache.get(attributes)
+  if (cached === undefined) {
+    const entries = Object.entries(attributes)
+    const converted: Record<string, string> = {}
+    for (const [key, value] of entries) {
+      Rec.assignProperty(converted, key, String(value))
+    }
+    cached = {
+      attributes: converted,
+      keySuffix: entries.length === 0
+        ? ""
+        : `:${JSON.stringify(entries.sort((a, b) => a[0].localeCompare(b[0])))}`
+    }
+    seriesAttributesCache.set(attributes, cached)
+  }
+  return cached
 }
 
 const currentHrTime = (): HrTime => {

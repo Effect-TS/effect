@@ -398,6 +398,32 @@ describe("Metrics", () => {
       assert.deepStrictEqual([firstValue, secondValue], [1, 1])
     }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 
+  it.effect("keeps series of one metric apart by their attributes across collections", () =>
+    Effect.gen(function*() {
+      const services = yield* Effect.context<never>()
+      const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services, "delta")
+      const collect = Effect.map(
+        Effect.promise(() => producer.collect()),
+        (result) => findMetric(result, "requests").dataPoints.map((point: any) => [point.attributes, point.value])
+      )
+      const requests = Metric.counter("requests", { incremental: true })
+      const ok = Metric.withAttributes(requests, { route: "/users", status: 200 })
+      const failed = Metric.withAttributes(requests, { route: "/users", status: 500 })
+
+      yield* Metric.update(ok, 3)
+      yield* Metric.update(failed, 1)
+      assert.deepStrictEqual(yield* collect, [
+        [{ route: "/users", status: "200" }, 3],
+        [{ route: "/users", status: "500" }, 1]
+      ])
+
+      yield* Metric.update(failed, 4)
+      assert.deepStrictEqual(yield* collect, [
+        [{ route: "/users", status: "200" }, 0],
+        [{ route: "/users", status: "500" }, 4]
+      ])
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
   it.effect("reports a removed and recreated series from zero with delta temporality", () =>
     Effect.gen(function*() {
       const services = yield* Effect.context<never>()
