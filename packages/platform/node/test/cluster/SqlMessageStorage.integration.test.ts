@@ -619,6 +619,10 @@ describe("SqlMessageStorage", () => {
             const storage = yield* SqlMessageStorage.makeEncoded({ prefix: "collision" }).pipe(
               Effect.provide(NodeCrypto.layer)
             )
+            yield* sql`
+              INSERT INTO collision_messages (id, shard_id, entity_type, entity_id, kind, tag, payload, headers, request_id)
+              VALUES (1, 'default:1', 'test', '1', 0, 'GetUser', '{}', '{}', 1)
+            `
             const exit = { _tag: "WithExit", requestId: "1", exit: { _tag: "Success", value: null } } as const
             yield* storage.saveReply({ ...exit, id: "1" })
             const error = yield* Effect.flip(storage.saveReply({ ...exit, id: "2" }))
@@ -849,6 +853,25 @@ describe("SqlMessageStorage", () => {
           expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toEqual([])
           const requestId = String(request.envelope.requestId)
           expect(yield* sql`SELECT id FROM cluster_messages WHERE request_id = ${requestId}`).toEqual([])
+        }).pipe(Effect.ensuring(Effect.orDie(truncate))))
+
+      it.effect("does not store a reply for a request deleteProcessed removed", () =>
+        Effect.gen(function*() {
+          yield* truncate
+          const sql = yield* SqlClient.SqlClient
+          const storage = yield* MessageStorage.MessageStorage
+          const cutoff = Date.UTC(2026, 0, 1)
+          const request = yield* makeRequest({ rpc: StreamRpc, payload: StreamRpc.payloadSchema.make({ id: 1 }) })
+          yield* storage.saveRequest(request)
+          yield* storage.saveReply(yield* makeReply(request, cutoff - 1))
+          expect(yield* storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 100 }))
+            .toEqual(1)
+
+          // late replies, such as ones that waited behind the delete
+          yield* storage.saveReply(yield* makeChunkReply(request))
+          yield* storage.saveReply(yield* makeReply(request))
+          const requestId = String(request.envelope.requestId)
+          expect(yield* sql`SELECT 1 AS found FROM cluster_replies WHERE request_id = ${requestId}`).toEqual([])
         }).pipe(Effect.ensuring(Effect.orDie(truncate))))
 
       it.effect("deleteProcessed takes an unbounded, extreme or fractional cutoff", () =>
