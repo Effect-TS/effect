@@ -94,6 +94,7 @@ import {
   defaultMinimumLogLevel,
   defaultPreventSchedulerYield,
   defaultTracerEnabled,
+  type FiberCacheKey,
   FiberRuntimeMetricsKey,
   MaxOpsBeforeYieldKey,
   MinimumLogLevelKey,
@@ -808,7 +809,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
 const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
   // Reading by key keeps the service objects, and the native tracer behind
   // Tracer.Tracer's default, out of bundles that never use them.
-  const get = <A>(key: string, fallback?: A): A => Context.getOrElseUnsafe(context, key, fallback as A)
+  const get = <A>(key: FiberCacheKey, fallback?: A): A => Context.getOrElseUnsafe(context, key, fallback as A)
   const currentTracer = get<Tracer.Tracer | undefined>(TracerKey)
   return {
     scheduler: get<Scheduler.Scheduler | undefined>(SchedulerKey) ?? Scheduler.getDefaultScheduler(),

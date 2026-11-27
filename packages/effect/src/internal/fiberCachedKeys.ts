@@ -1,4 +1,3 @@
-import type { Fiber } from "../Fiber.ts"
 import type { LogLevel, Severity } from "../LogLevel.ts"
 import type * as Tracer from "../Tracer.ts"
 
@@ -56,30 +55,36 @@ export const defaultCurrentLogLevel: Severity = "Info"
 export const defaultMinimumLogLevel: LogLevel = "Info"
 
 /**
- * The key behind each `Fiber.Cache` field the fiber reads from its context.
- * `tracerContext` is derived from `tracer`.
+ * The key of every `Fiber.Cache` field the fiber reads from its context
+ * (`tracerContext` is derived from `tracer`). The fiber reads its cache only
+ * through `FiberCacheKey`, so a key missing here fails typechecking there.
+ *
+ * @internal
  */
-const cacheFieldKeys: Record<Exclude<keyof Fiber.Cache, "tracerContext">, string> = {
-  scheduler: SchedulerKey,
-  tracer: TracerKey,
-  tracerEnabled: TracerEnabledKey,
-  span: ParentSpanKey,
-  logLevel: CurrentLogLevelKey,
-  minimumLogLevel: MinimumLogLevelKey,
-  stackFrame: CurrentStackFrameKey,
-  runtimeMetrics: FiberRuntimeMetricsKey,
-  maxOpsBeforeYield: MaxOpsBeforeYieldKey,
-  preventYield: PreventSchedulerYieldKey
-}
+export const fiberCacheKeys = [
+  SchedulerKey,
+  TracerKey,
+  TracerEnabledKey,
+  ParentSpanKey,
+  CurrentLogLevelKey,
+  MinimumLogLevelKey,
+  CurrentStackFrameKey,
+  FiberRuntimeMetricsKey,
+  MaxOpsBeforeYieldKey,
+  PreventSchedulerYieldKey
+] as const
+
+/** @internal */
+export type FiberCacheKey = typeof fiberCacheKeys[number]
 
 /**
  * Keys whose values fibers cache, so adding one to a context starts a new
  * cache.
  *
- * Seeded with the key of every cache field, so a key invalidates the cache even
+ * Seeded with every `fiberCacheKeys` entry, so a key invalidates the cache even
  * in bundles where the service declaring it was tree-shaken. Services declared
  * with `fiberCached: true` add their own key.
  *
  * @internal
  */
-export const fiberCachedKeys: Set<string> = new Set(Object.values(cacheFieldKeys))
+export const fiberCachedKeys: Set<string> = new Set(fiberCacheKeys)
