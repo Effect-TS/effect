@@ -18,7 +18,7 @@ const ClientRpcs = ClientRequestRpcs.merge(McpSchema.ClientNotificationRpcs)
 
 const AdapterRpcs = ClientRpcs.omit("ping")
 
-const projectTools = McpProtocol.makeToolListProjector(McpSchema.Tool, (tool) => ({
+const projectTool = McpProtocol.makeToolProjector(McpSchema.Tool, (tool) => ({
   name: tool.name,
   description: tool.description,
   inputSchema: McpProtocol.projectLegacyToolInputSchema(tool.inputSchema)
@@ -253,7 +253,7 @@ export const protocol = McpProtocol.make({
       }),
       "tools/list": Effect.fnUntraced(function*(pageRequest) {
         const tools = yield* McpProtocol.listForClient(core.tools.list, pageRequest?.cursor)
-        return { tools: yield* projectTools(tools).pipe(Effect.orDie) }
+        return { tools: yield* Effect.orDie(Effect.forEach(tools, projectTool)) }
       }),
       "tools/call": Effect.fnUntraced(function*(call) {
         const request = yield* PublicMcpSchema.McpServerClient

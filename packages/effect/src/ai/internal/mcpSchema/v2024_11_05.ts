@@ -408,7 +408,7 @@ export const GetPromptResult = Schema.Struct({
  */
 export const ListToolsResult = Schema.Struct({
   ...PaginatedResult.fields,
-  // Tool entries are projected and JSON-encoded once per descriptor in the protocol adapter.
+  // Tool entries are already JSON-encoded by the protocol adapter.
   tools: Schema.Any
 })
 

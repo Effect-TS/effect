@@ -34,7 +34,7 @@ const isToolOutputSchema = (
   return isPropertiesSupported && isRequiredDefined
 }
 
-const projectTools = McpProtocol.makeToolListProjector(McpSchema.Tool, (tool) => ({
+const projectTool = McpProtocol.makeToolProjector(McpSchema.Tool, (tool) => ({
   name: tool.name,
   title: tool.title,
   description: tool.description,
@@ -307,7 +307,7 @@ export const protocol = McpProtocol.make({
       }),
       "tools/list": Effect.fnUntraced(function*(pageRequest) {
         const tools = yield* McpProtocol.listForClient(core.tools.list, pageRequest?.cursor)
-        return { tools: yield* projectTools(tools).pipe(Effect.orDie) }
+        return { tools: yield* Effect.orDie(Effect.forEach(tools, projectTool)) }
       }),
       "tools/call": Effect.fnUntraced(function*(call) {
         const request = yield* PublicMcpSchema.McpServerClient

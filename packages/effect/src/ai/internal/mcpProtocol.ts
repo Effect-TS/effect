@@ -1,6 +1,7 @@
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
 import * as Base64 from "../../encoding/Base64.ts"
+import { memoize } from "../../Function.ts"
 import type * as Headers from "../../http/Headers.ts"
 import type * as LogLevel from "../../LogLevel.ts"
 import * as Match from "../../Match.ts"
@@ -358,44 +359,17 @@ export const transcodeStrict = <
   )
 
 /**
- * Projects and JSON-encodes each canonical tool descriptor once per descriptor
- * instance, caching the wire objects for reuse across `tools/list` responses.
+ * Encodes a tool descriptor to its JSON wire form once per instance, so
+ * `tools/list` responses reuse it. Replacing a tool registers a new instance.
  *
  * @internal
  */
-export const makeToolListProjector = <A, I>(
-  schema: Schema.Codec<A, I>,
-  project: (tool: PublicMcpSchema.Tool) => A | unknown
-): (tools: ReadonlyArray<PublicMcpSchema.Tool>) => Effect.Effect<ReadonlyArray<unknown>, Schema.SchemaError> => {
-  const encode = Schema.encodeUnknownEffect(Schema.toCodecJson(schema))
-  const cache = new WeakMap<PublicMcpSchema.Tool, unknown>()
-  return (tools) =>
-    Effect.suspend(() => {
-      const result = new Array<unknown>(tools.length)
-      let pending: Array<number> | undefined
-      for (let i = 0; i < tools.length; i++) {
-        const cached = cache.get(tools[i])
-        if (cached !== undefined) {
-          result[i] = cached
-        } else if (pending === undefined) {
-          pending = [i]
-        } else {
-          pending.push(i)
-        }
-      }
-      if (pending === undefined) {
-        return Effect.succeed(result)
-      }
-      return Effect.forEach(
-        pending,
-        (index) =>
-          Effect.map(encode(project(tools[index])), (encoded) => {
-            cache.set(tools[index], encoded)
-            result[index] = encoded
-          }),
-        { discard: true }
-      ).pipe(Effect.as(result))
-    })
+export const makeToolProjector = <A>(
+  schema: Schema.Codec<A, unknown>,
+  project: (tool: PublicMcpSchema.Tool) => A
+) => {
+  const encode = Schema.encodeExit(Schema.toCodecJson(schema))
+  return memoize((tool: PublicMcpSchema.Tool) => encode(project(tool)))
 }
 
 /**

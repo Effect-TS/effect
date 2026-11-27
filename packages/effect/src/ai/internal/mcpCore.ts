@@ -556,25 +556,13 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     }>,
     invocation: McpInvocation
   ): Effect.Effect<ReadonlyArray<D>, RequestRejected> =>
-    Effect.suspend(() => {
-      const visible: Array<{ readonly descriptor: D; readonly visible?: Visible | undefined }> = []
-      let hasDynamicVisibility = false
-      for (const entry of registrations) {
-        if (!entry.isVisible(invocation.protocol)) continue
-        if (entry.visible !== undefined) hasDynamicVisibility = true
-        visible.push(entry)
-      }
-      if (!hasDynamicVisibility) {
-        return Effect.succeed(visible.map((entry) => entry.descriptor))
-      }
-      return Effect.map(
-        Effect.filter(
-          visible,
-          (entry) => entry.visible === undefined ? Effect.succeed(true) : entry.visible(invocation)
-        ),
-        (entries) => entries.map((entry) => entry.descriptor)
-      )
-    })
+    Effect.map(
+      Effect.filter(
+        Arr.filter(registrations, (entry) => entry.isVisible(invocation.protocol)),
+        (entry) => entry.visible === undefined ? Effect.succeed(true) : entry.visible(invocation)
+      ),
+      (entries) => entries.map((entry) => entry.descriptor)
+    )
 
   const tools: Tools = {
     register: (registration) =>

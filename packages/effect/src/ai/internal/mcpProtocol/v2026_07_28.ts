@@ -209,7 +209,7 @@ const projectResourceTemplate = (resourceTemplate: PublicMcpSchema.ResourceTempl
 
 const projectPrompt = (prompt: PublicMcpSchema.Prompt) => Schema.encodeEffect(McpSchema.Prompt)(prompt)
 
-const projectTools = McpProtocol.makeToolListProjector(McpSchema.Tool, (tool) => tool)
+const projectTool = McpProtocol.makeToolProjector(McpSchema.Tool, (tool) => tool)
 
 const privateStaleCache = {
   ttlMs: 0,
@@ -664,7 +664,7 @@ export const makeHandlers = (
       yield* McpProtocol.rejectCursor(request.cursor)
       const invocation = yield* getInvocation
       const tools = yield* core.tools.list(invocation)
-      const projectedTools = yield* projectTools(tools)
+      const projectedTools = yield* Effect.forEach(tools, projectTool)
       const result = yield* projectCompleteResult({
         ...cacheHint("tools"),
         tools: projectedTools

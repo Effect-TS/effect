@@ -1255,14 +1255,11 @@ export class McpServer extends Context.Service<McpServer, {
         }
         const { invoke, visible } = makeInvoke(options.services, globalMiddleware)
         const title = options.tool.title ?? options.tool.annotations?.title
-        const descriptor = title === options.tool.title
-          ? options.tool
-          : new McpTool({
-            ...options.tool,
-            title
-          })
         yield* internalCore.tools.register({
-          descriptor,
+          // A validated descriptor that already carries its title is registered as is.
+          descriptor: options.tool instanceof McpTool && title === options.tool.title
+            ? options.tool
+            : new McpTool({ ...options.tool, title }),
           visible: visible("tools/list", options.tool.name),
           isVisible: isEnabled(options.annotations),
           handle: (call, invocation, beforeHandle) =>
@@ -3437,44 +3434,15 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
     }
     const content = options?.content
     const mapper = content && Object.hasOwn(content, tool.name) ? content[tool.name as Names] : undefined
-    let outputSchema: McpSchema.ToolOutputJson | undefined
-    if (!mapper) {
-      const generatedOutput = toolJsonSchema(tool.successSchema, false)
-      outputSchema = Predicate.isReadonlyObject(generatedOutput)
-        ? generatedOutput
-        : yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(generatedOutput).pipe(Effect.orDie)
-    }
-    let inputSchema: McpSchema.ToolJson
-    if (rawJsonSchema !== undefined) {
-      inputSchema = yield* decodeToolJson(rawJsonSchema).pipe(
-        Effect.catchTag("SchemaError", (error) =>
-          Effect.die(
-            `McpServer cannot register tool '${tool.name}': its raw JSON Schema must have an object root ` +
-              `(type: "object").\n\n${error.message}`
-          ))
-      )
-    } else {
-      const generatedInput = toolJsonSchema(tool.parametersSchema, strict)
-      inputSchema = isGeneratedToolJson(generatedInput)
-        ? generatedInput
-        : yield* decodeToolJson(generatedInput).pipe(
-          Effect.catchTag("SchemaError", (error) =>
-            Effect.die(
-              `McpServer cannot register tool '${tool.name}': its parameters must encode to a JSON Schema with an ` +
-                `object root (type: "object"), such as a Schema.Struct. Use Tool.EmptyParams for a tool without ` +
-                `parameters.\n\n${error.message}`
-            ))
-        )
-    }
+    const inputSchema = rawJsonSchema ?? toolJsonSchema(tool.parametersSchema, strict)
     const title = Context.getOrUndefined(tool.annotations, Tool.Title)
-    const description = Tool.getDescription(tool)
     const readOnlyHint = Context.get(tool.annotations, Tool.Readonly)
-    const toolFields = {
+    const fields = {
       name: tool.name,
-      ...(title !== undefined ? { title } : undefined),
-      ...(description !== undefined ? { description } : undefined),
-      inputSchema,
-      ...(outputSchema !== undefined ? { outputSchema } : undefined),
+      title,
+      description: Tool.getDescription(tool),
+      inputSchema: inputSchema as McpSchema.ToolJson,
+      outputSchema: mapper ? undefined : toolJsonSchema(tool.successSchema, false),
       annotations: {
         ...(title !== undefined ? { title } : undefined),
         readOnlyHint,
@@ -3482,11 +3450,27 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
         idempotentHint: Context.get(tool.annotations, Tool.Idempotent),
         openWorldHint: Context.get(tool.annotations, Tool.OpenWorld)
       },
-      ...(toolMeta !== undefined ? { _meta: toolMeta } : undefined)
+      _meta: toolMeta
     }
-    const mcpTool = isValidToolFields(toolFields)
-      ? Schema.makeClassTrusted(McpTool, toolFields)
-      : new McpTool(toolFields)
+    let mcpTool: McpTool
+    if (isValidTool(fields)) {
+      mcpTool = Schema.makeClassTrusted(McpTool, fields)
+    } else {
+      try {
+        mcpTool = new McpTool(fields)
+      } catch (error) {
+        yield* Effect.catch(Schema.decodeUnknownEffect(ToolJson)(inputSchema), (cause) =>
+          Effect.die(
+            rawJsonSchema !== undefined
+              ? `McpServer cannot register tool '${tool.name}': its raw JSON Schema must have an object root ` +
+                `(type: "object").\n\n${cause.message}`
+              : `McpServer cannot register tool '${tool.name}': its parameters must encode to a JSON Schema with an ` +
+                `object root (type: "object"), such as a Schema.Struct. Use Tool.EmptyParams for a tool without ` +
+                `parameters.\n\n${cause.message}`
+          ))
+        throw error
+      }
+    }
     registrations.push({
       tool: mcpTool,
       annotations,
@@ -3555,55 +3539,34 @@ const isParameterValidationError = (
 ): error is AiError.AiError & { readonly reason: AiError.ToolParameterValidationError } =>
   AiError.isAiError(error) && error.reason._tag === "ToolParameterValidationError"
 
-const decodeToolJson = Schema.decodeUnknownEffect(ToolJson)
-
-const isGeneratedToolJson = (schema: JsonSchema.JsonSchema): schema is McpSchema.ToolJson => {
-  if (!Predicate.isReadonlyObject(schema) || schema.type !== "object") {
-    return false
-  }
-  if (schema.properties !== undefined) {
-    if (!Predicate.isReadonlyObject(schema.properties)) {
-      return false
-    }
-    for (const value of Object.values(schema.properties)) {
-      if (typeof value !== "boolean" && !Predicate.isReadonlyObject(value)) {
-        return false
-      }
-    }
-  }
-  if (schema.required !== undefined) {
-    if (!Array.isArray(schema.required)) {
-      return false
-    }
-    for (const entry of schema.required) {
-      if (typeof entry !== "string") {
-        return false
-      }
-    }
-  }
-  return true
-}
-
-const isValidToolFields = (fields: {
+// Shallow equivalent of the `McpTool` schema for the fields `registerToolkit` sets,
+// so valid descriptors skip the schema pass. Anything else is left to the constructor.
+const isValidTool = (fields: {
   readonly name: unknown
-  readonly title?: unknown
-  readonly description?: unknown
-  readonly annotations: {
-    readonly readOnlyHint: unknown
-    readonly destructiveHint: unknown
-    readonly idempotentHint: unknown
-    readonly openWorldHint: unknown
-  }
-  readonly _meta?: unknown
-}): boolean =>
-  typeof fields.name === "string" &&
-  (fields.title === undefined || typeof fields.title === "string") &&
-  (fields.description === undefined || typeof fields.description === "string") &&
-  typeof fields.annotations.readOnlyHint === "boolean" &&
-  typeof fields.annotations.destructiveHint === "boolean" &&
-  typeof fields.annotations.idempotentHint === "boolean" &&
-  typeof fields.annotations.openWorldHint === "boolean" &&
-  (fields._meta === undefined || Predicate.isReadonlyObject(fields._meta))
+  readonly title: unknown
+  readonly description: unknown
+  readonly inputSchema: unknown
+  readonly outputSchema: unknown
+  readonly annotations: { readonly [x: string]: unknown }
+  readonly _meta: unknown
+}): boolean => {
+  const { annotations, inputSchema } = fields
+  if (!Predicate.isReadonlyObject(inputSchema)) return false
+  const { properties, required } = inputSchema
+  return typeof fields.name === "string" &&
+    (fields.title === undefined || typeof fields.title === "string") &&
+    (fields.description === undefined || typeof fields.description === "string") &&
+    inputSchema.type === "object" &&
+    (properties === undefined || (Predicate.isReadonlyObject(properties) &&
+      Object.values(properties).every((value) => typeof value === "boolean" || Predicate.isReadonlyObject(value)))) &&
+    (required === undefined || (Array.isArray(required) && required.every(Predicate.isString))) &&
+    (fields.outputSchema === undefined || Predicate.isReadonlyObject(fields.outputSchema)) &&
+    typeof annotations.readOnlyHint === "boolean" &&
+    typeof annotations.destructiveHint === "boolean" &&
+    typeof annotations.idempotentHint === "boolean" &&
+    typeof annotations.openWorldHint === "boolean" &&
+    (fields._meta === undefined || Predicate.isReadonlyObject(fields._meta))
+}
 
 // MCP requires an object root. A non-recursive root is compiled inline rather
 // than as a definition; a recursive root keeps its definition and the top-level

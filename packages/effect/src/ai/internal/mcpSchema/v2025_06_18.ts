@@ -359,15 +359,6 @@ export const GetPromptResult = Schema.Struct({
 /**
  * @internal
  */
-export const ListToolsResult = Schema.Struct({
-  ...Previous.PaginatedResult.fields,
-  // Tool entries are projected and JSON-encoded once per descriptor in the protocol adapter.
-  tools: Schema.Any
-})
-
-/**
- * @internal
- */
 export class ListResources extends Rpc.make("resources/list", {
   success: ListResourcesResult,
   error: Previous.McpError,
@@ -418,7 +409,7 @@ export class GetPrompt extends Rpc.make("prompts/get", {
  * @internal
  */
 export class ListTools extends Rpc.make("tools/list", {
-  success: ListToolsResult,
+  success: Previous.ListToolsResult,
   error: Previous.McpError,
   payload: Schema.UndefinedOr(Previous.PaginatedRequest)
 }) {}
