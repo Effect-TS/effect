@@ -20,8 +20,13 @@ import * as Schedule from "../../Schedule.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaIssue from "../../SchemaIssue.ts"
 import * as Scope from "../../Scope.ts"
-import type { PersistenceError } from "../ClusterError.ts"
-import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, MalformedMessage } from "../ClusterError.ts"
+import {
+  AlreadyProcessingMessage,
+  EntityNotAssignedToRunner,
+  MailboxFull,
+  MalformedMessage,
+  PersistenceError
+} from "../ClusterError.ts"
 import * as ClusterMetrics from "../ClusterMetrics.ts"
 import { isUninterruptibleForServer, Persisted, WithTransaction } from "../ClusterSchema.ts"
 import * as ClusterSchema from "../ClusterSchema.ts"
@@ -39,7 +44,7 @@ import type { Sharding } from "../Sharding.ts"
 import { ShardingConfig } from "../ShardingConfig.ts"
 import * as Snowflake from "../Snowflake.ts"
 import * as ClusterAbandon from "./clusterAbandon.ts"
-import { CurrentActivationScope, CurrentRetirementLatch } from "./entityActivation.ts"
+import { CurrentActivationScope, CurrentRetirementLatch, ExitReplyWrites } from "./entityActivation.ts"
 import { EntityReaper } from "./entityReaper.ts"
 import { acquireEntity, releaseEntity } from "./interruptors.ts"
 import { ResourceMap } from "./resourceMap.ts"
@@ -267,10 +272,12 @@ export const make = Effect.fnUntraced(function*<
     // Finalizers run in reverse, so the mailbox series and the resident
     // mailbox are removed only after the drain finalizer below has finished.
     const activeRequests: EntityState["activeRequests"] = new Map()
+    const exitReplyWrites: ExitReplyWrites["Service"] = new Map()
     // Drops a request that has left this entity, starting the idle timer when
     // it was the last one.
     const removeActiveRequest = (requestId: Snowflake.Snowflake) => {
       activeRequests.delete(requestId)
+      exitReplyWrites.delete(requestId)
       if (activeRequests.size === 0) {
         state.lastActiveCheck = clock.currentTimeMillisUnsafe()
       }
@@ -344,6 +351,7 @@ export const make = Effect.fnUntraced(function*<
           Context.add(KeepAliveLatch, keepAliveLatch),
           Context.add(CurrentActivationScope, scope),
           Context.add(CurrentRetirementLatch, retired),
+          Context.add(ExitReplyWrites, exitReplyWrites),
           Context.add(Scope.Scope, handlerScope),
           Context.add(CurrentLogAnnotations, {})
         )
@@ -402,17 +410,26 @@ export const make = Effect.fnUntraced(function*<
                 // A failed save can abort the request transaction, so a retry
                 // could store a success outside it. Save once and let the
                 // failed transaction replay the request.
+                const respondExit = Effect.suspend(() =>
+                  request.message.respond(
+                    new Reply.WithExit({
+                      requestId: Snowflake.Snowflake(response.requestId),
+                      id: snowflakeGen.nextUnsafe(),
+                      exit: response.exit
+                    })
+                  )
+                )
+                // Writes the handler attached to the reply commit with it.
+                const writes = persisted ? exitReplyWrites.get(Snowflake.Snowflake(response.requestId)) : undefined
                 const write = retryRespond(
                   persisted && request.transaction && Exit.isSuccess(response.exit) ? 0 : 4,
-                  Effect.suspend(() =>
-                    request.message.respond(
-                      new Reply.WithExit({
-                        requestId: Snowflake.Snowflake(response.requestId),
-                        id: snowflakeGen.nextUnsafe(),
-                        exit: response.exit
-                      })
+                  writes === undefined
+                    ? respondExit
+                    : options.storage.withTransaction(Effect.andThen(respondExit, writes)).pipe(
+                      // A failed commit is a defect. Treat it as a failed save, so
+                      // the stored reply decides whether it committed.
+                      Effect.catchDefect((defect) => Effect.fail(new PersistenceError({ cause: defect })))
                     )
-                  )
                 )
                 // A runner that lost the shard must not decide the stored
                 // result. A rejection is not retried.
