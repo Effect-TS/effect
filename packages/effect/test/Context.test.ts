@@ -4,7 +4,7 @@ import * as Equal from "effect/Equal"
 import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
 import * as Scheduler from "effect/Scheduler"
-import { describe, it } from "vitest"
+import { describe, it, vi } from "vitest"
 
 interface ContextInternals {
   readonly _flat: unknown
@@ -125,6 +125,16 @@ describe("Context", () => {
     const source = Context.make(A, 1)
     assertFalse(Context.hasSameCache(source, Context.add(source, Scheduler.MaxOpsBeforeYield, 1)))
     assertFalse(Context.hasSameCache(source, Context.add(source, Scheduler.PreventSchedulerYield, true)))
+  })
+
+  it("reads services and reference defaults from contexts built by another copy of effect", async () => {
+    vi.resetModules()
+    const OtherContext: typeof Context = await import("effect/Context")
+    const Ref = Context.Reference<string>("ContextTest/OtherCopyRef", { defaultValue: () => "default" })
+    const context = OtherContext.add(OtherContext.empty(), A, 1)
+
+    strictEqual(Context.get(context, A), 1)
+    strictEqual(Context.get(context, Ref), "default")
   })
 
   it("bounds deep overlay chains without changing values or order", () => {

@@ -494,8 +494,6 @@ interface ContextImpl<in Services> extends Context<Services> {
   depth: number
   _flat: ReadonlyMap<string, any> | undefined
   maxDepth: number
-  /** Reads `key` through the overlay chain. Only contexts with an `overlay` have it. */
-  _lookup(key: string): unknown
 }
 
 interface Overlay {
@@ -563,13 +561,32 @@ const withFlat = <B>(self: Context<any>, f: (map: Map<string, any>) => void): Co
 const notFound = Symbol()
 
 // Kept private to this module with `notFound`: exporting either makes every
-// `Context.get` measurably slower.
+// `Context.get` measurably slower. It reads context fields rather than calling
+// a method, so contexts made by another copy of effect read the same way.
 const lookup = <Services>(self: Context<Services>, key: string): unknown => {
   const impl = self as ContextImpl<Services>
   // A flattened context no longer has an overlay and reads `base` directly
-  if (impl.overlay !== undefined) return impl._lookup(key)
+  if (impl.overlay !== undefined) return overlayLookup(impl, key)
   const value = impl.base.get(key)
   return value === undefined && !impl.base.has(key) ? notFound : value
+}
+
+const overlayLookup = (self: ContextImpl<any>, key: string): unknown => {
+  for (let overlay = self.overlay; overlay; overlay = overlay.parent) {
+    if (overlay.key === key) return overlay.value
+  }
+  const value = self.base.get(key)
+  // Misses must not advance the counter: reference-default lookups miss the
+  // base on every fiber cache refresh, which would flatten every short-lived
+  // request context and reintroduce the O(services) per-request cost
+  if (value === undefined && !self.base.has(key)) return notFound
+  if (++self.baseHits >= self.base.size && self.baseHits >= FlattenAfterBaseHits) {
+    // The overlay prototype's `mapUnsafe` flattens the chain
+    self.base = self.mapUnsafe
+    self.overlay = undefined
+    self.depth = 0
+  }
+  return value
 }
 
 /**
@@ -630,7 +647,7 @@ export const makeUnsafe = <Services = never>(
 
 const Proto: Omit<
   ContextImpl<never>,
-  "cacheRoot" | "base" | "overlay" | "depth" | "_flat" | "baseHits" | "maxDepth" | "_lookup"
+  "cacheRoot" | "base" | "overlay" | "depth" | "_flat" | "baseHits" | "maxDepth"
 > = {
   get mapUnsafe() {
     return (this as any as ContextImpl<any>).base
@@ -660,9 +677,8 @@ const Proto: Omit<
   }
 }
 
-// Separate prototype for contexts carrying an overlay chain (`Context.add`).
-// Flat contexts stay on `Proto` with direct `base` reads, so bundles that never
-// call `add`/`addUnsafe` drop overlay flattening and `fiberCachedKeys` entirely.
+// Separate prototype for contexts carrying an overlay chain (`Context.add`), so
+// bundles that never call `add` or `addUnsafe` drop `fiberCachedKeys`.
 const OverlayProto = Object.create(Proto, {
   mapUnsafe: {
     get(this: ContextImpl<any>) {
@@ -670,24 +686,6 @@ const OverlayProto = Object.create(Proto, {
     },
     enumerable: true,
     configurable: true
-  },
-  _lookup: {
-    value(this: ContextImpl<any>, key: string): unknown {
-      for (let overlay = this.overlay; overlay; overlay = overlay.parent) {
-        if (overlay.key === key) return overlay.value
-      }
-      const value = this.base.get(key)
-      // Misses must not advance the counter: reference-default lookups miss the
-      // base on every fiber cache refresh, which would flatten every short-lived
-      // request context and reintroduce the O(services) per-request cost
-      if (value === undefined && !this.base.has(key)) return notFound
-      if (++this.baseHits >= this.base.size && this.baseHits >= FlattenAfterBaseHits) {
-        this.base = flatten(this)
-        this.overlay = undefined
-        this.depth = 0
-      }
-      return value
-    }
   }
 })
 
