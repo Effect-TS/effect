@@ -346,35 +346,51 @@ export const make = Effect.gen(function*() {
     yield* sharding.reset(requestId.value, { expectedReplyId: Snowflake.Snowflake(reply.value.id) })
   })
 
-  // Older wakes do not name the child's workflow and are not held. A deleted
-  // child run or an already-settled parent needs no wait.
-  const awaitChildResult = (
+  // Older wakes do not name the child's workflow and proceed immediately.
+  // While the child's result is unsettled, schedule a delayed follow-up wake
+  // and release this request so the parent's mailbox stays open.
+  const childResultReady = (
     workflow: Workflow.Any,
+    address: EntityAddress.EntityAddress,
     executionId: string,
-    payload: typeof ResumeRpc.payloadSchema.Type,
+    payload: ResumePayload,
     retired?: Latch.Latch
-  ) => {
-    if (payload.childWorkflowName === undefined || payload.childExecutionId === undefined) return Effect.void
-    const address = entityAddress(
-      `Workflow/${payload.childWorkflowName}`,
-      payload.childExecutionId,
-      payload.childShardGroup ?? "default"
-    )
-    const wait = Effect.interruptible(
-      Effect.gen(function*() {
-        const requestId = yield* storage.requestIdForPrimaryKey({ address, tag: "run", id: "" })
-        if (Option.isNone(requestId)) return
-        if (isRunSettled(yield* replyForRequestId(requestId.value))) return
-        if (isRunSettled(yield* runReply(workflow, executionId))) return
-        return yield* Effect.fail("child result not saved")
-      }).pipe(Effect.retry(retryPolicy), Effect.orDie)
-    )
-    if (!retired) return wait
-    return Effect.flatMap(
-      Effect.raceFirst(Effect.as(wait, true), Effect.as(Effect.interruptible(retired.await), false)),
-      (ready) => ready ? Effect.void : ClusterAbandon.interrupt
-    )
-  }
+  ) =>
+    ensureSuccess(Effect.gen(function*() {
+      if (retired?.isOpen()) return yield* ClusterAbandon.interrupt
+      if (payload.childWorkflowName === undefined || payload.childExecutionId === undefined) return true
+      const childAddress = entityAddress(
+        `Workflow/${payload.childWorkflowName}`,
+        payload.childExecutionId,
+        payload.childShardGroup ?? "default"
+      )
+      const requestId = yield* storage.requestIdForPrimaryKey({ address: childAddress, tag: "run", id: "" })
+      if (Option.isNone(requestId)) return true
+      if (isRunSettled(yield* replyForRequestId(requestId.value))) return true
+      if (isRunSettled(yield* runReply(workflow, executionId))) return false
+      let attempt = (payload.attempt ?? 0) + 1
+      while (true) {
+        const id = `${payload.childExecutionId}:${attempt}`
+        const existing = yield* storage.requestIdForPrimaryKey({ address, tag: "resume", id })
+        if (Option.isNone(existing)) break
+        if (Option.isNone(yield* replyForRequestId(existing.value))) return false
+        attempt++
+      }
+      const now = yield* DateTime.now
+      const delay = Math.min(Math.ceil(200 * 1.5 ** (attempt - 1)), 60_000)
+      yield* sendDiscard({
+        rpc: ResumeRpc,
+        address,
+        payload: {
+          childExecutionId: payload.childExecutionId,
+          childWorkflowName: payload.childWorkflowName,
+          childShardGroup: payload.childShardGroup,
+          deliverAt: DateTime.mapEpochMillis(DateTime.addDuration(now, Duration.millis(delay)), Math.ceil),
+          attempt
+        }
+      })
+      return false
+    }))
 
   // Subscribe to the run's next reply before reading storage, so a reply
   // cannot fall between the read and the subscription. Returns `true` when the
@@ -725,17 +741,13 @@ export const make = Effect.gen(function*() {
                 return forkReply(Effect.as(wake, payload.exit as Exit.Exit<unknown, unknown>))
               },
 
-              // A child sends its wake before its result is saved; wait for the
-              // result so replay cannot read the child as still suspended.
+              // A child sends its wake before its result is saved; defer the
+              // wake if the result is not stored yet so replay sees it without
+              // holding the parent's mailbox.
               resume: (request: Entity.Request<any>) =>
-                Effect.andThen(
-                  awaitChildResult(
-                    workflow,
-                    executionId,
-                    request.payload as typeof ResumeRpc.payloadSchema.Type,
-                    pending.retired
-                  ),
-                  resumeCurrentRun("automatic")
+                Effect.flatMap(
+                  childResultReady(workflow, address, executionId, request.payload as ResumePayload, pending.retired),
+                  (ready) => ready ? resumeCurrentRun("automatic") : Effect.void
                 ).pipe(Rpc.wrap({ fork: true, uninterruptible: true })),
 
               parent: (request: Entity.Request<any>) => {
@@ -1123,17 +1135,26 @@ const deferredReplyExit = (reply: WithExitEncoded<Workflow.ResultEncoded<any, an
   return decoded.exit._tag === "Success" ? decoded.exit.value : decoded.exit
 }
 
-const ResumeRpc = Rpc.make("resume", {
+class ResumePayload extends Schema.Class<ResumePayload>("effect/cluster/ClusterWorkflowEngine/ResumePayload")({
+  childExecutionId: Schema.optional(Schema.String),
+  childWorkflowName: Schema.optional(Schema.String),
+  childShardGroup: Schema.optional(Schema.String),
+  deliverAt: Schema.optional(Schema.DateTimeUtcFromMillis),
+  attempt: Schema.optional(Schema.Int)
+}) {
   // Older persisted resume envelopes have an empty payload and use the empty key.
-  payload: {
-    childExecutionId: Schema.optional(Schema.String),
-    childWorkflowName: Schema.optional(Schema.String),
-    childShardGroup: Schema.optional(Schema.String)
-  },
   // Different children must not share an in-flight wake: the parent may have
   // already started another run when the next child finishes.
-  primaryKey: ({ childExecutionId }) => childExecutionId ?? ""
-})
+  [PrimaryKey.symbol]() {
+    if (this.childExecutionId === undefined) return ""
+    return this.attempt !== undefined ? `${this.childExecutionId}:${this.attempt}` : this.childExecutionId
+  }
+  [DeliverAt.symbol]() {
+    return this.deliverAt ?? DateTime.makeUnsafe(0)
+  }
+}
+
+const ResumeRpc = Rpc.make("resume", { payload: ResumePayload })
   .annotate(ClusterSchema.Persisted, true)
   .annotate(ClusterSchema.Uninterruptible, "server")
 
