@@ -19,7 +19,7 @@ import type { Effect } from "./Effect.ts"
 import type { Exit } from "./Exit.ts"
 import { constUndefined, constVoid, dual, identity } from "./Function.ts"
 import * as InternalEffect from "./internal/effect.ts"
-import * as InternalMetric from "./internal/metric.ts"
+import { FiberRuntimeMetricsKey as InternalFiberRuntimeMetricsKey } from "./internal/fiberCachedKeys.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as Layer from "./Layer.ts"
 import * as Order from "./Order.ts"
@@ -3457,7 +3457,7 @@ const fiberFailures = counter("child_fiber_failures", {
  * @category constants
  * @since 4.0.0
  */
-export const FiberRuntimeMetricsKey: "effect/Metric/FiberRuntimeMetrics" = InternalMetric.FiberRuntimeMetricsKey
+export const FiberRuntimeMetricsKey: "effect/Metric/FiberRuntimeMetrics" = InternalFiberRuntimeMetricsKey
 
 /**
  * Interface for the fiber runtime metrics service that tracks fiber lifecycle events.
@@ -3527,8 +3527,8 @@ export interface FiberRuntimeMetricsService {
  * @since 4.0.0
  */
 export const FiberRuntimeMetrics = Context.Reference<FiberRuntimeMetricsService | undefined>(
-  InternalMetric.FiberRuntimeMetricsKey,
-  { fiberCached: true, defaultValue: constUndefined }
+  InternalFiberRuntimeMetricsKey,
+  { defaultValue: constUndefined }
 )
 
 /**

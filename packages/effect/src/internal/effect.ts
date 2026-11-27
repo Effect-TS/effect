@@ -22,11 +22,11 @@ import * as Option from "../Option.ts"
 import * as Order from "../Order.ts"
 import { pipeArguments } from "../Pipeable.ts"
 import type * as Predicate from "../Predicate.ts"
-import { hasProperty, isIterable, isString, isTagged } from "../Predicate.ts"
+import { isIterable, isString, isTagged } from "../Predicate.ts"
 import { currentFiberTypeId, redact } from "../Redactable.ts"
 import type { StackFrame } from "../References.ts"
 import * as Result from "../Result.ts"
-import * as Scheduler from "../Scheduler.ts"
+import type * as Scheduler from "../Scheduler.ts"
 import type * as Scope from "../Scope.ts"
 import * as Tracer from "../Tracer.ts"
 import type {
@@ -50,7 +50,7 @@ import type { Primitive } from "./core.ts"
 import {
   args,
   causeAddInterrupts,
-  causeAnnotate,
+  causeAnnotateMap,
   causeCombine,
   causeEmpty,
   causeFromReasons,
@@ -80,26 +80,43 @@ import {
   NoSuchElementError,
   ReasonBase,
   StackTraceKey as CauseStackTrace,
+  StackTraceKeyName as CauseStackTraceKeyName,
   TaggedError,
   withFiber,
   Yield
 } from "./core.ts"
 import * as doNotation from "./doNotation.ts"
-import * as InternalMetric from "./metric.ts"
+import {
+  CurrentLogLevelKey,
+  CurrentStackFrameKey,
+  defaultCurrentLogLevel,
+  defaultMaxOpsBeforeYield,
+  defaultMinimumLogLevel,
+  defaultPreventSchedulerYield,
+  defaultTracerEnabled,
+  FiberRuntimeMetricsKey,
+  MaxOpsBeforeYieldKey,
+  MinimumLogLevelKey,
+  ParentSpanKey,
+  PreventSchedulerYieldKey,
+  SchedulerKey,
+  TracerEnabledKey,
+  TracerKey
+} from "./fiberCachedKeys.ts"
+import { hasProperty } from "./predicate.ts"
 import * as InternalRecord from "./record.ts"
 import {
   CurrentErrorReporters,
   CurrentLogAnnotations,
-  CurrentLogLevel,
   CurrentLogSpans,
   CurrentStackFrame,
-  MinimumLogLevel,
   TracerEnabled,
   TracerSpanAnnotations,
   TracerSpanLinks,
   TracerTimingEnabled,
   UnhandledLogLevel
 } from "./references.ts"
+import { getDefaultScheduler, MixedScheduler } from "./scheduler.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "./stackTraceLimit.ts"
 import { addSpanStackTrace, makeStackCleaner } from "./tracer.ts"
 
@@ -496,7 +513,7 @@ const fiberVariance = {
   _E: identity
 }
 
-const fiberIdStore = { id: 0 }
+let nextFiberId = 0
 
 interface AsyncContext {
   runInAsyncScope<This, Arg, R>(fn: (this: This, arg: Arg) => R, thisArg: This, arg: Arg): R
@@ -524,7 +541,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     interruptible: boolean = true
   ) {
     this.setContext(context)
-    this.id = ++fiberIdStore.id
+    this.id = ++nextFiberId
     this.currentOpCount = 0
     this.interruptible = interruptible
     this._stack = []
@@ -570,18 +587,14 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   }
 
   getRef<X>(ref: Context.Reference<X>): X {
-    return Context.get(this.context, ref)
+    return Context.getReferenceUnsafe(this.context, ref)
   }
   addObserver(cb: (exit: Exit.Exit<A, E>) => void): () => void {
     if (this._exit) {
       cb(this._exit)
       return constVoid
     }
-    if (this._observers === undefined) {
-      this._observers = [cb]
-    } else {
-      this._observers.push(cb)
-    }
+    ;(this._observers ??= []).push(cb)
     return () => this.removeObserver(cb)
   }
   removeObserver(cb: (exit: Exit.Exit<A, E>) => void): void {
@@ -597,10 +610,10 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     let cause = causeInterrupt(fiberId)
     if (this.cache.stackFrame) {
-      cause = causeAnnotate(cause, Context.make(CauseStackTrace, this.cache.stackFrame))
+      cause = causeAnnotateMap(cause, new Map([[CauseStackTraceKeyName, this.cache.stackFrame]]))
     }
     if (annotations) {
-      cause = causeAnnotate(cause, annotations)
+      cause = causeAnnotateMap(cause, annotations.mapUnsafe)
     }
     this._interruptedCause = this._interruptedCause
       ? causeAddInterrupts(this._interruptedCause, cause)
@@ -642,11 +655,11 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     // the interruptChildren middleware is added in Effect.forkChild, so it can be
     // tree-shaken if not used
     const interruptChildren = fiberMiddleware.interruptChildren &&
-      fiberMiddleware.interruptChildren(this)
+      fiberMiddleware.interruptChildren(this, exit)
     if (interruptChildren !== undefined) {
       // uninterruptible, so a pending interrupt cannot replace the exit during the wait
       this.interruptible = false
-      return this.evaluate(flatMap(interruptChildren, () => exit) as any)
+      return this.evaluate(interruptChildren as any)
     }
 
     this._exit = exit
@@ -757,17 +770,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       if (op[symbol]) return op as any
     }
   }
-  // Passes a success value straight to the next continuation instead of
-  // returning an Exit for the run loop to unwrap. Each call counts as an
-  // operation, and every `maxInlineSteps`th call returns an Exit instead, so
-  // continuations calling continuations never nest deeper than that.
-  succeedWith(value: unknown): Primitive | Yield {
-    if ((++this.currentOpCount & (maxInlineSteps - 1)) === 0) {
-      return exitSucceed(value) as any
-    }
-    const cont = this.getCont(contA)
-    return cont ? cont[contA](value, this) : this.yieldWith(exitSucceed(value))
-  }
   yieldWith(value: Exit.Exit<any, any> | (() => void)): Yield {
     this._yielded = value
     return Yield
@@ -782,9 +784,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     return this.yieldWith(() => {
       resumed = true
     })
-  }
-  children(): Set<Fiber.Fiber<any, any>> {
-    return (this._children ??= new Set())
   }
   pipe() {
     return pipeArguments(this, arguments)
@@ -805,28 +804,25 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
     this.cache = cache
   }
-  get currentSpanLocal(): Tracer.Span | undefined {
-    const span = this.cache.span
-    return span?._tag === "Span" ? span : undefined
-  }
 }
 
 const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
-  // The string-keyed lookups keep the Tracer key values (and the native
-  // tracer behind Tracer.Tracer's default) out of every bundle
-  const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
+  // Reading by key keeps the service objects, and the native tracer behind
+  // Tracer.Tracer's default, out of bundles that never use them.
+  const get = <A>(key: string, fallback?: A): A => Context.getOrElseUnsafe(context, key, fallback as A)
+  const currentTracer = get<Tracer.Tracer | undefined>(TracerKey)
   return {
-    scheduler: Context.get(context, Scheduler.Scheduler),
+    scheduler: get<Scheduler.Scheduler | undefined>(SchedulerKey) ?? getDefaultScheduler(),
     tracer: currentTracer,
-    tracerContext: currentTracer ? currentTracer["context"] : undefined,
-    tracerEnabled: Context.get(context, TracerEnabled),
-    span: Context.getOrUndefinedUnsafe(context, Tracer.ParentSpanKey),
-    logLevel: Context.get(context, CurrentLogLevel),
-    minimumLogLevel: Context.get(context, MinimumLogLevel),
-    stackFrame: Context.get(context, CurrentStackFrame),
-    runtimeMetrics: Context.getOrUndefinedUnsafe(context, InternalMetric.FiberRuntimeMetricsKey),
-    maxOpsBeforeYield: Context.get(context, Scheduler.MaxOpsBeforeYield),
-    preventYield: Context.get(context, Scheduler.PreventSchedulerYield)
+    tracerContext: currentTracer?.["context"],
+    tracerEnabled: get(TracerEnabledKey, defaultTracerEnabled),
+    span: get(ParentSpanKey),
+    logLevel: get<LogLevel.Severity>(CurrentLogLevelKey, defaultCurrentLogLevel),
+    minimumLogLevel: get<LogLevel.LogLevel>(MinimumLogLevelKey, defaultMinimumLogLevel),
+    stackFrame: get(CurrentStackFrameKey),
+    runtimeMetrics: get(FiberRuntimeMetricsKey),
+    maxOpsBeforeYield: get(MaxOpsBeforeYieldKey, defaultMaxOpsBeforeYield),
+    preventYield: get(PreventSchedulerYieldKey, defaultPreventSchedulerYield)
   }
 }
 
@@ -842,9 +838,26 @@ const deferredInterruptCont: any = {
 // must be a power of two
 const maxInlineSteps = 32
 
+// Passes a success value straight to the next continuation instead of
+// returning an Exit for the run loop to unwrap. Each call counts as an
+// operation, and every `maxInlineSteps`th call returns an Exit instead, so
+// continuations calling continuations never nest deeper than that.
+const succeedWith = (fiber: FiberImpl, value: unknown): Primitive | Yield => {
+  if ((++fiber.currentOpCount & (maxInlineSteps - 1)) === 0) {
+    return exitSucceed(value) as any
+  }
+  const cont = fiber.getCont(contA)
+  return cont ? cont[contA](value, fiber) : fiber.yieldWith(exitSucceed(value))
+}
+
+const currentSpanLocal = (fiber: FiberImpl): Tracer.Span | undefined => {
+  const span = fiber.cache.span
+  return span?._tag === "Span" ? span : undefined
+}
+
 const fiberMiddleware = {
   interruptChildren: undefined as
-    | ((fiber: FiberImpl) => Effect.Effect<void> | undefined)
+    | (<A, E>(fiber: FiberImpl<A, E>, exit: Exit.Exit<A, E>) => Effect.Effect<A, E> | undefined)
     | undefined
 }
 
@@ -855,11 +868,12 @@ const fiberStackAnnotations = (fiber: Fiber.Fiber<any, any>) => {
   return Context.makeUnsafe(annotations)
 }
 
-const fiberInterruptChildren = (fiber: FiberImpl) => {
+// Interrupts the children, then ends with the fiber's own exit
+const fiberInterruptChildren = <A, E>(fiber: FiberImpl<A, E>, exit: Exit.Exit<A, E>) => {
   if (fiber._children === undefined || fiber._children.size === 0) {
     return undefined
   }
-  return fiberInterruptAll(fiber._children)
+  return flatMap(fiberInterruptAll(fiber._children), () => exit)
 }
 
 /** @internal */
@@ -1579,7 +1593,7 @@ const returnPayload = function(this: { readonly payload: any }) {
   return this.payload
 }
 const succeedPayload = function(this: { readonly payload: any }, _value: unknown, fiber: FiberImpl) {
-  return fiber.succeedWith(this.payload)
+  return succeedWith(fiber, this.payload)
 }
 // V8 includes the property name of a stored continuation in its stack trace.
 // Other engines need an explicit frame for the stack cleaner to cut at.
@@ -1600,7 +1614,7 @@ const continuationMarksStack = (() => {
 })()
 const mapCont = function(this: { readonly payload: any }, value: any, fiber: FiberImpl) {
   const f = this.payload
-  return fiber.succeedWith(continuationMarksStack ? f(value) : internalCall(() => f(value)))
+  return succeedWith(fiber, continuationMarksStack ? f(value) : internalCall(() => f(value)))
 }
 const andThenCont = function(this: { readonly payload: any }, value: any) {
   const f = this.payload
@@ -3618,7 +3632,8 @@ OnSuccessAndFailureImpl.prototype = OnSuccessAndFailureProto
 // payload and call it from the prototype, so no closure is built per call.
 const matchSuccess = function(this: any, value: any, fiber: FiberImpl) {
   const handlers = this.payload
-  return fiber.succeedWith(
+  return succeedWith(
+    fiber,
     continuationMarksStack ? handlers.onSuccess(value) : internalCall(() => handlers.onSuccess(value))
   )
 }
@@ -3646,13 +3661,15 @@ const MatchImpl = makeMatch("Match", function(cause, fiber) {
   const error = findRecoverableError(cause)
   if (Result.isFailure(error)) return failCause(error.failure) as any
   const handlers = this.payload
-  return fiber.succeedWith(
+  return succeedWith(
+    fiber,
     continuationMarksStack ? handlers.onFailure(error.success) : internalCall(() => handlers.onFailure(error.success))
   )
 })
 const MatchCauseImpl = makeMatch("MatchCause", function(cause, fiber) {
   const handlers = this.payload
-  return fiber.succeedWith(
+  return succeedWith(
+    fiber,
     continuationMarksStack ? handlers.onFailure(cause) : internalCall(() => handlers.onFailure(cause))
   )
 })
@@ -3814,10 +3831,10 @@ const exitPrimitive: <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Ex
       return this[args] as any
     },
     [contA](value, fiber, exit) {
-      return fiber.succeedWith(exit ?? exitSucceed(value))
+      return succeedWith(fiber, exit ?? exitSucceed(value))
     },
     [contE](cause, fiber, exit) {
-      return fiber.succeedWith(exit ?? exitFailCause(cause))
+      return succeedWith(fiber, exit ?? exitFailCause(cause))
     }
   })
 
@@ -5558,7 +5575,8 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   const interruptible = uninterruptible === "inherit" ? parentRuntime.interruptible : !uninterruptible
   const child = new FiberImpl<A, E>(parentRuntime.context, interruptible)
   if (!daemon) {
-    parentRuntime.children().add(child)
+    const children = parentRuntime._children ??= new Set()
+    children.add(child)
     child._parent = parentRuntime
   }
   if (immediate) {
@@ -5713,33 +5731,40 @@ export const forkScoped: {
 // execution
 // ----------------------------------------------------------------------------
 
+const runFiber = <R, A, E>(
+  context: Context.Context<R>,
+  effect: Effect.Effect<A, E, R>,
+  options?: Effect.RunOptions | undefined
+): Fiber.Fiber<A, E> => {
+  const fiber = new FiberImpl<A, E>(context as Context.Context<never>, options?.uninterruptible !== true)
+  fiber.evaluate(effect as any)
+  if (!fiber._exit) {
+    const signal = options?.signal
+    if (signal) {
+      if (signal.aborted) {
+        fiber.interruptUnsafe()
+      } else {
+        const abort = () => fiber.interruptUnsafe()
+        signal.addEventListener("abort", abort, { once: true })
+        fiber.addObserver(() => signal.removeEventListener("abort", abort))
+      }
+    }
+    options?.onFiberStart?.(fiber)
+  }
+  return fiber
+}
+
 /** @internal */
 export const runForkWith = <R>(context: Context.Context<R>) =>
 <A, E>(
   effect: Effect.Effect<A, E, R>,
   options?: Effect.RunOptions | undefined
-): Fiber.Fiber<A, E> => {
-  const fiber = new FiberImpl<A, E>(
-    options?.scheduler ? Context.add(context, Scheduler.Scheduler, options.scheduler) : context,
-    options?.uninterruptible !== true
+): Fiber.Fiber<A, E> =>
+  runFiber(
+    options?.scheduler ? Context.addUnsafe(context, SchedulerKey, options.scheduler) : context,
+    effect,
+    options
   )
-  fiber.evaluate(effect as any)
-  if (fiber._exit) return fiber
-
-  if (options?.signal) {
-    if (options.signal.aborted) {
-      fiber.interruptUnsafe()
-    } else {
-      const abort = () => fiber.interruptUnsafe()
-      options.signal.addEventListener("abort", abort, { once: true })
-      fiber.addObserver(() => options.signal!.removeEventListener("abort", abort))
-    }
-  }
-  if (options?.onFiberStart) {
-    options.onFiberStart(fiber)
-  }
-  return fiber
-}
 
 /** @internal */
 export const fiberRunIn: {
@@ -5765,10 +5790,17 @@ export const fiberRunIn: {
 })
 
 /** @internal */
-export const runFork: <A, E>(
+export const runFork = <A, E>(
   effect: Effect.Effect<A, E, never>,
   options?: Effect.RunOptions | undefined
-) => Fiber.Fiber<A, E> = runForkWith(Context.empty())
+): Fiber.Fiber<A, E> =>
+  runFiber(
+    options?.scheduler
+      ? Context.makeUnsafe(new Map([[SchedulerKey, options.scheduler]]))
+      : Context.empty(),
+    effect,
+    options
+  )
 
 /** @internal */
 export const runCallbackWith = <R>(context: Context.Context<R>) => {
@@ -5841,7 +5873,7 @@ export const runSyncExitWith = <R>(context: Context.Context<R>) => {
   const runFork = runForkWith(context)
   return <A, E>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E> => {
     if (effectIsExit(effect)) return effect
-    const scheduler = new Scheduler.MixedScheduler("sync")
+    const scheduler = new MixedScheduler("sync")
     const fiber = runFork(effect, { scheduler }) as FiberImpl<A, E>
     fiber._dispatcher?.flush()
     return fiber._exit ?? exitDie(new AsyncFiberError(fiber))
@@ -6308,7 +6340,7 @@ export const annotateCurrentSpan: {
   (values: Record<string, unknown>): Effect.Effect<void>
 } = (...args: [Record<string, unknown>] | [key: string, value: unknown]) =>
   withFiber((fiber) => {
-    const span = fiber.currentSpanLocal
+    const span = currentSpanLocal(fiber)
     if (span && span.status._tag !== "Ended") {
       if (args.length === 1) {
         for (const [key, value] of Object.entries(args[0])) {
@@ -6323,7 +6355,7 @@ export const annotateCurrentSpan: {
 
 /** @internal */
 export const currentSpan: Effect.Effect<Tracer.Span, Cause.NoSuchElementError> = withFiber((fiber) => {
-  const span = fiber.currentSpanLocal
+  const span = currentSpanLocal(fiber)
   return span ? succeed(span) : fail(new NoSuchElementError())
 })
 

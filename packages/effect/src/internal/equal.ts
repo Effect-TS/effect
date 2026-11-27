@@ -1,3 +1,5 @@
+// Shared state and helpers for `Equal.ts` and `Hash.ts`.
+
 // JavaScriptCore (Bun, Safari) stamps the construction site onto every Error as
 // non-enumerable own properties. Like `stack`, they describe where the error was
 // created, not what it is.
@@ -74,3 +76,37 @@ export const toBytes = (u: ArrayBufferLike | DataView, kind: number): Uint8Array
     return undefined
   }
 }
+
+/**
+ * Back-edge count used to avoid caching entry-point-dependent hashes and
+ * comparisons.
+ *
+ * @internal
+ */
+export let backEdges = 0
+
+/** @internal */
+export const addBackEdge = (): void => {
+  backEdges++
+}
+
+/** @internal */
+export const hashCache = new WeakMap<object, number>()
+
+// 32-bit MurmurHash3 finalizer.
+/** @internal */
+export const mix = (h: number): number => {
+  h ^= h >>> 16
+  h = Math.imul(h, 0x85ebca6b)
+  h ^= h >>> 13
+  h = Math.imul(h, 0xc2b2ae35)
+  return h ^ (h >>> 16)
+}
+
+/**
+ * Data-first `Hash.combine` used by `Hash.ts` and runtime data types so
+ * hashing does not pull in `Function.dual`.
+ *
+ * @internal
+ */
+export const combine = (self: number, b: number): number => mix(Math.imul(self, 0x9e3779b1) + Math.imul(b, 0x85ebca6b))

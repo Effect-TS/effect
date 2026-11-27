@@ -12,6 +12,7 @@
  */
 import { dual } from "./Function.ts"
 import type { TypeLambda } from "./HKT.ts"
+import * as InternalPredicate from "./internal/predicate.ts"
 import * as InternalRecord from "./internal/record.ts"
 import type { TupleOf, TupleOfAtLeast } from "./Types.ts"
 
@@ -1173,11 +1174,7 @@ export function isObjectKeyword(input: unknown): input is object {
 export const hasProperty: {
   <P extends PropertyKey>(property: P): (self: unknown) => self is { [K in P]: unknown }
   <P extends PropertyKey>(self: unknown, property: P): self is { [K in P]: unknown }
-} = dual(
-  2,
-  <P extends PropertyKey>(self: unknown, property: P): self is { [K in P]: unknown } =>
-    isObjectKeyword(self) && (property in self)
-)
+} = dual(2, InternalPredicate.hasProperty)
 
 /**
  * Checks whether a value has a `_tag` property equal to the given tag.

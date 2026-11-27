@@ -8,11 +8,12 @@ import { dual, identity } from "../Function.ts"
 import * as Hash from "../Hash.ts"
 import { NodeInspectSymbol } from "../Inspectable.ts"
 import { pipeArguments } from "../Pipeable.ts"
-import { hasProperty } from "../Predicate.ts"
+import { hasProperty } from "./predicate.ts"
 import type { StackFrame } from "../References.ts"
 import type * as Types from "../Types.ts"
 import { SingleShotGen } from "../Utils.ts"
 import type { FiberImpl } from "./effect.ts"
+import { combine as hashCombine } from "./equal.ts"
 import * as InternalRecord from "./record.ts"
 
 /** @internal */
@@ -101,13 +102,6 @@ export const EffectProto = {
   ...PipeInspectableProto,
   [Symbol.iterator]() {
     return new SingleShotGen(this) as any
-  },
-  toJSON(this: Primitive) {
-    return {
-      _id: "Effect",
-      op: this[identifier],
-      ...(args in this ? { args: this[args] } : undefined)
-    }
   }
 }
 
@@ -176,19 +170,37 @@ export class CauseImpl<E> implements Cause.Cause<E> {
 
 const annotationsMap = new WeakMap<object, ReadonlyMap<string, unknown>>()
 
+const annotateReasonMap = <T extends ReasonBase<any>>(
+  reason: T,
+  annotations: ReadonlyMap<string, unknown>,
+  options?: { readonly overwrite?: boolean | undefined }
+): T => {
+  if (annotations.size === 0) return reason
+  const overwrite = options?.overwrite === true
+  const newAnnotations = new Map(reason.annotations)
+  for (const [key, value] of annotations) {
+    if (overwrite || !newAnnotations.has(key)) {
+      newAnnotations.set(key, value)
+    }
+  }
+  // Keep the reason when nothing was added, so interrupts still match by identity.
+  if (!overwrite && newAnnotations.size === reason.annotations.size) return reason
+  const self = Object.assign(Object.create(Object.getPrototypeOf(reason)), reason)
+  self.annotations = newAnnotations
+  return self
+}
+
 /** @internal */
 export abstract class ReasonBase<Tag extends string> implements Cause.Cause.ReasonProto<Tag> {
-  readonly [CauseReasonTypeId]: typeof CauseReasonTypeId
-  readonly annotations: ReadonlyMap<string, unknown>
-  readonly _tag: Tag
+  declare readonly [CauseReasonTypeId]: typeof CauseReasonTypeId
+  declare readonly annotations: ReadonlyMap<string, unknown>
+  declare readonly _tag: Tag
 
   constructor(
     _tag: Tag,
     annotations: ReadonlyMap<string, unknown>,
     originalError: unknown
   ) {
-    this[CauseReasonTypeId] = CauseReasonTypeId
-    this._tag = _tag
     if (
       annotations !== constEmptyAnnotations && typeof originalError === "object" && originalError !== null &&
       annotations.size > 0
@@ -202,24 +214,16 @@ export abstract class ReasonBase<Tag extends string> implements Cause.Cause.Reas
       }
       annotationsMap.set(originalError, annotations)
     }
+    this[CauseReasonTypeId] = CauseReasonTypeId
     this.annotations = annotations
+    this._tag = _tag
   }
 
   annotate(
     annotations: Context.Context<never>,
     options?: { readonly overwrite?: boolean | undefined }
   ): this {
-    if (annotations.mapUnsafe.size === 0) return this
-    const newAnnotations = new Map(this.annotations)
-    annotations.mapUnsafe.forEach((value, key) => {
-      if (options?.overwrite !== true && newAnnotations.has(key)) return
-      newAnnotations.set(key, value)
-    })
-    // Keep the reason when nothing was added, so interrupts still match by identity.
-    if (options?.overwrite !== true && newAnnotations.size === this.annotations.size) return this
-    const self = Object.assign(Object.create(Object.getPrototypeOf(this)), this)
-    self.annotations = newAnnotations
-    return self
+    return annotateReasonMap(this, annotations.mapUnsafe, options)
   }
 
   pipe() {
@@ -227,12 +231,9 @@ export abstract class ReasonBase<Tag extends string> implements Cause.Cause.Reas
   }
 
   abstract toJSON(): unknown
+  abstract toString(): string
   abstract [Equal.symbol](that: any): boolean
   abstract [Hash.symbol](): number
-
-  toString() {
-    return format(this)
-  }
 
   [NodeInspectSymbol]() {
     return this.toString()
@@ -269,8 +270,9 @@ export class Fail<E> extends ReasonBase<"Fail"> implements Cause.Fail<E> {
     )
   }
   [Hash.symbol](): number {
-    return Hash.combine(Hash.string(this._tag))(
-      Hash.combine(Hash.hash(this.error))(Hash.hash(this.annotations))
+    return hashCombine(
+      hashCombine(Hash.hash(this.annotations), Hash.hash(this.error)),
+      Hash.string(this._tag)
     )
   }
 }
@@ -375,14 +377,30 @@ export class Die extends ReasonBase<"Die"> implements Cause.Die {
     )
   }
   [Hash.symbol](): number {
-    return Hash.combine(Hash.string(this._tag))(
-      Hash.combine(Hash.hash(this.defect))(Hash.hash(this.annotations))
+    return hashCombine(
+      hashCombine(Hash.hash(this.annotations), Hash.hash(this.defect)),
+      Hash.string(this._tag)
     )
   }
 }
 
 /** @internal */
 export const causeDie = (defect: unknown): Cause.Cause<never> => new CauseImpl([new Die(defect)])
+
+/**
+ * Data-first `causeAnnotate` taking a plain annotation map, so the fiber
+ * runtime does not pull in `Function.dual` or wrap maps in a `Context`.
+ *
+ * @internal
+ */
+export const causeAnnotateMap = <E>(
+  self: Cause.Cause<E>,
+  annotations: ReadonlyMap<string, unknown>,
+  options?: { readonly overwrite?: boolean | undefined }
+): Cause.Cause<E> => {
+  if (annotations.size === 0) return self
+  return new CauseImpl(self.reasons.map((f) => annotateReasonMap(f as any, annotations, options)))
+}
 
 /** @internal */
 export const causeAnnotate: {
@@ -407,10 +425,7 @@ export const causeAnnotate: {
     options?: {
       readonly overwrite?: boolean | undefined
     }
-  ): Cause.Cause<E> => {
-    if (annotations.mapUnsafe.size === 0) return self
-    return new CauseImpl(self.reasons.map((f) => f.annotate(annotations, options)))
-  }
+  ): Cause.Cause<E> => causeAnnotateMap(self, annotations.mapUnsafe, options)
 )
 
 /** @internal */
@@ -477,6 +492,13 @@ export const makePrimitiveProto = <Op extends string>(options: {
 }): Primitive =>
   ({
     ...EffectProto,
+    toJSON(this: Primitive) {
+      return {
+        _id: "Effect",
+        op: this[identifier],
+        ...(args in this ? { args: this[args] } : undefined)
+      }
+    },
     [identifier]: options.op,
     [evaluate]: options[evaluate] ?? defaultEvaluate,
     [contA]: options[contA],
@@ -540,13 +562,16 @@ export const makeExit = <
     fiber: FiberImpl<unknown, unknown>
   ) => Primitive | Yield
 }): Fn => {
+  const opHash = Hash.string(options.op)
   const Proto = {
     [ExitTypeId]: ExitTypeId,
     _tag: options.op,
     get [options.prop](): any {
       return (this as any)[args]
     },
-    ...makePrimitiveProto(options),
+    ...EffectProto,
+    [identifier]: options.op,
+    [evaluate]: options[evaluate],
     toString(this: any) {
       return `${options.op}(${format(this[args])})`
     },
@@ -565,7 +590,7 @@ export const makeExit = <
       )
     },
     [Hash.symbol](this: any): number {
-      return Hash.combine(Hash.string(options.op), Hash.hash(this[args]))
+      return hashCombine(opHash, Hash.hash(this[args]))
     }
   }
   const ExitPrimitive = function(this: any, value: unknown) {
@@ -588,8 +613,11 @@ export const exitSucceed: <A>(a: A) => Exit.Exit<A> = makeExit({
 })
 
 /** @internal */
+export const StackTraceKeyName = "effect/Cause/StackTrace" satisfies typeof Cause.StackTrace.key
+
+/** @internal */
 export const StackTraceKey = {
-  key: "effect/Cause/StackTrace" satisfies typeof Cause.StackTrace.key
+  key: StackTraceKeyName
 } as Context.Service<Cause.StackTrace, StackFrame>
 
 /** @internal */
@@ -605,7 +633,7 @@ export const exitFailCause: <E>(cause: Cause.Cause<E>) => Exit.Exit<never, E> = 
     let cause = this[args]
     let annotated = false
     if (fiber.cache.stackFrame) {
-      cause = causeAnnotate(cause, { mapUnsafe: new Map([[StackTraceKey.key, fiber.cache.stackFrame]]) } as any)
+      cause = causeAnnotateMap(cause, new Map([[StackTraceKeyName, fiber.cache.stackFrame]]))
       annotated = true
     }
     let cont = fiber.getCont(contE)

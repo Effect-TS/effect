@@ -14,7 +14,7 @@ import { pipeArguments } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
 import * as Result from "../Result.ts"
 import type { NoInfer } from "../Types.ts"
-import { backEdges } from "./hash.ts"
+import { backEdges } from "./equal.ts"
 
 /** @internal */
 export const HashMapTypeId = "~effect/HashMap"

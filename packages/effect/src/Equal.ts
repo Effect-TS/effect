@@ -12,9 +12,16 @@
  */
 import type { Equivalence } from "./Equivalence.ts"
 import * as Hash from "./Hash.ts"
-import { byReferenceInstances, getAllObjectKeys, objectKind, toBytes } from "./internal/equal.ts"
-import { addBackEdge, backEdges, hashCache } from "./internal/hash.ts"
-import { hasProperty } from "./Predicate.ts"
+import {
+  addBackEdge,
+  backEdges,
+  byReferenceInstances,
+  getAllObjectKeys,
+  hashCache,
+  objectKind,
+  toBytes
+} from "./internal/equal.ts"
+import { hasProperty } from "./internal/predicate.ts"
 
 /**
  * Defines the unique string identifier for the `Equal` interface.

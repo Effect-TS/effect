@@ -3,6 +3,7 @@ import * as Context from "effect/Context"
 import * as Equal from "effect/Equal"
 import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
+import * as Scheduler from "effect/Scheduler"
 import { describe, it } from "vitest"
 
 interface ContextInternals {
@@ -118,6 +119,12 @@ describe("Context", () => {
     deepStrictEqual([...Context.pick(Undefined)(context).mapUnsafe], [[Undefined.key, undefined]])
     deepStrictEqual([...Context.pick(Missing)(context).mapUnsafe], [])
     strictEqual(Context.get(context, Ref), undefined)
+  })
+
+  it("invalidates the fiber cache for the runtime's own cached keys", () => {
+    const source = Context.make(A, 1)
+    assertFalse(Context.hasSameCache(source, Context.add(source, Scheduler.MaxOpsBeforeYield, 1)))
+    assertFalse(Context.hasSameCache(source, Context.add(source, Scheduler.PreventSchedulerYield, true)))
   })
 
   it("bounds deep overlay chains without changing values or order", () => {
@@ -240,6 +247,9 @@ describe("Context", () => {
     assertTrue(impl._flat instanceof Map)
     strictEqual(impl.overlay, undefined)
     strictEqual(impl.depth, 0)
+    // The flattened context reads the former overlay entries from its base
+    strictEqual(Context.getUnsafe(context, B), 2)
+    assertTrue(Option.isNone(Context.getOption(context, C)))
 
     const added = Context.add(context, C, 3) as any
     strictEqual(added._flat, undefined)
