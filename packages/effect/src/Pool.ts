@@ -1111,6 +1111,9 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
         } else {
           self.state.items.add(item)
           addAvailable(self, item)
+          // A kept failure serves one borrower, by failing it or by being
+          // replaced. A healthy item can leave a sleeper without a wake.
+          wakeWaiters(self, fiber, 1)
         }
         // Do not let cleanup delay a replacement acquisition.
         return Effect.as(

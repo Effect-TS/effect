@@ -291,6 +291,27 @@ describe("Pool", () => {
       }
     }))
 
+  it.live("a failure acquired beside a healthy item still settles its borrower", () =>
+    Effect.gen(function*() {
+      const gate = yield* Deferred.make<void>()
+      let acquired = 0
+      const acquire = Effect.andThen(
+        Deferred.await(gate),
+        Effect.suspend(() => acquired++ === 1 ? Effect.fail("error") : Effect.succeed(acquired))
+      )
+      const pool = yield* Pool.make({ acquire, size: 2 })
+      const scope = yield* Scope.make()
+      const fibers = yield* Effect.forEach([1, 2], () =>
+        Effect.forkChild(Effect.exit(Scope.provide(Pool.get(pool), scope)), { startImmediately: true }))
+      while ((yield* Pool.stats(pool)).pending < 2) {
+        yield* Effect.yieldNow
+      }
+      yield* Deferred.succeed(gate, void 0)
+      // The first lease stays open, so the second borrower cannot wait for it.
+      yield* Effect.timeout(Fiber.joinAll(fibers), Duration.seconds(1))
+      yield* Scope.close(scope, Exit.void)
+    }))
+
   it.effect("compositional retry", () =>
     Effect.gen(function*() {
       const cond = (i: number) => (i <= 10 ? Effect.fail(i) : Effect.succeed(i))
