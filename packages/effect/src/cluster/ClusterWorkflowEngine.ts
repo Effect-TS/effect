@@ -355,42 +355,56 @@ export const make = Effect.gen(function*() {
     executionId: string,
     payload: ResumePayload,
     retired?: Latch.Latch
-  ) =>
-    ensureSuccess(Effect.gen(function*() {
-      if (retired?.isOpen()) return yield* ClusterAbandon.interrupt
-      if (payload.childWorkflowName === undefined || payload.childExecutionId === undefined) return true
-      const childAddress = entityAddress(
-        `Workflow/${payload.childWorkflowName}`,
-        payload.childExecutionId,
-        payload.childShardGroup ?? "default"
-      )
-      const requestId = yield* storage.requestIdForPrimaryKey({ address: childAddress, tag: "run", id: "" })
-      if (Option.isNone(requestId)) return true
-      if (isRunSettled(yield* replyForRequestId(requestId.value))) return true
-      if (isRunSettled(yield* runReply(workflow, executionId))) return false
-      let attempt = (payload.attempt ?? 0) + 1
-      while (true) {
-        const id = `${payload.childExecutionId}:${attempt}`
-        const existing = yield* storage.requestIdForPrimaryKey({ address, tag: "resume", id })
-        if (Option.isNone(existing)) break
-        if (Option.isNone(yield* replyForRequestId(existing.value))) return false
-        attempt++
-      }
-      const now = yield* DateTime.now
-      const delay = Math.min(Math.ceil(200 * 1.5 ** (attempt - 1)), 60_000)
-      yield* sendDiscard({
-        rpc: ResumeRpc,
-        address,
-        payload: {
-          childExecutionId: payload.childExecutionId,
-          childWorkflowName: payload.childWorkflowName,
-          childShardGroup: payload.childShardGroup,
-          deliverAt: DateTime.mapEpochMillis(DateTime.addDuration(now, Duration.millis(delay)), Math.ceil),
-          attempt
+  ) => {
+    if (payload.childWorkflowName === undefined || payload.childExecutionId === undefined) {
+      return Effect.succeed(true)
+    }
+    const childExecutionId = payload.childExecutionId
+    const childWorkflowName = payload.childWorkflowName
+    const childAddress = entityAddress(
+      `Workflow/${childWorkflowName}`,
+      childExecutionId,
+      payload.childShardGroup ?? "default"
+    )
+    const check = Effect.interruptible(
+      Effect.gen(function*() {
+        const requestId = yield* storage.requestIdForPrimaryKey({ address: childAddress, tag: "run", id: "" })
+        if (Option.isNone(requestId)) return true
+        if (isRunSettled(yield* replyForRequestId(requestId.value))) return true
+        if (isRunSettled(yield* runReply(workflow, executionId))) return false
+        let attempt = (payload.attempt ?? 0) + 1
+        while (true) {
+          const id = `${childExecutionId}:${attempt}`
+          const existing = yield* storage.requestIdForPrimaryKey({ address, tag: "resume", id })
+          if (Option.isNone(existing)) break
+          if (Option.isNone(yield* replyForRequestId(existing.value))) return false
+          attempt++
         }
-      })
-      return false
-    }))
+        const now = yield* DateTime.now
+        const delay = Math.min(Math.ceil(200 * 1.5 ** (attempt - 1)), 60_000)
+        yield* sendDiscard({
+          rpc: ResumeRpc,
+          address,
+          payload: {
+            childExecutionId,
+            childWorkflowName,
+            childShardGroup: payload.childShardGroup,
+            deliverAt: DateTime.mapEpochMillis(DateTime.addDuration(now, Duration.millis(delay)), Math.ceil),
+            attempt
+          }
+        })
+        return false
+      }).pipe(Effect.retry(retryPolicy), Effect.orDie)
+    )
+    if (!retired) return check
+    return Effect.flatMap(
+      Effect.raceFirst(
+        Effect.as(Effect.interruptible(retired.await), Option.none<boolean>()),
+        Effect.map(check, Option.some)
+      ),
+      Option.match({ onNone: () => ClusterAbandon.interrupt, onSome: Effect.succeed })
+    )
+  }
 
   // Subscribe to the run's next reply before reading storage, so a reply
   // cannot fall between the read and the subscription. Returns `true` when the
