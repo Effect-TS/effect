@@ -55,12 +55,19 @@ export class ProxiedProcess extends EventEmitter implements SpawnedProcess {
   private readonly proxy: ProxiedProcessOwner
   readonly id: number
   private readonly pipes: ReadonlyArray<boolean>
+  private readonly halfOpen: ReadonlyArray<number>
 
-  constructor(proxy: ProxiedProcessOwner, id: number, pipes: ReadonlyArray<boolean>) {
+  constructor(
+    proxy: ProxiedProcessOwner,
+    id: number,
+    pipes: ReadonlyArray<boolean>,
+    halfOpen: ReadonlyArray<number> = []
+  ) {
     super()
     this.proxy = proxy
     this.id = id
     this.pipes = pipes
+    this.halfOpen = halfOpen
     this.stdio = pipes.map(() => null)
     proxy.ref()
   }
@@ -106,6 +113,8 @@ export class ProxiedProcess extends EventEmitter implements SpawnedProcess {
 
   attach(fd: number, socket: Net.Socket): boolean {
     if (this.done || this.pipes[fd] !== true || this.stdio[fd] !== null) return false
+    // The socket is already reading, but cannot emit `end` before the next tick
+    if (this.halfOpen.includes(fd)) socket.allowHalfOpen = true
     this.stdio[fd] = socket
     this.emitSpawn()
     return true
@@ -258,7 +267,12 @@ class Proxy implements ProxiedProcessOwner {
    * ready to take spawns, or whose credentials are out of date, fails the
    * spawn without sending it, so every command it holds has been sent.
    */
-  spawn(command: string, args: ReadonlyArray<string>, options: NodeChildProcess.SpawnOptions): ProxiedProcess {
+  spawn(
+    command: string,
+    args: ReadonlyArray<string>,
+    options: NodeChildProcess.SpawnOptions,
+    halfOpen: ReadonlyArray<number>
+  ): ProxiedProcess {
     if (!this.ready || this.exited || this.retired || this.credentials !== credentials()) {
       const refused = new ProxiedProcess(noOwner, 0, [])
       const error = new Error("The proxy process stopped taking spawns before the command was sent to it")
@@ -270,7 +284,7 @@ class Proxy implements ProxiedProcessOwner {
     const stdio = (options.stdio as ReadonlyArray<NodeChildProcess.IOType | undefined>).map((mode) =>
       mode === undefined || mode === "overlapped" ? "pipe" : mode
     )
-    const child = new ProxiedProcess(this, id, stdio.map((mode) => mode === "pipe"))
+    const child = new ProxiedProcess(this, id, stdio.map((mode) => mode === "pipe"), halfOpen)
     this.commands.set(id, child)
     this.startTimer(id)
     this.send({
@@ -531,7 +545,7 @@ export const make = (options: Options) => {
   return {
     prepareSpawn: Effect.map(
       ready,
-      (proxy): SpawnProcess => (command, args, options) => proxy.spawn(command, args, options)
+      (proxy): SpawnProcess => (command, args, options, halfOpen) => proxy.spawn(command, args, options, halfOpen)
     ),
     /** Waits for the first proxy process to be ready. */
     ready: Effect.suspend(() => Effect.mapError(Deferred.await(current.started), toError)),
