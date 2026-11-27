@@ -453,6 +453,48 @@ describe("McpClient", () => {
       assert.strictEqual(error.reason._tag, "ValidationError")
     }))
 
+  it.effect("should combine cache hints across paginated modern tool lists", () =>
+    Effect.gen(function*() {
+      const listing = (pages: ReadonlyArray<{ readonly ttlMs: number; readonly cacheScope: "public" | "private" }>) =>
+        scriptedHttp((message) => {
+          if (message.method !== "tools/list") return scriptedReply(McpProtocol.v2026_07_28, message)
+          const index = Number(message.params?.cursor ?? 0)
+          return jsonRpcResult(message, {
+            ...discoverResult,
+            ...pages[index],
+            tools: [{ ...slowTool, name: `t${index}` }],
+            ...(index + 1 < pages.length ? { nextCursor: String(index + 1) } : {})
+          })
+        })
+
+      const mixed = yield* listing([
+        { ttlMs: 60_000, cacheScope: "public" },
+        { ttlMs: 5_000, cacheScope: "private" },
+        { ttlMs: 30_000, cacheScope: "public" }
+      ])
+      const fromMixed = yield* mixed.client.listToolsWithCacheHint()
+      assert.deepStrictEqual(fromMixed.tools.map((tool) => tool.name), ["t0", "t1", "t2"])
+      assert.deepStrictEqual(fromMixed.cacheHint, { ttlMs: 5_000, cacheScope: "private" })
+
+      const shared = yield* listing([{ ttlMs: 60_000, cacheScope: "public" }, { ttlMs: 90_000, cacheScope: "public" }])
+      assert.deepStrictEqual((yield* shared.client.listToolsWithCacheHint()).cacheHint, {
+        ttlMs: 60_000,
+        cacheScope: "public"
+      })
+      assert.deepStrictEqual((yield* shared.client.listTools()).map((tool) => tool.name), ["t0", "t1"])
+    }))
+
+  it.effect("should omit the cache hint when the server or protocol provides none", () =>
+    Effect.gen(function*() {
+      const legacy = yield* connect(McpProtocol.v2025_11_25)
+      const fromLegacy = yield* legacy.listToolsWithCacheHint()
+      assert.isTrue(fromLegacy.tools.some((tool) => tool.name === "add"))
+      assert.isUndefined(fromLegacy.cacheHint)
+
+      const noTools = yield* scriptedHttp((message) => jsonRpcResult(message, { ...discoverResult, capabilities: {} }))
+      assert.deepStrictEqual(yield* noTools.client.listToolsWithCacheHint(), { tools: [], cacheHint: undefined })
+    }))
+
   // A single page larger than the item limit must fail with LimitError, not exceed the call argument limit.
   it.effect("should fail with LimitError when one discovery page exceeds the item limit", () =>
     Effect.gen(function*() {

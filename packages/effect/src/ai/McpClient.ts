@@ -79,6 +79,18 @@ export type ProtocolVersion = "2025-03-26" | "2025-06-18" | "2025-11-25" | "2026
 export const McpClient: Context.Service<McpClient, McpClient> = Context.Service<McpClient>("effect/ai/McpClient")
 
 /**
+ * Cache hint returned by a `2026-07-28` MCP list response.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.1.7
+ */
+export interface ListCacheHint {
+  readonly ttlMs: number
+  readonly cacheScope: "public" | "private"
+}
+
+/**
  * A scoped connection to one MCP server.
  *
  * @stability experimental
@@ -106,6 +118,24 @@ export interface McpClient {
       } | undefined
     }
   ) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, McpClientError>
+  /**
+   * Returns every tool page with the same bounds as `listTools` plus the aggregated
+   * `2026-07-28` `cacheHint` (minimum `ttlMs`; `"public"` only if every page is `"public"`).
+   * `cacheHint` is `undefined` on protocols before `2026-07-28` or when the server does not
+   * advertise the `tools` capability.
+   */
+  readonly listToolsWithCacheHint: (
+    options?: {
+      readonly timeout?: Duration.Input | undefined
+      readonly limits?: {
+        readonly maxPages?: number | undefined
+        readonly maxItems?: number | undefined
+      } | undefined
+    }
+  ) => Effect.Effect<
+    { readonly tools: ReadonlyArray<McpSchema.Tool>; readonly cacheHint: ListCacheHint | undefined },
+    McpClientError
+  >
   /** Returns every prompt page as one snapshot with the same bounds as `listTools`. */
   readonly listPrompts: (
     options?: {
@@ -244,8 +274,8 @@ export const isMcpClient = (value: unknown): value is McpClient => Predicate.has
  *
  * `name`, `version` and the optional `title`, `description`, `websiteUrl` and
  * `icons` identify the client to the server. `timeout` defaults to 60 seconds
- * and bounds initialization and each complete `listTools`, `listPrompts`,
- * `listResources`, `listSkills` or `readResourceDirectory` scan.
+ * and bounds initialization and each complete `listTools`, `listToolsWithCacheHint`,
+ * `listPrompts`, `listResources`, `listSkills` or `readResourceDirectory` scan.
  * `discoveryLimits` sets the default scan limits of 100 pages and 10,000
  * items. `callTool`, `getPrompt`, `readResource`, `getSkill` and
  * `readSkillResource` have no deadline unless their own `timeout` option is
@@ -322,7 +352,8 @@ export const make: (options: {
   const request = Effect.fnUntraced(function*<A>(
     method: string,
     params: Record<string, unknown>,
-    tool?: McpSchema.Tool
+    tool?: McpSchema.Tool,
+    onValidated?: (validated: unknown) => void
   ): Effect.fn.Return<A, McpClientError> {
     const rpc = protocol.clientRpcs.requests.get(method) as Rpc.AnyWithProps | undefined
     if (rpc === undefined) {
@@ -361,7 +392,9 @@ export const make: (options: {
       return yield* fail(new UnsupportedError({ description: "MCP input continuation is not supported" }))
     }
     const publicRpc = publicRpcs.get(method)
-    return (publicRpc === undefined ? validated : yield* decodeUnknown(publicRpc.successSchema, result)) as A
+    const decoded = (publicRpc === undefined ? validated : yield* decodeUnknown(publicRpc.successSchema, result)) as A
+    onValidated?.(validated)
+    return decoded
   })
 
   // Initialization and discovery default to `timeout`; other operations are bounded only on request.
@@ -438,13 +471,19 @@ export const make: (options: {
     method: string,
     key: K,
     params: Record<string, unknown>,
-    limits: typeof DEFAULT_DISCOVERY_LIMITS
+    limits: typeof DEFAULT_DISCOVERY_LIMITS,
+    onPage?: (validated: unknown) => void
   ) {
     const items: Array<A> = []
     const cursors = new Set<string>()
     let cursor: string | undefined
     for (let page = 0; page < limits.maxPages; page++) {
-      const result = yield* request<ListResult<K, A>>(method, cursor === undefined ? params : { ...params, cursor })
+      const result = yield* request<ListResult<K, A>>(
+        method,
+        cursor === undefined ? params : { ...params, cursor },
+        undefined,
+        onPage
+      )
       if (items.length + result[key].length > limits.maxItems) {
         return yield* limitError(`MCP ${label} discovery exceeded its item limit`)
       }
@@ -587,7 +626,26 @@ export const make: (options: {
     (effect, _params, callOptions) => withDeadline(effect, "resources/read", callOptions?.timeout)
   )
 
-  const listTools = list<"tools", McpSchema.Tool>("tools")
+  const listToolsWithCacheHint = Effect.fnUntraced(
+    function*(callOptions?: DiscoveryOptions) {
+      const limits = yield* resolveDiscoveryLimits(callOptions?.limits, discoveryLimits)
+      if (capabilities.tools === undefined) return { tools: [], cacheHint: undefined }
+      let cacheHint: ListCacheHint | undefined
+      // The `2026-07-28` decoder already requires `ttlMs` and `cacheScope` on every page.
+      const onPage = modern
+        ? (page: unknown) => {
+          const { cacheScope, ttlMs } = page as ListCacheHint
+          cacheHint = {
+            ttlMs: Math.min(cacheHint?.ttlMs ?? ttlMs, ttlMs),
+            cacheScope: cacheHint?.cacheScope === "private" ? "private" : cacheScope
+          }
+        }
+        : undefined
+      const tools = yield* paginate<"tools", McpSchema.Tool>("tools", "tools/list", "tools", {}, limits, onPage)
+      return { tools: tools.filter((tool) => transport.isCallable(tool)), cacheHint }
+    },
+    (effect, callOptions) => withDeadline(effect, "tools discovery", callOptions?.timeout ?? timeout)
+  )
 
   const callTool = Effect.fnUntraced(
     function*<S extends Schema.Top>(
@@ -623,8 +681,8 @@ export const make: (options: {
     capabilities,
     serverInfo,
     instructions,
-    listTools: (callOptions) =>
-      listTools(callOptions).pipe(Effect.map((tools) => tools.filter((tool) => transport.isCallable(tool)))),
+    listTools: (callOptions) => listToolsWithCacheHint(callOptions).pipe(Effect.map(({ tools }) => tools)),
+    listToolsWithCacheHint,
     listPrompts: list("prompts"),
     listResources: list("resources"),
     getPrompt: (params, callOptions) =>
