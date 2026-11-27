@@ -15,9 +15,9 @@ export class CurrentRetirementLatch extends Context.Service<CurrentRetirementLat
 ) {}
 
 /**
- * The entity's active requests. A handler can set `exitWrites` on a persisted
- * request to run storage writes after its `WithExit` reply is saved, in the
- * same storage transaction, so they commit or roll back with it. @internal
+ * Active requests for the entity. Setting `exitWrites` on a persisted request
+ * runs those writes in the same storage transaction as its `WithExit` reply.
+ * @internal
  */
 export class ActiveRequests extends Context.Service<
   ActiveRequests,

@@ -1239,8 +1239,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       const storage = yield* makeSharedStorage
       const savingWake = yield* Latch.make()
       const releaseWake = yield* Latch.make()
-      // Hold the child's exit-reply transaction open right after saving the
-      // parent's resume request, before commit, while storage is polled.
+      // Hold the child's exit-reply transaction open after saving the parent's resume.
       const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
         ...storage,
         saveRequest: (message) => {

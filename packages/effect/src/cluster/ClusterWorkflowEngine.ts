@@ -339,7 +339,7 @@ export const make = Effect.gen(function*() {
     }
     const reply = yield* replyForRequestId(requestId.value)
     if (Option.isNone(reply)) return
-    // Reset through storage, so a failure fails the child's reply transaction.
+    // Reset through storage so failures abort the child's reply transaction.
     yield* storage.clearReplies(requestId.value, { expectedReplyId: Snowflake.Snowflake(reply.value.id) })
   })
 
@@ -555,9 +555,8 @@ export const make = Effect.gen(function*() {
                         parents.push(parent)
                       }
                       if (parents.length === 0) return
-                      // Save the wakes in the terminal reply's transaction, so a
-                      // parent cannot replay before the result is visible, and a
-                      // runner that stops after the commit leaves them in storage.
+                      // Save wakes in the terminal reply's transaction so a parent cannot replay
+                      // before the result is visible and a post-commit stop leaves them stored.
                       active.exitWrites = Effect.orDie(
                         Effect.forEach(parents, (ref) => sendResumeParent(ref, executionId), { discard: true })
                       )

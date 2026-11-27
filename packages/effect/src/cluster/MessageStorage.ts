@@ -1044,10 +1044,9 @@ export const MemoryTransaction = Context.Reference<boolean>("effect/cluster/Mess
   defaultValue: constFalse
 })
 
-// Memory has no transaction isolation. A terminal reply saved in a transaction
-// is published at the outer commit, so readers cannot observe a success that
-// may still be rolled back. Writes that follow it are published with it, in
-// order, so they cannot be read before the reply.
+// Memory has no transaction isolation. Defer a terminal reply and any writes
+// after it to the outer commit so readers never observe them before commit or
+// out of order.
 const MemoryCommits = Context.Reference<Array<() => void> | undefined>(
   "effect/cluster/MessageStorage/MemoryCommits",
   { defaultValue: () => undefined }
