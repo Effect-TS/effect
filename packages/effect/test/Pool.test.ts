@@ -262,6 +262,74 @@ describe("Pool", () => {
       strictEqual(result, "error")
     }))
 
+  it.live("every borrower gets a failed acquisition wherever it yields", () =>
+    Effect.gen(function*() {
+      for (const borrowers of [1, 3]) {
+        for (let budget = 1; budget <= 32; budget++) {
+          const pool = yield* Pool.makeWithTTL({
+            acquire: Effect.fail("error"),
+            min: 0,
+            max: 1,
+            timeToLive: Duration.infinity
+          })
+          const fibers = yield* Effect.forEach(Array.from({ length: borrowers }), () =>
+            Effect.forkChild(
+              Effect.flip(Effect.scoped(Pool.get(pool))).pipe(
+                Effect.provideService(Scheduler.MaxOpsBeforeYield, budget)
+              ),
+              { startImmediately: true }
+            ))
+          const results = yield* Fiber.joinAll(fibers).pipe(
+            Effect.timeoutOrElse({ duration: Duration.seconds(1), orElse: () => Effect.succeed("timeout") })
+          )
+          deepStrictEqual(
+            results,
+            Array(borrowers).fill("error"),
+            `${borrowers} borrowers, MaxOpsBeforeYield ${budget}`
+          )
+        }
+      }
+    }))
+
+  it.live("a borrower gets its own failed acquisition, not an earlier one", () =>
+    Effect.gen(function*() {
+      for (let budget = 1; budget <= 32; budget++) {
+        let acquired = 0
+        const pool = yield* Pool.makeWithTTL({
+          acquire: Effect.suspend(() => Effect.fail(acquired++ === 0 ? "stale" : "fresh")),
+          min: 1,
+          max: 2,
+          targetUtilization: 0.5,
+          timeToLive: Duration.infinity
+        })
+        yield* waitUntil(() => pool.state.availableHead !== undefined)
+        const error = yield* Effect.flip(Effect.scoped(Pool.get(pool))).pipe(
+          Effect.provideService(Scheduler.MaxOpsBeforeYield, budget),
+          Effect.timeout(Duration.seconds(1))
+        )
+        strictEqual(error, "fresh", `MaxOpsBeforeYield ${budget}`)
+      }
+    }))
+
+  it.live("a failure acquired beside a healthy item still settles its borrower", () =>
+    Effect.gen(function*() {
+      const gate = yield* Deferred.make<void>()
+      let acquired = 0
+      const acquire = Effect.andThen(
+        Deferred.await(gate),
+        Effect.suspend(() => acquired++ === 1 ? Effect.fail("error") : Effect.succeed(acquired))
+      )
+      const pool = yield* Pool.make({ acquire, size: 2 })
+      const fibers = yield* Effect.forEach([1, 2], () =>
+        Effect.forkChild(Effect.exit(Pool.get(pool)), { startImmediately: true }))
+      yield* waitUntil(() =>
+        pool.state.waiters.size === 2
+      )
+      yield* Deferred.succeed(gate, void 0)
+      // The first lease stays open, so the second borrower cannot wait for it.
+      yield* Effect.timeout(Fiber.joinAll(fibers), Duration.seconds(1))
+    }))
+
   it.effect("compositional retry", () =>
     Effect.gen(function*() {
       const cond = (i: number) => (i <= 10 ? Effect.fail(i) : Effect.succeed(i))
