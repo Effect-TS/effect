@@ -9,7 +9,7 @@
  * @stability unstable
  * @since 4.0.0
  */
-import type * as Cause from "../Cause.ts"
+import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
@@ -17,15 +17,17 @@ import * as Fiber from "../Fiber.ts"
 import { constVoid, dual } from "../Function.ts"
 import { contA, contE } from "../internal/core.ts"
 import { effectIsExit, fiberEnterUninterruptibleUnsafe, reportCauseUnsafe } from "../internal/effect.ts"
+import { isSchemaError } from "../internal/schemaError.ts"
 import * as Layer from "../Layer.ts"
 import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import { nativeTracer } from "../Tracer.ts"
 import * as HttpBody from "./HttpBody.ts"
 import { type HttpMiddleware, isTracerDisabledUnsafe, tracer } from "./HttpMiddleware.ts"
-import { causeResponse, ClientAbort, HttpServerError, InternalError, reportableCause } from "./HttpServerError.ts"
+import { causeResponse, ClientAbort, HttpServerError, InternalError } from "./HttpServerError.ts"
 import { HttpServerRequest } from "./HttpServerRequest.ts"
 import * as Request from "./HttpServerRequest.ts"
+import { isRespondable } from "./HttpServerRespondable.ts"
 import type { HttpServerResponse } from "./HttpServerResponse.ts"
 import * as Response from "./HttpServerResponse.ts"
 import * as requestState from "./internal/requestState.ts"
@@ -63,7 +65,7 @@ export const toHandled = <E, R, EH, RH>(
     const request = frame.request
     return Effect.flatMapEager(causeResponse(cause), ([response, cause]) => {
       const fiber = Fiber.getCurrent()!
-      reportHandlerCauseUnsafe(fiber, cause)
+      reportServerCauseUnsafe(fiber, cause)
       const handler = frame.preResponseHandler
       const cont = cause.reasons.length === 0 ? Effect.succeed(response) : Effect.failCause(cause)
       if (handler === undefined) {
@@ -122,7 +124,7 @@ export const toHandled = <E, R, EH, RH>(
       responded :
       Effect.matchCauseEffect(tracer(middleware(responded)), {
         onFailure(cause): Effect.Effect<void, EH, RH> {
-          reportHandlerCauseUnsafe(Fiber.getCurrent()!, cause)
+          reportServerCauseUnsafe(Fiber.getCurrent()!, cause)
           if (handledSymbol in request) return Effect.void
           return Effect.matchCauseEffectEager(causeResponse(cause), {
             onFailure(_) {
@@ -227,9 +229,13 @@ export const toHandled = <E, R, EH, RH>(
 
 const handledSymbol = Symbol.for("effect/http/HttpEffect/handled")
 
-const reportHandlerCauseUnsafe = (fiber: Fiber.Fiber<unknown, unknown>, cause: Cause.Cause<unknown>) => {
-  const reportable = reportableCause(cause)
-  if (reportable !== undefined) reportCauseUnsafe(fiber, reportable)
+// Failures that `HttpServerRespondable.toResponseOrElse` answers with 400 or 404
+// are client errors, so they are left out of error reporting.
+const isClientError = (u: unknown) => !isRespondable(u) && (isSchemaError(u) || Cause.isNoSuchElementError(u))
+
+const reportServerCauseUnsafe = (fiber: Fiber.Fiber<unknown, unknown>, cause: Cause.Cause<unknown>) => {
+  const reasons = cause.reasons.filter((reason) => reason._tag !== "Fail" || !isClientError(reason.error))
+  reportCauseUnsafe(fiber, reasons.length === cause.reasons.length ? cause : Cause.fromReasons(reasons))
 }
 
 /**
