@@ -37,6 +37,9 @@ const cases = (M) => {
     "Equal.equals(exit)": () => M.Equal.equals(exit, exitCopy),
     "Equal.equals(cause)": () => M.Equal.equals(cause, causeCopy),
     "Equal.equals(context)": () => M.Equal.equals(flat, contextCopy),
+    // Fresh contexts, so every call computes the hash instead of reading the cache
+    "Hash.hash(context)": () => M.Hash.hash(M.Context.makeUnsafe(new Map([[A.key, i++], [B.key, 2], ["Bench/C", 3]]))),
+    "Hash.hash(context overlay)": () => M.Hash.hash(M.Context.add(flat, B, i++)),
     "Hash.hash(cause)": () => M.Hash.hash(M.Cause.fail({ code: i++ })),
     // Fresh values, so every call computes the hash instead of reading the cache
     "Hash.hash(object)": () => M.Hash.hash({ id: i++, name: "x", tags: ["a", "b"] }),
@@ -60,21 +63,29 @@ const load = async (dir) => {
 if (process.argv[2] === "--child") {
   const [dir, label] = process.argv.slice(3)
   const fn = cases(await load(dir))[label]
+  // CLOCK=thread times the main thread's CPU time instead of wall time, so time spent
+  // descheduled on a loaded machine does not count. Both clocks are in nanoseconds.
+  const now = process.env.CLOCK === "thread"
+    ? () => {
+      const { system, user } = process.threadCpuUsage()
+      return BigInt(user + system) * 1000n
+    }
+    : () => process.hrtime.bigint()
   // Size each sample to about 100 ms, so cheap and costly cases take the same wall time
   let sink = 0
   let iterations = 1000
   for (;;) {
-    const start = process.hrtime.bigint()
+    const start = now()
     for (let i = 0; i < iterations; i++) sink += fn() ? 1 : 0
-    const elapsed = Number(process.hrtime.bigint() - start)
+    const elapsed = Number(now() - start)
     if (elapsed > 1e8) break
     iterations *= 2
   }
   const samples = []
   for (let round = 0; round < 5; round++) {
-    const start = process.hrtime.bigint()
+    const start = now()
     for (let i = 0; i < iterations; i++) sink += fn() ? 1 : 0
-    samples.push(Number(process.hrtime.bigint() - start) / iterations)
+    samples.push(Number(now() - start) / iterations)
   }
   if (sink === -1) console.log("unreachable")
   console.log(samples.sort((a, b) => a - b)[2])
@@ -86,10 +97,18 @@ if (process.argv[2] === "--child") {
     Number(spawnSync(process.execPath, [fileURLToPath(import.meta.url), "--child", dir, label], { encoding: "utf8" }).stdout)
   const median = (xs) => xs.slice().sort((a, b) => a - b)[xs.length >> 1]
   console.log(`node ${process.version}, one process per sample, ${runs} alternating runs, median ns/op`)
-  console.log("| case | base | current | current/base |\n|---|---:|---:|---:|")
+  // With CONTROL=1 every run also samples base a second time, so the base/base column shows
+  // the noise of the same window the current/base column was measured in.
+  const control = process.env.CONTROL === "1"
+  console.log(
+    control
+      ? "| case | base | current | current/base | base/base control |\n|---|---:|---:|---:|---:|"
+      : "| case | base | current | current/base |\n|---|---:|---:|---:|"
+  )
   for (const label of labels) {
     const base = []
     const current = []
+    const base2 = []
     for (let run = 0; run < runs; run++) {
       // Alternate which copy goes first
       if (run & 1) {
@@ -99,9 +118,11 @@ if (process.argv[2] === "--child") {
         base.push(time(baseDir, label))
         current.push(time(currentDir, label))
       }
+      if (control) base2.push(time(baseDir, label))
     }
     const b = median(base)
     const c = median(current)
-    console.log(`| ${label} | ${b.toFixed(1)} | ${c.toFixed(1)} | ${(c / b).toFixed(2)} |`)
+    const extra = control ? ` ${(median(base2) / b).toFixed(2)} |` : ""
+    console.log(`| ${label} | ${b.toFixed(1)} | ${c.toFixed(1)} | ${(c / b).toFixed(2)} |${extra}`)
   }
 }
