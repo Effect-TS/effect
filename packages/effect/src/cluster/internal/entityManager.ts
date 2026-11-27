@@ -20,13 +20,8 @@ import * as Schedule from "../../Schedule.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaIssue from "../../SchemaIssue.ts"
 import * as Scope from "../../Scope.ts"
-import {
-  AlreadyProcessingMessage,
-  EntityNotAssignedToRunner,
-  MailboxFull,
-  MalformedMessage,
-  PersistenceError
-} from "../ClusterError.ts"
+import type { PersistenceError } from "../ClusterError.ts"
+import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, MalformedMessage } from "../ClusterError.ts"
 import * as ClusterMetrics from "../ClusterMetrics.ts"
 import { isUninterruptibleForServer, Persisted, WithTransaction } from "../ClusterSchema.ts"
 import * as ClusterSchema from "../ClusterSchema.ts"
@@ -44,7 +39,7 @@ import type { Sharding } from "../Sharding.ts"
 import { ShardingConfig } from "../ShardingConfig.ts"
 import * as Snowflake from "../Snowflake.ts"
 import * as ClusterAbandon from "./clusterAbandon.ts"
-import { ActiveRequests, CurrentActivationScope, CurrentRetirementLatch } from "./entityActivation.ts"
+import { CurrentActivationScope, CurrentRetirementLatch } from "./entityActivation.ts"
 import { EntityReaper } from "./entityReaper.ts"
 import { acquireEntity, releaseEntity } from "./interruptors.ts"
 import { ResourceMap } from "./resourceMap.ts"
@@ -121,8 +116,6 @@ export type EntityState = {
     /** Set when the request should not outlive its caller. */
     callerScope?: Scope.Scope | undefined
     transaction?: RequestTransaction | undefined
-    /** Set by a handler, see `ActiveRequests`. */
-    exitWrites?: Effect.Effect<void> | undefined
     /** Set when an interrupt arrives while no handlers are ready. */
     interrupted?: boolean | undefined
     /** The handler generation the remembered interrupt was last sent to. */
@@ -351,7 +344,6 @@ export const make = Effect.fnUntraced(function*<
           Context.add(KeepAliveLatch, keepAliveLatch),
           Context.add(CurrentActivationScope, scope),
           Context.add(CurrentRetirementLatch, retired),
-          Context.add(ActiveRequests, activeRequests),
           Context.add(Scope.Scope, handlerScope),
           Context.add(CurrentLogAnnotations, {})
         )
@@ -410,25 +402,17 @@ export const make = Effect.fnUntraced(function*<
                 // A failed save can abort the request transaction, so a retry
                 // could store a success outside it. Save once and let the
                 // failed transaction replay the request.
-                const respondExit = Effect.suspend(() =>
-                  request.message.respond(
-                    new Reply.WithExit({
-                      requestId: Snowflake.Snowflake(response.requestId),
-                      id: snowflakeGen.nextUnsafe(),
-                      exit: response.exit
-                    })
-                  )
-                )
-                const exitWrites = persisted ? request.exitWrites : undefined
                 const write = retryRespond(
                   persisted && request.transaction && Exit.isSuccess(response.exit) ? 0 : 4,
-                  exitWrites === undefined
-                    ? respondExit
-                    : options.storage.withTransaction(Effect.andThen(respondExit, exitWrites)).pipe(
-                      // A failed write or commit is a defect. Treat it as a failed
-                      // save, so the stored reply decides whether it committed.
-                      Effect.catchDefect((defect) => Effect.fail(new PersistenceError({ cause: defect })))
+                  Effect.suspend(() =>
+                    request.message.respond(
+                      new Reply.WithExit({
+                        requestId: Snowflake.Snowflake(response.requestId),
+                        id: snowflakeGen.nextUnsafe(),
+                        exit: response.exit
+                      })
                     )
+                  )
                 )
                 // A runner that lost the shard must not decide the stored
                 // result. A rejection is not retried.

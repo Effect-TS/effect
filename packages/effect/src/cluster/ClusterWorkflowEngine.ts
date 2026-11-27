@@ -43,7 +43,7 @@ import * as EntityId from "./EntityId.ts"
 import * as EntityType from "./EntityType.ts"
 import * as Envelope from "./Envelope.ts"
 import * as ClusterAbandon from "./internal/clusterAbandon.ts"
-import { ActiveRequests, CurrentActivationScope, CurrentRetirementLatch } from "./internal/entityActivation.ts"
+import { CurrentActivationScope, CurrentRetirementLatch } from "./internal/entityActivation.ts"
 import * as Message from "./Message.ts"
 import { MessageStorage } from "./MessageStorage.ts"
 import type { WithExitEncoded } from "./Reply.ts"
@@ -317,7 +317,7 @@ export const make = Effect.gen(function*() {
         pending.results.has(InterruptSignal.name)
     })
 
-  const sendResumeParent = Effect.fnUntraced(function*(parent: ParentRef, childExecutionId: string) {
+  const sendResumeParent = Effect.fnUntraced(function*(parent: ParentRef, child: ParentRef) {
     // Parents saved before `shardGroup` existed, or in the default group, omit it.
     const workflow = workflows.get(parent.workflowName)
     const address = entityAddress(
@@ -328,20 +328,53 @@ export const make = Effect.gen(function*() {
     const requestId = yield* storage.requestIdForPrimaryKey({
       address,
       tag: "resume",
-      id: childExecutionId
+      id: child.executionId
     })
     if (Option.isNone(requestId)) {
       return yield* sendDiscard({
         rpc: ResumeRpc,
         address,
-        payload: { childExecutionId }
+        payload: {
+          childExecutionId: child.executionId,
+          childWorkflowName: child.workflowName,
+          childShardGroup: child.shardGroup
+        }
       })
     }
     const reply = yield* replyForRequestId(requestId.value)
     if (Option.isNone(reply)) return
-    // Reset through storage so failures abort the child's reply transaction.
-    yield* storage.clearReplies(requestId.value, { expectedReplyId: Snowflake.Snowflake(reply.value.id) })
+    yield* sharding.reset(requestId.value, { expectedReplyId: Snowflake.Snowflake(reply.value.id) })
   })
+
+  // Older wakes do not name the child's workflow and are not held. A deleted
+  // child run or an already-settled parent needs no wait.
+  const awaitChildResult = (
+    workflow: Workflow.Any,
+    executionId: string,
+    payload: typeof ResumeRpc.payloadSchema.Type,
+    retired?: Latch.Latch
+  ) => {
+    if (payload.childWorkflowName === undefined || payload.childExecutionId === undefined) return Effect.void
+    const address = entityAddress(
+      `Workflow/${payload.childWorkflowName}`,
+      payload.childExecutionId,
+      payload.childShardGroup ?? "default"
+    )
+    const wait = Effect.interruptible(
+      Effect.gen(function*() {
+        const requestId = yield* storage.requestIdForPrimaryKey({ address, tag: "run", id: "" })
+        if (Option.isNone(requestId)) return
+        if (isRunSettled(yield* replyForRequestId(requestId.value))) return
+        if (isRunSettled(yield* runReply(workflow, executionId))) return
+        return yield* Effect.fail("child result not saved")
+      }).pipe(Effect.retry(retryPolicy), Effect.orDie)
+    )
+    if (!retired) return wait
+    return Effect.flatMap(
+      Effect.raceFirst(Effect.as(wait, true), Effect.as(Effect.interruptible(retired.await), false)),
+      (ready) => ready ? Effect.void : ClusterAbandon.interrupt
+    )
+  }
 
   // Subscribe to the run's next reply before reading storage, so a reply
   // cannot fall between the read and the subscription. Returns `true` when the
@@ -442,7 +475,11 @@ export const make = Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
             const activation = yield* CurrentActivationScope
-            const activeRequests = yield* ActiveRequests
+            const self: ParentRef = {
+              workflowName: workflow._tag,
+              executionId,
+              ...(address.shardId.group === "default" ? undefined : { shardGroup: address.shardId.group })
+            }
             let pending = pendingByActivation.get(activation)
             if (!pending) {
               const results = new Map<string, Exit.Exit<unknown, unknown>>()
@@ -529,9 +566,6 @@ export const make = Effect.gen(function*() {
                 })
                 const current = { request, instance, activityAwaits: new Map<string, number>(), completing: false }
                 currentRun = current
-                // A rerun must not inherit the wakes of the run it replaces.
-                const active = activeRequests.get(request.requestId)!
-                active.exitWrites = undefined
                 const parent = (request.payload as any)[payloadParentKey] as
                   | (ParentRef & { readonly detached?: boolean })
                   | undefined
@@ -554,12 +588,9 @@ export const make = Effect.gen(function*() {
                       if (parent && !parent.detached && !parents.some((ref) => sameParent(ref, parent))) {
                         parents.push(parent)
                       }
-                      if (parents.length === 0) return
-                      // Save wakes in the terminal reply's transaction so a parent cannot replay
-                      // before the result is visible and a post-commit stop leaves them stored.
-                      active.exitWrites = Effect.orDie(
-                        Effect.forEach(parents, (ref) => sendResumeParent(ref, executionId), { discard: true })
-                      )
+                      for (const ref of parents) {
+                        yield* sendResumeParent(ref, self)
+                      }
                     }))
                     if (
                       !instance.suspended &&
@@ -694,7 +725,18 @@ export const make = Effect.gen(function*() {
                 return forkReply(Effect.as(wake, payload.exit as Exit.Exit<unknown, unknown>))
               },
 
-              resume: () => resumeCurrentRun("automatic").pipe(Rpc.wrap({ fork: true, uninterruptible: true })),
+              // A child sends its wake before its result is saved; wait for the
+              // result so replay cannot read the child as still suspended.
+              resume: (request: Entity.Request<any>) =>
+                Effect.andThen(
+                  awaitChildResult(
+                    workflow,
+                    executionId,
+                    request.payload as typeof ResumeRpc.payloadSchema.Type,
+                    pending.retired
+                  ),
+                  resumeCurrentRun("automatic")
+                ).pipe(Rpc.wrap({ fork: true, uninterruptible: true })),
 
               parent: (request: Entity.Request<any>) => {
                 const ref = request.payload as ParentRef
@@ -703,13 +745,13 @@ export const make = Effect.gen(function*() {
                 if (currentRun?.completing) {
                   return forkReply(
                     ensureSuccess(
-                      Effect.andThen(waitForRunReply(workflow, currentRun.request), sendResumeParent(ref, executionId))
+                      Effect.andThen(waitForRunReply(workflow, currentRun.request), sendResumeParent(ref, self))
                     )
                   )
                 }
                 return Effect.gen(function*() {
                   if (isRunSettled(yield* retryPersistence(runReply(workflow, executionId)))) {
-                    yield* ensureSuccess(sendResumeParent(ref, executionId))
+                    yield* ensureSuccess(sendResumeParent(ref, self))
                   }
                 }).pipe(Rpc.wrap({ fork: true }))
               }
@@ -1083,7 +1125,11 @@ const deferredReplyExit = (reply: WithExitEncoded<Workflow.ResultEncoded<any, an
 
 const ResumeRpc = Rpc.make("resume", {
   // Older persisted resume envelopes have an empty payload and use the empty key.
-  payload: { childExecutionId: Schema.optional(Schema.String) },
+  payload: {
+    childExecutionId: Schema.optional(Schema.String),
+    childWorkflowName: Schema.optional(Schema.String),
+    childShardGroup: Schema.optional(Schema.String)
+  },
   // Different children must not share an in-flight wake: the parent may have
   // already started another run when the next child finishes.
   primaryKey: ({ childExecutionId }) => childExecutionId ?? ""

@@ -1237,23 +1237,25 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         idempotencyKey: () => "p"
       })
       const storage = yield* makeSharedStorage
-      const savingWake = yield* Latch.make()
-      const releaseWake = yield* Latch.make()
-      // Hold the child's exit-reply transaction open after saving the parent's resume.
+      const savingComplete = yield* Latch.make()
+      const releaseComplete = yield* Latch.make()
+      // Hold the child's Complete reply write while storage is polled.
       const storageLayer = Layer.succeed(MessageStorage.MessageStorage, {
         ...storage,
-        saveRequest: (message) => {
+        saveReply: (reply) => {
           if (
-            message.envelope.tag === "resume" &&
-            message.envelope.address.entityType === `Workflow/${Parent._tag}` &&
-            !savingWake.isOpen()
+            reply.rpc._tag === "run" &&
+            reply.reply._tag === "WithExit" &&
+            reply.reply.exit._tag === "Success" &&
+            (reply.reply.exit.value as { readonly _tag?: unknown } | undefined)?._tag === "Complete" &&
+            !savingComplete.isOpen()
           ) {
-            return storage.saveRequest(message).pipe(
-              Effect.tap(() => savingWake.open),
-              Effect.tap(() => releaseWake.await)
+            return savingComplete.open.pipe(
+              Effect.andThen(releaseComplete.await),
+              Effect.andThen(storage.saveReply(reply))
             )
           }
-          return storage.saveRequest(message)
+          return storage.saveReply(reply)
         }
       })
       const layer = Layer.merge(
@@ -1267,7 +1269,6 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       ).pipe(Layer.provideMerge(makeTestWorkflowEngine({ storageLayer })))
       const childId = yield* Child.executionId({})
       const parentId = yield* Parent.executionId({})
-      yield* Effect.addFinalizer(() => releaseWake.open)
       yield* Effect.gen(function*() {
         const sharding = yield* Sharding.Sharding
         yield* Parent.execute({}, { discard: true })
@@ -1277,12 +1278,12 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           token: DurableDeferred.tokenFromExecutionId(gate, { workflow: Child, executionId: childId }),
           value: "done"
         })
-        yield* pollStorageUntil(() => savingWake.isOpen(), "child must pause after saving parent wake")
+        yield* pollStorageUntil(() => savingComplete.isOpen(), "child must pause while saving Complete")
         for (let i = 0; i < 50; i++) {
           yield* sharding.pollStorage
           yield* TestClock.adjust(1)
         }
-        yield* releaseWake.open
+        yield* releaseComplete.open
         assert.deepStrictEqual(
           yield* pollUntil(Child, childId, "Complete"),
           new Workflow.Complete({ exit: Exit.succeed("done") })
@@ -1291,7 +1292,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
           yield* pollUntil(Parent, parentId, "Complete"),
           new Workflow.Complete({ exit: Exit.succeed("done") })
         )
-      }).pipe(Effect.provide(layer))
+      }).pipe(Effect.ensuring(releaseComplete.open), Effect.provide(layer))
     }))
 
   it.effect("recovers an awaited deferred after a read outage exceeds the old retry budget", () =>

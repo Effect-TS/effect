@@ -1044,14 +1044,6 @@ export const MemoryTransaction = Context.Reference<boolean>("effect/cluster/Mess
   defaultValue: constFalse
 })
 
-// Memory has no transaction isolation. Defer a terminal reply and any writes
-// after it to the outer commit so readers never observe them before commit or
-// out of order.
-const MemoryCommits = Context.Reference<Array<() => void> | undefined>(
-  "effect/cluster/MessageStorage/MemoryCommits",
-  { defaultValue: () => undefined }
-)
-
 // the same claim window the SQL driver uses (`last_read < ten minutes ago`)
 const claimExpirationMillis = 10 * 60 * 1000
 
@@ -1147,64 +1139,45 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
       return replies
     }
 
-    const publish = (write: () => void, defer = false) =>
-      MemoryCommits.use((commits) =>
-        Effect.sync(() => {
-          if (commits && (defer || commits.length > 0)) {
-            commits.push(write)
-          } else {
-            write()
-          }
-        })
-      )
-
     const encoded: Encoded = {
       saveEnvelope: ({ deliverAt, envelope: envelope_, primaryKey }) =>
-        Effect.suspend((): Effect.Effect<SaveResult.Encoded> => {
+        Effect.sync(() => {
           const envelope = JSON.parse(JSON.stringify(envelope_)) as Envelope.Encoded
-          const find = () =>
-            primaryKey
-              ? requestsByPrimaryKey.get(primaryKey)
-              : envelope._tag === "Request" && requests.get(envelope.requestId)
-          const existing = find()
+          const existing = primaryKey
+            ? requestsByPrimaryKey.get(primaryKey)
+            : envelope._tag === "Request" && requests.get(envelope.requestId)
           if (existing) {
-            return Effect.succeed(SaveResultEncoded.Duplicate({
+            return SaveResultEncoded.Duplicate({
               originalId: Snowflake.Snowflake(existing.envelope.requestId),
               lastReceivedReply: Option.fromNullishOr(
                 existing.replies.length === 1 && existing.replies[0]._tag === "WithExit"
                   ? existing.replies[0]
                   : existing.lastReceivedChunk
               )
-            }))
+            })
           }
-          return Effect.as(
-            publish(() => {
-              if (envelope._tag === "Request") {
-                // a deferred save can find the request saved in the meantime
-                if (find()) return
-                const entry: MemoryEntry = { envelope, replies: [], lastReceivedChunk: undefined, deliverAt }
-                requests.set(envelope.requestId, entry)
-                if (primaryKey) {
-                  requestsByPrimaryKey.set(primaryKey, entry)
-                }
-              } else {
-                const entry = requests.get(envelope.requestId)
-                // the request was deleted, so there is nothing left to acknowledge or interrupt
-                if (!entry) return
-                if (envelope._tag === "AckChunk") {
-                  entry.lastReceivedChunk = entry.replies.find((r): r is Reply.ChunkEncoded =>
-                    r._tag === "Chunk" && r.id === envelope.replyId
-                  ) ?? entry.lastReceivedChunk
-                }
-              }
-              unprocessed.add(envelope)
-              journal.push(envelope)
-            }),
-            SaveResultEncoded.Success()
-          )
+          if (envelope._tag === "Request") {
+            const entry: MemoryEntry = { envelope, replies: [], lastReceivedChunk: undefined, deliverAt }
+            requests.set(envelope.requestId, entry)
+            if (primaryKey) {
+              requestsByPrimaryKey.set(primaryKey, entry)
+            }
+          } else {
+            const entry = requests.get(envelope.requestId)
+            // the request was deleted, so there is nothing left to acknowledge or interrupt
+            if (!entry) return SaveResultEncoded.Success()
+            if (envelope._tag === "AckChunk") {
+              entry.lastReceivedChunk = entry.replies.find((r): r is Reply.ChunkEncoded =>
+                r._tag === "Chunk" && r.id === envelope.replyId
+              ) ?? entry.lastReceivedChunk
+            }
+          }
+          unprocessed.add(envelope)
+          journal.push(envelope)
+          return SaveResultEncoded.Success()
         }),
-      saveReply: (reply_) =>
-        publish(() => {
+      saveReply: (reply_) => {
+        const save = Effect.sync(() => {
           const reply = JSON.parse(JSON.stringify(reply_)) as Reply.Encoded
           const entry = requests.get(reply.requestId)
           if (!entry || replyIds.has(reply.id)) return
@@ -1215,9 +1188,20 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           entry.replies.push(reply)
           replyIds.add(reply.id)
           replyLatch.openUnsafe()
-        }, reply_._tag === "WithExit"),
+        })
+        // Memory has no transaction isolation. Publish terminal replies at the
+        // outer commit boundary, before their queued handler notifications, so
+        // reply readers cannot deliver a success that may still be rolled back.
+        return TransactionNotifications.use((notifications) =>
+          reply_._tag === "WithExit" && notifications
+            ? Effect.sync(() => {
+              notifications.push(save)
+            })
+            : save
+        )
+      },
       clearReplies: (id, options) =>
-        publish(() => {
+        Effect.sync(() => {
           const entry = requests.get(String(id))
           if (!entry) return
           if (
@@ -1370,24 +1354,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
             }
           }
         }),
-      withTransaction: (effect) =>
-        MemoryCommits.use((outer) => {
-          const commits = outer ?? []
-          const start = commits.length
-          return effect.pipe(
-            Effect.provideService(MemoryTransaction, true),
-            Effect.provideService(MemoryCommits, commits),
-            Effect.onExit((exit) =>
-              Effect.sync(() => {
-                if (Exit.isFailure(exit)) {
-                  commits.length = start
-                } else if (!outer) {
-                  for (const commit of commits) commit()
-                }
-              })
-            )
-          )
-        })
+      withTransaction: Effect.provideService(MemoryTransaction, true)
     }
 
     const storage = yield* makeEncoded(encoded)
