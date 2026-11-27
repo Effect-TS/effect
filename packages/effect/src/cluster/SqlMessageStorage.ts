@@ -784,8 +784,13 @@ export const makeEncodedStorage: (options?: {
         const update = reply._tag === "Chunk" ?
           sql`UPDATE ${messagesTableSql} SET last_reply_id = ${reply.id} WHERE id = ${reply.requestId}` :
           sql`UPDATE ${messagesTableSql} SET processed = ${sqlTrue}, last_reply_id = ${reply.id} WHERE request_id = ${reply.requestId}`
-        return update.unprepared.pipe(
-          Effect.andThen(sql`INSERT INTO ${repliesTableSql} ${sql.insert(row)}`),
+        return lockRequest(reply.requestId).pipe(
+          Effect.flatMap((request) =>
+            // the request was deleted, so there is nothing left to reply to
+            request.length === 0 ? Effect.void : update.unprepared.pipe(
+              Effect.andThen(sql`INSERT INTO ${repliesTableSql} ${sql.insert(row)}`)
+            )
+          ),
           sql.withTransaction
         )
       }).pipe(

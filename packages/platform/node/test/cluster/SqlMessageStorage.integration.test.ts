@@ -616,12 +616,13 @@ describe("SqlMessageStorage", () => {
             const sql = yield* SqlClient.SqlClient
             yield* sql`CREATE TABLE collision_other (id INT)`
             yield* sql`CREATE INDEX collision_replies_one_exit ON collision_other (id)`
-            const storage = yield* SqlMessageStorage.makeEncoded({ prefix: "collision" }).pipe(
-              Effect.provide(NodeCrypto.layer)
+            const storage = yield* MessageStorage.makeEncoded(
+              yield* SqlMessageStorage.makeEncoded({ prefix: "collision" }).pipe(Effect.provide(NodeCrypto.layer))
             )
-            const exit = { _tag: "WithExit", requestId: "1", exit: { _tag: "Success", value: null } } as const
-            yield* storage.saveReply({ ...exit, id: "1" })
-            const error = yield* Effect.flip(storage.saveReply({ ...exit, id: "2" }))
+            const request = yield* makeRequest()
+            yield* storage.saveRequest(request)
+            yield* storage.saveReply(yield* makeReply(request))
+            const error = yield* Effect.flip(storage.saveReply(yield* makeReply(request)))
             expect(error._tag).toEqual("PersistenceError")
           }))
 
@@ -824,7 +825,7 @@ describe("SqlMessageStorage", () => {
             .toHaveLength(2)
         }).pipe(Effect.ensuring(Effect.orDie(truncate))))
 
-      it.effect("does not store an AckChunk or Interrupt for a request deleteProcessed removed", () =>
+      it.effect("does not store late envelopes or replies for a request deleteProcessed removed", () =>
         Effect.gen(function*() {
           yield* truncate
           const sql = yield* SqlClient.SqlClient
@@ -839,14 +840,17 @@ describe("SqlMessageStorage", () => {
           expect(yield* storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 100 }))
             .toEqual(1)
 
-          // a late acknowledgement and cancellation, such as ones that waited behind the delete
+          // late writes, such as ones that waited behind the delete
           yield* storage.saveEnvelope(yield* makeAckChunk(request, chunk))
           yield* storage.saveEnvelope(Message.OutgoingEnvelope.interrupt({
             id: snowflake.nextUnsafe(),
             requestId: request.envelope.requestId,
             address: request.envelope.address
           }))
+          yield* storage.saveReply(yield* makeChunkReply(request))
+          yield* storage.saveReply(yield* makeReply(request))
           expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toEqual([])
+          expect(yield* storage.repliesForUnfiltered([request.envelope.requestId])).toEqual([])
           const requestId = String(request.envelope.requestId)
           expect(yield* sql`SELECT id FROM cluster_messages WHERE request_id = ${requestId}`).toEqual([])
         }).pipe(Effect.ensuring(Effect.orDie(truncate))))
