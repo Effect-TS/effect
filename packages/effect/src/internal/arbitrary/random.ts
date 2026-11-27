@@ -35,8 +35,7 @@ function rotateLeft(value: number, shift: number): number {
   return (value << shift | value >>> (32 - shift)) >>> 0
 }
 
-/** @internal */
-export function makeGenerationRandom(
+function makeGenerationRandom(
   initialState0: number,
   initialState1: number,
   initialState2: number,

@@ -418,25 +418,24 @@ class TestClockImpl implements TestClock {
     }
   }
 
-  readonly timeoutBusy = <A>(effect: Effect.Effect<A>): Effect.Effect<A | void> =>
-    effect.pipe(
+  timeoutBusy(effect: Effect.Effect<void>): Effect.Effect<void> {
+    return effect.pipe(
       Effect.timeoutOrElse({
         duration: this.config.warningDelay,
         orElse: () => Effect.provideService(Effect.logWarning(busyWarningMessage), Console.Console, this.liveConsole)
       }),
       this.withLive
     )
+  }
 
   wake(latch: Latch.Latch, idle: IdleAware | undefined): Effect.Effect<void> {
     return Effect.suspend(() => {
       const tracker: WakeTracker = { pending: 0, onIdle: undefined }
       this.runTracked(tracker, () => latch.openUnsafe())
-      if (idle !== undefined) return this.timeoutBusy(settle(tracker, idle))
+      // The woken fiber and the caller can be on different schedulers
+      if (idle !== undefined) return this.timeoutBusy(Effect.andThen(awaitTracker(tracker), awaitIdle(idle)))
       if (tracker.pending === 0) return Effect.yieldNow
-      return awaitTracker(tracker).pipe(
-        this.timeoutBusy,
-        Effect.andThen(Effect.yieldNow)
-      )
+      return Effect.andThen(this.timeoutBusy(awaitTracker(tracker)), Effect.yieldNow)
     })
   }
 
@@ -540,20 +539,6 @@ const awaitTracker = (tracker: WakeTracker): Effect.Effect<void> =>
 
 const awaitIdle = (scheduler: IdleAware): Effect.Effect<void> =>
   Effect.callback<void>((resume) => Effect.sync(scheduler[whenIdle](() => resume(Effect.void))))
-
-/**
- * Waits until the woken fiber's tracked tasks have run and the caller's
- * `TestScheduler` is idle. They can be different schedulers, so repeat until
- * both have settled.
- */
-const settle = (tracker: WakeTracker, scheduler: IdleAware): Effect.Effect<void> =>
-  Effect.andThen(
-    awaitTracker(tracker),
-    Effect.andThen(
-      awaitIdle(scheduler),
-      Effect.suspend(() => tracker.pending === 0 ? Effect.void : settle(tracker, scheduler))
-    )
-  )
 
 const findIdleAware = (scheduler: Scheduler.Scheduler): IdleAware | undefined => {
   while (scheduler instanceof TrackingScheduler) scheduler = scheduler.parent

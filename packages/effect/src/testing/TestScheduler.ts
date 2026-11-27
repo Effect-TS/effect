@@ -115,26 +115,25 @@ export const layer = (options: Options): Layer.Layer<never> => Layer.sync(Schedu
 
 class TestSchedulerImpl implements Scheduler.Scheduler, IdleAware {
   readonly executionMode = "async"
-  readonly random: ReturnType<typeof makeAttemptRandom>
+  readonly nextUint32: () => number
   readonly threshold: number
   readonly base: Scheduler.MixedScheduler
   readonly host: (f: () => void) => () => void
   // Pending dispatcher batches, one per dispatcher at most
   readonly pool: Array<() => void> = []
   readonly idleWaiters = new Set<() => void>()
-  draining = false
-  tick: (() => void) | undefined = undefined
+  // Set from scheduling a host turn until that turn has run its batches
+  scheduled = false
 
   constructor(options: Options) {
-    this.random = makeAttemptRandom(hashSeed(options.seed), 0)
+    this.nextUint32 = makeAttemptRandom(hashSeed(options.seed), 0).nextUint32
     this.threshold = (options.preempt ?? 0.1) * 0x100000000
     this.base = new Scheduler.MixedScheduler("async", this.enqueue)
     this.host = new Scheduler.MixedScheduler("async").setImmediate
   }
 
   shouldYield(fiber: Fiber.Fiber<unknown, unknown>): boolean {
-    return fiber.currentOpCount >= fiber.cache.maxOpsBeforeYield ||
-      (this.threshold > 0 && this.random.nextUint32() < this.threshold)
+    return this.base.shouldYield(fiber) || (this.threshold > 0 && this.nextUint32() < this.threshold)
   }
 
   makeDispatcher(): Scheduler.SchedulerDispatcher {
@@ -160,23 +159,24 @@ class TestSchedulerImpl implements Scheduler.Scheduler, IdleAware {
   }
 
   schedule(): void {
-    if (this.tick === undefined && !this.draining) {
-      this.tick = this.host(this.run)
-    }
+    if (this.scheduled) return
+    this.scheduled = true
+    this.host(this.run)
   }
 
   readonly run = (): void => {
-    this.tick = undefined
-    this.draining = true
+    const pool = this.pool
     try {
-      const pool = this.pool
       for (let n = pool.length; n > 0 && pool.length > 0; n--) {
-        const index = Math.floor(this.random.nextUint32() * pool.length / 0x100000000)
-        pool.splice(index, 1)[0]()
+        const index = Math.floor(this.nextUint32() * pool.length / 0x100000000)
+        const batch = pool[index]
+        pool[index] = pool[pool.length - 1]
+        pool.pop()
+        batch()
       }
     } finally {
-      this.draining = false
-      if (this.pool.length > 0) {
+      this.scheduled = false
+      if (pool.length > 0) {
         this.schedule()
       } else if (this.idleWaiters.size > 0) {
         const waiters = Array.from(this.idleWaiters)
