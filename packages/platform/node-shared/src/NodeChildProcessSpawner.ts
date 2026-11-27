@@ -699,7 +699,7 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
         const cwd = yield* resolveWorkingDirectory(cmd.options)
         const env = resolveEnvironment(cmd.options)
         const stdio = buildStdioArray(stdinConfig, stdoutConfig, stderrConfig, resolvedAdditionalFds)
-        // Keeps writing possible after the child closes its write side
+        // Duplex fds stay writable after the child closes its write side
         const halfOpen = resolvedAdditionalFds.flatMap(({ config, fd }) => config.type === "duplex" ? [fd] : [])
 
         const releaseProcess = Effect.fnUntraced(function*(

@@ -2,4 +2,4 @@
 "@effect/platform-node-shared": patch
 ---
 
-With `NodeChildProcessSpawner.layerProxyProcess`, a failed write to a duplex additional fd is now reported to a later reader of that fd, even when the child closed the fd right after starting.
+Fix `NodeChildProcessSpawner.layerProxyProcess` sometimes losing a failed write to a duplex additional fd that the child had closed, so a later read of that fd now fails instead of ending cleanly.

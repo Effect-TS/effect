@@ -113,8 +113,7 @@ export class ProxiedProcess extends EventEmitter implements SpawnedProcess {
 
   attach(fd: number, socket: Net.Socket): boolean {
     if (this.done || this.pipes[fd] !== true || this.stdio[fd] !== null) return false
-    // The socket is read from before the process is published, and emits
-    // `end` no earlier than the tick after its header was read
+    // The socket is already reading, but cannot emit `end` before the next tick
     if (this.halfOpen.includes(fd)) socket.allowHalfOpen = true
     this.stdio[fd] = socket
     this.emitSpawn()

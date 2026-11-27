@@ -31,8 +31,8 @@ export interface SpawnedProcess {
 }
 
 /**
- * Launches a command. The piped fds in `halfOpen` must allow half-open
- * connections before they can observe the child closing its write side.
+ * Launches a command, making the piped fds in `halfOpen` half-open before
+ * they can read EOF.
  *
  * @internal
  */
