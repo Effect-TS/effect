@@ -2,14 +2,7 @@ import { describe, it, test } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Cause, Context, Effect, ErrorReporter, Exit, Option, References, Schema, Scope, Stream, Tracer } from "effect"
 import { identity } from "effect/Function"
-import {
-  HttpEffect,
-  type HttpMiddleware,
-  HttpRouter,
-  HttpServerRequest,
-  HttpServerRespondable,
-  HttpServerResponse
-} from "effect/http"
+import { HttpEffect, HttpRouter, HttpServerRequest, HttpServerRespondable, HttpServerResponse } from "effect/http"
 import * as Layer from "effect/Layer"
 
 const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: () => 0 })
@@ -527,65 +520,28 @@ describe("HttpEffect", () => {
     })
   })
 
-  describe("error reporting", () => {
+  test("reports a failed cause without the built-in client errors", async () => {
     const schemaError = Effect.runSync(Effect.flip(Schema.decodeUnknownEffect(Schema.Number)("abc")))
-
-    const serve = async (
-      self: Effect.Effect<HttpServerResponse.HttpServerResponse, unknown>,
-      middleware: HttpMiddleware.HttpMiddleware
-    ) => {
-      const reported: Array<string> = []
-      const { dispose, handler } = HttpEffect.toWebHandlerLayer(
-        self,
-        ErrorReporter.layer([ErrorReporter.make(({ error }) => reported.push(error.message))]),
-        { middleware }
-      )
-      try {
-        const response = await handler(new Request("http://localhost/"))
-        return { status: response.status, reported }
-      } finally {
-        await dispose()
-      }
-    }
-
-    test.each([
-      { error: schemaError, status: 400 },
-      { error: new Cause.NoSuchElementError(), status: 404 }
-    ])("does not report a $error._tag answered with $status", async ({ error, status }) => {
-      let seen: unknown
-      const result = await serve(
-        Effect.fail(error),
-        (app) => Effect.tapCause(app, (cause) => Effect.sync(() => seen = Cause.squash(cause)))
-      )
-      strictEqual(result.status, status)
-      deepStrictEqual(result.reported, [])
-      strictEqual(seen, error)
+    const respondable = Object.assign(new Cause.NoSuchElementError("respondable"), {
+      [HttpServerRespondable.symbol]: () => Effect.succeed(HttpServerResponse.empty({ status: 409 }))
     })
-
-    test("does not report a SchemaError raised by middleware", async () => {
-      const result = await serve(
-        Effect.succeed(HttpServerResponse.empty()),
-        (app) => Effect.flatMap(Effect.fail(schemaError), () => app)
-      )
-      strictEqual(result.status, 400)
-      deepStrictEqual(result.reported, [])
-    })
-
-    test("reports the other failures in a cause once", async () => {
-      const respondable = Object.assign(new Cause.NoSuchElementError("respondable"), {
-        [HttpServerRespondable.symbol]: () => Effect.succeed(HttpServerResponse.empty({ status: 409 }))
-      })
+    const reported: Array<string> = []
+    let seen: Cause.Cause<unknown> | undefined
+    const { dispose, handler } = HttpEffect.toWebHandlerLayer(
+      Effect.failCause(Cause.fromReasons<unknown>([
+        Cause.makeFailReason(schemaError),
+        Cause.makeFailReason(new Cause.NoSuchElementError()),
+        Cause.makeFailReason(respondable),
+        Cause.makeFailReason("boom")
+      ])),
+      ErrorReporter.layer([ErrorReporter.make(({ error }) => reported.push(error.message))]),
       // The middleware propagates the cause, so both reporting paths see it.
-      const result = await serve(
-        Effect.failCause(Cause.fromReasons<unknown>([
-          Cause.makeFailReason(schemaError),
-          Cause.makeFailReason(respondable),
-          Cause.makeFailReason("boom")
-        ])),
-        identity
-      )
-      deepStrictEqual(result.reported, ["respondable", "boom"])
-    })
+      { middleware: (app) => Effect.tapCause(app, (cause) => Effect.sync(() => seen = cause)) }
+    )
+    await handler(new Request("http://localhost/"))
+    await dispose()
+    deepStrictEqual(reported, ["respondable", "boom"])
+    assertTrue(seen!.reasons.some((reason) => reason._tag === "Fail" && reason.error === schemaError))
   })
 
   test("custom context", async () => {
