@@ -19,9 +19,9 @@ import * as Hash from "./Hash.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import { exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts"
 import { fiberCachedKeys } from "./internal/fiberCachedKeys.ts"
+import { hasProperty } from "./internal/predicate.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
-import { hasProperty } from "./internal/predicate.ts"
 import type * as Types from "./Types.ts"
 
 /**

@@ -103,13 +103,13 @@ describe("bundled", () => {
       "Inspectable.ts",
       "Pipeable.ts",
       "Redactable.ts",
+      "Scheduler.ts",
       "Utils.ts",
       "internal/core.ts",
       "internal/effect.ts",
       "internal/equal.ts",
       "internal/fiberCachedKeys.ts",
-      "internal/predicate.ts",
-      "internal/scheduler.ts"
+      "internal/predicate.ts"
     ])
     // The runtime calls the data-first forms of dual APIs and stays on flat contexts
     const [, functionModule] = rendered.find(([id]) => path.relative(effectSrcDir, id) === "Function.ts")!

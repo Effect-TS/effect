@@ -26,7 +26,7 @@ import { isIterable, isString, isTagged } from "../Predicate.ts"
 import { currentFiberTypeId, redact } from "../Redactable.ts"
 import type { StackFrame } from "../References.ts"
 import * as Result from "../Result.ts"
-import type * as Scheduler from "../Scheduler.ts"
+import * as Scheduler from "../Scheduler.ts"
 import type * as Scope from "../Scope.ts"
 import * as Tracer from "../Tracer.ts"
 import type {
@@ -116,7 +116,6 @@ import {
   TracerTimingEnabled,
   UnhandledLogLevel
 } from "./references.ts"
-import { getDefaultScheduler, MixedScheduler } from "./scheduler.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "./stackTraceLimit.ts"
 import { addSpanStackTrace, makeStackCleaner } from "./tracer.ts"
 
@@ -812,7 +811,7 @@ const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cac
   const get = <A>(key: string, fallback?: A): A => Context.getOrElseUnsafe(context, key, fallback as A)
   const currentTracer = get<Tracer.Tracer | undefined>(TracerKey)
   return {
-    scheduler: get<Scheduler.Scheduler | undefined>(SchedulerKey) ?? getDefaultScheduler(),
+    scheduler: get<Scheduler.Scheduler | undefined>(SchedulerKey) ?? Scheduler.getDefaultScheduler(),
     tracer: currentTracer,
     tracerContext: currentTracer?.["context"],
     tracerEnabled: get(TracerEnabledKey, defaultTracerEnabled),
@@ -5873,7 +5872,7 @@ export const runSyncExitWith = <R>(context: Context.Context<R>) => {
   const runFork = runForkWith(context)
   return <A, E>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E> => {
     if (effectIsExit(effect)) return effect
-    const scheduler = new MixedScheduler("sync")
+    const scheduler = new Scheduler.MixedScheduler("sync")
     const fiber = runFork(effect, { scheduler }) as FiberImpl<A, E>
     fiber._dispatcher?.flush()
     return fiber._exit ?? exitDie(new AsyncFiberError(fiber))

@@ -8,12 +8,12 @@ import { dual, identity } from "../Function.ts"
 import * as Hash from "../Hash.ts"
 import { NodeInspectSymbol } from "../Inspectable.ts"
 import { pipeArguments } from "../Pipeable.ts"
-import { hasProperty } from "./predicate.ts"
 import type { StackFrame } from "../References.ts"
 import type * as Types from "../Types.ts"
 import { SingleShotGen } from "../Utils.ts"
 import type { FiberImpl } from "./effect.ts"
 import { combine as hashCombine } from "./equal.ts"
+import { hasProperty } from "./predicate.ts"
 import * as InternalRecord from "./record.ts"
 
 /** @internal */
