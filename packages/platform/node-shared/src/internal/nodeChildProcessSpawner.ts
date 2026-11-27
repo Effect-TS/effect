@@ -30,11 +30,17 @@ export interface SpawnedProcess {
   removeListener(event: string, listener: (...args: Array<any>) => void): this
 }
 
-/** @internal */
+/**
+ * Launches a command. The piped fds in `halfOpen` must allow half-open
+ * connections before they can observe the child closing its write side.
+ *
+ * @internal
+ */
 export type SpawnProcess = (
   command: string,
   args: ReadonlyArray<string>,
-  options: NodeChildProcess.SpawnOptions
+  options: NodeChildProcess.SpawnOptions,
+  halfOpen: ReadonlyArray<number>
 ) => SpawnedProcess
 
 export const buildSpawnOptions = (

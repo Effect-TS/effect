@@ -176,7 +176,14 @@ const taskkill = (
   )
 }
 
-const spawnDirect: SpawnProcess = (command, args, options) => NodeChildProcess.spawn(command, args, options)
+const spawnDirect: SpawnProcess = (command, args, options, halfOpen) => {
+  const childProcess = NodeChildProcess.spawn(command, args, options)
+  for (const fd of halfOpen) {
+    const stream = childProcess.stdio[fd]
+    if (stream && "allowHalfOpen" in stream) stream.allowHalfOpen = true
+  }
+  return childProcess
+}
 
 // Returns the function that launches a command. The proxy process layer waits
 // here, interruptibly, for a proxy process that is ready, since the launch
@@ -392,10 +399,6 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
           break
         }
         case "duplex": {
-          // Keep writing possible after the child closes its write side.
-          if (nodeStream && "allowHalfOpen" in nodeStream) {
-            nodeStream.allowHalfOpen = true
-          }
           setupOutput(fd, nodeStream, config.sink)
           yield* setupInput(fd, nodeStream, config.stream)
           break
@@ -485,7 +488,8 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
   const spawn = (
     spawnProcess: SpawnProcess,
     command: ChildProcess.StandardCommand,
-    spawnOptions: NodeChildProcess.SpawnOptions
+    spawnOptions: NodeChildProcess.SpawnOptions,
+    halfOpen: ReadonlyArray<number>
   ) =>
     Effect.callback<
       readonly [SpawnedProcess, ExitSignal],
@@ -495,7 +499,8 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
       const handle = spawnProcess(
         command.command,
         command.args.map(unwrap),
-        spawnOptions
+        spawnOptions,
+        halfOpen
       )
       handle.on("error", (error) => {
         // Node copies the arguments into `spawnargs`.
@@ -694,6 +699,8 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
         const cwd = yield* resolveWorkingDirectory(cmd.options)
         const env = resolveEnvironment(cmd.options)
         const stdio = buildStdioArray(stdinConfig, stdoutConfig, stderrConfig, resolvedAdditionalFds)
+        // Keeps writing possible after the child closes its write side
+        const halfOpen = resolvedAdditionalFds.flatMap(({ config, fd }) => config.type === "duplex" ? [fd] : [])
 
         const releaseProcess = Effect.fnUntraced(function*(
           childProcess: SpawnedProcess,
@@ -722,7 +729,7 @@ const makeWith = Effect.fnUntraced(function*(prepareSpawn: Effect.Effect<SpawnPr
         // a child may wait for stdin EOF before exiting.
         const inputScope = Scope.makeUnsafe()
         const [childProcess, exitSignal] = yield* Effect.acquireRelease(
-          spawn(spawnProcess, cmd, buildSpawnOptions(cmd.options, { cwd, env, stdio }, process.platform)),
+          spawn(spawnProcess, cmd, buildSpawnOptions(cmd.options, { cwd, env, stdio }, process.platform), halfOpen),
           ([childProcess, exitSignal], exit) =>
             Effect.all([Scope.close(inputScope, exit), releaseProcess(childProcess, exitSignal)], {
               concurrency: "unbounded",
