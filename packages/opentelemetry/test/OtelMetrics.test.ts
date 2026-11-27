@@ -432,8 +432,8 @@ describe("Metrics", () => {
     Effect.gen(function*() {
       const services = yield* Effect.context<never>()
       const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services, "delta")
-      let fail = true
-      yield* Metric.update(Metric.counter("requests", { incremental: true }), 3)
+      const requests = Metric.counter("requests", { incremental: true })
+      let fail = false
       Metric.registerUnsafe(Metric.gauge("flaky"), services, {
         get: () => {
           if (fail) throw new Error("read failed")
@@ -442,7 +442,11 @@ describe("Metrics", () => {
         update: () => {},
         modify: () => {}
       })
+      yield* Metric.update(requests, 5)
+      yield* Effect.promise(() => producer.collect())
 
+      yield* Metric.update(requests, 3)
+      fail = true
       assert.throws(() => producer.collect())
       fail = false
       const result = yield* Effect.promise(() => producer.collect())

@@ -2,4 +2,4 @@
 "@effect/opentelemetry": patch
 ---
 
-Reduce per-collection allocation in `MetricProducer`; data point attributes are now frozen and shared across collections.
+Reduce collection allocations by caching each series' key and reusing frozen attributes where possible.
