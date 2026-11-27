@@ -24,6 +24,12 @@ describe("NodeWorker", () => {
         Effect.sync(() => new NativeWorker(unresponsive, { eval: true })),
         (worker) => Effect.promise(() => worker.terminate())
       )
+      let terminated = 0
+      const terminate = native.terminate.bind(native)
+      native.terminate = () => {
+        terminated++
+        return terminate()
+      }
       const exited = yield* Deferred.make<number>()
       native.on("exit", (code) => Deferred.doneUnsafe(exited, Exit.succeed(code)))
       const scope = yield* Scope.make()
@@ -39,10 +45,12 @@ describe("NodeWorker", () => {
 
       const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
       yield* TestClock.adjust(Duration.millis(999))
+      assert.strictEqual(terminated, 0)
       assert.isUndefined(closing.pollUnsafe())
       yield* TestClock.adjust(Duration.millis(1))
       yield* Fiber.join(closing)
 
+      assert.strictEqual(terminated, 1)
       assert.strictEqual(yield* Deferred.await(exited), 1)
     }))
 })
