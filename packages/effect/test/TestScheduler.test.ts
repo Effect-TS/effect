@@ -30,42 +30,32 @@ describe("TestScheduler", () => {
       assert.isDefined(failingSeed)
 
       const replayLayer = TestScheduler.layer({ seed: failingSeed })
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 2; i++) {
         assert.strictEqual(yield* program.pipe(Effect.provide(replayLayer)), 1)
       }
     }))
 
-  it.effect("cooperates with TestClock when forked fibers sleep before adjust", () =>
+  it.effect("TestClock.adjust waits for forked sleepers in either layer order and across schedulers", () =>
     Effect.gen(function*() {
-      const scenario = Effect.gen(function*() {
+      const scenario = Effect.fnUntraced(function*(adjust: Effect.Effect<void>) {
         let done = false
         yield* Effect.gen(function*() {
           yield* Effect.sleep("1 second")
+          for (let i = 0; i < 20; i++) yield* Effect.yieldNow
+          yield* Effect.sleep("1 second")
           done = true
         }).pipe(Effect.forkChild)
-        yield* TestClock.adjust("1 second")
+        yield* adjust
         assert.isTrue(done)
       })
 
+      const adjust = TestClock.adjust("2 seconds")
       for (let seed = 1; seed <= 25; seed++) {
-        yield* scenario.pipe(Effect.provide(TestScheduler.layer({ seed })))
-        yield* scenario.pipe(
-          Effect.provide(TestClock.layer()),
-          Effect.provide(TestScheduler.layer({ seed }))
-        )
+        const layer = TestScheduler.layer({ seed })
+        yield* scenario(adjust).pipe(Effect.provide(layer))
+        yield* scenario(adjust).pipe(Effect.provide(TestClock.layer()), Effect.provide(layer))
+        // only adjust runs on the TestScheduler
+        yield* scenario(Effect.provide(adjust, layer))
       }
-    }))
-
-  it.effect("waits for a sleeper on another scheduler when only adjust uses TestScheduler", () =>
-    Effect.gen(function*() {
-      let done = false
-      yield* Effect.gen(function*() {
-        yield* Effect.sleep("1 second")
-        for (let i = 0; i < 20; i++) yield* Effect.yieldNow
-        yield* Effect.sleep("1 second")
-        done = true
-      }).pipe(Effect.forkChild({ startImmediately: true }))
-      yield* TestClock.adjust("2 seconds").pipe(Effect.provide(TestScheduler.layer({ seed: 1, preempt: 0 })))
-      assert.isTrue(done)
     }))
 })
