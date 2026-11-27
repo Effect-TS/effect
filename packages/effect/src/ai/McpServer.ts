@@ -3484,7 +3484,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
       },
       ...(toolMeta !== undefined ? { _meta: toolMeta } : undefined)
     }
-    const mcpTool = toolMeta === undefined || Predicate.isReadonlyObject(toolMeta)
+    const mcpTool = isValidToolFields(toolFields)
       ? Schema.makeClassTrusted(McpTool, toolFields)
       : new McpTool(toolFields)
     registrations.push({
@@ -3557,11 +3557,53 @@ const isParameterValidationError = (
 
 const decodeToolJson = Schema.decodeUnknownEffect(ToolJson)
 
-const isGeneratedToolJson = (schema: JsonSchema.JsonSchema): schema is McpSchema.ToolJson =>
-  Predicate.isReadonlyObject(schema) &&
-  schema.type === "object" &&
-  (schema.properties === undefined || Predicate.isReadonlyObject(schema.properties)) &&
-  (schema.required === undefined || Array.isArray(schema.required))
+const isGeneratedToolJson = (schema: JsonSchema.JsonSchema): schema is McpSchema.ToolJson => {
+  if (!Predicate.isReadonlyObject(schema) || schema.type !== "object") {
+    return false
+  }
+  if (schema.properties !== undefined) {
+    if (!Predicate.isReadonlyObject(schema.properties)) {
+      return false
+    }
+    for (const value of Object.values(schema.properties)) {
+      if (typeof value !== "boolean" && !Predicate.isReadonlyObject(value)) {
+        return false
+      }
+    }
+  }
+  if (schema.required !== undefined) {
+    if (!Array.isArray(schema.required)) {
+      return false
+    }
+    for (const entry of schema.required) {
+      if (typeof entry !== "string") {
+        return false
+      }
+    }
+  }
+  return true
+}
+
+const isValidToolFields = (fields: {
+  readonly name: unknown
+  readonly title?: unknown
+  readonly description?: unknown
+  readonly annotations: {
+    readonly readOnlyHint: unknown
+    readonly destructiveHint: unknown
+    readonly idempotentHint: unknown
+    readonly openWorldHint: unknown
+  }
+  readonly _meta?: unknown
+}): boolean =>
+  typeof fields.name === "string" &&
+  (fields.title === undefined || typeof fields.title === "string") &&
+  (fields.description === undefined || typeof fields.description === "string") &&
+  typeof fields.annotations.readOnlyHint === "boolean" &&
+  typeof fields.annotations.destructiveHint === "boolean" &&
+  typeof fields.annotations.idempotentHint === "boolean" &&
+  typeof fields.annotations.openWorldHint === "boolean" &&
+  (fields._meta === undefined || Predicate.isReadonlyObject(fields._meta))
 
 // MCP requires an object root. A non-recursive root is compiled inline rather
 // than as a definition; a recursive root keeps its definition and the top-level

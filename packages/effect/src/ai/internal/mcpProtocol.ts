@@ -366,7 +366,7 @@ export const transcodeStrict = <
 export const makeToolListProjector = <A, I>(
   schema: Schema.Codec<A, I>,
   project: (tool: PublicMcpSchema.Tool) => A | unknown
-): ((tools: ReadonlyArray<PublicMcpSchema.Tool>) => Effect.Effect<ReadonlyArray<unknown>, Schema.SchemaError>) => {
+): (tools: ReadonlyArray<PublicMcpSchema.Tool>) => Effect.Effect<ReadonlyArray<unknown>, Schema.SchemaError> => {
   const encode = Schema.encodeUnknownEffect(Schema.toCodecJson(schema))
   const cache = new WeakMap<PublicMcpSchema.Tool, unknown>()
   return (tools) =>

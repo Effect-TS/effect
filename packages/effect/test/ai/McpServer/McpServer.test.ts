@@ -2238,6 +2238,31 @@ describe("McpServer", () => {
           }))
           assert.match(message, /cannot register tool 'raw': its raw JSON Schema must have an object root/)
         }))
+
+      it.effect("rejects invalid custom JSON Schema fragments and descriptor annotations", () =>
+        Effect.gen(function*() {
+          const requiredMessage = yield* register(Tool.make("bad-required", {
+            parameters: Schema.Any.check(Schema.makeFilter(() => true, {
+              toJsonSchema: () => ({ type: "object", required: [1] })
+            })),
+            success: Schema.String
+          }))
+          assert.match(requiredMessage, /cannot register tool 'bad-required'/)
+          assert.include(requiredMessage, "Expected string")
+
+          const propertyMessage = yield* register(Tool.make("bad-property", {
+            parameters: Schema.Any.check(Schema.makeFilter(() => true, {
+              toJsonSchema: () => ({ type: "object", properties: { count: 1 } })
+            })),
+            success: Schema.String
+          }))
+          assert.match(propertyMessage, /cannot register tool 'bad-property'/)
+
+          const titleMessage = yield* register(
+            Tool.make("bad-title", { success: Schema.String }).annotate(Tool.Title, 123 as any)
+          )
+          assert.include(titleMessage, "Schema validation failed")
+        }))
     })
 
     it.effect("lists read-only tools as non-destructive unless explicitly marked destructive", () =>
