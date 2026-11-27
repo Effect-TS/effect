@@ -231,14 +231,14 @@ describe("Client", { concurrent: false, timeout: 30_000 }, () => {
       assert.equal(Cause.hasDies(res), true)
     }).pipe(Effect.provide(D1Miniflare.layerClient)))
 
-  it.effect("names batches with the configured target", () =>
+  it.effect("names batches with the configured target and SpanNameGenerator", () =>
     Effect.gen(function*() {
       const db = {
         prepare: () => ({ bind: () => ({}) }),
         batch: async (statements: Array<unknown>) => statements.map(() => ({ results: [] }))
       } as any
       const sql = yield* D1Client.make({ db, spanAttributes: { "db.namespace": "app" } })
-      const spans: Array<Tracer.Span> = []
+      const spans: Array<Tracer.NativeSpan> = []
       const tracer = Tracer.make({
         span: (options) => {
           const span = new Tracer.NativeSpan(options)
@@ -247,7 +247,24 @@ describe("Client", { concurrent: false, timeout: 30_000 }, () => {
         }
       })
       yield* sql.batch([sql`SELECT 1`, sql`SELECT 2`]).pipe(Effect.withTracer(tracer))
-      assert.deepStrictEqual(spans.map((span) => span.name), ["BATCH app"])
+      yield* sql.batch([sql`SELECT 1`]).pipe(Effect.withTracer(tracer))
+      yield* sql.batch([sql`SELECT 1`]).pipe(
+        Effect.provideService(Statement.SpanNameGenerator, () => "sql.execute"),
+        Effect.withTracer(tracer)
+      )
+      yield* sql.batch([sql`SELECT 1`, sql`SELECT 2`]).pipe(
+        Effect.provideService(Statement.SpanNameGenerator, () => "sql.execute"),
+        Effect.withTracer(tracer)
+      )
+      assert.deepStrictEqual(
+        spans.map((span) => [span.name, span.attributes.get("db.namespace")]),
+        [
+          ["BATCH app", "app"],
+          ["app", "app"],
+          ["sql.execute", "app"],
+          ["BATCH app", "app"]
+        ]
+      )
     }).pipe(
       Effect.scoped,
       Effect.provide(Reactivity.layer)

@@ -230,6 +230,23 @@ describe("PgPool connection spans", () => {
     return { tracer, spans, named: (name: string) => spans.filter((span) => span.name === name) }
   }
 
+  const emptyQueryStream = () => {
+    let startup = true
+    const socket = new Duplex({
+      read() {},
+      write(chunk: Buffer, _encoding, callback) {
+        if (startup) {
+          startup = false
+          queueMicrotask(() => socket.push(ready))
+        } else if (chunk[0] === 0x50) {
+          queueMicrotask(() => socket.push(emptyQueryResult))
+        }
+        callback()
+      }
+    })
+    return socket
+  }
+
   it.effect.each([
     {
       name: "pooled URL-only",
@@ -272,22 +289,7 @@ describe("PgPool connection spans", () => {
       const sql = yield* make({
         ...config,
         prepare: false,
-        stream: () => {
-          let startup = true
-          const socket = new Duplex({
-            read() {},
-            write(chunk: Buffer, _encoding, callback) {
-              if (startup) {
-                startup = false
-                queueMicrotask(() => socket.push(ready))
-              } else if (chunk[0] === 0x50) {
-                queueMicrotask(() => socket.push(emptyQueryResult))
-              }
-              callback()
-            }
-          })
-          return socket
-        }
+        stream: emptyQueryStream
       })
       yield* sql`SELECT 1`
       const span = spans.find((span) => span.attributes.has("db.system.name"))!
@@ -298,6 +300,35 @@ describe("PgPool connection spans", () => {
         span.attributes.get("server.address"),
         span.attributes.get("server.port")
       ], expected)
+    }).pipe(Effect.withTracer(tracer), Effect.provide(Reactivity.layer))
+  })
+
+  it.effect("overrides queryTextValues span names with SpanNameGenerator while keeping attributes", () => {
+    const { spans, tracer } = recording()
+    return Effect.gen(function*() {
+      const sql = yield* PgClient.make({
+        url: Redacted.make("postgres://postgres:postgres@127.0.0.1:55415/app"),
+        prepare: false,
+        stream: emptyQueryStream
+      })
+      yield* sql.queryTextValues("SELECT 1")
+      yield* sql.queryTextValues("SELECT 1").pipe(
+        Effect.provideService(Statement.SpanNameGenerator, () => "sql.execute")
+      )
+      assert.deepStrictEqual(
+        spans
+          .filter((span) => span.attributes.has("db.system.name"))
+          .map((span) => [
+            span.name,
+            span.attributes.get("db.namespace"),
+            span.attributes.get("server.address"),
+            span.attributes.get("server.port")
+          ]),
+        [
+          ["app", "app", "127.0.0.1", 55415],
+          ["sql.execute", "app", "127.0.0.1", 55415]
+        ]
+      )
     }).pipe(Effect.withTracer(tracer), Effect.provide(Reactivity.layer))
   })
 

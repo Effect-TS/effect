@@ -169,6 +169,34 @@ export const SpanPropagationEnabled = Context.Reference<boolean>("effect/sql/Spa
 })
 
 /**
+ * Context reference for generating the span name used for SQL statement spans.
+ *
+ * **Details**
+ *
+ * Defaults to {@link spanName}. Resolved when each statement runs, leaving
+ * span attributes such as `db.namespace` and `server.address` unchanged.
+ *
+ * **Example** (Using a stable statement span name)
+ *
+ * ```ts
+ * import { Effect } from "effect"
+ * import { Statement } from "effect/sql"
+ *
+ * const withStableSpanName = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+ *   Effect.provideService(effect, Statement.SpanNameGenerator, () => "sql.execute")
+ * ```
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.1.7
+ */
+export const SpanNameGenerator = Context.Reference<
+  (spanAttributes: ReadonlyArray<readonly [string, unknown]>) => string
+>("effect/sql/Statement/SpanNameGenerator", {
+  defaultValue: () => spanName
+})
+
+/**
  * Returns `true` when a value is a SQL `Fragment`.
  *
  * @stability unstable
@@ -1465,16 +1493,18 @@ const StatementProto: Omit<
     ) => Effect.Effect<XA, E>,
     withoutTransform = false
   ): Effect.Effect<XA, E | SqlError> {
-    return Effect.useSpan(
-      spanName(this.spanAttributes),
-      { kind: "client" },
-      (span) =>
-        this.withConnectionSpan(
-          operation,
-          f,
-          withoutTransform,
-          span
-        )
+    return Effect.withFiber((fiber) =>
+      Effect.useSpan(
+        fiber.getRef(SpanNameGenerator)(this.spanAttributes),
+        { kind: "client" },
+        (span) =>
+          this.withConnectionSpan(
+            operation,
+            f,
+            withoutTransform,
+            span
+          )
+      )
     )
   },
   withConnectionSpan<XA, E>(
@@ -1532,7 +1562,9 @@ const StatementProto: Omit<
   get stream(): Stream.Stream<any, SqlError> {
     const self = this as StatementImpl<any>
     return Stream.unwrap(Effect.flatMap(
-      Effect.makeSpanScoped(spanName(self.spanAttributes), { kind: "client" }),
+      Effect.withFiber((fiber) =>
+        Effect.makeSpanScoped(fiber.getRef(SpanNameGenerator)(self.spanAttributes), { kind: "client" })
+      ),
       (span) =>
         withStatement(self, span, (statement, fiber) => {
           const [sql, params] = statement.compile()
@@ -1582,7 +1614,11 @@ const StatementProto: Omit<
   ...Effectable.Prototype<StatementImpl<any>>({
     label: "Statement",
     evaluate(fiber) {
-      const span = internalEffect.makeSpanUnsafe(fiber, spanName(this.spanAttributes), { kind: "client" })
+      const span = internalEffect.makeSpanUnsafe(
+        fiber,
+        fiber.getRef(SpanNameGenerator)(this.spanAttributes),
+        { kind: "client" }
+      )
       const clock = fiber.getRef(Clock)
       const timingEnabled = fiber.getRef(TracerTimingEnabled)
       return Effect.onExit(
