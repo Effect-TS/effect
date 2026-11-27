@@ -34,6 +34,27 @@ const isToolOutputSchema = (
   return isPropertiesSupported && isRequiredDefined
 }
 
+const projectTools = McpProtocol.makeToolListProjector(McpSchema.Tool, (tool) => ({
+  name: tool.name,
+  title: tool.title,
+  description: tool.description,
+  inputSchema: tool.inputSchema,
+  outputSchema: isToolOutputSchema(tool.outputSchema)
+    ? tool.outputSchema
+    : undefined,
+  icons: tool.icons,
+  annotations: tool.annotations === undefined
+    ? undefined
+    : {
+      title: tool.annotations.title,
+      readOnlyHint: tool.annotations.readOnlyHint,
+      destructiveHint: tool.annotations.destructiveHint,
+      idempotentHint: tool.annotations.idempotentHint,
+      openWorldHint: tool.annotations.openWorldHint
+    },
+  _meta: tool._meta
+}))
+
 const unsupported = (
   operation: PublicMcpSchema.McpReverseOperationUnsupported["operation"],
   reason: string
@@ -286,30 +307,7 @@ export const protocol = McpProtocol.make({
       }),
       "tools/list": Effect.fnUntraced(function*(pageRequest) {
         const tools = yield* McpProtocol.listForClient(core.tools.list, pageRequest?.cursor)
-        return McpSchema.ListToolsResult.make({
-          tools: tools.map((tool) =>
-            McpSchema.Tool.make({
-              name: tool.name,
-              title: tool.title,
-              description: tool.description,
-              inputSchema: tool.inputSchema,
-              outputSchema: isToolOutputSchema(tool.outputSchema)
-                ? tool.outputSchema
-                : undefined,
-              icons: tool.icons,
-              annotations: tool.annotations === undefined
-                ? undefined
-                : McpSchema.ToolAnnotations.make({
-                  title: tool.annotations.title,
-                  readOnlyHint: tool.annotations.readOnlyHint,
-                  destructiveHint: tool.annotations.destructiveHint,
-                  idempotentHint: tool.annotations.idempotentHint,
-                  openWorldHint: tool.annotations.openWorldHint
-                }),
-              _meta: tool._meta
-            })
-          )
-        })
+        return { tools: yield* projectTools(tools).pipe(Effect.orDie) }
       }),
       "tools/call": Effect.fnUntraced(function*(call) {
         const request = yield* PublicMcpSchema.McpServerClient

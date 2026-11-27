@@ -627,14 +627,12 @@ export class GetPrompt extends Rpc.make("prompts/get", {
 /**
  * @internal
  */
-export const ListToolsResult = Schema.StructWithRest(
-  Schema.Struct({
-    ...PaginatedResult,
-    ...CacheableResult,
-    tools: Schema.Array(Tool)
-  }),
-  [UnknownObject]
-)
+export const ListToolsResult = Schema.Struct({
+  ...PaginatedResult,
+  ...CacheableResult,
+  // Tool entries are projected and JSON-encoded once per descriptor in the protocol adapter.
+  tools: Schema.Any
+})
 /**
  * @internal
  */

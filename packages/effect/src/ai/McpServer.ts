@@ -1254,11 +1254,15 @@ export class McpServer extends Context.Service<McpServer, {
           tools[existingIndex] = options
         }
         const { invoke, visible } = makeInvoke(options.services, globalMiddleware)
-        yield* internalCore.tools.register({
-          descriptor: new McpTool({
+        const title = options.tool.title ?? options.tool.annotations?.title
+        const descriptor = title === options.tool.title
+          ? options.tool
+          : new McpTool({
             ...options.tool,
-            title: options.tool.title ?? options.tool.annotations?.title
-          }),
+            title
+          })
+        yield* internalCore.tools.register({
+          descriptor,
           visible: visible("tools/list", options.tool.name),
           isVisible: isEnabled(options.annotations),
           handle: (call, invocation, beforeHandle) =>
@@ -3433,40 +3437,56 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
     }
     const content = options?.content
     const mapper = content && Object.hasOwn(content, tool.name) ? content[tool.name as Names] : undefined
-    const outputSchema = mapper ? undefined : yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(
-      toolJsonSchema(tool.successSchema, false)
-    ).pipe(Effect.orDie)
-    const inputSchema = yield* Schema.decodeUnknownEffect(ToolJson)(
-      rawJsonSchema ?? toolJsonSchema(tool.parametersSchema, strict)
-    ).pipe(
-      Effect.catchTag("SchemaError", (error) =>
-        Effect.die(
-          rawJsonSchema !== undefined
-            ? `McpServer cannot register tool '${tool.name}': its raw JSON Schema must have an object root ` +
+    let outputSchema: McpSchema.ToolOutputJson | undefined
+    if (!mapper) {
+      const generatedOutput = toolJsonSchema(tool.successSchema, false)
+      outputSchema = Predicate.isReadonlyObject(generatedOutput)
+        ? generatedOutput
+        : yield* Schema.decodeUnknownEffect(McpSchema.ToolOutputJson)(generatedOutput).pipe(Effect.orDie)
+    }
+    let inputSchema: McpSchema.ToolJson
+    if (rawJsonSchema !== undefined) {
+      inputSchema = yield* decodeToolJson(rawJsonSchema).pipe(
+        Effect.catchTag("SchemaError", (error) =>
+          Effect.die(
+            `McpServer cannot register tool '${tool.name}': its raw JSON Schema must have an object root ` +
               `(type: "object").\n\n${error.message}`
-            : `McpServer cannot register tool '${tool.name}': its parameters must encode to a JSON Schema with an ` +
-              `object root (type: "object"), such as a Schema.Struct. Use Tool.EmptyParams for a tool without ` +
-              `parameters.\n\n${error.message}`
-        ))
-    )
+          ))
+      )
+    } else {
+      const generatedInput = toolJsonSchema(tool.parametersSchema, strict)
+      inputSchema = isGeneratedToolJson(generatedInput)
+        ? generatedInput
+        : yield* decodeToolJson(generatedInput).pipe(
+          Effect.catchTag("SchemaError", (error) =>
+            Effect.die(
+              `McpServer cannot register tool '${tool.name}': its parameters must encode to a JSON Schema with an ` +
+                `object root (type: "object"), such as a Schema.Struct. Use Tool.EmptyParams for a tool without ` +
+                `parameters.\n\n${error.message}`
+            ))
+        )
+    }
+    const title = Context.getOrUndefined(tool.annotations, Tool.Title)
+    const description = Tool.getDescription(tool)
     const readOnlyHint = Context.get(tool.annotations, Tool.Readonly)
-    const mcpTool = new McpTool({
+    const toolFields = {
       name: tool.name,
-      description: Tool.getDescription(tool),
+      ...(title !== undefined ? { title } : undefined),
+      ...(description !== undefined ? { description } : undefined),
       inputSchema,
-      outputSchema,
+      ...(outputSchema !== undefined ? { outputSchema } : undefined),
       annotations: {
-        ...(Context.getOption(tool.annotations, Tool.Title).pipe(
-          Option.map((title) => ({ title })),
-          Option.getOrUndefined
-        )),
+        ...(title !== undefined ? { title } : undefined),
         readOnlyHint,
         destructiveHint: Context.getOrUndefined(tool.annotations, Tool.Destructive) ?? !readOnlyHint,
         idempotentHint: Context.get(tool.annotations, Tool.Idempotent),
         openWorldHint: Context.get(tool.annotations, Tool.OpenWorld)
       },
-      _meta: toolMeta
-    })
+      ...(toolMeta !== undefined ? { _meta: toolMeta } : undefined)
+    }
+    const mcpTool = toolMeta === undefined || Predicate.isReadonlyObject(toolMeta)
+      ? Schema.makeClassTrusted(McpTool, toolFields)
+      : new McpTool(toolFields)
     registrations.push({
       tool: mcpTool,
       annotations,
@@ -3534,6 +3554,14 @@ const isParameterValidationError = (
   error: unknown
 ): error is AiError.AiError & { readonly reason: AiError.ToolParameterValidationError } =>
   AiError.isAiError(error) && error.reason._tag === "ToolParameterValidationError"
+
+const decodeToolJson = Schema.decodeUnknownEffect(ToolJson)
+
+const isGeneratedToolJson = (schema: JsonSchema.JsonSchema): schema is McpSchema.ToolJson =>
+  Predicate.isReadonlyObject(schema) &&
+  schema.type === "object" &&
+  (schema.properties === undefined || Predicate.isReadonlyObject(schema.properties)) &&
+  (schema.required === undefined || Array.isArray(schema.required))
 
 // MCP requires an object root. A non-recursive root is compiled inline rather
 // than as a definition; a recursive root keeps its definition and the top-level

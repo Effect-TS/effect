@@ -358,6 +358,47 @@ export const transcodeStrict = <
   )
 
 /**
+ * Projects and JSON-encodes each canonical tool descriptor once per descriptor
+ * instance, caching the wire objects for reuse across `tools/list` responses.
+ *
+ * @internal
+ */
+export const makeToolListProjector = <A, I>(
+  schema: Schema.Codec<A, I>,
+  project: (tool: PublicMcpSchema.Tool) => A | unknown
+): ((tools: ReadonlyArray<PublicMcpSchema.Tool>) => Effect.Effect<ReadonlyArray<unknown>, Schema.SchemaError>) => {
+  const encode = Schema.encodeUnknownEffect(Schema.toCodecJson(schema))
+  const cache = new WeakMap<PublicMcpSchema.Tool, unknown>()
+  return (tools) =>
+    Effect.suspend(() => {
+      const result = new Array<unknown>(tools.length)
+      let pending: Array<number> | undefined
+      for (let i = 0; i < tools.length; i++) {
+        const cached = cache.get(tools[i])
+        if (cached !== undefined) {
+          result[i] = cached
+        } else if (pending === undefined) {
+          pending = [i]
+        } else {
+          pending.push(i)
+        }
+      }
+      if (pending === undefined) {
+        return Effect.succeed(result)
+      }
+      return Effect.forEach(
+        pending,
+        (index) =>
+          Effect.map(encode(project(tools[index])), (encoded) => {
+            cache.set(tools[index], encoded)
+            result[index] = encoded
+          }),
+        { discard: true }
+      ).pipe(Effect.as(result))
+    })
+}
+
+/**
  * @internal
  */
 export const makeNotificationProjector = Effect.fn(function*(
