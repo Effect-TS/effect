@@ -705,6 +705,16 @@ describe("Metric", () => {
   })
 
   describe("Frequency", () => {
+    it.effect("preserves earlier counts after updates", () =>
+      Effect.gen(function*() {
+        const frequency = Metric.frequency(nextId())
+        yield* Metric.update(frequency, "foo")
+        const before = yield* Metric.value(frequency)
+        yield* Metric.update(frequency, "foo")
+        yield* Metric.update(frequency, "bar")
+        assert.deepStrictEqual(before.occurrences, new Map([["foo", 1]]))
+      }))
+
     it.effect("custom occurence with value", () =>
       Effect.gen(function*() {
         const id = nextId()
