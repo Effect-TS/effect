@@ -264,6 +264,45 @@ In `tools/list`, an explicit `Tool.Destructive` value takes precedence. Otherwis
 `destructiveHint` is `false` when `Tool.Readonly` is `true`, and `true` when `Tool.Readonly`
 is `false` or unset.
 
+### Tools known per request
+
+Use `McpServer.toolSource` (or `McpServer.registerToolSource`) when tools are discovered per
+request or vary by caller, such as proxying an upstream MCP server with the caller's credentials.
+`list` runs on every `tools/list` without caching between requests, and `call` handles
+unregistered tool names accepted by `owns` (by default, all unregistered names).
+
+```typescript
+import { Cause, Context, Effect, Layer } from "effect"
+import { McpSchema, McpServer } from "effect/ai"
+
+class CurrentUser extends Context.Service<CurrentUser, { readonly id: string }>()("CurrentUser") {}
+
+const Auth = McpServer.middleware<{ provides: CurrentUser }>()((effect, { headers }) =>
+  Effect.provideService(effect, CurrentUser, { id: headers["x-user"] ?? "anonymous" })
+)
+
+const Upstream = McpServer.toolSource({
+  owns: (name) => name.startsWith("upstream_"),
+  list: Effect.map(CurrentUser, (user) => [
+    new McpSchema.Tool({ name: `upstream_${user.id}`, inputSchema: { type: "object" } })
+  ]),
+  call: (name, args) =>
+    Effect.flatMap(CurrentUser, (user) =>
+      name === `upstream_${user.id}`
+        ? Effect.succeed(new McpSchema.CallToolResult({ content: [{ type: "text", text: JSON.stringify(args) }] }))
+        : Effect.fail(new Cause.NoSuchElementError())
+    )
+}).pipe(Layer.provide(Auth.layer))
+```
+
+Statically registered tools always take precedence over sourced tools (even when hidden by
+visibility), and a sourced tool is listed only from the first source whose `owns` accepts its name.
+Non-visibility middleware wraps `list` with `target: ""` and per-tool visibility filters the
+returned tools by name. Fail `call` with `Cause.NoSuchElementError` to return unknown-tool
+(`-32602`) without falling through to later sources. Because the server has no input schema at call
+time, it skips argument validation and `2026-07-28` parameter-header checks; the source validates
+its own inputs.
+
 ## Request-level dependencies
 
 Some services only exist per request, such as the user a request is made for. A tool declares them

@@ -356,14 +356,17 @@ export type MiddlewareMethod =
  * resource template being completed. For `skills/get` it is the URI of the
  * skill's `SKILL.md`. `payload` holds the request parameters.
  *
- * On list requests, middleware runs only when it wraps a {@link visibility},
- * once for each registration it wraps. `target` is then the tool name, the
- * resource URI, the URI template or the prompt name of that registration, and
- * `payload` is `undefined`. `skills/list` and `resources/directory/read` are
- * list requests whose `target` is the `SKILL.md` URI of each skill; a
- * directory read checks only the skills that have the directory. A skill's
- * files are resources, checked as `resources/list` and `resources/read` with
- * their own URIs.
+ * On list requests, middleware runs when it wraps a {@link visibility}, once
+ * for each registration it wraps, or when it wraps a {@link toolSource}. For
+ * visibility checks, `target` is the tool name, the resource URI, the URI
+ * template or the prompt name of that registration, and `payload` is
+ * `undefined`. For a tool source's `list` effect, non-visibility middleware
+ * runs once with `target: ""` and `payload: undefined`, then visibility checks
+ * run per returned tool with that tool's name. `skills/list` and
+ * `resources/directory/read` are list requests whose `target` is the `SKILL.md`
+ * URI of each skill; a directory read checks only the skills that have the
+ * directory. A skill's files are resources, checked as `resources/list` and
+ * `resources/read` with their own URIs.
  *
  * `headers` are the HTTP request headers. They are empty on stdio, on custom
  * transports and for in-process calls. `sessionId` is the `Mcp-Session-Id`
@@ -952,6 +955,23 @@ const makeInvoke = (
     ).pipe(
       catchHidden(() => Effect.fail(notFound(request.method, request.target) as NotFoundErrors[M]))
     ) as Effect.Effect<A, E | NotFoundErrors[M] | McpCore.RequestRejected>
+  // Runs a tool source's `list` inside non-visibility middleware so it receives
+  // request services without running visibility gates against an empty target.
+  const invokeList = <A>(
+    handler: Effect.Effect<ReadonlyArray<A>, McpErrorBase, any>,
+    invocation: McpCore.McpInvocation
+  ): Effect.Effect<ReadonlyArray<A>, McpCore.RequestRejected> =>
+    runMiddleware(
+      services.mapUnsafe.size === 0
+        ? handler
+        : Effect.updateContext(handler, (context: Context.Context<any>) => Context.merge(services, context)),
+      middlewareStack(localMiddleware, globalMiddleware).filter((fn) => !gates.has(fn)),
+      invocation,
+      { method: "tools/list", target: "", payload: undefined }
+    ).pipe(
+      catchHidden(() => Effect.succeed(Arr.empty<A>())),
+      Effect.catch((error) => error instanceof McpCore.RequestRejected ? Effect.fail(error) : rejectWith(error))
+    )
   // On list requests only the middleware outside the innermost visibility runs.
   const visible = (method: ListMethod, target: string): McpCore.Visible => (invocation) => {
     const middleware = middlewareStack(localMiddleware, globalMiddleware)
@@ -965,7 +985,7 @@ const makeInvoke = (
         catchHidden(() => Effect.succeed(false))
       )
   }
-  return { invoke, visible }
+  return { invoke, invokeList, visible }
 }
 
 // Applies the `EnabledWhen` annotation of a registration.
@@ -980,6 +1000,39 @@ const isEnabled = (annotations: Context.Context<never>) => {
 }
 
 const rejectedError = (rejected: McpCore.RequestRejected) => Effect.fail(rejected.error)
+
+const toolOutcome = (name: string, invocation: McpCore.McpInvocation) =>
+(
+  self: Effect.Effect<
+    CallToolResult | McpSchema.InputRequired,
+    InternalError | InvalidParams | Cause.NoSuchElementError | McpCore.ToolNotFound | McpCore.RequestRejected
+  >
+): Effect.Effect<
+  McpCore.OperationOutcome<CallToolResult>,
+  | McpCore.ToolNotFound
+  | McpCore.InvalidToolInput
+  | McpCore.InvalidToolContinuation
+  | McpCore.ToolExecutionError
+  | McpCore.RequestRejected
+> =>
+  self.pipe(
+    Effect.catchTags({
+      NoSuchElementError: () => Effect.fail(new McpCore.ToolNotFound({ name })),
+      InternalError: (error) => Effect.fail(new McpCore.ToolExecutionError({ name, message: error.message })),
+      InvalidParams: (error) =>
+        Effect.fail(
+          new (invocation.requestContext.requestState === undefined &&
+              invocation.requestContext.inputResponses === undefined
+            ? McpCore.InvalidToolInput
+            : McpCore.InvalidToolContinuation)({ name, message: error.message })
+        )
+    }),
+    Effect.map((result) =>
+      Predicate.isTagged(result, "InputRequired")
+        ? McpCore.OperationOutcome.InputRequired(result)
+        : McpCore.OperationOutcome.Complete(result)
+    )
+  )
 
 /**
  * Service that stores and serves an MCP server's registered tools, resources,
@@ -1267,32 +1320,7 @@ export class McpServer extends Context.Service<McpServer, {
               method: "tools/call",
               target: call.name,
               payload: call
-            }).pipe(
-              Effect.catchTags({
-                InternalError: (error) =>
-                  Effect.fail(
-                    new McpCore.ToolExecutionError({
-                      name: options.tool.name,
-                      message: error.message
-                    })
-                  ),
-                InvalidParams: (error) =>
-                  Effect.fail(
-                    new (invocation.requestContext.requestState === undefined &&
-                        invocation.requestContext.inputResponses === undefined
-                      ? McpCore.InvalidToolInput
-                      : McpCore.InvalidToolContinuation)({
-                      name: options.tool.name,
-                      message: error.message
-                    })
-                  )
-              }),
-              Effect.map((result) =>
-                Predicate.isTagged(result, "InputRequired")
-                  ? McpCore.OperationOutcome.InputRequired(result)
-                  : McpCore.OperationOutcome.Complete(result)
-              )
-            )
+            }).pipe(toolOutcome(options.tool.name, invocation))
         })
         yield* notifications.client["notifications/tools/list_changed"]({})
       }),
@@ -3691,6 +3719,140 @@ export const toolkit = <Tools extends Record<string, Tool.Any>, Names extends ke
   toolkit: Toolkit.Toolkit<Tools>,
   options?: ToolkitOptions<Tools, Names>
 ): Layer.Layer<never, never, ToolkitRequirements<Tools>> => Layer.effectDiscard(registerToolkit(toolkit, options))
+
+/**
+ * The requirements of a tool source registration: services read by `list` and
+ * `call`, other than `McpRequestContext`, are request-level.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.2.0
+ */
+export type ToolSourceRequirements<R> = RegistrationRequirements<never, R>
+
+/**
+ * Options for {@link registerToolSource} and {@link toolSource}.
+ *
+ * **Details**
+ *
+ * `list` runs on every `tools/list` and returns the source's complete list for
+ * the current request; nothing is cached between requests. `call` runs for a
+ * `tools/call` whose name is not statically registered when `owns` accepts the
+ * name (by default, every unregistered name). Fail `call` with
+ * `Cause.NoSuchElementError` to report an unknown tool (`ToolNotFound`).
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.2.0
+ */
+export interface ToolSourceOptions<
+  EList extends McpErrorBase = never,
+  RList = never,
+  ECall extends InternalError | InvalidParams | Cause.NoSuchElementError = never,
+  RCall = never
+> {
+  readonly list: Effect.Effect<ReadonlyArray<McpTool>, EList, RList>
+  readonly call: (
+    name: string,
+    payload: Readonly<Record<string, unknown>>
+  ) => Effect.Effect<CallToolResult | McpSchema.InputRequired, ECall, RCall>
+  readonly owns?: ((name: string) => boolean) | undefined
+}
+
+/**
+ * Registers a per-request tool source with the `McpServer`.
+ *
+ * **Details**
+ *
+ * Services read by `list` and `call`, other than `McpRequestContext`, are
+ * request-level and must be provided by MCP middleware or the transport.
+ * Statically registered tools always take precedence over sourced tools, even
+ * when hidden by visibility. A listed tool appears only from the first source
+ * whose `owns` accepts its name, matching `tools/call` routing without
+ * requiring a preceding `tools/list`.
+ *
+ * Non-visibility middleware wraps `list` with `target: ""`, and visibility
+ * checks then filter each returned tool by name. Failures from `list` fail the
+ * `tools/list` request with their JSON-RPC error code and message. Failures
+ * from `call` map like `addTool`, except `Cause.NoSuchElementError` maps to
+ * unknown-tool (`ToolNotFound`) without falling through to later sources.
+ *
+ * The server has no input schema for a sourced tool at call time, so it skips
+ * argument validation and `2026-07-28` parameter-header validation; the source
+ * must validate its own inputs.
+ *
+ * @see {@link toolSource} for the layer-based registration wrapper
+ *
+ * @stability unstable
+ * @category handlers
+ * @since 4.2.0
+ */
+export const registerToolSource = <
+  EList extends McpErrorBase = never,
+  RList = never,
+  ECall extends InternalError | InvalidParams | Cause.NoSuchElementError = never,
+  RCall = never
+>(
+  options: ToolSourceOptions<EList, RList, ECall, RCall>
+): Effect.Effect<void, never, ToolSourceRequirements<RList | RCall>> =>
+  Effect.gen(function*() {
+    const registry = yield* McpServer
+    const { core, globalMiddleware } = internalState.get(registry)!
+    const services = yield* Effect.context<never>()
+    const { invoke, invokeList, visible } = makeInvoke(services, globalMiddleware)
+    yield* core.tools.registerSource({
+      owns: options.owns ?? (() => true),
+      list: (invocation) =>
+        invokeList(options.list, invocation).pipe(
+          Effect.flatMap((tools) =>
+            Effect.filter(tools, (tool) => visible("tools/list", tool.name)(invocation)).pipe(
+              Effect.map((visibleTools) =>
+                visibleTools.map((tool) =>
+                  tool.title === undefined && tool.annotations?.title !== undefined
+                    ? new McpTool({ ...tool, title: tool.annotations.title })
+                    : tool
+                )
+              )
+            )
+          )
+        ),
+      handle: (call, invocation) =>
+        invoke(Effect.suspend(() => options.call(call.name, call.arguments ?? {})), invocation, {
+          method: "tools/call",
+          target: call.name,
+          payload: call
+        }).pipe(toolOutcome(call.name, invocation))
+    })
+    yield* registry.notifications["notifications/tools/list_changed"]({})
+  }) as any
+
+/**
+ * Creates a layer that registers a per-request tool source with the
+ * `McpServer`.
+ *
+ * **Details**
+ *
+ * Services read by `list` and `call` are request-level, so providing them with
+ * `Layer.provide` doesn't satisfy them. Read construction-time services in an
+ * enclosing `Layer.unwrap` and close over them, and provide per-request
+ * services with MCP middleware.
+ *
+ * @see {@link registerToolSource} for the Effect-level registration API
+ * @see {@link middleware} for providing request-level dependencies
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.2.0
+ */
+export const toolSource = <
+  EList extends McpErrorBase = never,
+  RList = never,
+  ECall extends InternalError | InvalidParams | Cause.NoSuchElementError = never,
+  RCall = never
+>(
+  options: ToolSourceOptions<EList, RList, ECall, RCall>
+): Layer.Layer<never, never, ToolSourceRequirements<RList | RCall>> =>
+  Layer.effectDiscard(registerToolSource(options))
 
 /**
  * Utility type that validates a completion-handler record against the allowed

@@ -421,7 +421,9 @@ describe("McpServer.layerHttpRequestScoped", () => {
           call: (name) =>
             Effect.flatMap(CurrentCaller, (caller) =>
               name === `${caller}_tool`
-                ? Effect.succeed(new McpSchema.CallToolResult({ content: [{ type: "text", text: `${caller}:${name}` }] }))
+                ? Effect.succeed(
+                  new McpSchema.CallToolResult({ content: [{ type: "text", text: `${caller}:${name}` }] })
+                )
                 : Effect.fail(new Cause.NoSuchElementError())
             )
         }).pipe(Layer.provide(Auth.layer))

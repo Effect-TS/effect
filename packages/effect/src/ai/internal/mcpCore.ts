@@ -194,11 +194,33 @@ export interface ToolRegistration {
 }
 
 /**
+ * Tools resolved per request: `list` runs on every `tools/list`, and calls for
+ * unregistered names reach `handle` when `owns` accepts them.
+ *
+ * @internal
+ */
+export interface ToolSourceRegistration {
+  readonly owns: (name: string) => boolean
+  readonly list: (invocation: McpInvocation) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, RequestRejected>
+  readonly handle: (
+    call: typeof McpSchema.CallTool.payloadSchema.Type,
+    invocation: McpInvocation
+  ) => Effect.Effect<
+    OperationOutcome<McpSchema.CallToolResult>,
+    ToolNotFound | InvalidToolInput | InvalidToolContinuation | ToolExecutionError | RequestRejected,
+    never
+  >
+}
+
+/**
  * @internal
  */
 export interface Tools {
   readonly register: (
     registration: ToolRegistration
+  ) => Effect.Effect<void>
+  readonly registerSource: (
+    source: ToolSourceRegistration
   ) => Effect.Effect<void>
   readonly list: (
     invocation: McpInvocation
@@ -535,6 +557,7 @@ const skillsOverlap = (a: string, b: string): boolean => {
  */
 export const make: Effect.Effect<McpCore> = Effect.sync(() => {
   const registrations = new Map<string, ToolRegistration>()
+  const toolSources: Array<ToolSourceRegistration> = []
   const resourceRegistrations: Array<ResourceRegistration> = []
   const resourceTemplateRegistrations: Array<ResourceTemplateRegistration> = []
   const promptRegistrations = new Map<string, PromptRegistration>()
@@ -569,12 +592,45 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       Effect.sync(() => {
         registrations.set(registration.descriptor.name, registration)
       }),
-    list: (invocation) => filterList(registrations.values(), invocation),
+    registerSource: (source) =>
+      Effect.sync(() => {
+        toolSources.push(source)
+      }),
+    list: (invocation) =>
+      Effect.suspend(() => {
+        if (toolSources.length === 0) {
+          return filterList(registrations.values(), invocation)
+        }
+        const sources = toolSources.slice()
+        return Effect.map(
+          Effect.all([
+            filterList(registrations.values(), invocation),
+            Effect.forEach(sources, (source) => source.list(invocation), { concurrency: "unbounded" })
+          ], { concurrency: "unbounded" }),
+          ([registered, sourced]) => {
+            // A sourced tool is listed only from the source its calls route to,
+            // and registered tools always take precedence (even when hidden).
+            const tools = Array.from(registered)
+            const seen = new Set<string>()
+            sourced.forEach((listed, index) => {
+              const source = sources[index]
+              for (const tool of listed) {
+                if (registrations.has(tool.name) || seen.has(tool.name)) continue
+                if (sources.find((candidate) => candidate.owns(tool.name)) !== source) continue
+                seen.add(tool.name)
+                tools.push(tool)
+              }
+            })
+            return tools
+          }
+        )
+      }),
     call: (call, invocation, beforeHandle) =>
       Effect.suspend((): Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError> => {
         const registration = registrations.get(call.name)
         if (registration === undefined) {
-          return new ToolNotFound({ name: call.name })
+          const source = toolSources.find((source) => source.owns(call.name))
+          return source === undefined ? new ToolNotFound({ name: call.name }) : source.handle(call, invocation)
         }
         if (!registration.isVisible(invocation.protocol)) {
           return new ToolNotFound({ name: call.name })
@@ -718,7 +774,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
   }
 
   const registrationPresence = Effect.sync(() => ({
-    tools: registrations.size > 0,
+    tools: registrations.size > 0 || toolSources.length > 0,
     resources: resourceRegistrations.length > 0 || resourceTemplateRegistrations.length > 0,
     prompts: promptRegistrations.size > 0,
     skills: skillRegistrations.size > 0
