@@ -291,6 +291,26 @@ describe("Pool", () => {
       }
     }))
 
+  it.live("a borrower gets its own failed acquisition, not an earlier one", () =>
+    Effect.gen(function*() {
+      for (let budget = 1; budget <= 32; budget++) {
+        let acquired = 0
+        const pool = yield* Pool.makeWithTTL({
+          acquire: Effect.suspend(() => Effect.fail(acquired++ === 0 ? "stale" : "fresh")),
+          min: 1,
+          max: 2,
+          targetUtilization: 0.5,
+          timeToLive: Duration.infinity
+        })
+        yield* waitUntil(() => pool.state.availableHead !== undefined)
+        const error = yield* Effect.flip(Effect.scoped(Pool.get(pool))).pipe(
+          Effect.provideService(Scheduler.MaxOpsBeforeYield, budget),
+          Effect.timeout(Duration.seconds(1))
+        )
+        strictEqual(error, "fresh", `MaxOpsBeforeYield ${budget}`)
+      }
+    }))
+
   it.live("a failure acquired beside a healthy item still settles its borrower", () =>
     Effect.gen(function*() {
       const gate = yield* Deferred.make<void>()

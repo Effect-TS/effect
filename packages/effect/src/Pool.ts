@@ -617,7 +617,7 @@ const getSlowWith = <A, E, X, R>(
         return wait
       }
       // Replace failed slots only when the pool cannot grow.
-      const item = firstAvailable(self, "Success") ??
+      const item = firstHealthyAvailable(self) ??
         (targetSize(self) <= activeSize(self) ? state.availableHead : undefined)
       if (item === undefined) {
         return wait
@@ -704,9 +704,19 @@ const releaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effec
     return internal.void
   })
 
-const firstAvailable = <A, E>(self: Pool<A, E>, tag: Exit.Exit<A, E>["_tag"]): PoolItem<A, E> | undefined => {
+const firstHealthyAvailable = <A, E>(self: Pool<A, E>): PoolItem<A, E> | undefined => {
   let item = self.state.availableHead
-  while (item !== undefined && item.exit._tag !== tag) item = item.availableNext
+  while (item !== undefined && item.exit._tag === "Failure") item = item.availableNext
+  return item
+}
+
+// The failure count when each kept failure was recorded.
+const failedAt = new WeakMap<PoolItem<unknown, unknown>, number>()
+
+// The first kept failure recorded after `failures`.
+const firstFailureAfter = <A, E>(self: Pool<A, E>, failures: number): PoolItem<A, E> | undefined => {
+  let item = self.state.availableHead
+  while (item !== undefined && (failedAt.get(item) ?? 0) <= failures) item = item.availableNext
   return item
 }
 
@@ -745,14 +755,14 @@ const waitForItem = <A, E>(self: Pool<A, E>, waiter: Waiter<A, E>): Effect.Effec
     const state = self.state
     if (
       state.isShuttingDown ||
-      (state.waiters.size === 0 && firstAvailable(self, "Success") !== undefined)
+      (state.waiters.size === 0 && firstHealthyAvailable(self) !== undefined)
     ) {
       return resume(internal.void)
     }
     if (waiter.failures !== (self as PoolImpl<A, E>)[Failures]) {
       // An acquisition failed since the last check: take the kept failure, or
       // check the pool again.
-      const failed = firstAvailable(self, "Failure")
+      const failed = firstFailureAfter(self, waiter.failures)
       if (failed === undefined) return resume(internal.void)
       removeFailedItem(self, failed)
       return resume(failed.exit as Exit.Failure<A, E>)
@@ -797,7 +807,7 @@ const firstSleepingWaiter = <A, E>(self: Pool<A, E>) => {
 // The borrower a failed acquisition is delivered to: the first one asleep,
 // unless a healthy item can serve it instead.
 const failureRecipient = <A, E>(self: Pool<A, E>) =>
-  firstAvailable(self, "Success") === undefined ? firstSleepingWaiter(self) : undefined
+  firstHealthyAvailable(self) === undefined ? firstSleepingWaiter(self) : undefined
 
 // Reservations prevent reuse without extending the lifetime of borrowed items.
 const reservations = new WeakMap<PoolItem<unknown, unknown>, number>()
@@ -1105,6 +1115,7 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
         if (waiter !== undefined) {
           waiter(exit)
         } else {
+          failedAt.set(item, impl[Failures])
           self.state.items.add(item)
           addAvailable(self, item)
           // Wake one sleeper to take or replace the failure. Wakes from a
