@@ -359,8 +359,8 @@ export const transcodeStrict = <
   )
 
 /**
- * Encodes a tool descriptor to its JSON wire form once per instance, so
- * `tools/list` responses reuse it. Replacing a tool registers a new instance.
+ * Encodes each tool descriptor instance to its JSON wire form once. A
+ * replaced tool is a new instance, so it is encoded afresh.
  *
  * @internal
  */

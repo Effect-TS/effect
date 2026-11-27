@@ -1256,7 +1256,7 @@ export class McpServer extends Context.Service<McpServer, {
         const { invoke, visible } = makeInvoke(options.services, globalMiddleware)
         const title = options.tool.title ?? options.tool.annotations?.title
         yield* internalCore.tools.register({
-          // A validated descriptor that already carries its title is registered as is.
+          // Reuse a validated descriptor whose title is already resolved.
           descriptor: options.tool instanceof McpTool && title === options.tool.title
             ? options.tool
             : new McpTool({ ...options.tool, title }),
@@ -3459,6 +3459,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
       try {
         mcpTool = new McpTool(fields)
       } catch (error) {
+        // Name the tool when the input schema lacks an object root; rethrow anything else.
         yield* Effect.catch(Schema.decodeUnknownEffect(ToolJson)(inputSchema), (cause) =>
           Effect.die(
             rawJsonSchema !== undefined
@@ -3539,8 +3540,8 @@ const isParameterValidationError = (
 ): error is AiError.AiError & { readonly reason: AiError.ToolParameterValidationError } =>
   AiError.isAiError(error) && error.reason._tag === "ToolParameterValidationError"
 
-// Shallow equivalent of the `McpTool` schema for the fields `registerToolkit` sets,
-// so valid descriptors skip the schema pass. Anything else is left to the constructor.
+// Shallow check of the `McpTool` fields `registerToolkit` sets. Passing descriptors
+// skip schema validation; the rest go through the checked constructor.
 const isValidTool = (fields: {
   readonly name: unknown
   readonly title: unknown
