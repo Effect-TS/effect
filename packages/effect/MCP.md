@@ -617,9 +617,8 @@ does not negotiate one. `2025-03-26` has no structured tool results, so `callToo
 `structuredContent` to decode when given a `schema`.
 
 The client covers discovery, tool calls, prompt retrieval, resource reads and Toolkit adaptation.
-Resource templates, completion, logging, subscriptions, roots, sampling, elicitation, OAuth and
-automatic retries are not implemented. Server requests other than `ping` receive a method-not-found
-response, and modern `input_required` results fail with reason `UnsupportedError`.
+Resource templates, completion, logging, subscriptions, OAuth and automatic retries are not
+implemented. Server requests other than `ping` receive a method-not-found response.
 
 ### Connecting over HTTP
 
@@ -714,14 +713,50 @@ export const readReport = Effect.fn("readReport")(function*(reportId: string) {
 Remote input schemas are returned as JSON Schema metadata only. The client does not validate
 arguments against them; define the argument contract in your application or in a `Toolkit`.
 
+### Continuing paused tool calls
+
+On `2026-07-28`, a server can pause a tool call to ask the client for input. Declare the input the
+client can supply with `capabilities`, e.g. `{ elicitation: { form: {} } }`. A paused call fails
+with reason `InputRequiredError`, whose `result` holds the server's `inputRequests` and
+`requestState`. Continue by calling `callTool` again with `inputResponses` and the unchanged
+`requestState`. Retrying without the responses only gets the same pause back. Prompt and resource
+pauses fail with `UnsupportedError`. Earlier revisions reject input capabilities and continuation
+fields with `ConfigurationError`.
+
+A proxy relays the pause instead of answering it. Inside an `McpServer` tool handler, pass the
+downstream continuation upstream and return an upstream pause as `McpSchema.InputRequired`:
+
+```typescript
+import { Effect } from "effect"
+import { type McpClient, McpSchema } from "effect/ai"
+
+export const relayCall = Effect.fn("relayCall")(function*(
+  upstream: McpClient.McpClient,
+  tool: McpSchema.Tool,
+  args: Record<string, unknown>
+) {
+  const { inputResponses, requestState } = yield* McpSchema.McpRequestContext
+  return yield* upstream.callTool({ tool, arguments: args, inputResponses, requestState }).pipe(
+    Effect.catchReason(
+      "McpClientError",
+      "InputRequiredError",
+      (reason) => Effect.succeed(new McpSchema.InputRequired(reason.result))
+    )
+  )
+})
+```
+
+The upstream client should declare only the capabilities the downstream clients support.
+
 ### Handling failures
 
 Every failure is an `McpClientError.McpClientError` whose `reason` is one of the reason classes
 exported by `McpClientError`: `TransportError`, `ProtocolError` (with the JSON-RPC `code` and
 `data`), `HttpError` (with `status` and the `www-authenticate` and `retry-after` headers),
 `ClosedError` (with `sessionExpired`), `TimeoutError` (with `operation`), `LimitError`,
-`UnsupportedError`, `ValidationError`, `ConfigurationError` and `ToolError` (with the tool
-`result`). Each reason derives its `message` from these fields and an optional `description`.
+`UnsupportedError`, `ValidationError`, `ConfigurationError`, `ToolError` (with the tool `result`)
+and `InputRequiredError` (with the paused `result`). Each reason derives its `message` from these
+fields and an optional `description`.
 `McpClientError.isMcpClientError` and `McpClientError.isMcpClientErrorReason` identify them.
 
 ```typescript
