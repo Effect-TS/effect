@@ -1,5 +1,12 @@
 # @effect/chat-discord
 
+## 4.1.7
+
+### Patch Changes
+
+- Updated dependencies [[`ca1eb29`](https://github.com/Effect-TS/effect/commit/ca1eb2923db968f499fde4d7a2dfd8d67eff61f2), [`9af7cbb`](https://github.com/Effect-TS/effect/commit/9af7cbb778431398bf8b6ba030f5b5b66fc5c09f), [`35f29b6`](https://github.com/Effect-TS/effect/commit/35f29b6d5d2ae7a9ee3852c30f66f0bf4b4de2d3), [`0b9f246`](https://github.com/Effect-TS/effect/commit/0b9f2466225d3ef9395feb86b3c339879394538f), [`c37ce82`](https://github.com/Effect-TS/effect/commit/c37ce8261b99ba4ac4a9c8202105aec2629dbf5c), [`abcf54c`](https://github.com/Effect-TS/effect/commit/abcf54c9c6ec805fad68f1ce31bda5a13231e17e), [`f487573`](https://github.com/Effect-TS/effect/commit/f4875733be6d15515b945acb94010ce16148a257), [`4ecf318`](https://github.com/Effect-TS/effect/commit/4ecf31846263c6d8b4b65278b9c6cc7e501db692), [`3795d20`](https://github.com/Effect-TS/effect/commit/3795d20d01183851f2141340f868f419b747c07e), [`71235c0`](https://github.com/Effect-TS/effect/commit/71235c009c5f04b266f6a80e1d9d33aaa02340d9), [`890be07`](https://github.com/Effect-TS/effect/commit/890be07816a0fd339a1dcd4e294fa04a1e65517c), [`3dbbf0d`](https://github.com/Effect-TS/effect/commit/3dbbf0dc315a5c224690b7f84685f3aec752be83), [`a5f5a12`](https://github.com/Effect-TS/effect/commit/a5f5a129aadf2c917416a178d8ec85b9dc6dc878), [`bfbc048`](https://github.com/Effect-TS/effect/commit/bfbc04838a3ba0ec541acc723c437c4914c6d68e), [`21ff5fc`](https://github.com/Effect-TS/effect/commit/21ff5fcaa0be39fdaf34b6cfefaa5ab2cf905d51), [`d3f1de2`](https://github.com/Effect-TS/effect/commit/d3f1de2e9b54692b86af9c6110cfbb597bae5b40), [`5896612`](https://github.com/Effect-TS/effect/commit/58966128ad18bd7c298438852c8f142c54ec17b4), [`5031d70`](https://github.com/Effect-TS/effect/commit/5031d703101278affc84952689629b8a11587aaa), [`eba809b`](https://github.com/Effect-TS/effect/commit/eba809b7794206ad1d17e6c2bc12bddd2d15a349)]:
+  - effect@4.1.7
+
 ## 4.1.6
 
 ### Patch Changes
