@@ -24,7 +24,8 @@ import type * as WorkerThreads from "node:worker_threads"
 /**
  * Provides the Node `WorkerPlatform` for `worker_threads` workers and child
  * process workers, wiring messages, errors, and exits into Effect workers and
- * terminating the worker if graceful shutdown times out.
+ * terminating the worker if it has not exited within `Worker.CloseTimeout`
+ * after being asked to close.
  *
  * @stability unstable
  * @category layers
@@ -52,19 +53,20 @@ export const layerPlatform: Layer.Layer<Worker.WorkerPlatform> = Layer.succeed(W
       worker.on("exit", () => {
         Deferred.doneUnsafe(exitDeferred, Exit.void)
       })
-      return Effect.as(
-        Scope.addFinalizer(
-          scope,
-          Effect.suspend(() => {
-            thing.postMessage([1])
-            return Deferred.await(exitDeferred)
-          }).pipe(
-            Effect.timeout(5000),
-            Effect.catchCause(() => Effect.promise(() => Promise.resolve(thing.kill())))
-          )
-        ),
-        thing
-      )
+      return Effect.flatMap(Worker.CloseTimeout, (closeTimeout) =>
+        Effect.as(
+          Scope.addFinalizer(
+            scope,
+            Effect.suspend(() => {
+              thing.postMessage([1])
+              return Deferred.await(exitDeferred)
+            }).pipe(
+              Effect.timeout(closeTimeout),
+              Effect.catchCause(() => Effect.promise(() => Promise.resolve(thing.kill())))
+            )
+          ),
+          thing
+        ))
     },
     listen({ deferred, emit, port }) {
       port.worker.on("message", (message) => {
