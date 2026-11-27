@@ -7,11 +7,10 @@ import * as TestScheduler from "effect/testing/TestScheduler"
 describe("TestScheduler", () => {
   it.effect("surfaces a lost update race and replays it deterministically by seed", () =>
     Effect.gen(function*() {
-      const increment = (ref: Ref.Ref<number>) =>
-        Effect.gen(function*() {
-          const n = yield* Ref.get(ref)
-          yield* Ref.set(ref, n + 1)
-        })
+      const increment = Effect.fnUntraced(function*(ref: Ref.Ref<number>) {
+        const n = yield* Ref.get(ref)
+        yield* Ref.set(ref, n + 1)
+      })
 
       const program = Effect.gen(function*() {
         const ref = yield* Ref.make(0)

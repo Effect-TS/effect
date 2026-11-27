@@ -19,6 +19,12 @@ export * as TestConsole from "./TestConsole.ts"
 
 /**
  * @stability unstable
+ * @since 4.1.7
+ */
+export * as TestScheduler from "./TestScheduler.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as TestSchema from "./TestSchema.ts"

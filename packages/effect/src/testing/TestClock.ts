@@ -20,6 +20,7 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
 import { NodeInspectSymbol } from "../Inspectable.ts"
+import { type IdleAware, whenIdle } from "../internal/testScheduler.ts"
 import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as Scheduler from "../Scheduler.ts"
@@ -417,8 +418,31 @@ class TestClockImpl implements TestClock {
     }
   }
 
-  wake(latch: Latch.Latch): Effect.Effect<void> {
+  /**
+   * Waits until a `TestScheduler` has no runnable task, so every fiber has
+   * suspended.
+   */
+  awaitIdle(scheduler: IdleAware): Effect.Effect<void> {
+    return Effect.callback<void>((resume) => Effect.sync(scheduler[whenIdle](() => resume(Effect.void)))).pipe(
+      this.timeoutBusy
+    )
+  }
+
+  readonly timeoutBusy = <A>(effect: Effect.Effect<A>): Effect.Effect<A | void> =>
+    effect.pipe(
+      Effect.timeoutOrElse({
+        duration: this.config.warningDelay,
+        orElse: () => Effect.provideService(Effect.logWarning(busyWarningMessage), Console.Console, this.liveConsole)
+      }),
+      this.withLive
+    )
+
+  wake(latch: Latch.Latch, idle: IdleAware | undefined): Effect.Effect<void> {
     return Effect.suspend(() => {
+      if (idle !== undefined) {
+        latch.openUnsafe()
+        return this.awaitIdle(idle)
+      }
       const tracker: WakeTracker = { pending: 0, onIdle: undefined }
       this.runTracked(tracker, () => latch.openUnsafe())
       if (tracker.pending === 0) return Effect.yieldNow
@@ -429,11 +453,7 @@ class TestClockImpl implements TestClock {
           tracker.onIdle = undefined
         })
       }).pipe(
-        Effect.timeoutOrElse({
-          duration: this.config.warningDelay,
-          orElse: () => Effect.provideService(Effect.logWarning(busyWarningMessage), Console.Console, this.liveConsole)
-        }),
-        this.withLive,
+        this.timeoutBusy,
         Effect.andThen(Effect.yieldNow)
       )
     })
@@ -469,7 +489,12 @@ const runBody = Effect.fnUntraced(function*(
   step: (currentTimestamp: number) => number,
   adjustmentNanos?: bigint
 ) {
-  yield* Fiber.await(yield* Effect.forkChild(Effect.yieldNow))
+  const idle = findIdleAware(yield* Scheduler.Scheduler)
+  if (idle === undefined) {
+    yield* Fiber.await(yield* Effect.forkChild(Effect.yieldNow))
+  } else {
+    yield* this.awaitIdle(idle)
+  }
   const initialWallNanos = this.currentWallNanos
   const initialMonotonicNanos = this.currentMonotonicNanos
   const endTimestamp = step(this.currentTimestamp)
@@ -478,7 +503,7 @@ const runBody = Effect.fnUntraced(function*(
     if (Arr.lastNonEmpty(sleeps).timestamp > endTimestamp) break
     const entry = sleeps.pop()!
     this.advanceTo(entry.timestamp)
-    yield* this.wake(entry.latch)
+    yield* this.wake(entry.latch, idle)
   }
   this.advanceTo(endTimestamp)
   if (adjustmentNanos !== undefined && Number.isFinite(endTimestamp)) {
@@ -524,6 +549,11 @@ class TrackingScheduler implements Scheduler.Scheduler {
       }
     }
   }
+}
+
+const findIdleAware = (scheduler: Scheduler.Scheduler): IdleAware | undefined => {
+  while (scheduler instanceof TrackingScheduler) scheduler = scheduler.parent
+  return whenIdle in scheduler ? scheduler as IdleAware : undefined
 }
 
 const makeWithScheduler = Effect.fnUntraced(function*(
