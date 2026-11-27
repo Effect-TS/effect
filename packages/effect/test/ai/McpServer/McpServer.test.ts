@@ -2278,6 +2278,67 @@ describe("McpServer", () => {
         assert.isFalse("outputSchema" in annotatedVoidTool)
       }))
 
+    it.effect("returns consistent descriptors across repeated listings and reflects replacements", () =>
+      Effect.gen(function*() {
+        const Initial = Tool.make("lookup", {
+          description: "initial lookup",
+          parameters: Schema.Struct({ query: Schema.String }),
+          success: Schema.Struct({ ok: Schema.Boolean })
+        }).annotate(Tool.Title, "Lookup")
+        const Replacement = Tool.make("lookup", {
+          description: "updated lookup",
+          parameters: Schema.Struct({ id: Schema.Finite }),
+          success: Schema.Struct({ count: Schema.Finite })
+        }).annotate(Tool.Title, "Updated Lookup")
+        const initialToolkit = Toolkit.make(Initial)
+        const replacementToolkit = Toolkit.make(Replacement)
+
+        for (
+          const protocol of [
+            McpProtocol.v2026_07_28,
+            McpProtocol.v2025_11_25,
+            McpProtocol.v2025_06_18,
+            McpProtocol.v2025_03_26,
+            McpProtocol.v2024_11_05
+          ]
+        ) {
+          yield* Effect.scoped(Effect.gen(function*() {
+            const client = yield* McpTest.makeClient(
+              McpServer.toolkit(initialToolkit).pipe(
+                Layer.provide(initialToolkit.toLayer({ lookup: () => Effect.succeed({ ok: true }) }))
+              ),
+              { protocols: [protocol] }
+            )
+
+            const first = yield* client.listTools()
+            const second = yield* client.listTools()
+            assert.deepStrictEqual(second.tools, first.tools)
+            assert.strictEqual(first.tools.length, 1)
+            assert.strictEqual(first.tools[0].name, "lookup")
+            assert.strictEqual(first.tools[0].description, "initial lookup")
+            assert.deepStrictEqual(first.tools[0].inputSchema.properties, { query: { type: "string" } })
+            if (protocol.protocolVersion >= "2025-06-18") {
+              assert.strictEqual(first.tools[0].title, "Lookup")
+              assert.deepStrictEqual(first.tools[0].outputSchema?.properties, { ok: { type: "boolean" } })
+            }
+
+            yield* McpServer.registerToolkit(replacementToolkit).pipe(
+              Effect.provideService(McpServer.McpServer, client.server),
+              Effect.provide(replacementToolkit.toLayer({ lookup: () => Effect.succeed({ count: 1 }) }))
+            )
+
+            const updated = yield* client.listTools()
+            assert.strictEqual(updated.tools.length, 1)
+            assert.strictEqual(updated.tools[0].description, "updated lookup")
+            assert.deepStrictEqual(updated.tools[0].inputSchema.properties, { id: { type: "number" } })
+            if (protocol.protocolVersion >= "2025-06-18") {
+              assert.strictEqual(updated.tools[0].title, "Updated Lookup")
+              assert.deepStrictEqual(updated.tools[0].outputSchema?.properties, { count: { type: "number" } })
+            }
+          }))
+        }
+      }))
+
     it.effect("returns concise parameter-validation errors without invoking the handler", () =>
       Effect.gen(function*() {
         let handlerInvoked = false
