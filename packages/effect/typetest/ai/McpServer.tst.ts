@@ -523,11 +523,10 @@ describe("McpServer", () => {
           yield* McpSchema.McpRequestContext
           return [] as ReadonlyArray<McpSchema.Tool>
         }),
-        call: (_name: string, _args: Readonly<Record<string, unknown>>) =>
-          Effect.gen(function*() {
-            yield* AuditLog
-            return hole<McpSchema.CallToolResult>()
-          })
+        call: Effect.fnUntraced(function*(_name: string) {
+          yield* AuditLog
+          return hole<McpSchema.CallToolResult>()
+        })
       }
       const registered = McpServer.registerToolSource(options)
       const layer = McpServer.toolSource(options)

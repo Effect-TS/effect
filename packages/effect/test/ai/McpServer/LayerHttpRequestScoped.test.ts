@@ -424,8 +424,7 @@ describe("McpServer.layerHttpRequestScoped", () => {
                 ? Effect.succeed(
                   new McpSchema.CallToolResult({ content: [{ type: "text", text: `${caller}:${name}` }] })
                 )
-                : Effect.fail(new Cause.NoSuchElementError())
-            )
+                : Effect.fail(new Cause.NoSuchElementError()))
         }).pipe(Layer.provide(Auth.layer))
       )
       const harness = yield* makeHttpHarness(

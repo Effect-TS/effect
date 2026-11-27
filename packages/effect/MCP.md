@@ -290,8 +290,7 @@ const Upstream = McpServer.toolSource({
     Effect.flatMap(CurrentUser, (user) =>
       name === `upstream_${user.id}`
         ? Effect.succeed(new McpSchema.CallToolResult({ content: [{ type: "text", text: JSON.stringify(args) }] }))
-        : Effect.fail(new Cause.NoSuchElementError())
-    )
+        : Effect.fail(new Cause.NoSuchElementError()))
 }).pipe(Layer.provide(Auth.layer))
 ```
 

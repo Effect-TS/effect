@@ -4446,16 +4446,16 @@ describe("McpServer", () => {
           list: Effect.flatMap(CurrentUser, () =>
             state.failList
               ? Effect.fail(new McpSchema.InternalError({ message: "Upstream unavailable" }))
-              : Effect.succeed(["Deploy", "AdminReset"].map(descriptor))
-          ),
-          call: (name) =>
-            Effect.flatMap(CurrentUser, (user) =>
-              name === "Invalid"
-                ? Effect.fail(new McpSchema.InvalidParams({ message: "Missing id" }))
-                : name === "Broken"
-                ? Effect.fail(new McpSchema.InternalError({ message: "Upstream failed" }))
-                : Effect.succeed(textResult(`${user}:${name}`))
-            )
+              : Effect.succeed(["Deploy", "AdminReset"].map(descriptor))),
+          call: Effect.fnUntraced(function*(name) {
+            if (name === "Invalid") {
+              return yield* new McpSchema.InvalidParams({ message: "Missing id" })
+            }
+            if (name === "Broken") {
+              return yield* new McpSchema.InternalError({ message: "Upstream failed" })
+            }
+            return textResult(`${yield* CurrentUser}:${name}`)
+          })
         }).pipe(Layer.provide(AllowList.combine(Auth).layer))
 
         const harness = yield* makeMcpStdioHarness(McpProtocol.v2025_11_25, [McpProtocol.v2025_11_25], registrations)

@@ -205,11 +205,7 @@ export interface ToolSourceRegistration {
   readonly handle: (
     call: typeof McpSchema.CallTool.payloadSchema.Type,
     invocation: McpInvocation
-  ) => Effect.Effect<
-    OperationOutcome<McpSchema.CallToolResult>,
-    ToolNotFound | InvalidToolInput | InvalidToolContinuation | ToolExecutionError | RequestRejected,
-    never
-  >
+  ) => Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError>
 }
 
 /**
@@ -587,6 +583,9 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       (entries) => entries.map((entry) => entry.descriptor)
     )
 
+  // The source that calls of an unregistered tool name go to.
+  const toolSource = (name: string) => toolSources.find((source) => source.owns(name))
+
   const tools: Tools = {
     register: (registration) =>
       Effect.sync(() => {
@@ -596,40 +595,31 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       Effect.sync(() => {
         toolSources.push(source)
       }),
-    list: (invocation) =>
-      Effect.suspend(() => {
-        if (toolSources.length === 0) {
-          return filterList(registrations.values(), invocation)
-        }
-        const sources = toolSources.slice()
-        return Effect.map(
-          Effect.all([
-            filterList(registrations.values(), invocation),
-            Effect.forEach(sources, (source) => source.list(invocation), { concurrency: "unbounded" })
-          ], { concurrency: "unbounded" }),
-          ([registered, sourced]) => {
-            // A sourced tool is listed only from the source its calls route to,
-            // and registered tools always take precedence (even when hidden).
-            const tools = Array.from(registered)
-            const seen = new Set<string>()
-            sourced.forEach((listed, index) => {
-              const source = sources[index]
-              for (const tool of listed) {
-                if (registrations.has(tool.name) || seen.has(tool.name)) continue
-                if (sources.find((candidate) => candidate.owns(tool.name)) !== source) continue
-                seen.add(tool.name)
-                tools.push(tool)
-              }
-            })
-            return tools
-          }
-        )
-      }),
+    list: (invocation) => {
+      const registered = filterList(registrations.values(), invocation)
+      if (toolSources.length === 0) {
+        return registered
+      }
+      return Effect.map(
+        Effect.all([
+          registered,
+          // A sourced tool is listed only by the source its calls go to. A
+          // registered tool shadows it, even when hidden.
+          ...toolSources.map((source) =>
+            Effect.map(
+              source.list(invocation),
+              (tools) => tools.filter(({ name }) => !registrations.has(name) && toolSource(name) === source)
+            )
+          )
+        ], { concurrency: "unbounded" }),
+        Arr.flatten
+      )
+    },
     call: (call, invocation, beforeHandle) =>
       Effect.suspend((): Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError> => {
         const registration = registrations.get(call.name)
         if (registration === undefined) {
-          const source = toolSources.find((source) => source.owns(call.name))
+          const source = toolSource(call.name)
           return source === undefined ? new ToolNotFound({ name: call.name }) : source.handle(call, invocation)
         }
         if (!registration.isVisible(invocation.protocol)) {
