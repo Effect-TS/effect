@@ -43,7 +43,9 @@ The comparison prints `median(baseline) / median(current)` per host and case,
 so values above 1 mean the current tree is faster. The 95% interval comes from
 a bootstrap that resamples rounds and then the samples inside them, so noise
 between processes counts as well as noise between samples. A case is marked
-`faster` or `slower` only when the whole interval is more than 5% away from 1.
+`faster` or `slower` when the whole interval is more than 5% away from 1, and
+`same` when the whole interval is within 5% of 1. Anything else is
+`inconclusive`; more `--rounds` may settle it.
 Reports are only comparable when they come from the same machine and settings.
 
 Browsers come from Playwright. Install them once with
@@ -79,6 +81,7 @@ actually had.
 | `--sample-ms`   | 10      | target duration of one batch         |
 | `--warmup-ms`   | 100     | warmup per case and round            |
 | `--max-case-ms` | 1000    | time after which a round stops early |
+| `--timeout-ms`  | 60000   | time after which a round is killed   |
 
 ## Report
 
@@ -117,5 +120,6 @@ is given:
 ```
 
 `samples` are nanoseconds per operation, and the case medians cover the samples
-of every round. A host that fails to start, or a case that throws, is listed in
+of every round. A host that fails to start, or a case that throws, times out or prints
+something other than its measurement, is listed in
 `errors` and makes the command exit with code 1. The other hosts still run.

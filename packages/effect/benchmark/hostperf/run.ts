@@ -7,7 +7,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { parseArgs } from "node:util"
-import type { Browser } from "playwright"
+import type { Browser, BrowserContext } from "playwright"
 import { chromium, webkit } from "playwright"
 import { build } from "vite"
 import type { RoundResult, Settings } from "./harness.ts"
@@ -67,6 +67,7 @@ Options:
   --sample-ms <ms>     Target duration of one sample (default: 10)
   --warmup-ms <ms>     Warmup per case and round (default: 100)
   --max-case-ms <ms>   Stop sampling a slow round after this long, keeping at least 3 samples (default: 1000)
+  --timeout-ms <ms>    Kill a round that has not finished after this long (default: 60000)
   --list               Print the case names
 `
 
@@ -81,6 +82,7 @@ const { positionals, values } = parseArgs({
     "sample-ms": { type: "string", default: "10" },
     "warmup-ms": { type: "string", default: "100" },
     "max-case-ms": { type: "string", default: "1000" },
+    "timeout-ms": { type: "string", default: "60000" },
     list: { type: "boolean", default: false },
     help: { type: "boolean", default: false }
   }
@@ -89,6 +91,12 @@ const { positionals, values } = parseArgs({
 const positive = (name: string, raw: string) => {
   const value = Number(raw)
   if (!Number.isFinite(value) || value <= 0) throw new Error(`--${name} must be a positive number`)
+  return value
+}
+
+const positiveInteger = (name: string, raw: string) => {
+  const value = Number(raw)
+  if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`--${name} must be a positive integer`)
   return value
 }
 
@@ -120,51 +128,86 @@ process.stdout.write(JSON.stringify(output), () => process.exit(0))
   return { script: join(bundleDir, "hostperf.js"), runner }
 }
 
-const runProcess = (command: string, args: Array<string>) =>
+const timeoutError = (timeoutMs: number) => new Error(`Timed out after ${timeoutMs} ms`)
+
+const runProcess = (command: string, args: Array<string>, timeoutMs: number) =>
   new Promise<Measurement>((resolvePromise, reject) => {
     const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] })
     let stdout = ""
     let stderr = ""
+    let timedOut = false
+    const timer = setTimeout(() => {
+      timedOut = true
+      child.kill("SIGKILL")
+    }, timeoutMs)
     child.stdout.on("data", (chunk) => stdout += chunk)
     child.stderr.on("data", (chunk) => stderr += chunk)
     child.on("error", reject)
     child.on("close", (code) => {
-      if (code === 0) resolvePromise(JSON.parse(stdout))
-      else reject(new Error(`${command} exited with ${code}: ${stderr.trim()}`))
+      clearTimeout(timer)
+      if (timedOut) return reject(timeoutError(timeoutMs))
+      if (code !== 0) return reject(new Error(`${command} exited with ${code}: ${stderr.trim()}`))
+      try {
+        resolvePromise(JSON.parse(stdout))
+      } catch {
+        reject(new Error(`${command} wrote output that is not a measurement: ${stdout.slice(0, 200)}`))
+      }
     })
   })
 
 const origin = "http://localhost"
 
-const runPage = async (browser: Browser, script: string, input: unknown): Promise<Measurement> => {
+const runPage = async (browser: Browser, script: string, input: unknown, timeoutMs: number): Promise<Measurement> => {
   const context = await browser.newContext()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(timeoutError(timeoutMs)), timeoutMs)
+  })
   try {
-    // Cross-origin isolation gives the page its finest performance.now() resolution.
-    const headers = {
-      "cross-origin-opener-policy": "same-origin",
-      "cross-origin-embedder-policy": "require-corp"
-    }
-    await context.route(`${origin}/**`, (route) => {
-      const url = new URL(route.request().url())
-      return url.pathname === "/hostperf.js"
-        ? route.fulfill({ headers, contentType: "text/javascript", body: script })
-        : route.fulfill({
-          headers,
-          contentType: "text/html",
-          body: "<!doctype html><script type=\"module\" src=\"/hostperf.js\"></script>"
-        })
-    })
-    const page = await context.newPage()
-    await page.goto(`${origin}/`)
-    await page.waitForFunction(() => (globalThis as any).__hostperf !== undefined)
-    return await page.evaluate((input) => (globalThis as any).__hostperf.run(input), input)
+    return await Promise.race([measurePage(context, script, input), deadline])
   } finally {
+    clearTimeout(timer)
+    // Closing the context also abandons a page that is still measuring.
     await context.close()
   }
 }
 
-/** Changes inside this band are reported as `same`, even when the interval excludes 1. */
+const measurePage = async (context: BrowserContext, script: string, input: unknown): Promise<Measurement> => {
+  // Cross-origin isolation gives the page its finest performance.now() resolution.
+  const headers = {
+    "cross-origin-opener-policy": "same-origin",
+    "cross-origin-embedder-policy": "require-corp"
+  }
+  await context.route(`${origin}/**`, (route) => {
+    const url = new URL(route.request().url())
+    return url.pathname === "/hostperf.js"
+      ? route.fulfill({ headers, contentType: "text/javascript", body: script })
+      : route.fulfill({
+        headers,
+        contentType: "text/html",
+        body: "<!doctype html><script type=\"module\" src=\"/hostperf.js\"></script>"
+      })
+  })
+  const page = await context.newPage()
+  await page.goto(`${origin}/`)
+  await page.waitForFunction(() => (globalThis as any).__hostperf !== undefined)
+  return await page.evaluate((input) => (globalThis as any).__hostperf.run(input), input)
+}
+
+/**
+ * A case is `faster` or `slower` when its whole interval is outside this band,
+ * `same` when the whole interval is inside it, and `inconclusive` otherwise.
+ */
 const noiseBand = 0.05
+
+const verdict = ({ high, low }: { readonly low: number; readonly high: number }) =>
+  low > 1 + noiseBand
+    ? "faster"
+    : high < 1 / (1 + noiseBand)
+    ? "slower"
+    : low >= 1 / (1 + noiseBand) && high <= 1 + noiseBand
+    ? "same"
+    : "inconclusive"
 
 const formatNs = (ns: number) =>
   ns >= 1e6 ? `${(ns / 1e6).toFixed(2)} ms` : ns >= 1e3 ? `${(ns / 1e3).toFixed(2)} µs` : `${ns.toFixed(1)} ns`
@@ -189,8 +232,7 @@ const printReport = (report: Report, baseline: Report | undefined) => {
         rows.push({ cells: [...cells, "-", "-", "-"], sort: -Infinity })
       } else {
         const s = speedup(samples(base), samples(result))
-        const verdict = s.low > 1 + noiseBand ? "faster" : s.high < 1 / (1 + noiseBand) ? "slower" : "same"
-        cells.push(formatX(s.speedup), `${formatX(s.low)}-${formatX(s.high)}`, verdict)
+        cells.push(formatX(s.speedup), `${formatX(s.low)}-${formatX(s.high)}`, verdict(s))
         rows.push({ cells, sort: s.speedup })
       }
     }
@@ -214,13 +256,14 @@ const main = async () => {
     if (!allHosts.includes(host)) throw new Error(`Unknown host ${host}; expected one of ${allHosts.join(", ")}`)
   }
   const settings: Settings = {
-    samples: positive("samples", values.samples),
+    samples: positiveInteger("samples", values.samples),
     sampleMs: positive("sample-ms", values["sample-ms"]),
     warmupMs: positive("warmup-ms", values["warmup-ms"]),
     maxCaseMs: positive("max-case-ms", values["max-case-ms"]),
     minSamples: 3
   }
-  const rounds = positive("rounds", values.rounds)
+  const rounds = positiveInteger("rounds", values.rounds)
+  const timeoutMs = positive("timeout-ms", values["timeout-ms"])
   const baseline: Report | undefined = values.baseline === undefined
     ? undefined
     : JSON.parse(readFileSync(values.baseline, "utf8"))
@@ -268,8 +311,8 @@ const main = async () => {
           const input = { case: name, settings }
           try {
             const measurement = browser === undefined
-              ? await runProcess(host === "node" ? process.execPath : "bun", [runner, JSON.stringify(input)])
-              : await runPage(browser, scriptSource, input)
+              ? await runProcess(host === "node" ? process.execPath : "bun", [runner, JSON.stringify(input)], timeoutMs)
+              : await runPage(browser, scriptSource, input, timeoutMs)
             hostReport.runtime = measurement.runtime
             hostReport.timerResolutionMs = measurement.timerResolutionMs
             const caseReport = byName.get(name) ??
