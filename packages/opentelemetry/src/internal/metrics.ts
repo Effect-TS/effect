@@ -10,8 +10,7 @@ import type {
 } from "@opentelemetry/sdk-metrics"
 import { AggregationTemporality, DataPointType, InstrumentType } from "@opentelemetry/sdk-metrics"
 import type { InstrumentDescriptor } from "@opentelemetry/sdk-metrics/build/src/InstrumentDescriptor.js"
-import * as Arr from "effect/Array"
-import type * as Context from "effect/Context"
+import * as Context from "effect/Context"
 import * as Metric from "effect/Metric"
 import * as Rec from "effect/Record"
 import type * as Metrics from "../OtelMetrics.ts"
@@ -76,7 +75,11 @@ export class MetricProducerImpl implements MetricProducer {
   }
 
   collect(_options?: MetricCollectOptions): Promise<CollectionResult> {
-    const snapshot = Metric.snapshotUnsafe(this.context)
+    const context = this.context
+    // Read every hook before exporting: a hook may change the registry or
+    // another series' state.
+    const registered = Array.from(Context.get(context, Metric.MetricRegistry).values())
+    const states = registered.map((metadata) => metadata.hooks.get(context))
     const hrTimeNow = currentHrTime()
     // Only series in this snapshot carry their delta state forward, so removed
     // series do not leak state or report a negative delta when recreated.
@@ -103,15 +106,16 @@ export class MetricProducerImpl implements MetricProducer {
       ? this.previousExportTimeNanos
       : this.startTimeNanos
 
-    for (let i = 0, len = snapshot.length; i < len; i++) {
-      const state = snapshot[i]
-      const attributes = state.attributes
-        ? Arr.reduce(Object.entries(state.attributes), {} as Record<string, string>, (acc, [key, value]) => {
-          Rec.assignProperty(acc, key, String(value))
-          return acc
-        })
-        : {}
-      const metricKey = makeMetricKey(state.id, state.attributes)
+    for (let i = 0, len = registered.length; i < len; i++) {
+      const metadata = registered[i]
+      const state: Metric.Metric.Snapshot = {
+        id: metadata.id,
+        type: metadata.type,
+        description: metadata.description,
+        attributes: metadata.attributes,
+        state: states[i]
+      }
+      const { attributes, key: metricKey } = seriesOf(metadata)
 
       switch (state.type) {
         case "Counter": {
@@ -419,13 +423,33 @@ export class MetricProducerImpl implements MetricProducer {
   }
 }
 
-/** Creates a unique key for a metric including its attributes */
-const makeMetricKey = (id: string, attributes: Metric.Metric.AttributeSet | undefined): string => {
-  if (attributes === undefined || Object.keys(attributes).length === 0) {
-    return id
+interface Series {
+  /** Keys the delta state of the series. */
+  readonly key: string
+  /** Shared by the series' data points, so frozen. */
+  readonly attributes: Readonly<Record<string, string>>
+}
+
+// Registry metadata lives as long as its series, so each series is derived once.
+const seriesCache = new WeakMap<Metric.Metric.Metadata<any, any>, Series>()
+
+const seriesOf = (metadata: Metric.Metric.Metadata<any, any>): Series => {
+  let series = seriesCache.get(metadata)
+  if (series === undefined) {
+    const entries = metadata.attributes === undefined ? [] : Object.entries(metadata.attributes)
+    const attributes: Record<string, string> = {}
+    for (const [key, value] of entries) {
+      Rec.assignProperty(attributes, key, String(value))
+    }
+    series = {
+      key: entries.length === 0
+        ? metadata.id
+        : `${metadata.id}:${JSON.stringify(entries.sort((a, b) => a[0].localeCompare(b[0])))}`,
+      attributes: Object.freeze(attributes)
+    }
+    seriesCache.set(metadata, series)
   }
-  const sortedEntries = Object.entries(attributes).sort((a, b) => a[0].localeCompare(b[0]))
-  return `${id}:${JSON.stringify(sortedEntries)}`
+  return series
 }
 
 const currentHrTime = (): HrTime => {
