@@ -12,6 +12,13 @@
  */
 import * as Context from "./Context.ts"
 import type * as Fiber from "./Fiber.ts"
+import {
+  defaultMaxOpsBeforeYield,
+  defaultPreventSchedulerYield,
+  MaxOpsBeforeYieldKey,
+  PreventSchedulerYieldKey,
+  SchedulerKey
+} from "./internal/fiberCachedKeys.ts"
 
 /**
  * A scheduler manages the execution of Effect fibers by controlling when queued
@@ -62,6 +69,16 @@ export interface SchedulerDispatcher {
   flush(): void
 }
 
+let defaultScheduler: Scheduler | undefined
+
+/**
+ * The scheduler of fibers whose context provides none. `Scheduler` resolves to
+ * the same instance, so a fiber and `Context.get` agree on the scheduler in use.
+ *
+ * @internal
+ */
+export const getDefaultScheduler = (): Scheduler => (defaultScheduler ??= new MixedScheduler())
+
 /**
  * Context reference for the scheduler used by the Effect runtime.
  *
@@ -79,10 +96,12 @@ export interface SchedulerDispatcher {
  * @category services
  * @since 2.0.0
  */
-export const Scheduler: Context.Reference<Scheduler> = Context.Reference<Scheduler>("effect/Scheduler", {
-  fiberCached: true,
-  defaultValue: () => new MixedScheduler()
-})
+export const Scheduler: Context.Reference<Scheduler> = Context.shareDefaultValue(
+  Context.Reference<Scheduler>(SchedulerKey, {
+    defaultValue: () => new MixedScheduler()
+  }),
+  getDefaultScheduler
+)
 
 const setMicrotask = (f: () => void) => {
   let cancelled = false
@@ -291,9 +310,8 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
  * @category services
  * @since 4.0.0
  */
-export const MaxOpsBeforeYield = Context.Reference<number>("effect/Scheduler/MaxOpsBeforeYield", {
-  fiberCached: true,
-  defaultValue: () => 2048
+export const MaxOpsBeforeYield = Context.Reference<number>(MaxOpsBeforeYieldKey, {
+  defaultValue: () => defaultMaxOpsBeforeYield
 })
 
 /**
@@ -318,7 +336,6 @@ export const MaxOpsBeforeYield = Context.Reference<number>("effect/Scheduler/Max
  * @category services
  * @since 4.0.0
  */
-export const PreventSchedulerYield = Context.Reference<boolean>("effect/Scheduler/PreventSchedulerYield", {
-  fiberCached: true,
-  defaultValue: () => false
+export const PreventSchedulerYield = Context.Reference<boolean>(PreventSchedulerYieldKey, {
+  defaultValue: () => defaultPreventSchedulerYield
 })

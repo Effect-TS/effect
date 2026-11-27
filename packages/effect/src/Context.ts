@@ -14,13 +14,14 @@
 import type { Effect, EffectIterator } from "./Effect.ts"
 import * as Effectable from "./Effectable.ts"
 import * as Equal from "./Equal.ts"
-import { dual, type LazyArg } from "./Function.ts"
+import { dual, identity, type LazyArg } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import type { Inspectable } from "./Inspectable.ts"
-import { exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts"
+import { contextMaker, exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts"
+import { fiberCachedKeys } from "./internal/fiberCachedKeys.ts"
+import { hasProperty } from "./internal/predicate.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
-import { hasProperty } from "./Predicate.ts"
 import type * as Types from "./Types.ts"
 
 /**
@@ -267,45 +268,47 @@ export const Service: {
       ;(self as any).make = options.make
     }
     if (options?.fiberCached) {
-      cacheKeys.add(key)
+      fiberCachedKeys.add(key)
     }
     return self
   }
   return arguments.length > 0 ? init(arguments[0], arguments[1]) : init
 } as any
 
-const ServiceProto: any = {
-  [ServiceTypeId]: ServiceTypeId,
-  ...Effectable.Prototype<Service<never, any>>({
+// The build annotates `Object.assign` as pure, allowing bundles without service
+// keys to drop `ServiceProto` and `Effectable.ts`.
+const ServiceProto: any = Object.assign(
+  { [ServiceTypeId]: ServiceTypeId },
+  Effectable.Prototype<Service<never, any>>({
     label: "Service",
     evaluate(fiber) {
       return exitSucceed(get(fiber.context, this))
     }
   }),
-  toJSON<I, A>(this: Service<I, A>) {
-    return {
-      _id: "Service",
-      key: this.key
+  {
+    toJSON<I, A>(this: Service<I, A>) {
+      return {
+        _id: "Service",
+        key: this.key
+      }
+    },
+    of<Service>(this: void, self: Service): Service {
+      return self
+    },
+    context<Identifier, Shape>(
+      this: Service<Identifier, Shape>,
+      self: Shape
+    ): Context<Identifier> {
+      return make(this, self)
+    },
+    use<A, E, R>(this: Service<never, any>, f: (service: any) => Effect<A, E, R>): Effect<A, E, R> {
+      return withFiber((fiber) => f(get(fiber.context, this)))
+    },
+    useSync<A>(this: Service<never, any>, f: (service: any) => A): Effect<A, never, never> {
+      return withFiber((fiber) => exitSucceed(f(get(fiber.context, this))))
     }
-  },
-  of<Service>(this: void, self: Service): Service {
-    return self
-  },
-  context<Identifier, Shape>(
-    this: Service<Identifier, Shape>,
-    self: Shape
-  ): Context<Identifier> {
-    return make(this, self)
-  },
-  use<A, E, R>(this: Service<never, any>, f: (service: any) => Effect<A, E, R>): Effect<A, E, R> {
-    return withFiber((fiber) => f(get(fiber.context, this)))
-  },
-  useSync<A>(this: Service<never, any>, f: (service: any) => A): Effect<A, never, never> {
-    return withFiber((fiber) => exitSucceed(f(get(fiber.context, this))))
   }
-}
-
-const cacheKeys = new Set<string>()
+)
 
 const ReferenceTypeId = "~effect/Context/Reference" as const
 
@@ -502,14 +505,27 @@ interface Overlay {
 // enough fall-throughs to amortize the copy.
 const FlattenAfterBaseHits = 8
 
-const makeImpl = <Services>(
+const makeFlat = <Services>(
   cacheRoot: ContextImpl<any> | undefined,
   base: ReadonlyMap<string, any>,
-  overlay: Overlay | undefined,
-  depth: number,
   maxDepth: number
 ): ContextImpl<Services> => {
   const self: ContextImpl<Services> = Object.create(Proto)
+  self.cacheRoot = cacheRoot ?? self
+  self.base = base
+  self.depth = 0
+  self.maxDepth = maxDepth
+  return self
+}
+
+const makeOverlay = <Services>(
+  cacheRoot: ContextImpl<any> | undefined,
+  base: ReadonlyMap<string, any>,
+  overlay: Overlay,
+  depth: number,
+  maxDepth: number
+): ContextImpl<Services> => {
+  const self: ContextImpl<Services> = Object.create(OverlayProto)
   self.cacheRoot = cacheRoot ?? self
   self.base = base
   self.overlay = overlay
@@ -537,26 +553,35 @@ const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
 const withFlat = <B>(self: Context<any>, f: (map: Map<string, any>) => void): Context<B> => {
   const map = new Map(self.mapUnsafe)
   f(map)
-  return makeImpl(undefined, map, undefined, 0, (self as ContextImpl<any>).maxDepth)
+  return makeFlat(undefined, map, (self as ContextImpl<any>).maxDepth)
 }
 
 // A private symbol so user code cannot forge a value that reads as absent
 const notFound = Symbol()
 
-const lookup = (self: Context<any>, key: string): unknown => {
-  const impl = self as ContextImpl<any>
-  for (let overlay = impl.overlay; overlay; overlay = overlay.parent) {
+// Read fields rather than dispatching through a method for contexts from other copies of effect.
+const lookup = <Services>(self: Context<Services>, key: string): unknown => {
+  const impl = self as ContextImpl<Services>
+  if (impl.overlay !== undefined) return overlayLookup(impl, key)
+  const value = impl.base.get(key)
+  return value === undefined && !impl.base.has(key) ? notFound : value
+}
+
+const overlayLookup = (self: ContextImpl<any>, key: string): unknown => {
+  for (let overlay = self.overlay; overlay; overlay = overlay.parent) {
     if (overlay.key === key) return overlay.value
   }
-  const value = impl.base.get(key)
+  const value = self.base.get(key)
   // Misses must not advance the counter: reference-default lookups miss the
   // base on every fiber cache refresh, which would flatten every short-lived
   // request context and reintroduce the O(services) per-request cost
-  if (value === undefined && !impl.base.has(key)) return notFound
-  if (impl.overlay && ++impl.baseHits >= impl.base.size && impl.baseHits >= FlattenAfterBaseHits) {
-    impl.base = flatten(impl)
-    impl.overlay = undefined
-    impl.depth = 0
+  if (value === undefined && !self.base.has(key)) return notFound
+  if (++self.baseHits >= self.base.size && self.baseHits >= FlattenAfterBaseHits) {
+    // Flatten through `OverlayProto.mapUnsafe` rather than calling `flatten`,
+    // so flat-only bundles never reach `flatten`
+    self.base = self.mapUnsafe
+    self.overlay = undefined
+    self.depth = 0
   }
   return value
 }
@@ -614,24 +639,26 @@ export const makeUnsafe = <Services = never>(
 ): Context<Services> => {
   const maxDepth = options?.maxDepth
   // NaN or Infinity would never trigger a rebase, so fall back to the default
-  return makeImpl(undefined, mapUnsafe, undefined, 0, Number.isInteger(maxDepth) && maxDepth! >= 0 ? maxDepth! : 8)
+  return makeFlat(undefined, mapUnsafe, Number.isInteger(maxDepth) && maxDepth! >= 0 ? maxDepth! : 8)
 }
+
+contextMaker.makeUnsafe = (mapUnsafe) => makeFlat(undefined, mapUnsafe, 8)
 
 const Proto: Omit<
   ContextImpl<never>,
   "cacheRoot" | "base" | "overlay" | "depth" | "_flat" | "baseHits" | "maxDepth"
 > = {
   get mapUnsafe() {
-    return flatten(this as any as ContextImpl<any>)
+    return (this as any as ContextImpl<any>).base
   },
   ...PipeInspectableProto,
   [TypeId]: {
-    _Services: (_: never) => _
+    _Services: identity
   },
   toJSON(this: Context<never>) {
     return {
       _id: "Context",
-      services: Array.from(this.mapUnsafe).map(([key, value]) => ({ key, value }))
+      services: Array.from(this.mapUnsafe, ([key, value]) => ({ key, value }))
     }
   },
   [Equal.symbol]<A>(this: Context<A>, that: unknown): boolean {
@@ -648,6 +675,18 @@ const Proto: Omit<
     return Hash.number(this.mapUnsafe.size)
   }
 }
+
+// Separate prototype for contexts carrying an overlay chain (`Context.add`), so
+// bundles that only build flat contexts drop `flatten` and `applyOverlays`.
+const OverlayProto = Object.create(Proto, {
+  mapUnsafe: {
+    get(this: ContextImpl<any>) {
+      return flatten(this)
+    },
+    enumerable: true,
+    configurable: true
+  }
+})
 
 /** @internal */
 export const hasSameCache = <Services, Services2>(
@@ -834,16 +873,16 @@ export const addUnsafe = <Services, I, S>(
   service: Types.NoInfer<S>
 ): Context<Services | I> => {
   const impl = self as ContextImpl<Services>
-  const cacheRoot = cacheKeys.has(key) ? undefined : impl.cacheRoot
+  const cacheRoot = fiberCachedKeys.has(key) ? undefined : impl.cacheRoot
   if (impl.depth >= impl.maxDepth) {
     // Avoid mapUnsafe: it would flatten the parent before copying.
     const map = new Map(impl._flat ?? impl.base)
     if (!impl._flat) applyOverlays(map, impl.overlay)
     map.set(key, service)
-    return makeImpl(cacheRoot, map, undefined, 0, impl.maxDepth)
+    return makeFlat(cacheRoot, map, impl.maxDepth)
   }
 
-  return makeImpl(
+  return makeOverlay(
     cacheRoot,
     impl.base,
     { key, value: service, parent: impl.overlay },
@@ -1095,6 +1134,25 @@ const getDefaultValue = (ref: Reference<any>) => {
   return (ref as any)[defaultValueCacheKey] = ref.defaultValue()
 }
 
+/**
+ * Shares the runtime default with reference lookups without changing
+ * `ref.defaultValue()`.
+ *
+ * @internal
+ */
+export const shareDefaultValue = <Shape>(ref: Reference<Shape>, shared: () => Shape): Reference<Shape> =>
+  Object.defineProperty(ref, defaultValueCacheKey, { get: shared })
+
+/**
+ * Reads a reference, falling back to its cached default.
+ *
+ * @internal
+ */
+export const getReferenceUnsafe = <Services, Shape>(self: Context<Services>, ref: Reference<Shape>): Shape => {
+  const value = lookup(self, ref.key)
+  return value === notFound ? getDefaultValue(ref) : value as Shape
+}
+
 const serviceNotFoundError = (service: Key<any, any>) => {
   const error = new Error(
     `Service not found${service.key ? `: ${String(service.key)}` : ""}`
@@ -1289,7 +1347,7 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
       const value = lookup(self, key)
       if (value !== notFound) map.set(key, value)
     }
-    return makeImpl(undefined, map, undefined, 0, (self as ContextImpl<any>).maxDepth)
+    return makeFlat(undefined, map, (self as ContextImpl<any>).maxDepth)
   }
   const keep = new Set(services.map((key) => key.key))
   return withFlat(self, (map) =>

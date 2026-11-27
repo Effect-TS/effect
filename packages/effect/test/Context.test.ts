@@ -3,7 +3,7 @@ import * as Context from "effect/Context"
 import * as Equal from "effect/Equal"
 import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
-import { describe, it } from "vitest"
+import { describe, it, vi } from "vitest"
 
 interface ContextInternals {
   readonly _flat: unknown
@@ -118,6 +118,16 @@ describe("Context", () => {
     deepStrictEqual([...Context.pick(Undefined)(context).mapUnsafe], [[Undefined.key, undefined]])
     deepStrictEqual([...Context.pick(Missing)(context).mapUnsafe], [])
     strictEqual(Context.get(context, Ref), undefined)
+  })
+
+  it("reads services and reference defaults from contexts built by another copy of effect", async () => {
+    vi.resetModules()
+    const OtherContext: typeof Context = await import("effect/Context")
+    const Ref = Context.Reference<string>("ContextTest/OtherCopyRef", { defaultValue: () => "default" })
+    const context = OtherContext.add(OtherContext.empty(), A, 1)
+
+    strictEqual(Context.get(context, A), 1)
+    strictEqual(Context.get(context, Ref), "default")
   })
 
   it("bounds deep overlay chains without changing values or order", () => {
@@ -240,6 +250,9 @@ describe("Context", () => {
     assertTrue(impl._flat instanceof Map)
     strictEqual(impl.overlay, undefined)
     strictEqual(impl.depth, 0)
+    // The flattened context reads the former overlay entries from its base
+    strictEqual(Context.getUnsafe(context, B), 2)
+    assertTrue(Option.isNone(Context.getOption(context, C)))
 
     const added = Context.add(context, C, 3) as any
     strictEqual(added._flat, undefined)

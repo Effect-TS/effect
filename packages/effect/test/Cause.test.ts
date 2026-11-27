@@ -731,6 +731,52 @@ describe("Cause", () => {
       Cause.annotate(original, Context.empty())
       assert.strictEqual(original.reasons.length, 1)
     })
+
+    describe("reasons with their own annotate method", () => {
+      class Key extends Context.Service<Key, number>()("Key") {}
+      const makeReason = (received: Array<Context.Context<never>>) => {
+        const reason = Cause.makeFailReason("error")
+        return Object.assign(Object.create(reason), {
+          annotate(this: Cause.Fail<string>, annotations: Context.Context<never>) {
+            received.push(annotations)
+            return reason.annotate.call(this, annotations)
+          }
+        }) as Cause.Fail<string>
+      }
+
+      it("are annotated by Cause.annotate through that method", () => {
+        const received: Array<Context.Context<never>> = []
+        Cause.annotate(Cause.fromReasons([makeReason(received)]), Context.make(Key, 1))
+        assert.deepStrictEqual(received.map((annotations) => Context.getOrUndefined(annotations, Key)), [1])
+      })
+
+      it("receive the stack trace of a failing fiber through that method", () => {
+        const received: Array<Context.Context<never>> = []
+        const reason = makeReason(received)
+        const fail = Effect.fn("fail")(function*() {
+          return yield* Effect.failCause(Cause.fromReasons([reason]))
+        })
+        Effect.runSyncExit(fail())
+        assert.ok(received.length > 0)
+        assert.ok(received.every((annotations) => Context.getOption(annotations, Cause.StackTrace)._tag === "Some"))
+      })
+    })
+
+    it("hashes a reason's error or defect before its annotations", () => {
+      class Key extends Context.Service<Key, object>()("Key") {}
+      const order: Array<string> = []
+      const value = (name: string) => ({
+        [Hash.symbol]() {
+          order.push(name)
+          return 0
+        }
+      })
+      for (const cause of [Cause.fail(value("payload")), Cause.die(value("payload"))]) {
+        order.length = 0
+        Hash.hash(Cause.annotate(cause, Context.make(Key, value("annotation"))).reasons[0])
+        assert.deepStrictEqual(order, ["payload", "annotation"])
+      }
+    })
   })
 
   describe("reasonAnnotations", () => {

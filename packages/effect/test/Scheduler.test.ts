@@ -1,8 +1,18 @@
 import { assert, describe, it, vi } from "@effect/vitest"
-import { Effect, Exit } from "effect"
+import { Context, Effect, Exit } from "effect"
 import * as Scheduler from "effect/Scheduler"
 
 describe("Scheduler", () => {
+  it("runFork runs on the default scheduler of the Scheduler reference", () => {
+    const fiber = Effect.runFork(Effect.withFiber((fiber) => Effect.succeed(fiber)))
+    const exit = fiber.pollUnsafe()
+    assert.isTrue(exit !== undefined && Exit.isSuccess(exit))
+    assert.strictEqual(fiber.cache.scheduler, Context.get(Context.empty(), Scheduler.Scheduler))
+    // Calling the default directly still makes a new scheduler
+    const fresh = Scheduler.Scheduler.defaultValue()
+    assert.instanceOf(fresh, Scheduler.MixedScheduler)
+    assert.notStrictEqual(fresh, fiber.cache.scheduler)
+  })
   it("runSyncExit does not create a dispatcher for synchronous effects", () => {
     const makeDispatcher = vi.spyOn(Scheduler.MixedScheduler.prototype, "makeDispatcher")
     const exit = Effect.runSyncExit(Effect.sync(() => 1))
