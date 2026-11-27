@@ -8,7 +8,12 @@ import * as Version from "effect/Version"
 const capture = () => {
   const exports: Array<{
     scope: { name: string; version: string }
-    spans: Array<{ traceId: string; links: Array<{ traceId: string }>; status: { code: number } }>
+    spans: Array<{
+      traceId: string
+      attributes: Array<{ key: string; value: unknown }>
+      links: Array<{ traceId: string }>
+      status: { code: number }
+    }>
   }> = []
   const httpClient = HttpClient.makeWith(
     Effect.fnUntraced(function*(requestEffect) {
@@ -50,6 +55,20 @@ describe("OtlpTracer", () => {
       yield* Effect.exit(effect.pipe(Effect.withSpan("test")))
       yield* (yield* OtlpExporter.Flusher).flush
       assert.deepStrictEqual(exports[0].spans[0].status, { code: 0 })
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect("exports a self-referencing array attribute", () => {
+    const { exports, layer } = capture()
+    const array: Array<unknown> = [1]
+    array.push(array)
+    return Effect.gen(function*() {
+      yield* Effect.void.pipe(Effect.withSpan("test", { attributes: { array } }))
+      yield* (yield* OtlpExporter.Flusher).flush
+      assert.deepStrictEqual(exports[0].spans[0].attributes, [{
+        key: "array",
+        value: { arrayValue: { values: [{ intValue: 1 }, { stringValue: "[Circular]" }] } }
+      }])
     }).pipe(Effect.provide(layer))
   })
 

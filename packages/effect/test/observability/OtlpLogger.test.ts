@@ -143,6 +143,20 @@ describe("OtlpLogger", () => {
     }).pipe(Effect.provide(makeTestLayer(httpClient)))
   })
 
+  it.effect("exports a self-referencing array in the message and annotations", () => {
+    const { httpClient, requests } = capture()
+    const array: Array<unknown> = [1]
+    array.push(array)
+    return Effect.gen(function*() {
+      yield* Effect.log(array).pipe(Effect.annotateLogs("array", array))
+      yield* (yield* OtlpExporter.Flusher).flush
+
+      const expected = { arrayValue: { values: [{ intValue: 1 }, { stringValue: "[Circular]" }] } }
+      assert.deepStrictEqual(logRecordOf(requests[0]).body, expected)
+      assert.deepStrictEqual(attributesOf(requests[0]).array, expected)
+    }).pipe(Effect.provide(makeTestLayer(httpClient)))
+  })
+
   it.effect("pads a 64-bit trace id to 32 hex characters", () => {
     const { httpClient, requests } = capture()
     return Effect.gen(function*() {

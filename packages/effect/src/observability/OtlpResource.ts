@@ -187,19 +187,35 @@ const int64Bound = 2 ** 63
  * **Details**
  *
  * Arrays are converted recursively, primitive values use their matching OTLP
- * fields, and unsupported values are formatted as strings. Integers outside the
- * signed 64-bit range fall back to `doubleValue` for numbers and `stringValue`
- * for bigints.
+ * fields, and unsupported values are formatted as strings. An array nested
+ * inside itself is converted to the string `"[Circular]"` where it repeats.
+ * Integers outside the signed 64-bit range fall back to `doubleValue` for
+ * numbers and `stringValue` for bigints.
  *
  * @stability unstable
  * @category attributes
  * @since 4.0.0
  */
-export const unknownToAttributeValue = (value: unknown): AnyValue => {
+export const unknownToAttributeValue = (value: unknown): AnyValue => toAttributeValue(value, undefined)
+
+const CIRCULAR = "[Circular]"
+
+// `ancestors` holds the arrays on the current path, so a cycle is cut where it
+// repeats while an array shared by siblings is converted each time
+const toAttributeValue = (value: unknown, ancestors: Set<unknown> | undefined): AnyValue => {
   if (Array.isArray(value)) {
+    const path = ancestors ?? new Set<unknown>()
+    if (path.has(value)) {
+      return {
+        stringValue: CIRCULAR
+      }
+    }
+    path.add(value)
+    const values = value.map((item) => toAttributeValue(item, path))
+    path.delete(value)
     return {
       arrayValue: {
-        values: value.map(unknownToAttributeValue)
+        values
       }
     }
   }
