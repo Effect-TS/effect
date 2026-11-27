@@ -616,16 +616,13 @@ describe("SqlMessageStorage", () => {
             const sql = yield* SqlClient.SqlClient
             yield* sql`CREATE TABLE collision_other (id INT)`
             yield* sql`CREATE INDEX collision_replies_one_exit ON collision_other (id)`
-            const storage = yield* SqlMessageStorage.makeEncoded({ prefix: "collision" }).pipe(
-              Effect.provide(NodeCrypto.layer)
+            const storage = yield* MessageStorage.makeEncoded(
+              yield* SqlMessageStorage.makeEncoded({ prefix: "collision" }).pipe(Effect.provide(NodeCrypto.layer))
             )
-            yield* sql`
-              INSERT INTO collision_messages (id, shard_id, entity_type, entity_id, kind, tag, payload, headers, request_id)
-              VALUES (1, 'default:1', 'test', '1', 0, 'GetUser', '{}', '{}', 1)
-            `
-            const exit = { _tag: "WithExit", requestId: "1", exit: { _tag: "Success", value: null } } as const
-            yield* storage.saveReply({ ...exit, id: "1" })
-            const error = yield* Effect.flip(storage.saveReply({ ...exit, id: "2" }))
+            const request = yield* makeRequest()
+            yield* storage.saveRequest(request)
+            yield* storage.saveReply(yield* makeReply(request))
+            const error = yield* Effect.flip(storage.saveReply(yield* makeReply(request)))
             expect(error._tag).toEqual("PersistenceError")
           }))
 
