@@ -72,7 +72,8 @@ const protocols = [McpProtocol.v2025_11_25, McpProtocol.v2026_07_28] as const
 const connect = Effect.fnUntraced(function*(
   protocol: McpProtocol.ProtocolAdapter<McpClient.ProtocolVersion>,
   server: Layer.Layer<any, any, HttpRouter.HttpRouter> = serverLayer,
-  extensions?: { readonly skills?: boolean | undefined }
+  extensions?: { readonly skills?: boolean | undefined },
+  capabilities?: McpClient.InputCapabilities
 ) {
   const { handler } = yield* makeHttpHarness(server)
   const fetch: typeof globalThis.fetch = Object.assign(
@@ -80,7 +81,7 @@ const connect = Effect.fnUntraced(function*(
     { preconnect() {} }
   )
   const context = yield* Layer.build(
-    McpClient.layerHttp({ ...clientInfo, url: MCP_ENDPOINT, protocol, extensions }).pipe(
+    McpClient.layerHttp({ ...clientInfo, url: MCP_ENDPOINT, protocol, extensions, capabilities }).pipe(
       Layer.provide(FetchHttpClient.layer),
       Layer.provide(Layer.succeed(FetchHttpClient.Fetch, fetch))
     )
@@ -186,6 +187,89 @@ describe("McpClient", () => {
         )
       }
     }))
+
+  describe("input continuation", () => {
+    const inputRequest = {
+      method: "elicitation/create",
+      params: { mode: "form", message: "Continue?", requestedSchema: { type: "object", properties: {} } }
+    } as const
+
+    // https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr
+    const confirmServer = Layer.effectDiscard(Effect.gen(function*() {
+      const server = yield* McpServer.McpServer
+      yield* server.addTool({
+        tool: new McpSchema.Tool({ name: "confirm", inputSchema: { type: "object" } }),
+        annotations: Context.empty(),
+        handle: () =>
+          Effect.map(
+            McpSchema.McpRequestContext,
+            (context) =>
+              context.clientCapabilities.elicitation?.form === undefined
+                ? new McpSchema.CallToolResult({
+                  content: [{ type: "text", text: "missing capability" }],
+                  isError: true
+                })
+                : context.inputResponses?.ok === undefined
+                ? new McpSchema.InputRequired({ inputRequests: { ok: inputRequest }, requestState: "state-1" })
+                : new McpSchema.CallToolResult({
+                  content: [{
+                    type: "text",
+                    text: `${String(context.inputResponses.ok.action)}:${context.requestState}`
+                  }]
+                })
+          )
+      })
+      yield* server.addPrompt({
+        prompt: McpSchema.Prompt.make({ name: "confirm" }),
+        annotations: Context.empty(),
+        completions: {},
+        handle: () =>
+          Effect.succeed(new McpSchema.InputRequired({ inputRequests: { ok: inputRequest }, requestState: "state-1" }))
+      })
+    })).pipe(Layer.provideMerge(makeServerLayer({
+      name: "confirm-server",
+      protocols: [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25]
+    })))
+
+    it.effect("should pause and continue a 2026-07-28 tool call while keeping prompts unsupported", () =>
+      Effect.gen(function*() {
+        const client = yield* connect(McpProtocol.v2026_07_28, confirmServer, undefined, { elicitation: { form: {} } })
+        const tool = yield* findTool(client, "confirm")
+        const paused = yield* client.callTool({ tool }).pipe(Effect.flip)
+        assert(paused.reason._tag === "InputRequiredError")
+        assert.deepStrictEqual(paused.reason.result, {
+          inputRequests: { ok: inputRequest },
+          requestState: "state-1"
+        })
+        const forwarded = new McpSchema.InputRequired(paused.reason.result)
+
+        const done = yield* client.callTool({
+          tool,
+          inputResponses: { ok: { action: "accept", content: {} } },
+          requestState: forwarded.requestState
+        })
+        assert.deepStrictEqual(done.content, [{ type: "text", text: "accept:state-1" }])
+
+        const [prompt] = yield* client.listPrompts()
+        const promptError = yield* client.getPrompt({ prompt }).pipe(Effect.flip)
+        assert.strictEqual(promptError.reason._tag, "UnsupportedError")
+      }))
+
+    it.effect("should refuse input capabilities and continuation fields on 2025-11-25", () =>
+      Effect.gen(function*() {
+        const capabilitiesError = yield* connect(McpProtocol.v2025_11_25, confirmServer, undefined, {
+          elicitation: {}
+        }).pipe(Effect.flip)
+        assert.strictEqual(capabilitiesError.reason._tag, "ConfigurationError")
+
+        const client = yield* connect(McpProtocol.v2025_11_25, confirmServer)
+        const tool = yield* findTool(client, "confirm")
+        for (const params of [{ requestState: "state-1" }, { inputResponses: { ok: { action: "accept" } } }]) {
+          const error = yield* client.callTool({ tool, ...params }).pipe(Effect.flip)
+          assert.strictEqual(error.reason._tag, "ConfigurationError")
+        }
+      }))
+  })
 
   describe("discovery limits", () => {
     it.effect("should expose server capabilities when initialization succeeds", () =>

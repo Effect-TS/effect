@@ -3,8 +3,8 @@
  *
  * Every failure is an `McpClientError` whose `reason` is one of the reason
  * classes in this module: transport, protocol, HTTP, unsupported feature,
- * closed connection, timeout, limit, configuration, validation or
- * tool-reported errors.
+ * closed connection, timeout, limit, configuration, validation,
+ * tool-reported errors or client input requests.
  *
  * @stability experimental
  * @since 4.0.6
@@ -219,6 +219,54 @@ export class ToolError extends Schema.Error<ToolError>("effect/ai/McpClientError
   }
 }
 
+const InputRequestSchema = Schema.Union([
+  Schema.Struct({
+    method: Schema.Literal("roots/list"),
+    params: Schema.optional(Schema.Record(Schema.String, Schema.Unknown))
+  }),
+  Schema.Struct({
+    method: Schema.Literal("sampling/createMessage"),
+    params: Schema.Record(Schema.String, Schema.Unknown)
+  }),
+  Schema.Struct({
+    method: Schema.Literal("elicitation/create"),
+    params: Schema.Record(Schema.String, Schema.Unknown)
+  })
+])
+
+const InputRequiredResult = Schema.Union([
+  Schema.Struct({
+    inputRequests: Schema.Record(Schema.String, InputRequestSchema),
+    requestState: Schema.optional(Schema.String)
+  }),
+  Schema.Struct({
+    inputRequests: Schema.optional(Schema.Record(Schema.String, InputRequestSchema)),
+    requestState: Schema.String
+  })
+])
+
+/**
+ * A `2026-07-28` tool call paused with `input_required`. Forward `result` to
+ * `new McpSchema.InputRequired(reason.result)`, or answer `result.inputRequests`
+ * and retry with `inputResponses` and the unchanged `result.requestState`.
+ *
+ * @stability experimental
+ * @category reasons
+ * @since 4.1.7
+ */
+export class InputRequiredError
+  extends Schema.Error<InputRequiredError>("effect/ai/McpClientError/InputRequiredError")({
+    _tag: Schema.tag("InputRequiredError"),
+    result: InputRequiredResult
+  })
+{
+  readonly [ReasonTypeId] = ReasonTypeId
+
+  override get message(): string {
+    return "MCP tool call requires client input"
+  }
+}
+
 /**
  * Union of MCP client and transport failure reasons.
  *
@@ -237,6 +285,7 @@ export type McpClientErrorReason =
   | ConfigurationError
   | ValidationError
   | ToolError
+  | InputRequiredError
 
 /**
  * Schema for the reasons carried by an `McpClientError`.
@@ -255,7 +304,8 @@ export const McpClientErrorReason: Schema.Union<[
   typeof LimitError,
   typeof ConfigurationError,
   typeof ValidationError,
-  typeof ToolError
+  typeof ToolError,
+  typeof InputRequiredError
 ]> = Schema.Union([
   TransportError,
   ProtocolError,
@@ -266,7 +316,8 @@ export const McpClientErrorReason: Schema.Union<[
   LimitError,
   ConfigurationError,
   ValidationError,
-  ToolError
+  ToolError,
+  InputRequiredError
 ])
 
 /**

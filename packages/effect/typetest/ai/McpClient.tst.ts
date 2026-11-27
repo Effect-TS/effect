@@ -1,7 +1,7 @@
 import { Context, Effect, Schema, SchemaGetter } from "effect"
 import type { AiError } from "effect/ai/AiError"
 import * as McpClient from "effect/ai/McpClient"
-import type { McpClientError } from "effect/ai/McpClientError"
+import type { InputRequiredError, McpClientError } from "effect/ai/McpClientError"
 import type * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import type * as Tool from "effect/ai/Tool"
@@ -139,5 +139,16 @@ describe("McpClient", () => {
     expect(McpClient.toolkit).type.not.toBeCallableWith(client, {
       transformTool: (remote: McpClient.RemoteTool) => remote.setFailure(Schema.String)
     })
+  })
+
+  it("should expose a forwardable InputRequiredError result and object-only input capabilities", () => {
+    expect<InputRequiredError["result"]>().type.toBeAssignableTo<
+      ConstructorParameters<typeof McpSchema.InputRequired>[0]
+    >()
+    expect<McpSchema.ClientCapabilities>().type.toBeAssignableTo<McpClient.InputCapabilities>()
+    expect<{ readonly roots: false }>().type.not.toBeAssignableTo<McpClient.InputCapabilities>()
+    expect<{ readonly elicitation: { readonly url: false } }>().type.not.toBeAssignableTo<
+      McpClient.InputCapabilities
+    >()
   })
 })
