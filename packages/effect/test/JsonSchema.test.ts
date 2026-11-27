@@ -1156,6 +1156,42 @@ describe("JsonSchema", () => {
         definitions: {}
       })
     })
+
+    it("reports references in schema positions via onReference", () => {
+      const input: JsonSchema.JsonSchema = {
+        type: "object",
+        properties: {
+          a: { $ref: "#/components/schemas/A" },
+          b: { type: "array", items: { $ref: "https://example.com/B.json" } },
+          c: { $dynamicRef: "#/components/schemas/C" },
+          d: { $id: "shop/", $ref: "customer.json" },
+          e: { $id: "admin/", $ref: "customer.json" }
+        },
+        default: { $ref: "#/components/schemas/Default" },
+        examples: [{ $ref: "#/components/schemas/Example" }]
+      }
+      const references: Array<readonly [string, string]> = []
+      const result = JsonSchema.fromSchemaOpenApi3_1(input, {
+        onReference: (reference, { keyword }) => references.push([reference, keyword])
+      })
+      assert.sameDeepMembers(references, [
+        ["#/components/schemas/A", "$ref"],
+        ["https://example.com/B.json", "$ref"],
+        ["#/components/schemas/C", "$dynamicRef"],
+        ["customer.json", "$ref"],
+        ["customer.json", "$ref"]
+      ])
+      deepStrictEqual(result, JsonSchema.fromSchemaOpenApi3_1(input))
+      assert.throws(
+        () =>
+          JsonSchema.fromSchemaOpenApi3_1(input, {
+            onReference: () => {
+              throw new Error("refused")
+            }
+          }),
+        /refused/
+      )
+    })
   })
 
   describe("fromSchemaOpenApi3_0", () => {
@@ -1269,6 +1305,38 @@ describe("JsonSchema", () => {
             "x-custom": literal
           }
         }
+      )
+    })
+
+    it("reports references in schema positions via onReference", () => {
+      const input: JsonSchema.JsonSchema = {
+        type: "object",
+        properties: {
+          a: { $ref: "#/components/schemas/A" },
+          b: { type: "array", items: { $ref: "https://example.com/B.json" } },
+          c: { $ref: "#/components/schemas/C", properties: { ignored: { $ref: "#/components/schemas/Ignored" } } }
+        },
+        default: { $ref: "#/components/schemas/Default" },
+        example: { $ref: "#/components/schemas/Example" }
+      }
+      const references: Array<readonly [string, string]> = []
+      const result = JsonSchema.fromSchemaOpenApi3_0(input, {
+        onReference: (reference, { keyword }) => references.push([reference, keyword])
+      })
+      assert.sameDeepMembers(references, [
+        ["#/components/schemas/A", "$ref"],
+        ["https://example.com/B.json", "$ref"],
+        ["#/components/schemas/C", "$ref"]
+      ])
+      deepStrictEqual(result, JsonSchema.fromSchemaOpenApi3_0(input))
+      assert.throws(
+        () =>
+          JsonSchema.fromSchemaOpenApi3_0(input, {
+            onReference: () => {
+              throw new Error("refused")
+            }
+          }),
+        /refused/
       )
     })
 
