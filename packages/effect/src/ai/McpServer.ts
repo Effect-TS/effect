@@ -3007,12 +3007,19 @@ const addMcpHttpRoutes = Effect.fnUntraced(function*(
   const router = yield* HttpRouter.HttpRouter
   const allowSessionTermination = options.allowSessionTermination === true &&
     runtime.protocols.some((protocol) => protocol.runtime._tag === "Stateful")
-  const forbidden = Effect.succeed(HttpServerResponse.empty({ status: 403 }))
-  const withAllowedOrigin = (
-    handler: (request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse>
+  const unsupportedContentType = Effect.succeed(mcpTransportRejection(415, "Content-Type must be application/json"))
+  const notAcceptable = Effect.succeed(
+    mcpTransportRejection(406, "Accept header must include both application/json and text/event-stream")
+  )
+  const withAllowedOrigin = <R>(
+    handler: (
+      request: HttpServerRequest.HttpServerRequest
+    ) => Effect.Effect<HttpServerResponse.HttpServerResponse, never, R>
   ) =>
   (request: HttpServerRequest.HttpServerRequest) =>
-    isAllowedMcpOrigin(request, options.allowedOrigins) ? handler(request) : forbidden
+    isAllowedMcpOrigin(request, options.allowedOrigins)
+      ? handler(request)
+      : Effect.succeed(mcpTransportRejection(403, `Origin '${request.headers["origin"]}' is not allowed`))
   const methodNotAllowedResponse = Effect.succeed(HttpServerResponse.empty({
     status: 405,
     headers: { allow: allowSessionTermination ? "POST, DELETE" : "POST" }
@@ -3028,51 +3035,52 @@ const addMcpHttpRoutes = Effect.fnUntraced(function*(
       ? withAllowedOrigin((request) => runtime.terminateHttpSession(request.headers))
       : methodNotAllowed
   )
-  yield* router.add("POST", options.path, (request) => {
-    if (!isAllowedMcpOrigin(request, options.allowedOrigins)) {
-      return Effect.succeed(HttpServerResponse.empty({ status: 403 }))
-    }
-    if (mcpMediaTypes(request.headers["content-type"])[0] !== "application/json") {
-      return Effect.succeed(HttpServerResponse.empty({ status: 415 }))
-    }
-    const accepted = mcpMediaTypes(request.headers["accept"])
-    if (!accepted.includes("application/json") || !accepted.includes("text/event-stream")) {
-      return Effect.succeed(HttpServerResponse.empty({ status: 406 }))
-    }
-    return Effect.gen(function*() {
-      const parsed = yield* Effect.result(
-        Effect.flatMap(request.text, Schema.decodeEffect(Schema.UnknownFromJsonString))
-      )
-      const admission = runtime.admitHttp(request.headers, parsed)
-      if (admission._tag === "Rejected") {
-        return admission.response
+  yield* router.add(
+    "POST",
+    options.path,
+    withAllowedOrigin((request) => {
+      if (mcpMediaTypes(request.headers["content-type"])[0] !== "application/json") {
+        return unsupportedContentType
       }
-      const toResponse = (response: HttpServerResponse.HttpServerResponse) => {
-        // Completed responses may already contain notifications followed by the result.
-        const hasMultipleMessages = response.body._tag === "Uint8Array" &&
-          response.body.body.subarray(0, -1).includes(10)
-        return admission.isSubscription || response.body._tag === "Stream" || hasMultipleMessages
-          ? toServerSentEvents(response, admission.isSubscription)
-          : response
+      const accepted = mcpMediaTypes(request.headers["accept"])
+      if (!accepted.includes("application/json") || !accepted.includes("text/event-stream")) {
+        return notAcceptable
       }
-      if (admission.acknowledge) {
-        return yield* Effect.catchCause(
-          Effect.map(httpEffect, toResponse),
-          () => Effect.succeed(HttpServerResponse.empty({ status: 202 }))
+      return Effect.gen(function*() {
+        const parsed = yield* Effect.result(
+          Effect.flatMap(request.text, Schema.decodeEffect(Schema.UnknownFromJsonString))
         )
-      }
-      return yield* Effect.flatMap(httpEffect, (response) => {
-        if (response.body._tag !== "Uint8Array" || response.body.body.length > 0) {
-          return Effect.succeed(toResponse(response))
+        const admission = runtime.admitHttp(request.headers, parsed)
+        if (admission._tag === "Rejected") {
+          return admission.response
         }
-        // Only fully cancelled request POSTs may return an empty SSE response.
-        // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#sending-messages-to-the-server
-        return httpPostResponses.get(request)?.expected === 0
-          ? Effect.succeed(HttpServerResponse.stream(Stream.empty, { contentType: "text/event-stream" }))
-          : Effect.die(new Error("MCP request ended without writing its response"))
+        const toResponse = (response: HttpServerResponse.HttpServerResponse) => {
+          // Completed responses may already contain notifications followed by the result.
+          const hasMultipleMessages = response.body._tag === "Uint8Array" &&
+            response.body.body.subarray(0, -1).includes(10)
+          return admission.isSubscription || response.body._tag === "Stream" || hasMultipleMessages
+            ? toServerSentEvents(response, admission.isSubscription)
+            : response
+        }
+        if (admission.acknowledge) {
+          return yield* Effect.catchCause(
+            Effect.map(httpEffect, toResponse),
+            () => Effect.succeed(HttpServerResponse.empty({ status: 202 }))
+          )
+        }
+        return yield* Effect.flatMap(httpEffect, (response) => {
+          if (response.body._tag !== "Uint8Array" || response.body.body.length > 0) {
+            return Effect.succeed(toResponse(response))
+          }
+          // Only fully cancelled request POSTs may return an empty SSE response.
+          // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#sending-messages-to-the-server
+          return httpPostResponses.get(request)?.expected === 0
+            ? Effect.succeed(HttpServerResponse.stream(Stream.empty, { contentType: "text/event-stream" }))
+            : Effect.die(new Error("MCP request ended without writing its response"))
+        })
       })
     })
-  })
+  )
 })
 
 const mcpHttpSerialization: RpcSerialization.RpcSerialization["Service"] = (() => {
@@ -3194,6 +3202,9 @@ const isAllowedMcpOrigin = (
   const origin = request.headers["origin"]
   return origin === undefined || (allowedOrigins ?? []).includes(origin)
 }
+
+const mcpTransportRejection = (status: 403 | 406 | 415, message: string): HttpServerResponse.HttpServerResponse =>
+  McpRuntime.jsonRpcError(status, { code: McpSchema.INVALID_REQUEST_ERROR_CODE, message })
 
 const mcpMediaTypes = (header: string | undefined): ReadonlyArray<string> =>
   header === undefined

@@ -59,6 +59,23 @@ const OptionalStringTool = Tool.make("OptionalStringTool", {
   success: Schema.String
 })
 
+const assertHttpRejection = Effect.fnUntraced(function*(
+  response: Response,
+  status: number,
+  ...patterns: ReadonlyArray<RegExp>
+) {
+  assert.strictEqual(response.status, status)
+  const body = (yield* Effect.promise(() => response.json())) as {
+    readonly id: unknown
+    readonly error: { readonly code: number; readonly message: string }
+  }
+  assert.isNull(body.id)
+  assert.strictEqual(body.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
+  for (const pattern of patterns) {
+    assert.match(body.error.message, pattern)
+  }
+})
+
 const StrictObjectTool = Tool.make("StrictObjectTool", {
   parameters: Schema.Struct({
     config: Schema.Struct({ value: Schema.FiniteFromString })
@@ -786,7 +803,20 @@ describe("McpServer", () => {
             "mcp-session-id": sessionId,
             "mcp-protocol-version": "2025-03-26"
           })
-          assert.strictEqual(response.status, 400)
+          yield* assertHttpRejection(response, 400, /batch/i)
+
+          const pingBatch = [{ jsonrpc: "2.0", id: 4, method: "ping" }]
+          const statelessVersionBatch = yield* harness.post(pingBatch, {
+            "mcp-session-id": sessionId,
+            "mcp-protocol-version": "2026-07-28"
+          })
+          yield* assertHttpRejection(statelessVersionBatch, 400, /batch/i)
+
+          const legacyVersionBatch = yield* harness.post(pingBatch, {
+            "mcp-session-id": sessionId,
+            "mcp-protocol-version": "2025-03-26"
+          })
+          assert.strictEqual(legacyVersionBatch.status, 200)
         }
         assert.strictEqual(yield* Ref.get(calls), 0)
       }))
@@ -2884,7 +2914,8 @@ describe("McpServer", () => {
         allowSessionTermination: true
       }))
       strictEqual((yield* harness.delete()).status, 400)
-      strictEqual((yield* harness.delete({ "Mcp-Session-Id": "unknown" })).status, 404)
+      const unknown = yield* harness.delete({ "Mcp-Session-Id": "unknown" })
+      yield* assertHttpRejection(unknown, 404, /initialize/i, /MCP-Session-Id/i)
     }))
 
   it.effect("rejects disallowed DELETE Origins without terminating the session", () =>
@@ -3134,13 +3165,24 @@ describe("McpServer", () => {
         httpClient.execute
       )
       strictEqual(unsupportedResponse.status, 400)
-      assert.deepInclude(yield* unsupportedResponse.json, {
-        error: {
-          code: -32022,
-          message: "Unsupported protocol version '9999-01-01'",
-          data: { supported: ["2025-06-18"], requested: "9999-01-01" }
-        }
-      })
+      const unsupportedBody = (yield* unsupportedResponse.json) as {
+        readonly error: { readonly code: number; readonly message: string; readonly data: unknown }
+      }
+      strictEqual(unsupportedBody.error.code, -32022)
+      assert.include(unsupportedBody.error.message, "9999-01-01")
+      assert.include(unsupportedBody.error.message, "2025-06-18")
+      assert.deepStrictEqual(unsupportedBody.error.data, { supported: ["2025-06-18"], requested: "9999-01-01" })
+
+      const batchUnsupportedResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
+        HttpClientRequest.bodyJsonUnsafe([pingBody]),
+        httpClient.execute
+      )
+      strictEqual(batchUnsupportedResponse.status, 400)
+      const batchUnsupportedBody = JSON.parse(yield* batchUnsupportedResponse.text)
+      strictEqual(batchUnsupportedBody.id, null)
+      strictEqual(batchUnsupportedBody.error.code, -32022)
       strictEqual(unsupportedResponse.headers["access-control-allow-origin"], "*")
 
       const malformedResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
