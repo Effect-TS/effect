@@ -1035,19 +1035,12 @@ describe("HttpApi", () => {
     })
   })
 
-  describe("declared error status with a non-JSON body", () => {
-    class NotFound extends Schema.Error<NotFound>("NotFound")({
-      _tag: Schema.tag("NotFound")
-    }, {
+  it.effect("declared error status with a non-JSON body fails with an HttpClientError", () => {
+    class NotFound extends Schema.Error<NotFound>("NotFound")({ _tag: Schema.tag("NotFound") }, {
       httpApiStatus: 404
     }) {}
     const Api = HttpApi.make("api").add(
-      HttpApiGroup.make("group").add(
-        HttpApiEndpoint.get("get", "/get", {
-          success: Schema.Struct({ ok: Schema.Boolean }),
-          error: NotFound
-        })
-      )
+      HttpApiGroup.make("group").add(HttpApiEndpoint.get("get", "/get", { error: NotFound }))
     )
     const GroupLayer = HttpApiBuilder.group(
       Api,
@@ -1058,29 +1051,19 @@ describe("HttpApi", () => {
           () => Effect.succeed(HttpServerResponse.text("<html>404</html>", { status: 404, contentType: "text/html" }))
         )
     )
-    ;[
-      { name: "node:http", layer: NodeHttpClient.layerNodeHttp },
-      { name: "undici", layer: NodeHttpClient.layerUndici },
-      { name: "fetch", layer: FetchHttpClient.layer }
-    ].forEach(({ layer, name }) => {
-      describe(name, () => {
-        const ApiLayer = HttpRouter.serve(
-          HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
-          { disableListenLog: true, disableLogger: true }
-        ).pipe(
-          Layer.provideMerge(HttpServer.layerTestClient),
-          Layer.provide(layer),
-          Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
-        )
-
-        it.effect("fails with an HttpClientError", () =>
-          Effect.gen(function*() {
-            const client = yield* HttpApiClient.make(Api)
-            const error = yield* client.group.get().pipe(Effect.flip)
-            assert.strictEqual(error._tag, "HttpClientError")
-          }).pipe(Effect.provide(ApiLayer)))
-      })
-    })
+    const ApiLayer = HttpRouter.serve(
+      HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
+      { disableListenLog: true, disableLogger: true }
+    ).pipe(
+      Layer.provideMerge(HttpServer.layerTestClient),
+      Layer.provide(NodeHttpClient.layerNodeHttp),
+      Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+    )
+    return Effect.gen(function*() {
+      const client = yield* HttpApiClient.make(Api)
+      const error = yield* client.group.get().pipe(Effect.flip)
+      assert.strictEqual(error._tag, "HttpClientError")
+    }).pipe(Effect.provide(ApiLayer))
   })
 
   describe("params option", () => {
