@@ -24,6 +24,7 @@ import {
   Stream
 } from "effect"
 import * as SchemaBinary from "effect/encoding/SchemaBinary"
+import { Buffer } from "node:buffer"
 
 const encode = <A, I>(schema: Schema.Codec<A, I>, value: A): Uint8Array<ArrayBuffer> =>
   Schema.encodeUnknownSync(SchemaBinary.toCodec(schema))(value)
@@ -2853,6 +2854,19 @@ describe("SchemaBinary", () => {
 
       assert.deepStrictEqual(decoded, value)
       assert.notStrictEqual(decoded.bytes.buffer, frame.buffer)
+      parser.endSync()
+    })
+
+    it("owns decoded bytes when a whole frame arrives in a Node Buffer", () => {
+      const schema = Schema.Struct({ bytes: Schema.Uint8Array })
+      const value = { bytes: Uint8Array.of(1, 2, 3) }
+      const input = Buffer.from(encode(schema, value))
+      const parser = SchemaBinary.parser(schema)
+      const [decoded] = parser.feedSync(input)
+      input.fill(0)
+
+      assert.deepStrictEqual(decoded.bytes, value.bytes)
+      assert.notStrictEqual(decoded.bytes.buffer, input.buffer)
       parser.endSync()
     })
   })
