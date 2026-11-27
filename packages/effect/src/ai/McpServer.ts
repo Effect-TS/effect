@@ -3425,6 +3425,9 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
         if (origin === "parameters" && isParameterValidationError(error)) {
           return Effect.fail(new InvalidParams({ message: error.reason.message }))
         }
+        if (origin === "handler" && isInvalidParams(error)) {
+          return Effect.fail(error)
+        }
         if (origin === "handler" && isDeclaredFailure(error)) {
           return Effect.catchCause(declaredFailureResult(error), internalToolError)
         }
@@ -3529,6 +3532,8 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>, Names ext
     yield* registry.addTool(registration)
   }
 })
+
+const isInvalidParams = Schema.is(InvalidParams)
 
 const isParameterValidationError = (
   error: unknown

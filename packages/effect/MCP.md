@@ -256,7 +256,9 @@ A tool result is sent to the client in its JSON encoding, the same encoding its 
 `outputSchema` describes. For example, a `Schema.Date` field is sent as an ISO string and a
 `Schema.Void` field as `null`. Declared failures are sent as text in the JSON encoding of their
 `failure` schema. In the default `"error"` failure mode, a declared `Error` with a non-empty
-`message` is sent as that message instead.
+`message` is sent as that message instead, while `McpSchema.InvalidParams` follows the same
+invalid-input path as `McpServer.addTool` and parameter validation whether or not the tool
+declares it.
 
 In `tools/list`, an explicit `Tool.Destructive` value takes precedence. Otherwise,
 `destructiveHint` is `false` when `Tool.Readonly` is `true`, and `true` when `Tool.Readonly`

@@ -2650,6 +2650,63 @@ describe("McpServer", () => {
         }
       }))
 
+    const invalidParams = Schema.Struct({ id: Schema.String })
+    const invalidParamsToolkit = Toolkit.make(
+      Tool.make("Undeclared", { parameters: invalidParams, success: Schema.String }),
+      Tool.make("Declared", { parameters: invalidParams, success: Schema.String, failure: McpSchema.InvalidParams }),
+      Tool.make("ReturnMode", {
+        parameters: invalidParams,
+        success: Schema.String,
+        failure: McpSchema.InvalidParams,
+        failureMode: "return"
+      })
+    )
+    const rejectInvalidParams = () => Effect.fail(new McpSchema.InvalidParams({ message: "id must be numeric" }))
+    const invalidParamsRegistrations = McpServer.toolkit(invalidParamsToolkit).pipe(
+      Layer.provide(invalidParamsToolkit.toLayer({
+        Undeclared: rejectInvalidParams as () => Effect.Effect<never>,
+        Declared: rejectInvalidParams,
+        ReturnMode: rejectInvalidParams
+      }))
+    )
+
+    it.effect("reports handler InvalidParams as -32602 on 2025-06-18 while preserving return mode", () =>
+      Effect.gen(function*() {
+        const client = yield* McpTest.makeClient(invalidParamsRegistrations, {
+          protocols: [McpProtocol.v2025_06_18]
+        })
+
+        for (const name of ["Undeclared", "Declared"] as const) {
+          const error = yield* client.callTool({ name, arguments: { id: "x" } }).pipe(Effect.flip)
+          assertTrue("code" in error)
+          assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+          assert.strictEqual(error.message, "id must be numeric")
+        }
+
+        const returned = yield* client.callTool({ name: "ReturnMode", arguments: { id: "x" } })
+        assert.isTrue(returned.isError)
+        assert.isUndefined(returned.structuredContent)
+        assert.deepStrictEqual(JSON.parse(toolResultText(returned)), {
+          _tag: "InvalidParams",
+          code: McpSchema.INVALID_PARAMS_ERROR_CODE,
+          message: "id must be numeric"
+        })
+      }))
+
+    it.effect("reports handler InvalidParams as an isError tool result on 2025-11-25", () =>
+      Effect.gen(function*() {
+        const client = yield* McpTest.makeClient(invalidParamsRegistrations, {
+          protocols: [McpProtocol.v2025_11_25]
+        })
+
+        for (const name of ["Undeclared", "Declared"] as const) {
+          const result = yield* client.callTool({ name, arguments: { id: "x" } })
+          assert.isTrue(result.isError)
+          assert.isUndefined(result.structuredContent)
+          assert.deepStrictEqual(result.content, [{ type: "text", text: "id must be numeric" }])
+        }
+      }))
+
     const modelOutputImage = new Uint8Array([1, 2, 3])
     const modelOutputUrl = new URL("https://example.com/report.png")
     const modelOutputToolkit = Toolkit.make(
