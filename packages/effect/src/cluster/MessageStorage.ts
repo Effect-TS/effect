@@ -30,7 +30,7 @@ import * as DeliverAt from "./DeliverAt.ts"
 import type { EntityAddress } from "./EntityAddress.ts"
 import * as Envelope from "./Envelope.ts"
 import * as ClusterAbandon from "./internal/clusterAbandon.ts"
-import { TransactionNotifications } from "./internal/transactionNotifications.ts"
+import { TransactionNotifications, type TransactionState } from "./internal/transactionNotifications.ts"
 import * as Message from "./Message.ts"
 import * as Reply from "./Reply.ts"
 import * as ShardId from "./ShardId.ts"
@@ -656,18 +656,34 @@ export const make = (
       )
     return MessageStorage.of({
       ...storage,
-      // Nested transactions defer notifications to the outermost commit.
+      // Nested transactions defer commits and notifications to the outermost commit.
       withTransaction: (effect) =>
         TransactionNotifications.use((outer) => {
-          const notifications: Array<Effect.Effect<void, PersistenceError | MalformedMessage>> = []
-          return storage.withTransaction(Effect.provideService(effect, TransactionNotifications, notifications)).pipe(
-            Effect.tap(() =>
-              outer
-                ? Effect.sync(() => {
-                  outer.push(...notifications)
-                })
-                : Effect.orDie(Effect.forEach(notifications, identity, { discard: true }))
-            )
+          const state: TransactionState = {
+            root: outer ? outer.root : {},
+            commits: [],
+            rollbacks: [],
+            notifications: []
+          }
+          return storage.withTransaction(Effect.provideService(effect, TransactionNotifications, state)).pipe(
+            Effect.onExit((exit) => {
+              if (Exit.isFailure(exit)) {
+                for (let i = state.rollbacks.length - 1; i >= 0; i--) {
+                  state.rollbacks[i]()
+                }
+                return Effect.void
+              }
+              if (outer) {
+                outer.commits.push(...state.commits)
+                outer.rollbacks.push(...state.rollbacks)
+                outer.notifications.push(...state.notifications)
+                return Effect.void
+              }
+              for (let i = 0; i < state.commits.length; i++) {
+                state.commits[i]()
+              }
+              return Effect.orDie(Effect.forEach(state.notifications, identity, { discard: true }))
+            })
           )
         }),
       registerReplyHandler: (message) => {
@@ -743,9 +759,9 @@ export const make = (
               : Effect.forEach(handlers, (handler) => handler.respond(persisted), { discard: true })
           })
           if (persisted.reply._tag !== "WithExit") return notify
-          return TransactionNotifications.use((notifications) =>
-            notifications === undefined ? notify : Effect.sync(() => {
-              notifications.push(notify)
+          return TransactionNotifications.use((tx) =>
+            tx === undefined ? notify : Effect.sync(() => {
+              tx.notifications.push(notify)
             })
           )
         })
@@ -1044,11 +1060,6 @@ export const MemoryTransaction = Context.Reference<boolean>("effect/cluster/Mess
   defaultValue: constFalse
 })
 
-const MemoryTransactionRollbacks = Context.Reference<Array<() => void> | undefined>(
-  "effect/cluster/MessageStorage/MemoryTransactionRollbacks",
-  { defaultValue: () => undefined }
-)
-
 // the same claim window the SQL driver uses (`last_read < ten minutes ago`)
 const claimExpirationMillis = 10 * 60 * 1000
 
@@ -1070,6 +1081,10 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
     const clock = yield* Clock
     const requests = new Map<string, MemoryEntry>()
     const requestsByPrimaryKey = new Map<string, MemoryEntry>()
+    const pendingByPrimaryKey = new Map<
+      string,
+      { readonly root: object; readonly entry: MemoryEntry; readonly settled: Latch.Latch }
+    >()
     const unprocessed = new Set<Envelope.Encoded>()
     const replyIds = new Set<string>()
     const lastRead = new Map<Envelope.Encoded, number>()
@@ -1146,72 +1161,94 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
 
     const encoded: Encoded = {
       saveEnvelope: ({ deliverAt, envelope: envelope_, primaryKey }) =>
-        TransactionNotifications.use((notifications) =>
-          MemoryTransactionRollbacks.use((rollbacks) =>
-            Effect.sync(() => {
-              const envelope = JSON.parse(JSON.stringify(envelope_)) as Envelope.Encoded
-              const existing = primaryKey
-                ? requestsByPrimaryKey.get(primaryKey)
-                : envelope._tag === "Request" && requests.get(envelope.requestId)
-              if (existing) {
-                return SaveResultEncoded.Duplicate({
-                  originalId: Snowflake.Snowflake(existing.envelope.requestId),
-                  lastReceivedReply: Option.fromNullishOr(
-                    existing.replies.length === 1 && existing.replies[0]._tag === "WithExit"
-                      ? existing.replies[0]
-                      : existing.lastReceivedChunk
-                  )
-                })
-              }
+        TransactionNotifications.use((tx) =>
+          Effect.suspend(function loop(): Effect.Effect<SaveResult.Encoded> {
+            const pending = primaryKey ? pendingByPrimaryKey.get(primaryKey) : undefined
+            // Another transaction holds this primary key: wait for it to commit or roll back.
+            if (pending && pending.root !== tx?.root) {
+              return Effect.andThen(pending.settled.await, Effect.suspend(loop))
+            }
+            const envelope = JSON.parse(JSON.stringify(envelope_)) as Envelope.Encoded
+            const existing = primaryKey
+              ? (pending?.entry ?? requestsByPrimaryKey.get(primaryKey))
+              : envelope._tag === "Request" && requests.get(envelope.requestId)
+            if (existing) {
+              return Effect.succeed(SaveResultEncoded.Duplicate({
+                originalId: Snowflake.Snowflake(existing.envelope.requestId),
+                lastReceivedReply: Option.fromNullishOr(
+                  existing.replies.length === 1 && existing.replies[0]._tag === "WithExit"
+                    ? existing.replies[0]
+                    : existing.lastReceivedChunk
+                )
+              }))
+            }
+            if (!tx) {
               if (envelope._tag === "Request") {
                 const entry: MemoryEntry = { envelope, replies: [], lastReceivedChunk: undefined, deliverAt }
                 requests.set(envelope.requestId, entry)
                 if (primaryKey) {
                   requestsByPrimaryKey.set(primaryKey, entry)
                 }
-                if (rollbacks) {
-                  rollbacks.push(() => {
-                    if (requests.get(envelope.requestId) === entry) {
-                      requests.delete(envelope.requestId)
-                    }
-                    if (primaryKey && requestsByPrimaryKey.get(primaryKey) === entry) {
-                      requestsByPrimaryKey.delete(primaryKey)
-                    }
-                  })
-                }
               } else {
                 const entry = requests.get(envelope.requestId)
                 // the request was deleted, so there is nothing left to acknowledge or interrupt
-                if (!entry) return SaveResultEncoded.Success()
+                if (!entry) return Effect.succeed(SaveResultEncoded.Success())
                 if (envelope._tag === "AckChunk") {
-                  const prevChunk = entry.lastReceivedChunk
                   entry.lastReceivedChunk = entry.replies.find((r): r is Reply.ChunkEncoded =>
                     r._tag === "Chunk" && r.id === envelope.replyId
                   ) ?? entry.lastReceivedChunk
-                  if (rollbacks) {
-                    rollbacks.push(() => {
-                      entry.lastReceivedChunk = prevChunk
-                    })
-                  }
                 }
               }
-              // Defer poll visibility until the outer commit so readers cannot
-              // observe a queued message before earlier writes in the transaction.
-              if (notifications) {
-                notifications.push(Effect.sync(() => {
-                  unprocessed.add(envelope)
-                  journal.push(envelope)
-                }))
-              } else {
+              unprocessed.add(envelope)
+              journal.push(envelope)
+              return Effect.succeed(SaveResultEncoded.Success())
+            }
+            // Hold primary-key exclusivity without publishing to committed maps
+            // until the outer commit; release waiters on commit or rollback.
+            if (envelope._tag === "Request") {
+              const entry: MemoryEntry = { envelope, replies: [], lastReceivedChunk: undefined, deliverAt }
+              const lock = primaryKey
+                ? { root: tx.root, entry, settled: Latch.makeUnsafe() }
+                : undefined
+              if (primaryKey && lock) {
+                pendingByPrimaryKey.set(primaryKey, lock)
+                tx.rollbacks.push(() => {
+                  if (pendingByPrimaryKey.get(primaryKey) === lock) {
+                    pendingByPrimaryKey.delete(primaryKey)
+                  }
+                  lock.settled.openUnsafe()
+                })
+              }
+              tx.commits.push(() => {
+                if (primaryKey && lock && pendingByPrimaryKey.get(primaryKey) === lock) {
+                  pendingByPrimaryKey.delete(primaryKey)
+                }
+                requests.set(envelope.requestId, entry)
+                if (primaryKey) {
+                  requestsByPrimaryKey.set(primaryKey, entry)
+                }
                 unprocessed.add(envelope)
                 journal.push(envelope)
-              }
-              return SaveResultEncoded.Success()
-            })
-          )
+                lock?.settled.openUnsafe()
+              })
+            } else {
+              tx.commits.push(() => {
+                const entry = requests.get(envelope.requestId)
+                if (!entry) return
+                if (envelope._tag === "AckChunk") {
+                  entry.lastReceivedChunk = entry.replies.find((r): r is Reply.ChunkEncoded =>
+                    r._tag === "Chunk" && r.id === envelope.replyId
+                  ) ?? entry.lastReceivedChunk
+                }
+                unprocessed.add(envelope)
+                journal.push(envelope)
+              })
+            }
+            return Effect.succeed(SaveResultEncoded.Success())
+          })
         ),
       saveReply: (reply_) => {
-        const save = Effect.sync(() => {
+        const save = () => {
           const reply = JSON.parse(JSON.stringify(reply_)) as Reply.Encoded
           const entry = requests.get(reply.requestId)
           if (!entry || replyIds.has(reply.id)) return
@@ -1222,20 +1259,20 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           entry.replies.push(reply)
           replyIds.add(reply.id)
           replyLatch.openUnsafe()
-        })
+        }
         // Memory has no transaction isolation. Publish terminal replies at the
-        // outer commit boundary, before their queued handler notifications, so
-        // reply readers cannot deliver a success that may still be rolled back.
-        return TransactionNotifications.use((notifications) =>
-          reply_._tag === "WithExit" && notifications
+        // outer commit boundary, before queued reply or runner callbacks, so
+        // readers cannot observe a success that may still be rolled back.
+        return TransactionNotifications.use((tx) =>
+          reply_._tag === "WithExit" && tx
             ? Effect.sync(() => {
-              notifications.push(save)
+              tx.commits.push(save)
             })
-            : save
+            : Effect.sync(save)
         )
       },
       clearReplies: (id, options) => {
-        const clear = Effect.sync(() => {
+        const clear = () => {
           const entry = requests.get(String(id))
           if (!entry) return
           if (
@@ -1245,20 +1282,24 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           entry.lastReceivedChunk = undefined
           unprocessed.add(entry.envelope)
           lastRead.delete(entry.envelope)
-        })
-        return TransactionNotifications.use((notifications) =>
-          notifications
+        }
+        return TransactionNotifications.use((tx) =>
+          tx
             ? Effect.sync(() => {
-              notifications.push(clear)
+              tx.commits.push(clear)
             })
-            : clear
+            : Effect.sync(clear)
         )
       },
       requestIdForPrimaryKey: (primaryKey) =>
-        Effect.sync(() => {
-          const entry = requestsByPrimaryKey.get(primaryKey)
-          return Option.map(Option.fromNullishOr(entry?.envelope.requestId), Snowflake.Snowflake)
-        }),
+        TransactionNotifications.use((tx) =>
+          Effect.sync(() => {
+            const pending = pendingByPrimaryKey.get(primaryKey)
+            const entry = (pending && pending.root === tx?.root ? pending.entry : undefined) ??
+              requestsByPrimaryKey.get(primaryKey)
+            return Option.map(Option.fromNullishOr(entry?.envelope.requestId), Snowflake.Snowflake)
+          })
+        ),
       requestsForAddress: ({ address, tag }) =>
         Effect.sync(() => {
           const out: Array<Envelope.PartialRequestEncoded> = []
@@ -1396,24 +1437,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
             }
           }
         }),
-      withTransaction: (effect) =>
-        MemoryTransactionRollbacks.use((outer) => {
-          const rollbacks: Array<() => void> = []
-          return effect.pipe(
-            Effect.provideService(MemoryTransaction, true),
-            Effect.provideService(MemoryTransactionRollbacks, rollbacks),
-            Effect.onExit((exit) => {
-              if (Exit.isSuccess(exit)) {
-                if (outer) outer.push(...rollbacks)
-                return Effect.void
-              }
-              for (let i = rollbacks.length - 1; i >= 0; i--) {
-                rollbacks[i]()
-              }
-              return Effect.void
-            })
-          )
-        })
+      withTransaction: Effect.provideService(MemoryTransaction, true)
     }
 
     const storage = yield* makeEncoded(encoded)

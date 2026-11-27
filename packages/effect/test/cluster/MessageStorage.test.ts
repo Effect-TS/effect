@@ -512,6 +512,70 @@ describe("MessageStorage", () => {
           committed.envelope.requestId
         ])
       }).pipe(Effect.provide(MemoryLayer)))
+
+    it.effect("withTransaction publishes all memory writes before reply callbacks run", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const child = yield* makeRequest({
+          rpc: PrimaryKeyTest,
+          payload: PrimaryKeyTest.payloadSchema.make({ id: 1 })
+        })
+        const wake = yield* makeRequest({
+          rpc: PrimaryKeyTest,
+          payload: PrimaryKeyTest.payloadSchema.make({ id: 2 })
+        })
+        yield* storage.saveRequest(child)
+        const shardId = child.envelope.address.shardId
+        yield* storage.unprocessedMessages([shardId])
+        yield* storage.registerReplyHandler(
+          new Message.OutgoingRequest({
+            ...child,
+            respond: () => Effect.die("observer failed")
+          })
+        ).pipe(Effect.forkScoped({ startImmediately: true }))
+
+        const exit = yield* Effect.exit(storage.withTransaction(Effect.gen(function*() {
+          yield* storage.saveReply(yield* makeReply(child))
+          yield* storage.saveRequest(wake)
+        })))
+        expect(Exit.isFailure(exit)).toBe(true)
+        expect(yield* storage.repliesForUnfiltered([child.envelope.requestId])).toHaveLength(1)
+        const messages = yield* storage.unprocessedMessages([shardId])
+        expect(messages.map((message) => message.envelope.requestId)).toEqual([wake.envelope.requestId])
+      }).pipe(Effect.provide(MemoryLayer)))
+
+    it.effect("withTransaction blocks a concurrent same-key send until the writer settles", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const first = yield* makeRequest({
+          rpc: PrimaryKeyTest,
+          payload: PrimaryKeyTest.payloadSchema.make({ id: 1 })
+        })
+        const second = yield* makeRequest({
+          rpc: PrimaryKeyTest,
+          payload: PrimaryKeyTest.payloadSchema.make({ id: 1 })
+        })
+        const saved = yield* Latch.make()
+        const release = yield* Latch.make()
+
+        const tx = yield* Effect.exit(storage.withTransaction(Effect.gen(function*() {
+          yield* storage.saveRequest(first)
+          yield* saved.open
+          yield* release.await
+          return yield* Effect.fail("abort")
+        }))).pipe(Effect.forkChild({ startImmediately: true }))
+
+        yield* saved.await
+        const concurrent = yield* storage.saveRequest(second).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Effect.yieldNow
+        expect(concurrent.pollUnsafe()).toBeUndefined()
+
+        yield* release.open
+        yield* Fiber.join(tx)
+        expect((yield* Fiber.join(concurrent))._tag).toEqual("Success")
+        const messages = yield* storage.unprocessedMessages([second.envelope.address.shardId])
+        expect(messages.map((message) => message.envelope.requestId)).toEqual([second.envelope.requestId])
+      }).pipe(Effect.provide(MemoryLayer)))
   })
 })
 

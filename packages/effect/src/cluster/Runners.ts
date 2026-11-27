@@ -187,9 +187,9 @@ export const make: (
   const notifyAfterCommit = <E>(message: Message.Outgoing<any>, notify: Effect.Effect<void, E>) => {
     const rpc = message.rpc as any as Rpc.AnyWithProps
     if (!Context.get(rpc.annotations, Persisted)) return notify
-    return TransactionNotifications.use((notifications) =>
-      notifications === undefined ? notify : Effect.sync(() => {
-        notifications.push(Effect.ignore(notify))
+    return TransactionNotifications.use((tx) =>
+      tx === undefined ? notify : Effect.sync(() => {
+        tx.notifications.push(Effect.ignore(notify))
       })
     )
   }
