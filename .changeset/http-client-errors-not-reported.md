@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-The HTTP server no longer sends `Schema.SchemaError` and `Cause.NoSuchElementError` failures to `ErrorReporter`s when it answers them with `400` or `404`. Middleware, logging and tracing still see these failures.
+The HTTP server no longer reports `Schema.SchemaError` and `Cause.NoSuchElementError` failures that it answers with `400` or `404` to `ErrorReporter`s.

@@ -229,12 +229,12 @@ export const toHandled = <E, R, EH, RH>(
 
 const handledSymbol = Symbol.for("effect/http/HttpEffect/handled")
 
-// Failures that `HttpServerRespondable.toResponseOrElse` answers with 400 or 404
-// are client errors, so they are left out of error reporting.
+// Client errors that `HttpServerRespondable.toResponseOrElse` answers with 400
+// or 404. They are not reported.
 const isClientError = (u: unknown) => !isRespondable(u) && (isSchemaError(u) || Cause.isNoSuchElementError(u))
 
-// Reuses the filtered cause when both reporting paths see the same cause, so
-// reporters can tell it was already reported.
+// Both reporting paths can see the same cause. Reusing its filtered cause lets
+// reporters skip the second report.
 const reportableCauses = new WeakMap<Cause.Cause<unknown>, Cause.Cause<unknown>>()
 
 const reportServerCauseUnsafe = (fiber: Fiber.Fiber<unknown, unknown>, cause: Cause.Cause<unknown>) => {
