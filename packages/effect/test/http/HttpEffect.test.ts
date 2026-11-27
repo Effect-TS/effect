@@ -532,7 +532,7 @@ describe("HttpEffect", () => {
 
     const serve = async (
       self: Effect.Effect<HttpServerResponse.HttpServerResponse, unknown>,
-      middleware: HttpMiddleware.HttpMiddleware = identity
+      middleware: HttpMiddleware.HttpMiddleware
     ) => {
       const reported: Array<string> = []
       const { dispose, handler } = HttpEffect.toWebHandlerLayer(
@@ -571,15 +571,19 @@ describe("HttpEffect", () => {
       deepStrictEqual(result.reported, [])
     })
 
-    test("reports the other failures in a cause", async () => {
+    test("reports the other failures in a cause once", async () => {
       const respondable = Object.assign(new Cause.NoSuchElementError("respondable"), {
         [HttpServerRespondable.symbol]: () => Effect.succeed(HttpServerResponse.empty({ status: 409 }))
       })
-      const result = await serve(Effect.failCause(Cause.fromReasons<unknown>([
-        Cause.makeFailReason(schemaError),
-        Cause.makeFailReason(respondable),
-        Cause.makeFailReason("boom")
-      ])))
+      // The middleware propagates the cause, so both reporting paths see it.
+      const result = await serve(
+        Effect.failCause(Cause.fromReasons<unknown>([
+          Cause.makeFailReason(schemaError),
+          Cause.makeFailReason(respondable),
+          Cause.makeFailReason("boom")
+        ])),
+        identity
+      )
       deepStrictEqual(result.reported, ["respondable", "boom"])
     })
   })
