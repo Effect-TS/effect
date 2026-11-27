@@ -418,16 +418,6 @@ class TestClockImpl implements TestClock {
     }
   }
 
-  /**
-   * Waits until a `TestScheduler` has no runnable task, so every fiber has
-   * suspended.
-   */
-  awaitIdle(scheduler: IdleAware): Effect.Effect<void> {
-    return Effect.callback<void>((resume) => Effect.sync(scheduler[whenIdle](() => resume(Effect.void)))).pipe(
-      this.timeoutBusy
-    )
-  }
-
   readonly timeoutBusy = <A>(effect: Effect.Effect<A>): Effect.Effect<A | void> =>
     effect.pipe(
       Effect.timeoutOrElse({
@@ -439,20 +429,11 @@ class TestClockImpl implements TestClock {
 
   wake(latch: Latch.Latch, idle: IdleAware | undefined): Effect.Effect<void> {
     return Effect.suspend(() => {
-      if (idle !== undefined) {
-        latch.openUnsafe()
-        return this.awaitIdle(idle)
-      }
       const tracker: WakeTracker = { pending: 0, onIdle: undefined }
       this.runTracked(tracker, () => latch.openUnsafe())
+      if (idle !== undefined) return this.timeoutBusy(settle(tracker, idle))
       if (tracker.pending === 0) return Effect.yieldNow
-      return Effect.callback<void>((resume) => {
-        if (tracker.pending === 0) return resume(Effect.void)
-        tracker.onIdle = () => resume(Effect.void)
-        return Effect.sync(() => {
-          tracker.onIdle = undefined
-        })
-      }).pipe(
+      return awaitTracker(tracker).pipe(
         this.timeoutBusy,
         Effect.andThen(Effect.yieldNow)
       )
@@ -490,11 +471,8 @@ const runBody = Effect.fnUntraced(function*(
   adjustmentNanos?: bigint
 ) {
   const idle = findIdleAware(yield* Scheduler.Scheduler)
-  if (idle === undefined) {
-    yield* Fiber.await(yield* Effect.forkChild(Effect.yieldNow))
-  } else {
-    yield* this.awaitIdle(idle)
-  }
+  yield* Fiber.await(yield* Effect.forkChild(Effect.yieldNow))
+  if (idle !== undefined) yield* this.timeoutBusy(awaitIdle(idle))
   const initialWallNanos = this.currentWallNanos
   const initialMonotonicNanos = this.currentMonotonicNanos
   const endTimestamp = step(this.currentTimestamp)
@@ -550,6 +528,32 @@ class TrackingScheduler implements Scheduler.Scheduler {
     }
   }
 }
+
+const awaitTracker = (tracker: WakeTracker): Effect.Effect<void> =>
+  Effect.callback<void>((resume) => {
+    if (tracker.pending === 0) return resume(Effect.void)
+    tracker.onIdle = () => resume(Effect.void)
+    return Effect.sync(() => {
+      tracker.onIdle = undefined
+    })
+  })
+
+const awaitIdle = (scheduler: IdleAware): Effect.Effect<void> =>
+  Effect.callback<void>((resume) => Effect.sync(scheduler[whenIdle](() => resume(Effect.void))))
+
+/**
+ * Waits until the woken fiber's tracked tasks have run and the caller's
+ * `TestScheduler` is idle. They can be different schedulers, so repeat until
+ * both have settled.
+ */
+const settle = (tracker: WakeTracker, scheduler: IdleAware): Effect.Effect<void> =>
+  Effect.andThen(
+    awaitTracker(tracker),
+    Effect.andThen(
+      awaitIdle(scheduler),
+      Effect.suspend(() => tracker.pending === 0 ? Effect.void : settle(tracker, scheduler))
+    )
+  )
 
 const findIdleAware = (scheduler: Scheduler.Scheduler): IdleAware | undefined => {
   while (scheduler instanceof TrackingScheduler) scheduler = scheduler.parent

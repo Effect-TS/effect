@@ -44,8 +44,10 @@ export interface Options {
  *
  * Each fiber keeps the default dispatcher, so tasks queued by one fiber still
  * run by priority and in FIFO order. What changes is the order in which fibers'
- * batches run: each host turn runs the batches pending at its start, picked at
- * random, so a fiber can be held back for several turns. With `preempt: 0`
+ * batches run: each host turn runs up to as many batches as were pending at its
+ * start, each drawn at random from the current pool. A batch queued during the
+ * turn can run before one that was already waiting, and a fiber can be held back
+ * for several turns. With `preempt: 0`
  * fibers only yield at the default operation budget, but batches are still
  * shuffled. To get the default order, do not provide a `TestScheduler`.
  *

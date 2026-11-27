@@ -55,4 +55,17 @@ describe("TestScheduler", () => {
         )
       }
     }))
+
+  it.effect("waits for a sleeper on another scheduler when only adjust uses TestScheduler", () =>
+    Effect.gen(function*() {
+      let done = false
+      yield* Effect.gen(function*() {
+        yield* Effect.sleep("1 second")
+        for (let i = 0; i < 20; i++) yield* Effect.yieldNow
+        yield* Effect.sleep("1 second")
+        done = true
+      }).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust("2 seconds").pipe(Effect.provide(TestScheduler.layer({ seed: 1, preempt: 0 })))
+      assert.isTrue(done)
+    }))
 })
