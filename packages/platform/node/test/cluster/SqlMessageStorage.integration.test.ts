@@ -828,7 +828,7 @@ describe("SqlMessageStorage", () => {
             .toHaveLength(2)
         }).pipe(Effect.ensuring(Effect.orDie(truncate))))
 
-      it.effect("does not store an AckChunk or Interrupt for a request deleteProcessed removed", () =>
+      it.effect("does not store late envelopes or replies for a request deleteProcessed removed", () =>
         Effect.gen(function*() {
           yield* truncate
           const sql = yield* SqlClient.SqlClient
@@ -843,35 +843,19 @@ describe("SqlMessageStorage", () => {
           expect(yield* storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 100 }))
             .toEqual(1)
 
-          // a late acknowledgement and cancellation, such as ones that waited behind the delete
+          // late writes, such as ones that waited behind the delete
           yield* storage.saveEnvelope(yield* makeAckChunk(request, chunk))
           yield* storage.saveEnvelope(Message.OutgoingEnvelope.interrupt({
             id: snowflake.nextUnsafe(),
             requestId: request.envelope.requestId,
             address: request.envelope.address
           }))
-          expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toEqual([])
-          const requestId = String(request.envelope.requestId)
-          expect(yield* sql`SELECT id FROM cluster_messages WHERE request_id = ${requestId}`).toEqual([])
-        }).pipe(Effect.ensuring(Effect.orDie(truncate))))
-
-      it.effect("does not store a reply for a request deleteProcessed removed", () =>
-        Effect.gen(function*() {
-          yield* truncate
-          const sql = yield* SqlClient.SqlClient
-          const storage = yield* MessageStorage.MessageStorage
-          const cutoff = Date.UTC(2026, 0, 1)
-          const request = yield* makeRequest({ rpc: StreamRpc, payload: StreamRpc.payloadSchema.make({ id: 1 }) })
-          yield* storage.saveRequest(request)
-          yield* storage.saveReply(yield* makeReply(request, cutoff - 1))
-          expect(yield* storage.deleteProcessed({ entityType: "test", completedBefore: cutoff, limit: 100 }))
-            .toEqual(1)
-
-          // late replies, such as ones that waited behind the delete
           yield* storage.saveReply(yield* makeChunkReply(request))
           yield* storage.saveReply(yield* makeReply(request))
+          expect(yield* storage.unprocessedMessages([request.envelope.address.shardId])).toEqual([])
+          expect(yield* storage.repliesForUnfiltered([request.envelope.requestId])).toEqual([])
           const requestId = String(request.envelope.requestId)
-          expect(yield* sql`SELECT 1 AS found FROM cluster_replies WHERE request_id = ${requestId}`).toEqual([])
+          expect(yield* sql`SELECT id FROM cluster_messages WHERE request_id = ${requestId}`).toEqual([])
         }).pipe(Effect.ensuring(Effect.orDie(truncate))))
 
       it.effect("deleteProcessed takes an unbounded, extreme or fractional cutoff", () =>
