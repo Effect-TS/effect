@@ -20,7 +20,10 @@ setInterval(() => {}, 1000)
 describe("NodeWorker", () => {
   it.effect("terminates a worker that does not close within CloseTimeout", () =>
     Effect.gen(function*() {
-      const native = new NativeWorker(unresponsive, { eval: true })
+      const native = yield* Effect.acquireRelease(
+        Effect.sync(() => new NativeWorker(unresponsive, { eval: true })),
+        (worker) => Effect.promise(() => worker.terminate())
+      )
       const exited = yield* Deferred.make<number>()
       native.on("exit", (code) => Deferred.doneUnsafe(exited, Exit.succeed(code)))
       const scope = yield* Scope.make()
@@ -34,7 +37,9 @@ describe("NodeWorker", () => {
       yield* Deferred.await(ready)
 
       const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
-      yield* TestClock.adjust(Duration.seconds(1))
+      yield* TestClock.adjust(Duration.millis(999))
+      assert.isUndefined(closing.pollUnsafe())
+      yield* TestClock.adjust(Duration.millis(1))
       yield* Fiber.join(closing)
 
       assert.strictEqual(yield* Deferred.await(exited), 1)

@@ -1,5 +1,5 @@
 import * as BunWorker from "@effect/platform-bun/BunWorker"
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -17,7 +17,10 @@ const unresponsive = URL.createObjectURL(
 describe("BunWorker", () => {
   it.effect("terminates a worker that does not close within CloseTimeout", () =>
     Effect.gen(function*() {
-      const native = new globalThis.Worker(unresponsive)
+      const native = yield* Effect.acquireRelease(
+        Effect.sync(() => new globalThis.Worker(unresponsive)),
+        (worker) => Effect.sync(() => worker.terminate())
+      )
       const closed = yield* Deferred.make<void>()
       native.addEventListener("close", () => Deferred.doneUnsafe(closed, Exit.void))
       const scope = yield* Scope.make()
@@ -31,7 +34,9 @@ describe("BunWorker", () => {
       yield* Deferred.await(ready)
 
       const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
-      yield* TestClock.adjust(Duration.seconds(1))
+      yield* TestClock.adjust(Duration.millis(999))
+      assert.isUndefined(closing.pollUnsafe())
+      yield* TestClock.adjust(Duration.millis(1))
       yield* Fiber.join(closing)
 
       yield* Deferred.await(closed)
