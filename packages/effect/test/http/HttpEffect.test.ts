@@ -2,9 +2,15 @@ import { describe, it, test } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Cause, Context, Effect, ErrorReporter, Exit, Option, References, Schema, Scope, Stream, Tracer } from "effect"
 import { identity } from "effect/Function"
-import { HttpEffect, HttpMiddleware, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
+import {
+  HttpEffect,
+  type HttpMiddleware,
+  HttpRouter,
+  HttpServerRequest,
+  HttpServerRespondable,
+  HttpServerResponse
+} from "effect/http"
 import * as Layer from "effect/Layer"
-import * as Logger from "effect/Logger"
 
 const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: () => 0 })
 
@@ -522,84 +528,59 @@ describe("HttpEffect", () => {
   })
 
   describe("error reporting", () => {
-    const run = async (path: string) => {
-      const reports: Array<unknown> = []
-      const reporter = ErrorReporter.make(({ error }) => reports.push(error))
-      const { dispose, handler } = HttpRouter.toWebHandler(
-        Layer.merge(
-          HttpRouter.use((router) =>
-            Effect.gen(function*() {
-              yield* router.add(
-                "GET",
-                "/items/:id",
-                HttpRouter.schemaParams(Schema.Struct({ id: Schema.FiniteFromString })).pipe(
-                  Effect.as(HttpServerResponse.text("ok"))
-                )
-              )
-              yield* router.add("GET", "/missing", Effect.fail(new Cause.NoSuchElementError()))
-              yield* router.add("GET", "/boom", Effect.fail(new Error("boom")))
-            })
-          ),
-          ErrorReporter.layer([reporter])
-        ),
-        { disableLogger: true }
+    const schemaError = Effect.runSync(Effect.flip(Schema.decodeUnknownEffect(Schema.Number)("abc")))
+
+    const serve = async (
+      self: Effect.Effect<HttpServerResponse.HttpServerResponse, unknown>,
+      middleware: HttpMiddleware.HttpMiddleware = identity
+    ) => {
+      const reported: Array<string> = []
+      const { dispose, handler } = HttpEffect.toWebHandlerLayer(
+        self,
+        ErrorReporter.layer([ErrorReporter.make(({ error }) => reported.push(error.message))]),
+        { middleware }
       )
       try {
-        const response = await handler(new Request(`http://localhost${path}`))
-        return { status: response.status, body: await response.text(), reports }
+        const response = await handler(new Request("http://localhost/"))
+        return { status: response.status, reported }
       } finally {
         await dispose()
       }
     }
 
-    test("does not report a SchemaError answered with 400", async () => {
-      const result = await run("/items/abc")
+    test.each([
+      { error: schemaError, status: 400 },
+      { error: new Cause.NoSuchElementError(), status: 404 }
+    ])("does not report a $error._tag answered with $status", async ({ error, status }) => {
+      let seen: unknown
+      const result = await serve(
+        Effect.fail(error),
+        (app) => Effect.tapCause(app, (cause) => Effect.sync(() => seen = Cause.squash(cause)))
+      )
+      strictEqual(result.status, status)
+      deepStrictEqual(result.reported, [])
+      strictEqual(seen, error)
+    })
+
+    test("does not report a SchemaError raised by middleware", async () => {
+      const result = await serve(
+        Effect.succeed(HttpServerResponse.empty()),
+        (app) => Effect.flatMap(Effect.fail(schemaError), () => app)
+      )
       strictEqual(result.status, 400)
-      strictEqual(result.body, "")
-      deepStrictEqual(result.reports, [])
+      deepStrictEqual(result.reported, [])
     })
 
-    test("does not report a NoSuchElementError answered with 404", async () => {
-      const result = await run("/missing")
-      strictEqual(result.status, 404)
-      strictEqual(result.body, "")
-      deepStrictEqual(result.reports, [])
-    })
-
-    test("reports a plain failure answered with 500", async () => {
-      const result = await run("/boom")
-      strictEqual(result.status, 500)
-      strictEqual(result.reports.length, 1)
-    })
-
-    test("still exposes the SchemaError to the logger middleware", async () => {
-      const causes: Array<Cause.Cause<unknown>> = []
-      const logger = Logger.make<unknown, void>((options) => {
-        causes.push(options.cause)
+    test("reports the other failures in a cause", async () => {
+      const respondable = Object.assign(new Cause.NoSuchElementError("respondable"), {
+        [HttpServerRespondable.symbol]: () => Effect.succeed(HttpServerResponse.empty({ status: 409 }))
       })
-      const reports: Array<unknown> = []
-      const reporter = ErrorReporter.make(({ error }) => reports.push(error))
-      const handler = HttpEffect.toWebHandler(
-        Schema.decodeUnknownEffect(Schema.Number)("abc").pipe(Effect.as(HttpServerResponse.text("ok"))),
-        (app) =>
-          HttpMiddleware.logger(app).pipe(
-            Effect.provide(Layer.merge(Logger.layer([logger]), ErrorReporter.layer([reporter])))
-          )
-      )
-      const response = await handler(new Request("http://localhost/"))
-      strictEqual(response.status, 400)
-      deepStrictEqual(reports, [])
-      strictEqual(causes.length, 1)
-      strictEqual(
-        causes[0].reasons.some((reason) => reason._tag === "Fail" && Schema.isSchemaError(reason.error)),
-        true
-      )
-    })
-
-    test("does not report on success", async () => {
-      const result = await run("/items/1")
-      strictEqual(result.status, 200)
-      deepStrictEqual(result.reports, [])
+      const result = await serve(Effect.failCause(Cause.fromReasons([
+        Cause.makeFailReason(schemaError),
+        Cause.makeFailReason(respondable),
+        Cause.makeFailReason(new Error("boom"))
+      ])))
+      deepStrictEqual(result.reported, ["respondable", "boom"])
     })
   })
 
