@@ -1163,19 +1163,23 @@ describe("JsonSchema", () => {
         properties: {
           a: { $ref: "#/components/schemas/A" },
           b: { type: "array", items: { $ref: "https://example.com/B.json" } },
-          c: { $dynamicRef: "#/components/schemas/C" }
+          c: { $dynamicRef: "#/components/schemas/C" },
+          d: { $id: "shop/", $ref: "customer.json" },
+          e: { $id: "admin/", $ref: "customer.json" }
         },
         default: { $ref: "#/components/schemas/Default" },
         examples: [{ $ref: "#/components/schemas/Example" }]
       }
-      const references: Array<string> = []
+      const references: Array<readonly [string, string]> = []
       const result = JsonSchema.fromSchemaOpenApi3_1(input, {
-        onReference: (reference) => references.push(reference)
+        onReference: (reference, { keyword }) => references.push([reference, keyword])
       })
-      deepStrictEqual(references.sort(), [
-        "#/components/schemas/A",
-        "#/components/schemas/C",
-        "https://example.com/B.json"
+      assert.sameDeepMembers(references, [
+        ["#/components/schemas/A", "$ref"],
+        ["https://example.com/B.json", "$ref"],
+        ["#/components/schemas/C", "$dynamicRef"],
+        ["customer.json", "$ref"],
+        ["customer.json", "$ref"]
       ])
       deepStrictEqual(result, JsonSchema.fromSchemaOpenApi3_1(input))
       assert.throws(
@@ -1315,14 +1319,14 @@ describe("JsonSchema", () => {
         default: { $ref: "#/components/schemas/Default" },
         example: { $ref: "#/components/schemas/Example" }
       }
-      const references: Array<string> = []
+      const references: Array<readonly [string, string]> = []
       const result = JsonSchema.fromSchemaOpenApi3_0(input, {
-        onReference: (reference) => references.push(reference)
+        onReference: (reference, { keyword }) => references.push([reference, keyword])
       })
-      deepStrictEqual(references.sort(), [
-        "#/components/schemas/A",
-        "#/components/schemas/C",
-        "https://example.com/B.json"
+      assert.sameDeepMembers(references, [
+        ["#/components/schemas/A", "$ref"],
+        ["https://example.com/B.json", "$ref"],
+        ["#/components/schemas/C", "$ref"]
       ])
       deepStrictEqual(result, JsonSchema.fromSchemaOpenApi3_0(input))
       assert.throws(

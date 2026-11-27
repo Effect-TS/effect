@@ -44,19 +44,38 @@ export interface JsonSchema {
  *
  * **Details**
  *
- * `onReference` receives each original `$ref` (and `$dynamicRef` in OpenAPI
- * 3.1) in a schema position before rewriting, skipping data keywords (`default`,
- * `examples`, `example`) and ignored OpenAPI 3.0 `$ref` siblings. Targets are
- * not resolved or deduplicated, and callback errors propagate.
+ * During conversion, `onReference` receives the original value of each `$ref`
+ * the converter visits, and each `$dynamicRef` it visits in OpenAPI 3.1.
+ * The callback runs synchronously before rewriting, and `context.keyword`
+ * identifies the keyword. Relative references under different `$id` values can
+ * produce identical callback arguments. The caller handles reference resolution
+ * and deduplication. Errors thrown by the callback propagate.
+ *
+ * **Example** (Collecting referenced OpenAPI components)
+ *
+ * ```ts import.meta.vitest
+ * import { JsonSchema } from "effect"
+ *
+ * const references = new Set<string>()
+ * JsonSchema.fromSchemaOpenApi3_1({
+ *   properties: { customer: { $ref: "#/components/schemas/Customer" } }
+ * }, {
+ *   onReference: (reference) => references.add(reference)
+ * })
+ *
+ * Array.from(references) // => ["#/components/schemas/Customer"]
+ * ```
  *
  * @see {@link fromSchemaOpenApi3_1}
  * @see {@link fromSchemaOpenApi3_0}
- * @stability stable
+ * @stability unstable
  * @category models
- * @since 4.1.7
+ * @since 4.1.8
  */
 export interface FromOpenApiOptions {
-  readonly onReference?: ((reference: string) => void) | undefined
+  readonly onReference?:
+    | ((reference: string, context: { readonly keyword: "$ref" | "$dynamicRef" }) => void)
+    | undefined
 }
 
 /**
@@ -378,6 +397,10 @@ export function fromSchemaDraft2020_12(js: JsonSchema): Document<"draft-2020-12"
  * `example` field to `examples`, then delegates to
  * {@link fromSchemaDraft2020_12}.
  *
+ * To collect references for lookup in the source document, pass the unstable
+ * `onReference` callback. It receives the original string for each `$ref` or
+ * `$dynamicRef` the converter visits, such as `#/components/schemas/User`.
+ *
  * **Gotchas**
  *
  * When both `example` and `examples` are present, the singular example is
@@ -408,14 +431,22 @@ export function fromSchemaDraft2020_12(js: JsonSchema): Document<"draft-2020-12"
  * @category decoding
  * @since 4.0.0
  */
+// Only the overload that accepts options exposes the unstable API.
+// @effect-diagnostics-next-line apiStabilityLeak:off
 export function fromSchemaOpenApi3_1(js: JsonSchema): Document<"draft-2020-12">
+/**
+ * @stability unstable
+ * @since 4.1.8
+ */
 export function fromSchemaOpenApi3_1(js: JsonSchema, options?: FromOpenApiOptions): Document<"draft-2020-12">
 export function fromSchemaOpenApi3_1(js: JsonSchema, options?: FromOpenApiOptions): Document<"draft-2020-12"> {
   const isRootResource = createsResource(js.$id)
   const onReference = options?.onReference
   const schema = transformSchema(js, (schema, inEmbeddedResource) => {
-    if (typeof schema.$ref === "string") onReference?.(schema.$ref)
-    if (typeof schema.$dynamicRef === "string") onReference?.(schema.$dynamicRef)
+    if (onReference !== undefined) {
+      if (typeof schema.$ref === "string") onReference(schema.$ref, { keyword: "$ref" })
+      if (typeof schema.$dynamicRef === "string") onReference(schema.$dynamicRef, { keyword: "$dynamicRef" })
+    }
     if (!isRootResource && !inEmbeddedResource) rewriteSchemaRef(schema, rewriteOpenApiComponentsReference)
     if (isMetaSchemaUri(schema.$schema, META_SCHEMA_URI_OPEN_API_3_1)) {
       InternalRecord.assignProperty(schema, "$schema", META_SCHEMA_URI_DRAFT_2020_12)
@@ -445,6 +476,10 @@ export function fromSchemaOpenApi3_1(js: JsonSchema, options?: FromOpenApiOption
  * handles `nullable`, singular `example`, boolean `exclusiveMinimum` and
  * `exclusiveMaximum`, and OpenAPI component refs. Only values in OpenAPI
  * schema positions are traversed as schemas.
+ *
+ * To collect references for lookup in the source document, pass the unstable
+ * `onReference` callback. It receives the original string for each `$ref`
+ * the converter visits, such as `#/components/schemas/User`.
  *
  * **Gotchas**
  *
@@ -482,7 +517,13 @@ export function fromSchemaOpenApi3_1(js: JsonSchema, options?: FromOpenApiOption
  * @category decoding
  * @since 4.0.0
  */
+// Only the overload that accepts options exposes the unstable API.
+// @effect-diagnostics-next-line apiStabilityLeak:off
 export function fromSchemaOpenApi3_0(schema: JsonSchema): Document<"draft-2020-12">
+/**
+ * @stability unstable
+ * @since 4.1.8
+ */
 export function fromSchemaOpenApi3_0(schema: JsonSchema, options?: FromOpenApiOptions): Document<"draft-2020-12">
 export function fromSchemaOpenApi3_0(schema: JsonSchema, options?: FromOpenApiOptions): Document<"draft-2020-12"> {
   return fromSchemaDraft2020_12(convertOpenApi30(schema, options?.onReference))
@@ -1392,7 +1433,7 @@ function convertOpenApi30(root: JsonSchema, onReference: FromOpenApiOptions["onR
     const out: JsonSchema = {}
 
     if (typeof source.$ref === "string") {
-      onReference?.(source.$ref)
+      onReference?.(source.$ref, { keyword: "$ref" })
       context.reference(out, rewriteOpenApiComponentsReference(source.$ref))
       return out
     }

@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add an `onReference` option to `JsonSchema.fromSchemaOpenApi3_1` and `JsonSchema.fromSchemaOpenApi3_0` to observe schema references before rewriting.
+Add an unstable `onReference` option to `JsonSchema.fromSchemaOpenApi3_1` and `JsonSchema.fromSchemaOpenApi3_0` to report each visited reference with its original value and keyword.
