@@ -113,10 +113,11 @@ export const dual: {
   ): DataLast & DataFirst
 } = function(arity, body) {
   if (typeof arity === "function") {
-    // The data-last closure spreads `args` rather than capturing `arguments`:
-    // V8 spreads a captured arguments object through the slow iterator path.
+    // Rest parameters rather than `arguments`: V8 spreads a captured arguments
+    // object through the slow iterator path, and materializing both is slower
+    // still. The predicate reads only `length` and indexes, which an array has.
     return function(this: any, ...args: Array<any>) {
-      return arity(arguments)
+      return arity(args as unknown as IArguments)
         ? body.apply(this, args)
         : ((self: any) => body(self, ...args)) as any
     }

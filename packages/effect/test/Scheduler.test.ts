@@ -1,4 +1,4 @@
-import { assert, describe, it, vi } from "@effect/vitest"
+import { afterEach, assert, beforeEach, describe, it, vi } from "@effect/vitest"
 import { Context, Effect, Exit } from "effect"
 import * as Scheduler from "effect/Scheduler"
 
@@ -201,24 +201,27 @@ describe("Scheduler", () => {
     }
   })
 
-  describe("without setImmediate (browsers)", () => {
-    it("yields through a MessageChannel", async () => {
-      const { Effect, Scheduler } = await browserModules
-      const postMessage = vi.spyOn(MessagePort.prototype, "postMessage")
-      try {
-        const count = Scheduler.MaxOpsBeforeYield.defaultValue() * 3
-        const result = await Effect.runPromise(
-          Effect.forEach(Array.from({ length: count }, (_, i) => i), (i) => Effect.as(Effect.yieldNow, i))
-        )
-        assert.strictEqual(result.length, count)
-        assert.isAbove(postMessage.mock.calls.length, 0)
-      } finally {
-        postMessage.mockRestore()
-      }
+  // The tests stub the global scheduler, so they cannot run concurrently
+  describe("without setImmediate (browsers)", { concurrent: false }, () => {
+    beforeEach(() => {
+      vi.stubGlobal("scheduler", fakeTaskScheduler)
+    })
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it("yields through scheduler.postTask", async () => {
+      const { Effect } = browser
+      const before = postTaskCalls
+      const result = await Effect.runPromise(
+        Effect.forEach(Array.from({ length: 100 }, (_, i) => i), (i) => Effect.as(Effect.yieldNow, i))
+      )
+      assert.strictEqual(result.length, 100)
+      assert.isAtLeast(postTaskCalls - before, 100)
     })
 
     it("runs dispatchers in scheduling order and skips cancelled runs", async () => {
-      const { Scheduler } = await browserModules
+      const { Scheduler } = browser
       const a = new Scheduler.MixedScheduler().makeDispatcher()
       const b = new Scheduler.MixedScheduler().makeDispatcher()
       const order: Array<string> = []
@@ -231,25 +234,71 @@ describe("Scheduler", () => {
       a.scheduleTask(() => order.push("a2"), 0)
       assert.deepStrictEqual(order, ["a1"])
 
-      const nextMacrotask = () => new Promise((resolve) => setTimeout(resolve, 0))
       while (order.length < 3) await nextMacrotask()
       await nextMacrotask()
       assert.deepStrictEqual(order, ["a1", "b1", "a2"])
     })
+
+    it("interrupts a yielding fiber and runs its finalizers", async () => {
+      const { Effect, Fiber } = browser
+      let released = false
+      const fiber = Effect.runFork(Effect.scoped(Effect.gen(function*() {
+        yield* Effect.acquireRelease(Effect.void, () =>
+          Effect.sync(() => {
+            released = true
+          }))
+        while (true) yield* Effect.yieldNow
+      })))
+      await nextMacrotask()
+      const exit = await Effect.runPromise(Fiber.interrupt(fiber).pipe(Effect.andThen(Fiber.await(fiber))))
+      assert.isTrue(exit._tag === "Failure" && exit.cause.reasons.every((reason) => reason._tag === "Interrupt"))
+      assert.isTrue(released)
+    })
+
+    it("falls back to setTimeout without postTask", async () => {
+      const { Effect } = browser
+      vi.stubGlobal("scheduler", undefined)
+      const setTimeout = vi.spyOn(globalThis, "setTimeout")
+      try {
+        assert.strictEqual(await Effect.runPromise(Effect.as(Effect.yieldNow, 1)), 1)
+        assert.isAbove(setTimeout.mock.calls.length, 0)
+      } finally {
+        setTimeout.mockRestore()
+      }
+    })
   })
 })
 
+const nextMacrotask = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+// Stands in for the browser's scheduler.postTask: queues a real macrotask.
+const realSetImmediate = globalThis.setImmediate
+let postTaskCalls = 0
+const fakeTaskScheduler = {
+  postTask(task: () => void) {
+    postTaskCalls++
+    realSetImmediate(task)
+  }
+}
+
 // The timer function is chosen when the module loads, so load a fresh copy
-// while setImmediate is missing. This runs during collection, before the
-// (concurrent) tests touch globals.
-const browserModules = await (async () => {
+// while setImmediate is missing and a scheduler global exists. This runs during
+// collection, before the tests touch globals.
+const loadInBrowser = async () => {
   const original = globalThis.setImmediate
   delete (globalThis as any).setImmediate
+  ;(globalThis as any).scheduler = undefined
   vi.resetModules()
   try {
-    const [Effect, Scheduler] = await Promise.all([import("effect/Effect"), import("effect/Scheduler")])
-    return { Effect, Scheduler }
+    const [Effect, Fiber, Scheduler] = await Promise.all([
+      import("effect/Effect"),
+      import("effect/Fiber"),
+      import("effect/Scheduler")
+    ])
+    return { Effect, Fiber, Scheduler }
   } finally {
     globalThis.setImmediate = original
+    delete (globalThis as any).scheduler
   }
-})()
+}
+const browser = await loadInBrowser()
