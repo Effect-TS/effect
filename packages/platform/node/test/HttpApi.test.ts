@@ -1035,7 +1035,7 @@ describe("HttpApi", () => {
     })
   })
 
-  it.effect("declared error status with a non-JSON body fails with an HttpClientError", () => {
+  it.effect("declared error status with a non-JSON body fails with a StatusCodeError", () => {
     class NotFound extends Schema.Error<NotFound>("NotFound")({ _tag: Schema.tag("NotFound") }, {
       httpApiStatus: 404
     }) {}
@@ -1061,8 +1061,11 @@ describe("HttpApi", () => {
     )
     return Effect.gen(function*() {
       const client = yield* HttpApiClient.make(Api)
-      const error = yield* client.group.get().pipe(Effect.flip)
-      assert.strictEqual(error._tag, "HttpClientError")
+      const cause = yield* client.group.get().pipe(Effect.sandbox, Effect.flip)
+      assert.isFalse(Cause.hasDies(cause))
+      const error = Cause.findErrorOption(cause)
+      assert(Option.isSome(error) && error.value._tag === "HttpClientError")
+      assert.strictEqual(error.value.reason._tag, "StatusCodeError")
     }).pipe(Effect.provide(ApiLayer))
   })
 
