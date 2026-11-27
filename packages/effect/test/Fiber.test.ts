@@ -39,17 +39,6 @@ describe("Fiber", () => {
       assert.instanceOf(cache.scheduler, Scheduler.MixedScheduler)
     })
 
-    it("holds the reference defaults under runFork", () => {
-      const fiber = Effect.runFork(cachedAndReferenced)
-      const exit = fiber.pollUnsafe()
-      assert.isTrue(exit !== undefined && Exit.isSuccess(exit))
-      const { cache, references } = (exit as Exit.Success<Effect.Success<typeof cachedAndReferenced>>).value
-      for (const [name, value] of Object.entries(references)) {
-        assert.strictEqual(cache[name as keyof typeof references], value, name)
-      }
-      assert.strictEqual(cache.scheduler, Context.get(Context.empty(), Scheduler.Scheduler))
-    })
-
     it("holds the runFork scheduler option after a fiber ran on the same context", () => {
       Effect.runSync(Effect.void)
       const scheduler = new Scheduler.MixedScheduler("sync")

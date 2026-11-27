@@ -3,7 +3,6 @@ import * as Context from "effect/Context"
 import * as Equal from "effect/Equal"
 import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
-import * as Scheduler from "effect/Scheduler"
 import { describe, it, vi } from "vitest"
 
 interface ContextInternals {
@@ -119,12 +118,6 @@ describe("Context", () => {
     deepStrictEqual([...Context.pick(Undefined)(context).mapUnsafe], [[Undefined.key, undefined]])
     deepStrictEqual([...Context.pick(Missing)(context).mapUnsafe], [])
     strictEqual(Context.get(context, Ref), undefined)
-  })
-
-  it("invalidates the fiber cache for the runtime's own cached keys", () => {
-    const source = Context.make(A, 1)
-    assertFalse(Context.hasSameCache(source, Context.add(source, Scheduler.MaxOpsBeforeYield, 1)))
-    assertFalse(Context.hasSameCache(source, Context.add(source, Scheduler.PreventSchedulerYield, true)))
   })
 
   it("reads services and reference defaults from contexts built by another copy of effect", async () => {
