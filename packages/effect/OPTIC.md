@@ -429,6 +429,35 @@ const message = Result.match(result, {
 console.log(message) // no focus
 ```
 
+To report where a focus was found, or where it failed, use `getWithDiagnostics`. It returns the same value or issue as `getResult`, together with the path from the root. On failure it also returns the path to, and the input of, the step that failed:
+
+```ts
+import { Optic, Result } from "effect"
+
+type Shape =
+  | { readonly _tag: "Circle"; readonly radius: number }
+  | { readonly _tag: "Rect"; readonly width: number }
+type S = { readonly shapes: { readonly [id: string]: Shape } }
+
+const _radius = Optic.id<S>().key("shapes").at("a").tag("Circle").key("radius")
+
+const result = Optic.getWithDiagnostics({ shapes: { a: { _tag: "Rect", width: 1 } } }, _radius)
+if (Result.isFailure(result)) {
+  console.log(result.failure.path)
+  // [ { _tag: "Key", key: "shapes" }, { _tag: "Key", key: "a" } ]
+  console.log(result.failure.input)
+  // { _tag: "Rect", width: 1 }
+}
+```
+
+`key`, `optionalKey` and `at` add a `Key` segment and `tag` adds a `Tag` segment. `some`, `success` and `failure` add both, for example `Tag "Some"` then `Key "value"`. Checks, refinements, `pick` and `omit` keep the location. Optics built from your own functions (`makeLens` and so on) add an `Opaque` segment.
+
+For a traversal, `path` points at the traversed collection and `elements` holds a `Location` for each focused element. Each location contains its own root-relative `path` and optional nested `elements`, so nested traversals retain the original indices at every level. An empty traversal has `elements: []`.
+
+When translating a mismatch at an output index, use that element's location and continue through its nested `elements` as needed. For example, if an inner traversal selects `[2, 3]` from `groups[0].items = [-1, 2, 3]`, the location of focused `[0][0]` is available at `elements[0].elements[0].path` and points to `groups[0].items[1]`.
+
+Failures also include `elements` when the failing step receives a collected array. Use those locations to translate indices within the unchanged `issue`. A step into the collected array, such as `key(0)` after `forEach`, adds an `Opaque` segment.
+
 ## Generating an Optic from a Schema
 
 **Example** (Generating an Optic from a Struct)
