@@ -218,6 +218,8 @@ class Proxy implements ProxiedProcessOwner {
   private child: NodeChildProcess.ChildProcess | undefined
   // Bounds the wait for `Ready`, and for the reply to each sent request
   private readonly timers = new Map<number | "ready", ReturnType<typeof setTimeout>>()
+  // Counts the messages received, so a deadline can tell whether the proxy process was silent
+  private heard = 0
 
   constructor(options: Options) {
     this.options = options
@@ -366,14 +368,23 @@ class Proxy implements ProxiedProcessOwner {
 
   private startTimer(key: number | "ready"): void {
     const millis = this.options.responseTimeoutMillis
-    const timer = setTimeout(() => {
-      this.stop(
-        Object.assign(new Error(`The proxy process did not respond within ${millis} ms`), { code: "ETIMEDOUT" })
-      )
-    }, millis)
-    // Whatever waits for the reply keeps the application running
-    timer.unref()
-    this.timers.set(key, timer)
+    const arm = (heard: number) => {
+      // An application whose event loop was blocked runs due timers before it
+      // reads replies that are already waiting, so the deadline is checked
+      // after one more poll, and only a window without any message counts
+      const timer = setTimeout(() =>
+        setImmediate(() => {
+          if (this.timers.get(key) !== timer) return
+          if (this.heard !== heard) return arm(this.heard)
+          this.stop(
+            Object.assign(new Error(`The proxy process did not respond within ${millis} ms`), { code: "ETIMEDOUT" })
+          )
+        }), millis)
+      // Whatever waits for the reply keeps the application running
+      timer.unref()
+      this.timers.set(key, timer)
+    }
+    arm(this.heard)
   }
 
   private stopTimer(key: number | "ready"): void {
@@ -397,6 +408,7 @@ class Proxy implements ProxiedProcessOwner {
   }
 
   private receive(message: Message): void {
+    this.heard++
     if (message._tag === "Ready") return this.onReady()
     const command = this.commands.get(message.id)
     if (command === undefined) return

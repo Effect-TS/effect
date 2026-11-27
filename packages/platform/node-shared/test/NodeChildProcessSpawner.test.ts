@@ -201,6 +201,42 @@ ${proxyProcessSource}`
       while (isAlive(pid)) yield* Effect.sleep("10 millis")
     }).pipe(Effect.provide(NodeFileSystem.layer), Effect.scoped))
 
+  it.live("keeps a proxy process whose reply waits behind a blocked event loop", () =>
+    Effect.gen(function*() {
+      const spawn = NodeChildProcess.spawn
+      let blocked = false
+      yield* Effect.acquireRelease(
+        Effect.sync(() => {
+          const spy = vi.spyOn(NodeChildProcess, "spawn").mockImplementation((...args: Array<any>) => {
+            const proxy = (spawn as (...args: Array<any>) => NodeChildProcess.ChildProcess)(...args)
+            const send = proxy.send.bind(proxy)
+            proxy.send = ((message: { readonly command?: string }, ...rest: Array<any>) => {
+              const sent = (send as (...args: Array<any>) => boolean)(message, ...rest)
+              if (message.command !== undefined && !blocked) {
+                blocked = true
+                // Blocks the application past the reply deadline, as a loaded one does
+                spawnSync("sleep", ["1.5"])
+              }
+              return sent
+            }) as typeof proxy.send
+            return proxy
+          })
+          syncBuiltinESMExports()
+          return spy
+        }),
+        (spy) =>
+          Effect.sync(() => {
+            spy.mockRestore()
+            syncBuiltinESMExports()
+          })
+      )
+      yield* Effect.gen(function*() {
+        const first = yield* proxyPid
+        assert.isTrue(blocked)
+        assert.strictEqual(yield* proxyPid, first)
+      }).pipe(Effect.provide(proxyServices({ responseTimeout: "1 second" })))
+    }).pipe(Effect.scoped))
+
   it("generates the default launcher's program from the worker that run calls", () => {
     const script = join(__dirname, "..", "scripts", "generateProxyProcessSource.ts")
     const result = spawnSync(process.execPath, [script, "--check"], { encoding: "utf8" })
