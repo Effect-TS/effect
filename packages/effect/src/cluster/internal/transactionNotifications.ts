@@ -13,3 +13,13 @@ export const TransactionNotifications = Context.Reference<TransactionState | und
   "effect/cluster/MessageStorage/TransactionNotifications",
   { defaultValue: () => undefined }
 )
+
+/**
+ * When `true` inside a `MessageStorage.withTransaction`, `MemoryDriver` stages
+ * new requests and reply resets until the outer commit so they publish together
+ * with `WithExit` replies before callbacks run.
+ */
+export const StageTransactionWrites = Context.Reference<boolean>(
+  "effect/cluster/MessageStorage/StageTransactionWrites",
+  { defaultValue: () => false }
+)

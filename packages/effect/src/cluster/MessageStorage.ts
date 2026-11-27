@@ -30,7 +30,11 @@ import * as DeliverAt from "./DeliverAt.ts"
 import type { EntityAddress } from "./EntityAddress.ts"
 import * as Envelope from "./Envelope.ts"
 import * as ClusterAbandon from "./internal/clusterAbandon.ts"
-import { TransactionNotifications, type TransactionState } from "./internal/transactionNotifications.ts"
+import {
+  StageTransactionWrites,
+  TransactionNotifications,
+  type TransactionState
+} from "./internal/transactionNotifications.ts"
 import * as Message from "./Message.ts"
 import * as Reply from "./Reply.ts"
 import * as ShardId from "./ShardId.ts"
@@ -1162,27 +1166,57 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
     const encoded: Encoded = {
       saveEnvelope: ({ deliverAt, envelope: envelope_, primaryKey }) =>
         TransactionNotifications.use((tx) =>
-          Effect.suspend(function loop(): Effect.Effect<SaveResult.Encoded> {
-            const pending = primaryKey ? pendingByPrimaryKey.get(primaryKey) : undefined
-            // Another transaction holds this primary key: wait for it to commit or roll back.
-            if (pending && pending.root !== tx?.root) {
-              return Effect.andThen(pending.settled.await, Effect.suspend(loop))
-            }
-            const envelope = JSON.parse(JSON.stringify(envelope_)) as Envelope.Encoded
-            const existing = primaryKey
-              ? (pending?.entry ?? requestsByPrimaryKey.get(primaryKey))
-              : envelope._tag === "Request" && requests.get(envelope.requestId)
-            if (existing) {
-              return Effect.succeed(SaveResultEncoded.Duplicate({
-                originalId: Snowflake.Snowflake(existing.envelope.requestId),
-                lastReceivedReply: Option.fromNullishOr(
-                  existing.replies.length === 1 && existing.replies[0]._tag === "WithExit"
-                    ? existing.replies[0]
-                    : existing.lastReceivedChunk
-                )
-              }))
-            }
-            if (!tx) {
+          StageTransactionWrites.use((stage) =>
+            Effect.suspend(function loop(): Effect.Effect<SaveResult.Encoded> {
+              const pending = primaryKey ? pendingByPrimaryKey.get(primaryKey) : undefined
+              // Another staged transaction holds this primary key: wait for it to commit or roll back.
+              if (pending && pending.root !== tx?.root) {
+                return Effect.andThen(pending.settled.await, Effect.suspend(loop))
+              }
+              const envelope = JSON.parse(JSON.stringify(envelope_)) as Envelope.Encoded
+              const existing = primaryKey
+                ? (pending?.entry ?? requestsByPrimaryKey.get(primaryKey))
+                : envelope._tag === "Request" && requests.get(envelope.requestId)
+              if (existing) {
+                return Effect.succeed(SaveResultEncoded.Duplicate({
+                  originalId: Snowflake.Snowflake(existing.envelope.requestId),
+                  lastReceivedReply: Option.fromNullishOr(
+                    existing.replies.length === 1 && existing.replies[0]._tag === "WithExit"
+                      ? existing.replies[0]
+                      : existing.lastReceivedChunk
+                  )
+                }))
+              }
+              if (tx && stage && envelope._tag === "Request") {
+                // Stage requests in exit-reply transactions until outer commit so
+                // parent wakes publish atomically with the child's exit reply.
+                const entry: MemoryEntry = { envelope, replies: [], lastReceivedChunk: undefined, deliverAt }
+                const lock = primaryKey
+                  ? { root: tx.root, entry, settled: Latch.makeUnsafe() }
+                  : undefined
+                if (primaryKey && lock) {
+                  pendingByPrimaryKey.set(primaryKey, lock)
+                  tx.rollbacks.push(() => {
+                    if (pendingByPrimaryKey.get(primaryKey) === lock) {
+                      pendingByPrimaryKey.delete(primaryKey)
+                    }
+                    lock.settled.openUnsafe()
+                  })
+                }
+                tx.commits.push(() => {
+                  if (primaryKey && lock && pendingByPrimaryKey.get(primaryKey) === lock) {
+                    pendingByPrimaryKey.delete(primaryKey)
+                  }
+                  requests.set(envelope.requestId, entry)
+                  if (primaryKey) {
+                    requestsByPrimaryKey.set(primaryKey, entry)
+                  }
+                  unprocessed.add(envelope)
+                  journal.push(envelope)
+                  lock?.settled.openUnsafe()
+                })
+                return Effect.succeed(SaveResultEncoded.Success())
+              }
               if (envelope._tag === "Request") {
                 const entry: MemoryEntry = { envelope, replies: [], lastReceivedChunk: undefined, deliverAt }
                 requests.set(envelope.requestId, entry)
@@ -1202,50 +1236,8 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
               unprocessed.add(envelope)
               journal.push(envelope)
               return Effect.succeed(SaveResultEncoded.Success())
-            }
-            // Hold primary-key exclusivity without publishing to committed maps
-            // until the outer commit; release waiters on commit or rollback.
-            if (envelope._tag === "Request") {
-              const entry: MemoryEntry = { envelope, replies: [], lastReceivedChunk: undefined, deliverAt }
-              const lock = primaryKey
-                ? { root: tx.root, entry, settled: Latch.makeUnsafe() }
-                : undefined
-              if (primaryKey && lock) {
-                pendingByPrimaryKey.set(primaryKey, lock)
-                tx.rollbacks.push(() => {
-                  if (pendingByPrimaryKey.get(primaryKey) === lock) {
-                    pendingByPrimaryKey.delete(primaryKey)
-                  }
-                  lock.settled.openUnsafe()
-                })
-              }
-              tx.commits.push(() => {
-                if (primaryKey && lock && pendingByPrimaryKey.get(primaryKey) === lock) {
-                  pendingByPrimaryKey.delete(primaryKey)
-                }
-                requests.set(envelope.requestId, entry)
-                if (primaryKey) {
-                  requestsByPrimaryKey.set(primaryKey, entry)
-                }
-                unprocessed.add(envelope)
-                journal.push(envelope)
-                lock?.settled.openUnsafe()
-              })
-            } else {
-              tx.commits.push(() => {
-                const entry = requests.get(envelope.requestId)
-                if (!entry) return
-                if (envelope._tag === "AckChunk") {
-                  entry.lastReceivedChunk = entry.replies.find((r): r is Reply.ChunkEncoded =>
-                    r._tag === "Chunk" && r.id === envelope.replyId
-                  ) ?? entry.lastReceivedChunk
-                }
-                unprocessed.add(envelope)
-                journal.push(envelope)
-              })
-            }
-            return Effect.succeed(SaveResultEncoded.Success())
-          })
+            })
+          )
         ),
       saveReply: (reply_) => {
         const save = () => {
@@ -1284,11 +1276,13 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
           lastRead.delete(entry.envelope)
         }
         return TransactionNotifications.use((tx) =>
-          tx
-            ? Effect.sync(() => {
-              tx.commits.push(clear)
-            })
-            : Effect.sync(clear)
+          StageTransactionWrites.use((stage) =>
+            tx && stage
+              ? Effect.sync(() => {
+                tx.commits.push(clear)
+              })
+              : Effect.sync(clear)
+          )
         )
       },
       requestIdForPrimaryKey: (primaryKey) =>

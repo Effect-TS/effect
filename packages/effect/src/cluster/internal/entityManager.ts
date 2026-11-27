@@ -49,6 +49,7 @@ import { EntityReaper } from "./entityReaper.ts"
 import { acquireEntity, releaseEntity } from "./interruptors.ts"
 import { ResourceMap } from "./resourceMap.ts"
 import { ResourceRef } from "./resourceRef.ts"
+import { StageTransactionWrites } from "./transactionNotifications.ts"
 
 /**
  * @internal
@@ -426,6 +427,7 @@ export const make = Effect.fnUntraced(function*<
                   writes === undefined
                     ? respondExit
                     : options.storage.withTransaction(Effect.andThen(respondExit, writes)).pipe(
+                      Effect.provideService(StageTransactionWrites, true),
                       // A failed commit is a defect. Treat it as a failed save, so
                       // the stored reply decides whether it committed.
                       Effect.catchDefect((defect) => Effect.fail(new PersistenceError({ cause: defect })))
