@@ -161,13 +161,9 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
           } else if (kind >= 5) {
             h = hashIndexed(self as any)
           } else if (kind === 3) {
-            h = hashUnordered(
-              mapSeed,
-              self as any as Map<unknown, unknown>,
-              ([k, v]) => combineDataFirst(hash(k), hash(v))
-            )
+            h = hashUnordered(mapSeed, self as any as Map<unknown, unknown>, hashMapEntry)
           } else if (kind === 4) {
-            h = hashUnordered(setSeed, self as any as Set<unknown>, (el) => combineDataFirst(setSeed, hash(el)))
+            h = hashUnordered(setSeed, self as any as Set<unknown>, hashSetElement)
           } else {
             h = structure(self)
           }
@@ -528,6 +524,8 @@ const hashIndexed = (arr: ArrayLike<unknown>): number => {
 
 const mapSeed = string("Map")
 const setSeed = string("Set")
+const hashMapEntry = ([k, v]: [unknown, unknown]) => combineDataFirst(hash(k), hash(v))
+const hashSetElement = (element: unknown) => combineDataFirst(setSeed, hash(element))
 
 const randomHashCache = new WeakMap<any, number>()
 const visitedObjects = new WeakSet<object>()

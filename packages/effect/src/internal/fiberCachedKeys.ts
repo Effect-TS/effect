@@ -1,12 +1,13 @@
 import type { Fiber } from "../Fiber.ts"
 import type { LogLevel, Severity } from "../LogLevel.ts"
+import type * as Tracer from "../Tracer.ts"
 
 /**
  * The context keys and defaults behind a fiber's `Fiber.Cache`.
  *
  * The fiber reads its cache by key, so bundles that never use one of these
  * services do not construct it. The services take their key and default from
- * here.
+ * here, except `Tracer`, whose public key constants these are checked against.
  */
 
 /** @internal */
@@ -19,10 +20,10 @@ export const MaxOpsBeforeYieldKey = "effect/Scheduler/MaxOpsBeforeYield" as cons
 export const PreventSchedulerYieldKey = "effect/Scheduler/PreventSchedulerYield" as const
 
 /** @internal */
-export const TracerKey = "effect/Tracer" as const
+export const TracerKey = "effect/Tracer" satisfies typeof Tracer.TracerKey
 
 /** @internal */
-export const ParentSpanKey = "effect/Tracer/ParentSpan" as const
+export const ParentSpanKey = "effect/Tracer/ParentSpan" satisfies typeof Tracer.ParentSpanKey
 
 /** @internal */
 export const TracerEnabledKey = "effect/References/TracerEnabled" as const
