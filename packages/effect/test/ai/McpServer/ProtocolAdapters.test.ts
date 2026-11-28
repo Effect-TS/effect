@@ -59,6 +59,13 @@ const IdentifiedResultTool = Tool.make("identified-result", {
   success: Schema.Struct({ value: Schema.String }).annotate({ identifier: "IdentifiedResult" })
 })
 
+class Address extends Schema.Class<Address>("Address")({ street: Schema.String }) {}
+
+const AddressTool = Tool.make("address", {
+  parameters: Schema.Struct({ address: Address }),
+  success: Schema.String
+})
+
 const ValidatedTool = Tool.make("validated", {
   parameters: Schema.Struct({
     value: Schema.String
@@ -128,6 +135,7 @@ const TestToolkit = Toolkit.make(
   StructuredOnlyTool,
   UnionResultTool,
   IdentifiedResultTool,
+  AddressTool,
   ValidatedTool,
   CapabilityTool,
   InitializeMetadataTool,
@@ -256,6 +264,7 @@ const makeFixture = Effect.fnUntraced(function*(
         }),
       "union-result": () => Effect.succeed({ _tag: "a" as const, a: 1 }),
       "identified-result": () => Effect.succeed({ value: "identified" }),
+      address: ({ address }) => Effect.succeed(address.street),
       validated: ({ value }) => Effect.succeed(value),
       capability: () =>
         McpServer.clientCapabilities.pipe(
@@ -1559,6 +1568,19 @@ describe("McpServer protocol adapters", () => {
         })
       }
     }))
+
+  for (const protocolVersion of ["2024-11-05", "2025-03-26"] as const) {
+    it.effect(`should preserve referenced tool input definitions on ${protocolVersion}`, () =>
+      Effect.gen(function*() {
+        const fixture = yield* makeFixture()
+        const client = yield* initialize(fixture.post, protocolVersion)
+        const tool = listedTools(yield* client.request("tools/list")).find((tool) => tool.name === "address")
+
+        assert.isDefined(tool)
+        assert.deepNestedPropertyVal(tool.inputSchema, "properties.address", { $ref: "#/$defs/AddressEncoded" })
+        assert.deepNestedPropertyVal(tool.inputSchema, "$defs.AddressEncoded.properties.street", { type: "string" })
+      }))
+  }
 
   it.effect("should omit June fields when projecting a March tool descriptor", () =>
     Effect.gen(function*() {
