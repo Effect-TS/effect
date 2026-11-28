@@ -675,6 +675,109 @@ The property compares two things:
 When this test fails, Effect simplifies the command list and its values. The final counterexample is often a short
 history that clearly shows which state change the implementation handled incorrectly.
 
+### Testing a Stateful System with Commands
+
+The command list above is generated without looking at the model, so every command must make sense in every state.
+When commands depend on the state, such as withdrawing only from an account that was opened, use
+`Arbitrary.commands`. Each `Arbitrary.command` describes one operation:
+
+- `args` returns the Arbitrary for its arguments in the current model, or `undefined` when the command is not
+  available;
+- `precondition` rejects arguments that the current model does not allow;
+- `next` returns the model after the command;
+- `run` performs the operation on the real system;
+- `postcondition` compares the command's `Exit` with the model. It can return an Effect to observe the system again,
+  for example to read back what an update wrote. Without one, the command must succeed.
+
+`args` and `precondition` decide whether a command makes sense to attempt, during generation and again while
+simplifying. They do not decide whether it should succeed: an overdraft below stays a valid command, and its
+postcondition expects the rejection. A postcondition that throws, for example a failed assertion with expected and
+actual values, or whose Effect fails, reports that error as the cause of the failure, separately from the command's
+own `Exit`.
+
+`next` receives a reference to the command's result, such as a new account id. Store it in the model and use it in
+later arguments. While `Arbitrary.runCommands` executes the sequence, `run`, `postcondition`, and `invariant` receive a
+`resolve` function that returns the real value behind a reference.
+
+```ts
+import { Arbitrary, Effect, Exit, Schema } from "effect"
+
+type Model = ReadonlyMap<Arbitrary.Reference<string>, number>
+
+const account = (model: Model) =>
+  model.size === 0
+    ? undefined
+    : Arbitrary.schema(Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: model.size - 1 }))).pipe(
+      Arbitrary.map((index) => [...model.keys()][index])
+    )
+
+const amount = Arbitrary.schema(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 })))
+
+const transfer = (model: Model) => {
+  const id = account(model)
+  return id === undefined ? undefined : Arbitrary.all({ id, amount })
+}
+
+const commands = Arbitrary.commands({
+  initial: new Map() as Model,
+  commands: [
+    Arbitrary.command({
+      name: "open",
+      next: (model: Model, _, id) => new Map(model).set(id, 0),
+      run: () => Bank.use((bank) => bank.open)
+    }),
+    Arbitrary.command({
+      name: "deposit",
+      args: transfer,
+      // Simplification can keep a deposit into an account that an earlier `close` removed.
+      precondition: (model: Model, { id }) => model.has(id),
+      next: (model: Model, { amount, id }) => new Map(model).set(id, model.get(id)! + amount),
+      run: ({ amount, id }, resolve) => Bank.use((bank) => bank.deposit(resolve(id), amount))
+    }),
+    Arbitrary.command({
+      name: "withdraw",
+      args: transfer,
+      precondition: (model: Model, { id }) => model.has(id),
+      next: (model: Model, { amount, id }) =>
+        amount <= model.get(id)! ? new Map(model).set(id, model.get(id)! - amount) : model,
+      run: ({ amount, id }, resolve) => Bank.use((bank) => bank.withdraw(resolve(id), amount)),
+      // Overdrawing is an expected failure.
+      postcondition: (model, { amount, id }, exit) =>
+        amount <= model.get(id)! ? Exit.isSuccess(exit) : Exit.isFailure(exit)
+    }),
+    Arbitrary.command({
+      name: "close",
+      args: account,
+      // Only an empty account may be closed. Simplification rechecks this after removing a withdrawal.
+      precondition: (model: Model, id) => model.get(id) === 0,
+      next: (model: Model, id) => {
+        const next = new Map(model)
+        next.delete(id)
+        return next
+      },
+      run: (id, resolve) => Bank.use((bank) => bank.close(resolve(id)))
+    })
+  ],
+  // Checked before the first command and after every command, against the real system.
+  invariant: (model) => Bank.use((bank) => bank.total).pipe(Effect.map((total) => total === sum(model.values())))
+})
+
+const program = Arbitrary.checkEffect(commands, (sequence) =>
+  Arbitrary.runCommands(sequence).pipe(
+    Effect.as(true),
+    // A fresh system for every evaluation.
+    Effect.provide(BankLive)
+  ))
+```
+
+Sequences grow with `size`, up to the `maxCommands` option. When a postcondition or the invariant fails,
+`runCommands` fails with a `CommandsFailure` holding the executed steps, each with its command, arguments, model
+before it, and `Exit`. Simplification removes commands and simplifies their arguments, then replays the model and drops
+every command that is no longer available, whose precondition no longer holds, or whose reference disappeared, so the
+counterexample is a short program such as `$0 = open()`, `$1 = withdraw({"id":$0,"amount":1})`. It does not check
+that the simplified arguments could still be generated in the replayed model: once `close` targets a different
+account, a later deposit can refer to a closed one. The membership preconditions in the example reject such programs.
+
 ## Replaying a Failure
 
 Every `Falsified` result contains a `replay` token. It is a string produced by Effect and is not meant to be edited. The
@@ -1011,7 +1114,8 @@ the allowed inputs and a rule that comes from the requirement:
   program;
 - write laws directly and remember the limits of JavaScript numbers;
 - when two values are considered equal, check that public operations treat them the same way;
-- use command sequences and a simple model for stateful behavior;
+- use command sequences and a simple model for stateful behavior, and `Arbitrary.commands` when commands depend on
+  the state;
 - pay attention to rejected values, simplification, and replay because they affect what the test actually checks.
 
 The most important choice is not how many random inputs to generate. It is choosing inputs and a rule that make a small
@@ -1322,5 +1426,12 @@ can alter generated values, simplification, replay, performance, or bundle size 
   position no longer exists or no longer fails in the same way. It does not compare the exact final input or Effect
   error. Malformed tokens may fail with a defect, and tokens need not work across releases while the module is unstable.
   Replay follows the recorded positions directly, so it ignores `maxShrinks`.
+- `Arbitrary.commands` keeps the model symbolic: `next` runs during generation and simplification, and sees references
+  instead of results. A reference's id is the position of its command in the generated sequence, so it stays stable
+  while commands are removed. Commands resolve references themselves through `resolve`; arguments are never rewritten.
+  The scope check while simplifying finds references in arrays, `Map` and `Set` entries, and own enumerable
+  properties, but not in closures or private fields. Each position draws at most 100 candidates; when none is accepted,
+  the sequence ends early instead of being discarded, so frequent precondition rejections shorten sequences without
+  counting as discards.
 - Long synchronous generation loops occasionally yield control according to `Scheduler.MaxOpsBeforeYield`. Generation
   that uses Effects, declaration conversion, property evaluation, and simplification can all be interrupted normally.
