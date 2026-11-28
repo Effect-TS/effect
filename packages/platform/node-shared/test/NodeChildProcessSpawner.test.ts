@@ -201,6 +201,29 @@ ${proxyProcessSource}`
       while (isAlive(pid)) yield* Effect.sleep("10 millis")
     }).pipe(Effect.provide(NodeFileSystem.layer), Effect.scoped))
 
+  it.live("keeps a proxy process whose reply waits behind a blocked event loop", () =>
+    Effect.gen(function*() {
+      const started = join(yield* FileSystem.FileSystem.use((fs) => fs.makeTempDirectoryScoped()), "started")
+      yield* Effect.gen(function*() {
+        const first = Option.getOrThrow(yield* currentPid)
+        const spawned = yield* Effect.forkChild(
+          ChildProcessSpawner.use((spawner) =>
+            spawner.string(ChildProcess.make("sh", ["-c", "> \"$1\" && echo $PPID", "_", started]))
+          ),
+          { startImmediately: true }
+        )
+        const wait = new Int32Array(new SharedArrayBuffer(4))
+        const start = performance.now()
+        while (performance.now() - start < 5_000 && !NodeFs.existsSync(started)) {
+          Atomics.wait(wait, 0, 0, 10)
+        }
+        Atomics.wait(wait, 0, 0, Math.max(1_100 - (performance.now() - start), 20))
+        assert.isTrue(NodeFs.existsSync(started))
+        assert.strictEqual(Number((yield* Fiber.join(spawned)).trim()), first)
+        assert.strictEqual(yield* proxyPid, first)
+      }).pipe(Effect.provide(proxyServices({ responseTimeout: "1 second" })))
+    }).pipe(Effect.provide(NodeFileSystem.layer), Effect.scoped))
+
   it("generates the default launcher's program from the worker that run calls", () => {
     const script = join(__dirname, "..", "scripts", "generateProxyProcessSource.ts")
     const result = spawnSync(process.execPath, [script, "--check"], { encoding: "utf8" })
@@ -230,8 +253,8 @@ ${proxyProcessSource}`
       const runs = join(directory, "runs")
       const dropFlag = join(directory, "drop")
       yield* fs.writeFileString(dropFlag, "")
-      // The first proxy process starts commands but never acknowledges them
-      const program = `const dropSpawned = (() => {
+      // The first proxy process starts the first command but never acknowledges it
+      const program = `let drop = (() => {
   try {
     process.getBuiltinModule("node:fs").rmSync(${JSON.stringify(dropFlag)})
     return true
@@ -240,12 +263,28 @@ ${proxyProcessSource}`
   }
 })()
 const sendMessage = process.send.bind(process)
-process.send = (message, ...rest) => dropSpawned && message._tag === "Spawned" ? true : sendMessage(message, ...rest)
+process.send = (message, ...rest) => {
+  if (drop && message._tag === "Spawned") {
+    drop = false
+    return true
+  }
+  return sendMessage(message, ...rest)
+}
 ${proxyProcessSource}`
 
       yield* Effect.gen(function*() {
         const first = Option.getOrThrow(yield* currentPid)
-        const error = yield* Effect.flip(Effect.scoped(ChildProcess.make("sh", ["-c", "echo run >> \"$0\"", runs])))
+        let replies = 0
+        const error = yield* Effect.scoped(ChildProcess.make("sh", ["-c", "echo run >> \"$0\"", runs])).pipe(
+          Effect.flip,
+          // Unrelated IPC on the same proxy must not extend a missing reply's deadline
+          Effect.raceFirst(
+            Effect.forever(Effect.delay(proxyPid, "100 millis").pipe(Effect.tap(() => Effect.sync(() => replies++))))
+              .pipe(Effect.ignore, Effect.andThen(Effect.never))
+          ),
+          Effect.timeout("4 seconds")
+        )
+        assert.isAbove(replies, 0)
         assert.include(String((error.reason.cause as Error).message), "may have started")
         assert.deepStrictEqual(yield* currentPid, Option.none())
         // The command ran once

@@ -367,9 +367,14 @@ class Proxy implements ProxiedProcessOwner {
   private startTimer(key: number | "ready"): void {
     const millis = this.options.responseTimeoutMillis
     const timer = setTimeout(() => {
-      this.stop(
-        Object.assign(new Error(`The proxy process did not respond within ${millis} ms`), { code: "ETIMEDOUT" })
-      )
+      // Defer past the I/O poll so queued replies are read first; keep
+      // referenced so an idle loop still runs the check immediately.
+      setImmediate(() => {
+        if (this.timers.get(key) !== timer) return
+        this.stop(
+          Object.assign(new Error(`The proxy process did not respond within ${millis} ms`), { code: "ETIMEDOUT" })
+        )
+      })
     }, millis)
     // Whatever waits for the reply keeps the application running
     timer.unref()
