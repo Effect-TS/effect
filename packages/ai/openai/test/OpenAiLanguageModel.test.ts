@@ -3197,7 +3197,8 @@ const makeStreamTestLayer = (events: ReadonlyArray<typeof Generated.ResponseStre
       createDecisions: () => Effect.die(new Error("unexpected createDecisions call")),
       createResponse: () => Effect.die(new Error("unexpected createResponse call")),
       createResponseStream: () => Effect.succeed([response, Stream.fromIterable(events)]),
-      createEmbedding: () => Effect.die(new Error("unexpected createEmbedding call"))
+      createEmbedding: () => Effect.die(new Error("unexpected createEmbedding call")),
+      createTranscription: () => Effect.die(new Error("unexpected createTranscription call"))
     })
   )
 }

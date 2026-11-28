@@ -1,8 +1,8 @@
 /**
  * The `OpenAiSchema` module defines the request, response, streaming, and
  * embedding schemas used by the handwritten OpenAI client. These schemas are
- * the transport boundary for JSON sent to and decoded from the Responses,
- * embeddings, and decisions endpoints.
+ * the transport boundary for data sent to and decoded from the Responses,
+ * embeddings, decisions, and transcription endpoints.
  *
  * @stability unstable
  * @since 4.0.0
@@ -1638,3 +1638,247 @@ export const CreateDecisionsResponse = Schema.Struct({
  * @since 4.0.5
  */
 export type CreateDecisionsResponse = typeof CreateDecisionsResponse.Type
+
+// =============================================================================
+// Transcription
+// =============================================================================
+
+/**
+ * Schema for the fields sent with an audio file to the OpenAI transcriptions
+ * endpoint.
+ *
+ * **Details**
+ *
+ * The audio file is passed separately because the request is multipart form
+ * data. `response_format` lists only the JSON formats, since the client decodes
+ * a JSON response.
+ *
+ * @see {@link CreateTranscriptionResponse} for the response schema
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.5
+ */
+export const CreateTranscriptionRequest = Schema.Struct({
+  model: Schema.String,
+  language: Schema.optionalKey(Schema.String),
+  prompt: Schema.optionalKey(Schema.String),
+  response_format: Schema.optionalKey(Schema.Literals(["json", "verbose_json", "diarized_json"])),
+  temperature: Schema.optionalKey(Schema.Number),
+  include: Schema.optionalKey(Schema.Array(Schema.Literal("logprobs"))),
+  timestamp_granularities: Schema.optionalKey(Schema.Array(Schema.Literals(["word", "segment"]))),
+  chunking_strategy: Schema.optionalKey(Schema.Union([
+    Schema.Literal("auto"),
+    Schema.Struct({
+      type: Schema.Literal("server_vad"),
+      prefix_padding_ms: Schema.optionalKey(Schema.Int),
+      silence_duration_ms: Schema.optionalKey(Schema.Int),
+      threshold: Schema.optionalKey(Schema.Number)
+    })
+  ])),
+  known_speaker_names: Schema.optionalKey(Schema.Array(Schema.String)),
+  known_speaker_references: Schema.optionalKey(Schema.Array(Schema.String))
+})
+
+/**
+ * Fields sent with an audio file to the OpenAI transcriptions endpoint.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.5
+ */
+export type CreateTranscriptionRequest = typeof CreateTranscriptionRequest.Type
+
+/**
+ * Schema for a JSON response from the OpenAI transcriptions endpoint.
+ *
+ * **Details**
+ *
+ * One schema covers the `json`, `verbose_json`, and `diarized_json` formats, so
+ * every field except `text` is optional. Segments carry `speaker` only in the
+ * diarized format.
+ *
+ * @see {@link CreateTranscriptionRequest} for the request fields
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.5
+ */
+export const CreateTranscriptionResponse = Schema.Struct({
+  text: Schema.String,
+  language: Schema.optionalKey(Schema.String),
+  languages: Schema.optionalKey(Schema.Array(Schema.Struct({ code: Schema.String }))),
+  duration: Schema.optionalKey(Schema.Number),
+  segments: Schema.optionalKey(Schema.Array(Schema.Struct({
+    id: Schema.Union([Schema.Number, Schema.String]),
+    start: Schema.Number,
+    end: Schema.Number,
+    text: Schema.String,
+    speaker: Schema.optionalKey(Schema.String),
+    avg_logprob: Schema.optionalKey(Schema.Number),
+    compression_ratio: Schema.optionalKey(Schema.Number),
+    no_speech_prob: Schema.optionalKey(Schema.Number)
+  }))),
+  words: Schema.optionalKey(Schema.Array(Schema.Struct({
+    word: Schema.String,
+    start: Schema.Number,
+    end: Schema.Number
+  }))),
+  logprobs: Schema.optionalKey(Schema.Array(Schema.Struct({
+    token: Schema.optionalKey(Schema.String),
+    logprob: Schema.optionalKey(Schema.Number),
+    bytes: Schema.optionalKey(Schema.Array(Schema.Number))
+  }))),
+  usage: Schema.optionalKey(Schema.Union([
+    Schema.Struct({
+      type: Schema.Literal("tokens"),
+      input_tokens: Schema.Number,
+      output_tokens: Schema.Number,
+      total_tokens: Schema.Number
+    }),
+    Schema.Struct({
+      type: Schema.Literal("duration"),
+      seconds: Schema.Number
+    })
+  ]))
+})
+
+/**
+ * JSON response from the OpenAI transcriptions endpoint.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.5
+ */
+export type CreateTranscriptionResponse = typeof CreateTranscriptionResponse.Type
+
+/**
+ * Schema for the configuration of a Realtime transcription session, sent in a
+ * `session.update` client event.
+ *
+ * @see {@link RealtimeTranscriptionServerEvent} for the events the session sends back
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.5
+ */
+export const RealtimeTranscriptionSession = Schema.Struct({
+  type: Schema.Literal("transcription"),
+  audio: Schema.Struct({
+    input: Schema.Struct({
+      format: Schema.Union([
+        Schema.Struct({ type: Schema.Literal("audio/pcm"), rate: Schema.Literal(24000) }),
+        Schema.Struct({ type: Schema.Literals(["audio/pcmu", "audio/pcma"]) })
+      ]),
+      transcription: Schema.Struct({
+        model: Schema.String,
+        language: Schema.optionalKey(Schema.String),
+        prompt: Schema.optionalKey(Schema.String)
+      }),
+      noise_reduction: Schema.optionalKey(Schema.NullOr(Schema.Struct({
+        type: Schema.Literals(["near_field", "far_field"])
+      }))),
+      turn_detection: Schema.Union([
+        Schema.Struct({
+          type: Schema.Literal("server_vad"),
+          threshold: Schema.optionalKey(Schema.Number),
+          prefix_padding_ms: Schema.optionalKey(Schema.Int),
+          silence_duration_ms: Schema.optionalKey(Schema.Int)
+        }),
+        Schema.Struct({
+          type: Schema.Literal("semantic_vad"),
+          eagerness: Schema.optionalKey(Schema.Literals(["low", "medium", "high", "auto"]))
+        })
+      ])
+    })
+  }),
+  include: Schema.optionalKey(Schema.Array(Schema.Literal("item.input_audio_transcription.logprobs")))
+})
+
+/**
+ * Configuration of a Realtime transcription session.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.5
+ */
+export type RealtimeTranscriptionSession = typeof RealtimeTranscriptionSession.Type
+
+const RealtimeError = Schema.Struct({
+  type: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  code: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  message: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  param: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  event_id: Schema.optionalKey(Schema.NullOr(Schema.String))
+})
+
+/**
+ * Schema for the server events of a Realtime transcription session that the
+ * transcription model reads.
+ *
+ * **Details**
+ *
+ * The audio buffer events report where server-side turn detection found
+ * speech, in milliseconds of audio sent in the session. The transcription
+ * events carry the text of one committed item. `delta` adds to the earlier
+ * deltas of that item and `completed` carries its whole transcript.
+ *
+ * **Gotchas**
+ *
+ * The session sends other events too. Decode with this schema only after
+ * checking `type`, or ignore events that fail to decode.
+ *
+ * @see {@link RealtimeTranscriptionSession} for the session configuration
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.1.5
+ */
+export const RealtimeTranscriptionServerEvent = Schema.Union([
+  Schema.Struct({
+    type: Schema.Literal("input_audio_buffer.speech_started"),
+    item_id: Schema.String,
+    audio_start_ms: Schema.Number
+  }),
+  Schema.Struct({
+    type: Schema.Literal("input_audio_buffer.speech_stopped"),
+    item_id: Schema.String,
+    audio_end_ms: Schema.Number
+  }),
+  Schema.Struct({
+    type: Schema.Literal("input_audio_buffer.committed"),
+    item_id: Schema.String
+  }),
+  Schema.Struct({
+    type: Schema.Literal("input_audio_buffer.cleared")
+  }),
+  Schema.Struct({
+    type: Schema.Literal("conversation.item.input_audio_transcription.delta"),
+    item_id: Schema.String,
+    delta: Schema.optionalKey(Schema.String)
+  }),
+  Schema.Struct({
+    type: Schema.Literal("conversation.item.input_audio_transcription.completed"),
+    item_id: Schema.String,
+    transcript: Schema.String
+  }),
+  Schema.Struct({
+    type: Schema.Literal("conversation.item.input_audio_transcription.failed"),
+    item_id: Schema.String,
+    error: RealtimeError
+  }),
+  Schema.Struct({
+    type: Schema.Literal("error"),
+    error: RealtimeError
+  })
+])
+
+/**
+ * Server event of a Realtime transcription session that the transcription
+ * model reads.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.5
+ */
+export type RealtimeTranscriptionServerEvent = typeof RealtimeTranscriptionServerEvent.Type

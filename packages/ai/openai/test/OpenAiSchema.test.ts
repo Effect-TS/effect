@@ -476,7 +476,8 @@ describe("OpenAiSchema", () => {
             response,
             Stream.make(failed)
           ]),
-        createEmbedding: () => Effect.die("unexpected")
+        createEmbedding: () => Effect.die("unexpected"),
+        createTranscription: () => Effect.die("unexpected")
       })
     )
 

@@ -169,6 +169,12 @@ export * as Toolkit from "./Toolkit.ts"
 
 /**
  * @stability unstable
+ * @since 4.1.5
+ */
+export * as TranscriptionModel from "./TranscriptionModel.ts"
+
+/**
+ * @stability unstable
  * @since 4.1.3
  */
 export * as WorkloadIdentity from "./WorkloadIdentity.ts"

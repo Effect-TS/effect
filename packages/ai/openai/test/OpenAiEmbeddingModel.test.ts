@@ -326,5 +326,6 @@ const noopOpenAiClient: OpenAiClient.Service = {
   createDecisions: () => Effect.die(new Error("noop")),
   createResponse: () => Effect.die(new Error("noop")),
   createResponseStream: () => Effect.die(new Error("noop")),
-  createEmbedding: () => Effect.die(new Error("noop"))
+  createEmbedding: () => Effect.die(new Error("noop")),
+  createTranscription: () => Effect.die(new Error("noop"))
 }

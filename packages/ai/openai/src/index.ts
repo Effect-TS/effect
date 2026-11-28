@@ -73,6 +73,12 @@ export * as OpenAiTool from "./OpenAiTool.ts"
 
 /**
  * @stability unstable
+ * @since 4.1.5
+ */
+export * as OpenAiTranscriptionModel from "./OpenAiTranscriptionModel.ts"
+
+/**
+ * @stability unstable
  * @since 4.1.3
  */
 export * as OpenAiWorkloadIdentity from "./OpenAiWorkloadIdentity.ts"

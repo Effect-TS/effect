@@ -97,6 +97,17 @@ export interface Service {
   readonly createDecisions: (
     options: typeof OpenAiSchema.CreateDecisionsRequest.Encoded
   ) => Effect.Effect<typeof OpenAiSchema.CreateDecisionsResponse.Type, AiError.AiError>
+
+  /**
+   * Transcribe an audio file using the OpenAI transcriptions endpoint. The
+   * file name tells OpenAI the audio format, so it needs the right extension.
+   */
+  readonly createTranscription: (
+    options: typeof OpenAiSchema.CreateTranscriptionRequest.Encoded & {
+      readonly file: Blob
+      readonly fileName: string
+    }
+  ) => Effect.Effect<typeof OpenAiSchema.CreateTranscriptionResponse.Type, AiError.AiError>
 }
 
 // =============================================================================
@@ -322,17 +333,18 @@ export const make = Effect.fnUntraced(
         )
       })
 
-    const postJson = <Response extends Schema.Decoder<unknown>>(
+    const postJson = <Response extends Schema.Decoder<unknown>, Payload = unknown>(
       path: string,
       schema: Response,
-      method: string
+      method: string,
+      body: (payload: Payload) => HttpBody.HttpBody = HttpBody.jsonUnsafe
     ) => {
       const decode = HttpClientResponse.schemaBodyJson(schema)
-      return (payload: unknown): Effect.Effect<Response["Type"], AiError.AiError> =>
+      return (payload: Payload): Effect.Effect<Response["Type"], AiError.AiError> =>
         resolveHttpClient.pipe(
           Effect.flatMap((client) =>
             client.execute(HttpClientRequest.post(path, {
-              body: HttpBody.jsonUnsafe(payload)
+              body: body(payload)
             })).pipe(
               Effect.flatMap(decode),
               Effect.catchTags({
@@ -357,16 +369,44 @@ export const make = Effect.fnUntraced(
       "createDecisions"
     )
 
+    const createTranscription: Service["createTranscription"] = postJson(
+      "/audio/transcriptions",
+      OpenAiSchema.CreateTranscriptionResponse,
+      "createTranscription",
+      ({ file, fileName, ...fields }) => {
+        const data = new FormData()
+        data.append("file", file, fileName)
+        appendFormFields(data, fields)
+        return HttpBody.formData(data)
+      }
+    )
+
     return OpenAiClient.of({
       client: httpClient,
       createResponse,
       createResponseStream,
       createEmbedding,
-      createDecisions
+      createDecisions,
+      createTranscription
     })
   },
   withRedactedHeaders
 )
+
+// OpenAI reads multipart arrays from `key[]` and objects from `key[name]`.
+const appendFormFields = (data: FormData, fields: Record<string, unknown>, prefix?: string): void => {
+  for (const [name, value] of Object.entries(fields)) {
+    const key = prefix === undefined ? name : prefix + "[" + name + "]"
+    if (value === undefined || value === null) continue
+    if (Array.isArray(value)) {
+      for (const item of value) data.append(key + "[]", String(item))
+    } else if (typeof value === "object") {
+      appendFormFields(data, value as Record<string, unknown>, key)
+    } else {
+      data.append(key, String(value))
+    }
+  }
+}
 
 // =============================================================================
 // Layers
@@ -627,9 +667,7 @@ const makeSocket = Effect.gen(function*() {
                 status: errorType === "previous_response_not_found"
                   ? 400
                   : isNaN(status)
-                  ? Object.hasOwn(errorTypeToStatus, errorType)
-                    ? errorTypeToStatus[errorType]
-                    : 500
+                  ? Errors.statusFromErrorType(errorType)
                   : status,
                 metadata: error as any,
                 http: {
@@ -745,14 +783,6 @@ const ErrorEvent = Schema.Struct({
     [Schema.Record(Schema.String, Schema.Unknown)]
   )
 })
-
-const errorTypeToStatus: Record<string, number> = {
-  invalid_request_error: 400,
-  invalid_api_key_error: 401,
-  insufficient_quota_error: 429,
-  rate_limit_error: 429,
-  service_unavailable_error: 503
-}
 
 const AllEvents = Schema.Union([ErrorEvent, OpenAiSchema.ResponseStreamEvent])
 const decodeEvent = Schema.decodeUnknownSync(Schema.fromJsonString(AllEvents))

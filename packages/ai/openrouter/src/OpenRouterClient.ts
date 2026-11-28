@@ -67,6 +67,10 @@ export interface Service {
     ],
     AiError.AiError
   >
+
+  readonly createTranscription: (
+    options: typeof Generated.STTRequest.Encoded
+  ) => Effect.Effect<typeof Generated.STTResponse.Type, AiError.AiError>
 }
 
 /**
@@ -296,11 +300,33 @@ export const make = Effect.fnUntraced(
         )
       )
 
+    const createTranscription: Service["createTranscription"] = (payload) =>
+      client.createAudioTranscriptions({ payload, config: undefined }).pipe(
+        Effect.catchTags({
+          CreateAudioTranscriptions400: (error) => Errors.mapClientError(error, "createTranscription"),
+          CreateAudioTranscriptions401: (error) => Errors.mapClientError(error, "createTranscription"),
+          CreateAudioTranscriptions402: (error) => Errors.mapClientError(error, "createTranscription"),
+          CreateAudioTranscriptions403: (error) => Errors.mapClientError(error, "createTranscription"),
+          CreateAudioTranscriptions404: (error) => Errors.mapClientError(error, "createTranscription"),
+          CreateAudioTranscriptions413: (error) => Errors.mapClientError(error, "createTranscription"),
+          CreateAudioTranscriptions429: (error) => Errors.mapClientError(error, "createTranscription"),
+          CreateAudioTranscriptions500: (error) => Errors.mapClientError(error, "createTranscription"),
+          CreateAudioTranscriptions502: (error) => Errors.mapClientError(error, "createTranscription"),
+          CreateAudioTranscriptions503: (error) => Errors.mapClientError(error, "createTranscription"),
+          CreateAudioTranscriptions504: (error) => Errors.mapClientError(error, "createTranscription"),
+          CreateAudioTranscriptions524: (error) => Errors.mapClientError(error, "createTranscription"),
+          CreateAudioTranscriptions529: (error) => Errors.mapClientError(error, "createTranscription"),
+          HttpClientError: (error) => Errors.mapHttpClientError(error, "createTranscription"),
+          SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, "createTranscription"))
+        })
+      )
+
     return OpenRouterClient.of({
       client,
       createDecisions,
       createChatCompletion,
-      createChatCompletionStream
+      createChatCompletionStream,
+      createTranscription
     })
   }
 )
