@@ -9,6 +9,10 @@ Helpers for hill-climbing `pnpm hostperf`. They are not part of the library. Run
 - `bundle-bytes.ts [fixture ...]`: Markdown table of exact minified and gzipped bytes per fixture against `tmp/bundle-base`, for differences below the 10-byte resolution of the report. Build `packages/effect` first.
 - `abx.sh A_DIR B_DIR "<case>[,<case>...]" [runs] [ms] [hosts]`: alternates runs of two bundles built with `HC_OUT`, such as a branch and a base checkout, and prints median ns/op and A/B. Set `PIN="taskset -c N"` to pin both to one core when other work shares the machine.
 - `chromium-verify.mjs`: bundles `chromium-probe.ts` and runs it in Playwright Chromium. It checks `postTask` yields, priority order, interruption, the fallback for a `scheduler` global without `postTask`, and that a throwing task is reported without an unhandled rejection. Exits non-zero on failure.
+- `compare-reports.ts BASE.json HEAD.json`: prints the `pnpm hostperf --baseline` table and a verdict count per host for two saved reports, so one run can be compared with the pinned baseline and with a same-session main report without running again.
+- `evidence.sh OUT_DIR PINNED_MAIN_REPORT.json [rounds] [test files...]`: collects a round's hand-over evidence on a committed tree: hostperf against the pinned baseline, main re-measured in the same session, the Chromium probe, `pnpm bundle-compare main`, exact bundle bytes, scoped tests, the full `effect` suite, lint and check. `OUT_DIR/validation.txt` records each step's exit status and duration. It removes `tmp/bundle-base` before `pnpm check`.
+- `async-context-cost.mjs`: microbenchmark of the ways to capture and restore a Node async context (`AsyncResource`, `AsyncLocalStorage.snapshot`), and the Node source of each. Runs under Bun too.
+- `array-insert.mjs`: microbenchmark of ways to copy an array with one element inserted.
 
 Example:
 
