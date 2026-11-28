@@ -538,6 +538,16 @@ describe("SchemaParser", () => {
       for (const key of ["text", "1", symbol]) assertTrue(Object.hasOwn(output, key))
     })
 
+    it("distinguishes an undefined field from a missing one", () => {
+      const decode = SchemaParser.decodeUnknownSync(
+        Schema.Struct({ a: Schema.optionalKey(Schema.UndefinedOr(Schema.String)) })
+      )
+      const present = decode({ a: undefined })
+      assertTrue(Object.hasOwn(present, "a"))
+      deepStrictEqual(decode(Object.create({ a: undefined })), { a: undefined })
+      deepStrictEqual(decode({}), {})
+    })
+
     it("distinguishes an inherited undefined property from a missing property", () => {
       const schema = Schema.Struct({
         value: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("default")))

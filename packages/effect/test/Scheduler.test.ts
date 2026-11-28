@@ -255,16 +255,39 @@ describe("Scheduler", () => {
       assert.isTrue(released)
     })
 
-    it("falls back to setTimeout without postTask", async () => {
+    it("falls back to setTimeout without a postTask function", async () => {
       const { Effect } = browser
-      vi.stubGlobal("scheduler", undefined)
-      const setTimeout = vi.spyOn(globalThis, "setTimeout")
-      try {
-        assert.strictEqual(await Effect.runPromise(Effect.as(Effect.yieldNow, 1)), 1)
-        assert.isAbove(setTimeout.mock.calls.length, 0)
-      } finally {
-        setTimeout.mockRestore()
+      for (const scheduler of [undefined, {}, { postTask: null }]) {
+        vi.stubGlobal("scheduler", scheduler)
+        const setTimeout = vi.spyOn(globalThis, "setTimeout")
+        try {
+          assert.strictEqual(await Effect.runPromise(Effect.as(Effect.yieldNow, 1)), 1)
+          assert.isAbove(setTimeout.mock.calls.length, 0)
+        } finally {
+          setTimeout.mockRestore()
+        }
       }
+    })
+
+    it("passes a throwing task's error to reportError, not to an unhandled rejection", async () => {
+      const { Scheduler } = browser
+      const boom = new Error("boom")
+      const reported: Array<unknown> = []
+      const rejections: Array<unknown> = []
+      const onRejection = (error: unknown) => rejections.push(error)
+      vi.stubGlobal("reportError", (error: unknown) => reported.push(error))
+      process.on("unhandledRejection", onRejection)
+      try {
+        new Scheduler.MixedScheduler().makeDispatcher().scheduleTask(() => {
+          throw boom
+        }, 0)
+        while (reported.length + rejections.length === 0) await nextMacrotask()
+        await nextMacrotask()
+      } finally {
+        process.off("unhandledRejection", onRejection)
+      }
+      assert.deepStrictEqual(reported, [boom])
+      assert.deepStrictEqual(rejections, [])
     })
   })
 })
@@ -277,7 +300,7 @@ let postTaskCalls = 0
 const fakeTaskScheduler = {
   postTask(task: () => void) {
     postTaskCalls++
-    realSetImmediate(task)
+    return new Promise<void>((resolve) => realSetImmediate(resolve)).then(task)
   }
 }
 

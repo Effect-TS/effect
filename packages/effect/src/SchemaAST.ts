@@ -3159,14 +3159,13 @@ export const Objects: new(
         for (let index = 0; index < props.length; index++) {
           const property = props[index]
           const name = property.name
-          const hasKey = property.ownOnly ? Object.hasOwn(record, name) : name in record
-          const value = hasKey ? record[name] : InternalParser.missing
+          const value = readProperty(record, property)
           const exit = property.parser(value, options)
           if (!effectIsExit(exit)) {
             return resume(state, index, exit)
           }
           if (InternalParser.isSameExit(exit)) {
-            if (hasKey) InternalRecord.assignProperty(out, name, value)
+            if (value !== InternalParser.missing) InternalRecord.assignProperty(out, name, value)
             continue
           }
           const terminal = stepProperty(state, property, exit)
@@ -3223,6 +3222,15 @@ type ParsedProperty = {
   readonly ownOnly: boolean
 }
 
+// Returns `missing` for an absent key. Reading before the `in` check means a
+// present key, which usually holds a value other than `undefined`, costs one
+// lookup. Keys that must be own properties are only read when they are.
+function readProperty(input: Record<PropertyKey, unknown>, p: ParsedProperty): unknown {
+  if (p.ownOnly) return Object.hasOwn(input, p.name) ? input[p.name] : InternalParser.missing
+  const value = input[p.name]
+  return value !== undefined || p.name in input ? value : InternalParser.missing
+}
+
 /** @internal */
 export function stepProperty(
   s: ObjectParserState,
@@ -3255,11 +3263,8 @@ export function stepProperty(
 
 const parsePropertiesOptions = {
   onItem(s: ObjectParserState, p: ParsedProperty) {
-    if (!(p.ownOnly ? Object.hasOwn(s.input, p.name) : p.name in s.input)) {
-      return p.parser(InternalParser.missing, s.options)
-    }
-    const value = s.input[p.name]
-    InternalRecord.assignProperty(s.out, p.name, value)
+    const value = readProperty(s.input, p)
+    if (value !== InternalParser.missing) InternalRecord.assignProperty(s.out, p.name, value)
     return p.parser(value, s.options)
   },
   step: stepProperty

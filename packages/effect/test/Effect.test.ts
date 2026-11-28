@@ -4582,6 +4582,20 @@ describe("Effect", () => {
         )
         assert.deepStrictEqual(result, "e2")
       }))
+
+    it.effect("passes only the cause to variadic and multi-parameter handlers", () =>
+      Effect.gen(function*() {
+        const variadicCount = yield* Effect.catchCause(
+          Effect.fail("e1"),
+          (...args: Array<unknown>) => Effect.succeed(args.length)
+        )
+        const twoArg = ((_cause: Cause.Cause<string>, extra?: unknown) => Effect.succeed(extra)) as (
+          cause: Cause.Cause<string>
+        ) => Effect.Effect<unknown>
+        const secondArg = yield* Effect.catchCause(Effect.fail("e1"), twoArg)
+        assert.strictEqual(variadicCount, 1)
+        assert.strictEqual(secondArg, undefined)
+      }))
   })
 
   describe("transaction (composable transactions)", () => {

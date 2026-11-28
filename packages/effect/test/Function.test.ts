@@ -75,6 +75,31 @@ describe("Function", () => {
       )
       assert.strictEqual(F.pipe(2, sum(3)), 5)
     })
+
+    it("predicate receives IArguments and data-first preserves receiver", () => {
+      let seenTag = ""
+      let seenIsArray = true
+      const add = F.dual<
+        (b: number) => (self: number) => number,
+        (self: number, b: number) => number
+      >(
+        (args) => {
+          seenTag = Object.prototype.toString.call(args)
+          seenIsArray = Array.isArray(args)
+          return args.length === 2
+        },
+        function(this: { offset?: number } | undefined, self: number, b: number) {
+          return (this?.offset ?? 0) + self + b
+        }
+      )
+      const receiver = { offset: 10, add }
+      assert.strictEqual(receiver.add(2, 3), 15)
+      assert.strictEqual(seenTag, "[object Arguments]")
+      assert.strictEqual(seenIsArray, false)
+      assert.strictEqual(F.pipe(2, add(3)), 5)
+      assert.strictEqual(seenTag, "[object Arguments]")
+      assert.strictEqual(seenIsArray, false)
+    })
   })
 
   describe("apply", () => {

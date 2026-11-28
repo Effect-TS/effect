@@ -113,11 +113,6 @@ const setMicrotask = (f: () => void) => {
   }
 }
 
-const setTimeoutTimer = (f: () => void): () => void => {
-  const timer = setTimeout(f, 0)
-  return (): void => clearTimeout(timer)
-}
-
 const setTimer: (f: () => void) => () => void = "setImmediate" in globalThis
   ? (f) => {
     // @ts-ignore
@@ -125,22 +120,24 @@ const setTimer: (f: () => void) => () => void = "setImmediate" in globalThis
     // @ts-ignore
     return (): void => globalThis.clearImmediate(timer)
   }
-  // Browsers clamp nested `setTimeout(f, 0)` calls to 4ms, so a fiber that
-  // yields repeatedly would wait that long on every yield. The Prioritized Task
-  // Scheduling API (`scheduler.postTask`) queues an unclamped task, in FIFO
-  // order with other tasks of the same priority. The `in` check keeps this
-  // branch tree-shakeable.
-  : "scheduler" in globalThis
-  ? (f) => {
-    const scheduler = (globalThis as { scheduler?: { postTask?: (f: () => void) => unknown } }).scheduler
-    if (typeof scheduler?.postTask !== "function") return setTimeoutTimer(f)
+  : (f) => {
+    // Browsers clamp nested `setTimeout(f, 0)` calls to 4ms, so a fiber that
+    // yields repeatedly would wait that long on every yield. The Prioritized
+    // Task Scheduling API (`scheduler.postTask`) queues an unclamped task, in
+    // FIFO order with other tasks of the same priority.
+    const scheduler = (globalThis as { scheduler?: { postTask?: (f: () => void) => Promise<unknown> } }).scheduler
+    if (!scheduler?.postTask) {
+      const timer = setTimeout(f, 0)
+      return (): void => clearTimeout(timer)
+    }
     let cancelled = false
-    scheduler.postTask(() => cancelled || f())
+    // A throwing task rejects the promise `postTask` returns. Report the error
+    // as uncaught, as from `setTimeout`, rather than as an unhandled rejection.
+    scheduler.postTask(() => cancelled || f()).catch(globalThis.reportError)
     return (): void => {
       cancelled = true
     }
   }
-  : setTimeoutTimer
 
 // Some runtimes (e.g. Cloudflare Workers) throw when a timer is set in global
 // scope. Fall back to a microtask so effects can still yield at module load.
