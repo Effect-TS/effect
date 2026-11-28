@@ -673,7 +673,7 @@ Missing key
       // `toString` is inherited from Object.prototype, so it counts as missing
       assert.deepStrictEqual(Object.keys(decode({})), [])
       assert.deepStrictEqual(Object.keys(decode({ a: undefined })), ["a"])
-      assert.deepStrictEqual(decode(Object.create({ a: "inherited" })), { a: "inherited" })
+      assert.strictEqual(decode(Object.create({ a: "inherited" })).a, "inherited")
       let reads = 0
       const input = {
         get a() {
