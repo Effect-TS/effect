@@ -28,6 +28,7 @@ import {
   Schedule,
   Scheduler,
   Scope,
+  Supervisor,
   TxQueue,
   TxRef
 } from "effect"
@@ -2872,6 +2873,28 @@ describe("Effect", () => {
         assert.isTrue(cleanedUp)
       }))
 
+    it.effect("callback cleanup that suspends and then dies is awaited and added to the interruption", () =>
+      Effect.gen(function*() {
+        const events: Array<string> = []
+        const fiber = yield* Effect.callback<void>((_resume, signal) => {
+          signal.addEventListener("abort", () => events.push("abort"))
+          return Effect.yieldNow.pipe(
+            Effect.andThen(Effect.sync(() => events.push("cleanup"))),
+            Effect.andThen(Effect.die("cleanup defect"))
+          )
+        }).pipe(
+          Effect.onExit(() => Effect.sync(() => events.push("outer finalizer"))),
+          Effect.forkChild({ startImmediately: true })
+        )
+        const exit = yield* Fiber.interrupt(fiber).pipe(Effect.andThen(Fiber.await(fiber)))
+        assert.deepStrictEqual(events, ["abort", "cleanup", "outer finalizer"])
+        assert.isTrue(Exit.hasInterrupts(exit))
+        assert.isTrue(
+          Exit.isFailure(exit) &&
+            exit.cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect === "cleanup defect")
+        )
+      }))
+
     describe("uninterruptibleMask", () => {
       it.effect("defers a pending interrupt until the masked region completes", () =>
         Effect.gen(function*() {
@@ -3201,6 +3224,42 @@ describe("Effect", () => {
         }))
     }
 
+    it.effect("an interrupt before a deferred start cancels the start and notifies observers once", () =>
+      Effect.gen(function*() {
+        const events: Array<string> = []
+        const supervisor: Supervisor.Supervisor = {
+          onStart: () => events.push("start"),
+          onEnd: () => events.push("end"),
+          onBlock: () => events.push("block"),
+          onUnblock: () => events.push("unblock")
+        }
+        const child = yield* Effect.sync(() => events.push("body")).pipe(
+          Effect.forkChild,
+          Effect.provideService(Supervisor.Supervisor, supervisor)
+        )
+        let observed = 0
+        child.addObserver(() => observed++)
+        yield* Fiber.interrupt(child)
+        // Let the scheduled start run, if it was not cancelled
+        yield* Effect.yieldNow
+        yield* Effect.yieldNow
+        assert.deepStrictEqual(events, ["start", "end"])
+        assert.strictEqual(observed, 1)
+        assert.isTrue(Exit.hasInterrupts(child.pollUnsafe()!))
+      }))
+
+    it.effect("an interrupt before a deferred start of an uninterruptible fork lets it run", () =>
+      Effect.gen(function*() {
+        let ran = false
+        const child = yield* Effect.sync(() => {
+          ran = true
+          return "done"
+        }).pipe(Effect.forkChild({ uninterruptible: true }))
+        child.interruptUnsafe()
+        assert.isFalse(ran)
+        assert.deepStrictEqual(yield* Fiber.await(child), Exit.succeed("done"))
+      }))
+
     // Choose caller interruptibility to expose each option's effect.
     for (
       const [uninterruptible, region] of [
@@ -3410,6 +3469,17 @@ describe("Effect", () => {
       )
     })
 
+    it("deeply nested generators complete, with and without an asynchronous innermost step", async () => {
+      const nest = (n: number, innermost: Effect.Effect<number, string>): Effect.Effect<number, string> =>
+        n === 0 ? innermost : Effect.gen(function*() {
+          return (yield* nest(n - 1, innermost)) + 1
+        })
+      assert.strictEqual(Effect.runSync(nest(100_000, Effect.succeed(0))), 100_000)
+      assert.strictEqual(await Effect.runPromise(nest(100_000, Effect.as(Effect.yieldNow, 1))), 100_001)
+      const failing = nest(100_000, Effect.fail("innermost"))
+      assert.deepStrictEqual(Effect.runSyncExit(failing), Exit.fail("innermost"))
+    })
+
     it("lazily nested map continuations", () => {
       const loop = (n: number): Effect.Effect<number> =>
         n === 0 ? Effect.succeed(0) : Effect.map(Effect.suspend(() => loop(n - 1)), (n) => n + 1)
@@ -3431,6 +3501,45 @@ describe("Effect", () => {
           result,
           Exit.failCause(Cause.combine(Cause.die("body failure"), Cause.die("finalizer defect")))
         )
+      }))
+
+    it.effect("onExit finalizer effects that fail or suspend keep the original exit unless they fail", () =>
+      Effect.gen(function*() {
+        const observed: Array<Exit.Exit<unknown, unknown>> = []
+        const failing = (exit: Exit.Exit<unknown, unknown>) =>
+          Effect.yieldNow.pipe(
+            Effect.andThen(Effect.sync(() => observed.push(exit))),
+            Effect.andThen(Effect.fail("finalizer"))
+          )
+        const passing = (exit: Exit.Exit<unknown, unknown>) =>
+          Effect.yieldNow.pipe(Effect.andThen(Effect.sync(() => observed.push(exit))), Effect.as("ignored"))
+        assert.deepStrictEqual(yield* Effect.exit(Effect.onExit(Effect.succeed(1), passing)), Exit.succeed(1))
+        assert.deepStrictEqual(yield* Effect.exit(Effect.onExit(Effect.fail("body"), passing)), Exit.fail("body"))
+        assert.deepStrictEqual(yield* Effect.exit(Effect.onExit(Effect.succeed(1), failing)), Exit.fail("finalizer"))
+        assert.deepStrictEqual(
+          yield* Effect.exit(Effect.onExit(Effect.fail("body"), failing)),
+          Exit.failCause(Cause.combine(Cause.fail("body"), Cause.fail("finalizer")))
+        )
+        assert.deepStrictEqual(observed, [Exit.succeed(1), Exit.fail("body"), Exit.succeed(1), Exit.fail("body")])
+      }))
+
+    it.effect("onExit runs a failing, suspending finalizer once when the fiber is interrupted", () =>
+      Effect.gen(function*() {
+        const observed: Array<Exit.Exit<unknown, unknown>> = []
+        const fiber = yield* Effect.never.pipe(
+          Effect.onExit((exit) =>
+            Effect.yieldNow.pipe(
+              Effect.andThen(Effect.sync(() => observed.push(exit))),
+              Effect.andThen(Effect.fail("finalizer"))
+            )
+          ),
+          Effect.forkChild({ startImmediately: true })
+        )
+        const exit = yield* Fiber.interrupt(fiber).pipe(Effect.andThen(Fiber.await(fiber)))
+        assert.strictEqual(observed.length, 1)
+        assert.isTrue(Exit.hasInterrupts(observed[0]))
+        assert.isTrue(Exit.hasInterrupts(exit))
+        assert.deepStrictEqual(Exit.isFailure(exit) && Cause.findError(exit.cause), Result.succeed("finalizer"))
       }))
 
     it.effect("onExit reports a thrown finalizer on success", () =>
@@ -4581,18 +4690,32 @@ describe("Effect", () => {
   })
 
   describe("catchCause", () => {
-    it("passes only the cause to handlers regardless of declared arity", () => {
-      function unary(this: unknown, _cause: Cause.Cause<string>) {
+    it("calls a handler that does not declare exactly one parameter with the cause alone", () => {
+      const unary = (cause: Cause.Cause<string>) => Effect.succeed(Cause.squash(cause))
+      assert.strictEqual(Effect.runSync(Effect.catchCause(Effect.fail("boom"), unary)), "boom")
+      const variadic = (...args: Array<unknown>) => Effect.succeed(args.length)
+      assert.strictEqual(Effect.runSync(Effect.catchCause(Effect.fail("boom"), variadic)), 1)
+      function nullary() {
         // eslint-disable-next-line prefer-rest-params
-        return Effect.succeed([this, arguments.length])
+        return Effect.succeed(arguments.length)
       }
-      function variadic(this: unknown, ..._args: Array<unknown>) {
-        // eslint-disable-next-line prefer-rest-params
-        return Effect.succeed([this, arguments.length])
-      }
-      for (const handler of [unary, variadic]) {
-        assert.deepStrictEqual(Effect.runSync(Effect.catchCause(Effect.fail("boom"), handler)), [undefined, 1])
-      }
+      assert.strictEqual(Effect.runSync(Effect.catchCause(Effect.fail("boom"), nullary)), 1)
+    })
+
+    it("passes error handlers built on it only their own arguments", () => {
+      class Boom extends Data.TaggedError("Boom") {}
+      const failing: Effect.Effect<never, Boom> = Effect.fail(new Boom())
+      const argsOf = (...args: Array<unknown>) => Effect.succeed(args.length)
+      assert.deepStrictEqual(
+        [
+          Effect.runSync(Effect.catch(failing, argsOf)),
+          Effect.runSync(Effect.catchTag(failing, "Boom", argsOf)),
+          Effect.runSync(Effect.catchIf(failing, () => true, argsOf)),
+          Effect.runSync(Effect.catchCauseIf(failing, () => true, argsOf)),
+          Effect.runSync(Effect.sandbox(failing).pipe(Effect.catch(argsOf)))
+        ],
+        [1, 1, 1, 1, 1]
+      )
     })
 
     it.effect("recovers from Effect.interrupt with the current fiber as interruptor", () =>

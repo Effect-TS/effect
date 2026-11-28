@@ -116,6 +116,27 @@ const cancellable = (schedule: (run: () => void) => void) => (f: () => void): ()
 
 const setMicrotask = cancellable((run) => Promise.resolve().then(run))
 
+type TaskScheduler = { readonly postTask?: (task: () => void) => unknown }
+
+// Browsers clamp nested `setTimeout(f, 0)` calls to 4ms, so a fiber that
+// yields repeatedly would wait that long on every yield. The Prioritized Task
+// Scheduling API queues an unclamped task, in FIFO order with other tasks of
+// the same priority.
+const postTask = cancellable((run) =>
+  (globalThis as { scheduler?: TaskScheduler }).scheduler!.postTask!(() => {
+    try {
+      run()
+    } catch (error) {
+      // A throw here would reject the promise `postTask` returns and be
+      // reported as an unhandled rejection. Rethrow it from a timer, so it is
+      // an uncaught error as it is with `setTimeout`.
+      setTimeout(() => {
+        throw error
+      })
+    }
+  })
+)
+
 const setTimer: (f: () => void) => () => void = "setImmediate" in globalThis
   ? (f) => {
     // @ts-ignore
@@ -123,29 +144,13 @@ const setTimer: (f: () => void) => () => void = "setImmediate" in globalThis
     // @ts-ignore
     return (): void => globalThis.clearImmediate(timer)
   }
-  : cancellable((run) => {
-    const scheduler = (globalThis as { scheduler?: { postTask?: (f: () => void) => unknown } }).scheduler
-    if (typeof scheduler?.postTask !== "function") {
-      setTimeout(run, 0)
-      return
+  : (f) => {
+    if ((globalThis as { scheduler?: TaskScheduler }).scheduler?.postTask) {
+      return postTask(f)
     }
-    // Browsers clamp nested `setTimeout(f, 0)` calls to 4ms, so a fiber that
-    // yields repeatedly would wait that long on every yield. The Prioritized
-    // Task Scheduling API queues an unclamped task, in FIFO order with other
-    // tasks of the same priority.
-    scheduler.postTask(() => {
-      try {
-        run()
-      } catch (error) {
-        // A throw here would reject the promise `postTask` returns and be
-        // reported as an unhandled rejection. Rethrow it from a timer, so it
-        // is an uncaught error as it is with `setTimeout`.
-        setTimeout(() => {
-          throw error
-        }, 0)
-      }
-    })
-  })
+    const timer = setTimeout(f, 0)
+    return (): void => clearTimeout(timer)
+  }
 
 // Some runtimes (e.g. Cloudflare Workers) throw when a timer is set in global
 // scope. Fall back to a microtask so effects can still yield at module load.
