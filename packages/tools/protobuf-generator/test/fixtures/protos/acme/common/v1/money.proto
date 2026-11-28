@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package acme.common.v1;
+
+// An amount of money in a currency.
+message Money {
+  // An ISO 4217 currency code, such as "EUR".
+  string currency_code = 1;
+  // Whole units, as a decimal string.
+  int64 units = 2 [jstype = JS_STRING];
+  // Billionths of a unit.
+  int32 nanos = 3;
+}

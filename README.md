@@ -98,6 +98,7 @@ This monorepo contains the core `effect` package alongside integration packages 
 | [`@effect/doctest`](packages/tools/doctest)                           | Runs JSDoc examples as Vitest tests                      | [docs](https://effect.website/docs/v4/api/doctest)                 |
 | [`@effect/openapi-generator`](packages/tools/openapi-generator)       | Generate Effect code from OpenAPI specifications         | [docs](https://effect.website/docs/v4/api/openapi-generator)       |
 | [`@effect/graphql-generator`](packages/tools/graphql-generator)       | Generate Effect code from GraphQL documents              | [docs](https://effect.website/docs/v4/api/graphql-generator)       |
+| [`@effect/protobuf-generator`](packages/tools/protobuf-generator)     | Generate `effect/protobuf` modules from `.proto` files   | [docs](https://effect.website/docs/v4/api/protobuf-generator)      |
 
 ## License
 

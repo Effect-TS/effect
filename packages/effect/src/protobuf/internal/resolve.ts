@@ -7,6 +7,7 @@
 // services that refer to them.
 
 import type * as D from "../ProtobufDescriptor.ts"
+import type * as P from "../ProtobufDescriptorProto.ts"
 
 /** @internal */
 export class ResolveError extends Error {}
@@ -83,7 +84,7 @@ const EDITIONS: Features = {
   delimited: false
 }
 
-const editionOf = (file: D.FileDescriptorProto): D.EditionName => {
+const editionOf = (file: P.FileDescriptorProto): D.EditionName => {
   switch (file.syntax) {
     case undefined:
     case "":
@@ -103,7 +104,7 @@ const editionOf = (file: D.FileDescriptorProto): D.EditionName => {
 
 // Overrides the features that a `FeatureSet` sets. Each is a number of its
 // enum in `descriptor.proto`; 0 is unset.
-const merge = (features: Features, set: D.FeatureSet | undefined): Features => {
+const merge = (features: Features, set: P.FeatureSet | undefined): Features => {
   if (set === undefined) return features
   return {
     fieldPresence: set.field_presence === 1
@@ -126,7 +127,7 @@ const merge = (features: Features, set: D.FeatureSet | undefined): Features => {
 
 // The features of a field, from those of its parent. proto2 and proto3 spell
 // some features with their own syntax.
-const fieldFeatures = (edition: D.EditionName, parent: Features, field: D.FieldDescriptorProto): Features => {
+const fieldFeatures = (edition: D.EditionName, parent: Features, field: P.FieldDescriptorProto): Features => {
   const features = merge(parent, field.options?.features)
   if (edition !== "proto2" && edition !== "proto3") {
     return field.type === TYPE_GROUP ? { ...features, delimited: true } : features
@@ -171,18 +172,27 @@ interface Pending {
   readonly features: Features
 }
 
-/** @internal */
-export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => {
-  const byName = new Map<string, D.FileDescriptorProto>()
+/**
+ * Resolves `protos`. Their imports may also be among `dependencies`, files
+ * resolved before, which are linked rather than resolved again: the types of
+ * `protos` refer to the descriptors of `dependencies`.
+ *
+ * @internal
+ */
+export const resolve = (
+  protos: Iterable<P.FileDescriptorProto>,
+  dependencies: Iterable<D.FileDescriptor> = []
+): D.Registry => {
+  const byName = new Map<string, P.FileDescriptorProto>()
   for (const proto of protos) {
     const name = proto.name ?? fail("a file without a name")
     if (byName.has(name)) fail(`${name}: the file is given twice`)
     byName.set(name, proto)
   }
-  const files = new Map<string, Mutable<D.FileDescriptor>>()
-  const messages = new Map<string, Mutable<D.MessageDescriptor>>()
+  const files = new Map<string, D.FileDescriptor>()
+  const messages = new Map<string, D.MessageDescriptor>()
   const enums = new Map<string, D.EnumDescriptor>()
-  const services = new Map<string, Mutable<D.ServiceDescriptor>>()
+  const services = new Map<string, D.ServiceDescriptor>()
   const extensions = new Map<string, D.ExtensionDescriptor>()
   const extensionsByExtendee = new Map<string, Map<number, D.ExtensionDescriptor>>()
   const pending: Array<Pending> = []
@@ -190,7 +200,7 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
     readonly [
       file: Mutable<D.FileDescriptor>,
       parent: Mutable<D.MessageDescriptor> | undefined,
-      proto: D.FieldDescriptorProto,
+      proto: P.FieldDescriptorProto,
       features: Features
     ]
   > = []
@@ -207,7 +217,7 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
     file: Mutable<D.FileDescriptor>,
     parent: D.MessageDescriptor | undefined,
     scope: string,
-    proto: D.EnumDescriptorProto,
+    proto: P.EnumDescriptorProto,
     features: Features
   ): D.EnumDescriptor => {
     const name = proto.name ?? fail(`${scope}: an enum without a name`)
@@ -242,7 +252,7 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
     file: Mutable<D.FileDescriptor>,
     parent: Mutable<D.MessageDescriptor> | undefined,
     scope: string,
-    proto: D.DescriptorProto,
+    proto: P.DescriptorProto,
     parentFeatures: Features
   ): Mutable<D.MessageDescriptor> => {
     const name = proto.name ?? fail(`${scope}: a message without a name`)
@@ -278,9 +288,42 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
     return out
   }
 
+  // Resolved files are linked with the files they import, and their types and
+  // extensions become visible to the files being resolved.
+  const linked: Array<D.FileDescriptor> = []
+  const addExtensions = (list: ReadonlyArray<D.ExtensionDescriptor>): void => {
+    for (const extension of list) {
+      extensions.set(extension.typeName, extension)
+      let byNumber = extensionsByExtendee.get(extension.extendee.typeName)
+      if (byNumber === undefined) extensionsByExtendee.set(extension.extendee.typeName, byNumber = new Map())
+      byNumber.set(extension.field.number, extension)
+    }
+  }
+  const addLinkedMessage = (message: D.MessageDescriptor): void => {
+    messages.set(message.typeName, message)
+    for (const nested of message.messages) addLinkedMessage(nested)
+    for (const e of message.enums) enums.set(e.typeName, e)
+    addExtensions(message.extensions)
+  }
+  const link = (file: D.FileDescriptor): void => {
+    const done = files.get(file.name)
+    if (done === file) return
+    if (done !== undefined || byName.has(file.name)) fail(`${file.name}: the file is given twice`)
+    files.set(file.name, file)
+    for (const dependency of file.dependencies) link(dependency)
+    linked.push(file)
+    for (const message of file.messages) addLinkedMessage(message)
+    for (const e of file.enums) enums.set(e.typeName, e)
+    for (const service of file.services) services.set(service.typeName, service)
+    addExtensions(file.extensions)
+  }
+  for (const dependency of dependencies) link(dependency)
+
   // Files are added after their dependencies.
   const visiting = new Set<string>()
-  const addFile = (name: string, importer: string | undefined): Mutable<D.FileDescriptor> => {
+  const resolved: Array<D.FileDescriptor> = []
+  const newServices: Array<Mutable<D.ServiceDescriptor>> = []
+  const addFile = (name: string, importer: string | undefined): D.FileDescriptor => {
     const done = files.get(name)
     if (done !== undefined) return done
     const proto = byName.get(name)
@@ -309,6 +352,7 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
       proto
     }
     files.set(name, file)
+    resolved.push(file)
     const scope = file.package
     for (const message of proto.message_type ?? []) {
       file.messages.push(addMessage(file, undefined, scope, message, features))
@@ -330,6 +374,7 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
         proto: service
       }
       services.set(typeName, out)
+      newServices.push(out)
       file.services.push(out)
     }
     return file
@@ -338,7 +383,7 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
 
   // A field's value type.
   const valueType = (
-    proto: D.FieldDescriptorProto,
+    proto: P.FieldDescriptorProto,
     features: Features,
     at: string
   ): D.ValueType => {
@@ -365,7 +410,7 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
   const field = (
     parent: D.MessageDescriptor,
     oneof: D.OneofDescriptor | undefined,
-    proto: D.FieldDescriptorProto,
+    proto: P.FieldDescriptorProto,
     features: Features,
     at: string
   ): D.FieldDescriptor => {
@@ -500,7 +545,7 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
   }
 
   // All message descriptors exist before resolving service methods.
-  for (const service of services.values()) {
+  for (const service of newServices) {
     for (const method of service.proto.method ?? []) {
       const at = `${service.typeName}.${method.name}`
       const input = typeRef(method.input_type, at)
@@ -522,7 +567,7 @@ export const resolve = (protos: Iterable<D.FileDescriptorProto>): D.Registry => 
 
   const visible = (name: string) => entries.has(name) ? undefined : messages.get(name)
   return {
-    files: [...files.values()],
+    files: [...resolved, ...linked],
     getFile: (name) => files.get(name),
     getMessage: visible,
     getEnum: (name) => enums.get(name),

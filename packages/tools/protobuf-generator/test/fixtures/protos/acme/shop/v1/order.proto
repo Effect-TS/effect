@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package acme.shop.v1;
+
+import "acme/common/v1/money.proto";
+import "google/protobuf/descriptor.proto";
+
+// Marks a field that logs must not show.
+extend google.protobuf.FieldOptions {
+  bool sensitive = 50000;
+}
+
+// An order of a customer.
+message Order {
+  // The order id.
+  string id = 1;
+  Status status = 2;
+  repeated Item items = 3;
+  map<string, string> labels = 4;
+  // A note of the customer.
+  optional string note = 5 [(sensitive) = true];
+  // How the order is paid.
+  oneof payment {
+    // A card number.
+    string card = 6;
+    Voucher voucher = 7;
+  }
+  uint64 version = 8;
+  bytes signature = 9;
+  map<int32, acme.common.v1.Money> totals_by_year = 10;
+
+  // A line of an order.
+  message Item {
+    string sku = 1;
+    uint32 quantity = 2;
+    acme.common.v1.Money price = 3;
+  }
+
+  message Voucher {
+    string code = 1;
+  }
+
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    STATUS_OPEN = 1;
+    STATUS_PAID = 2;
+  }
+}
+
+// Reads and pays orders.
+service Orders {
+  rpc GetOrder(Order) returns (Order) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}

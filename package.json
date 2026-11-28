@@ -6,7 +6,6 @@
     "prepare": "node scripts/setup-agents.mjs && effect-tsgo patch",
     "clean": "node scripts/clean.mjs",
     "codegen": "pnpm --recursive --parallel --filter \"./packages/**/*\" run codegen",
-    "protobuf-codegen": "node packages/effect/scripts/protobuf/generate.mjs",
     "codemod": "node scripts/codemod.mjs",
     "build": "tsc -b tsconfig.packages.json && pnpm --recursive --parallel --filter \"./packages/**/*\" run build && node scripts/copy-ai-docs.mjs",
     "bundle-analyze": "bash scripts/bundle-analyze.sh",
