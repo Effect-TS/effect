@@ -196,9 +196,24 @@ export interface ToolRegistration {
 /**
  * @internal
  */
+export interface ToolSourceRegistration {
+  readonly owns: (name: string) => boolean
+  readonly list: (invocation: McpInvocation) => Effect.Effect<ReadonlyArray<McpSchema.Tool>, RequestRejected>
+  readonly handle: (
+    call: typeof McpSchema.CallTool.payloadSchema.Type,
+    invocation: McpInvocation
+  ) => Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError>
+}
+
+/**
+ * @internal
+ */
 export interface Tools {
   readonly register: (
     registration: ToolRegistration
+  ) => Effect.Effect<void>
+  readonly registerSource: (
+    source: ToolSourceRegistration
   ) => Effect.Effect<void>
   readonly list: (
     invocation: McpInvocation
@@ -535,6 +550,7 @@ const skillsOverlap = (a: string, b: string): boolean => {
  */
 export const make: Effect.Effect<McpCore> = Effect.sync(() => {
   const registrations = new Map<string, ToolRegistration>()
+  const toolSources: Array<ToolSourceRegistration> = []
   const resourceRegistrations: Array<ResourceRegistration> = []
   const resourceTemplateRegistrations: Array<ResourceTemplateRegistration> = []
   const promptRegistrations = new Map<string, PromptRegistration>()
@@ -564,17 +580,50 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
       (entries) => entries.map((entry) => entry.descriptor)
     )
 
+  const toolSource = (name: string) => toolSources.find((source) => source.owns(name))
+
   const tools: Tools = {
     register: (registration) =>
       Effect.sync(() => {
         registrations.set(registration.descriptor.name, registration)
       }),
-    list: (invocation) => filterList(registrations.values(), invocation),
+    registerSource: (source) =>
+      Effect.sync(() => {
+        toolSources.push(source)
+      }),
+    list: (invocation) => {
+      const registered = filterList(registrations.values(), invocation)
+      if (toolSources.length === 0) {
+        return registered
+      }
+      // Tools registered at this point (even hidden) take precedence over the
+      // sources, and each name is listed once.
+      const seen = new Set(registrations.keys())
+      return Effect.map(
+        Effect.all([
+          registered,
+          ...toolSources.map((source) =>
+            Effect.map(
+              source.list(invocation),
+              Arr.filter(({ name }) => {
+                if (seen.has(name) || toolSource(name) !== source) {
+                  return false
+                }
+                seen.add(name)
+                return true
+              })
+            )
+          )
+        ], { concurrency: "unbounded" }),
+        Arr.flatten
+      )
+    },
     call: (call, invocation, beforeHandle) =>
       Effect.suspend((): Effect.Effect<OperationOutcome<McpSchema.CallToolResult>, ToolError> => {
         const registration = registrations.get(call.name)
         if (registration === undefined) {
-          return new ToolNotFound({ name: call.name })
+          const source = toolSource(call.name)
+          return source === undefined ? new ToolNotFound({ name: call.name }) : source.handle(call, invocation)
         }
         if (!registration.isVisible(invocation.protocol)) {
           return new ToolNotFound({ name: call.name })
@@ -718,7 +767,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
   }
 
   const registrationPresence = Effect.sync(() => ({
-    tools: registrations.size > 0,
+    tools: registrations.size > 0 || toolSources.length > 0,
     resources: resourceRegistrations.length > 0 || resourceTemplateRegistrations.length > 0,
     prompts: promptRegistrations.size > 0,
     skills: skillRegistrations.size > 0

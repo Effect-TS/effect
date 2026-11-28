@@ -4356,4 +4356,157 @@ describe("McpServer", () => {
         assert.strictEqual(span.attributes.get("error.type"), "-32603")
       }))
   })
+
+  describe("toolSource", () => {
+    const descriptor = (name: string) => new McpSchema.Tool({ name, inputSchema: { type: "object" } })
+    const textResult = (text: string) => new McpSchema.CallToolResult({ content: [{ type: "text", text }] })
+    const listedNames = (message: { readonly result?: unknown }) =>
+      (message.result as { readonly tools: ReadonlyArray<{ readonly name: string }> }).tools.map((tool) => tool.name)
+    const callText = (message: { readonly result?: unknown }) =>
+      (message.result as { readonly content: ReadonlyArray<{ readonly text: string }> }).content[0].text
+
+    it.effect("applies static precedence, owns routing, and per-request listing", () =>
+      Effect.gen(function*() {
+        const StaticVisible = Toolkit.make(Tool.make("Search", { success: Schema.String }))
+        const StaticHidden = Toolkit.make(Tool.make("HiddenStatic", { success: Schema.String }))
+        let dynamicNames = ["Search", "HiddenStatic", "Deploy", "Status", "Deploy"]
+        let duringList: Effect.Effect<void> = Effect.void
+        const failureCodes: Array<number> = []
+        const Observe = McpServer.middleware()((effect) =>
+          Effect.tapError(effect, (error) => Effect.sync(() => failureCodes.push(error.code)))
+        )
+        const registrations = Layer.mergeAll(
+          McpServer.toolkit(StaticVisible).pipe(
+            Layer.provide(StaticVisible.toLayer({ Search: () => Effect.succeed("static") }))
+          ),
+          McpServer.toolkit(StaticHidden).pipe(
+            Layer.provide(McpServer.visibility(() => Effect.succeed(false)).layer),
+            Layer.provide(StaticHidden.toLayer({ HiddenStatic: () => Effect.succeed("hidden") }))
+          ),
+          Layer.effectDiscard(McpServer.registerToolSource({
+            owns: (name) => name !== "Logs",
+            list: Effect.suspend(() => Effect.as(duringList, dynamicNames.map(descriptor))),
+            call: (name, args) =>
+              name === "Unknown"
+                ? Effect.fail(new Cause.NoSuchElementError())
+                : Effect.succeed(textResult(`first:${name}:${JSON.stringify(args)}`))
+          })).pipe(Layer.provide(Observe.layer)),
+          McpServer.toolSource({
+            list: Effect.succeed(["Status", "Logs"].map(descriptor)),
+            call: (name, args) => Effect.succeed(textResult(`second:${name}:${JSON.stringify(args)}`))
+          })
+        )
+        const harness = yield* makeMcpStdioHarness(McpProtocol.v2025_11_25, [McpProtocol.v2025_11_25], registrations)
+        yield* harness.initialize()
+
+        // Direct calls work without a prior list; static and hidden static never fall through.
+        assert.strictEqual(
+          callText(yield* harness.sendRequest("tools/call", { name: "Search", arguments: {} })),
+          "static"
+        )
+        assert.deepStrictEqual(
+          (yield* harness.sendRequest("tools/call", { name: "HiddenStatic", arguments: {} })).error,
+          { code: -32602, message: "Tool 'HiddenStatic' not found" }
+        )
+        assert.strictEqual(
+          callText(yield* harness.sendRequest("tools/call", { name: "Status", arguments: { id: 1 } })),
+          "first:Status:{\"id\":1}"
+        )
+        assert.strictEqual(
+          callText(yield* harness.sendRequest("tools/call", { name: "Logs", arguments: { id: 2 } })),
+          "second:Logs:{\"id\":2}"
+        )
+        // NoSuchElementError maps to ToolNotFound without falling through to later sources,
+        // and reaches middleware as an MCP error.
+        assert.deepStrictEqual(
+          (yield* harness.sendRequest("tools/call", { name: "Unknown", arguments: {} })).error,
+          { code: -32602, message: "Tool 'Unknown' not found" }
+        )
+        assert.deepStrictEqual(failureCodes, [-32602])
+
+        assert.deepStrictEqual(listedNames(yield* harness.sendRequest("tools/list")), [
+          "Search",
+          "Deploy",
+          "Status",
+          "Logs"
+        ])
+        dynamicNames = ["Deploy", "Extra"]
+        assert.deepStrictEqual(listedNames(yield* harness.sendRequest("tools/list")), [
+          "Search",
+          "Deploy",
+          "Extra",
+          "Logs"
+        ])
+        // A tool registered during discovery does not shadow the source in that response.
+        duringList = harness.server.addTool({
+          tool: descriptor("Extra"),
+          annotations: Context.empty(),
+          handle: () => Effect.succeed(textResult("static"))
+        })
+        assert.deepStrictEqual(listedNames(yield* harness.sendRequest("tools/list")), [
+          "Search",
+          "Deploy",
+          "Extra",
+          "Logs"
+        ])
+      }))
+
+    it.effect("advertises tools capability, runs middleware and allowlist visibility, and maps errors", () =>
+      Effect.gen(function*() {
+        class CurrentUser extends Context.Service<CurrentUser, string>()("test/ToolSource/CurrentUser") {}
+        const state = { user: "guest", failList: false }
+        const Auth = McpServer.middleware<{ provides: CurrentUser }>()((effect) =>
+          Effect.provideService(effect, CurrentUser, state.user)
+        )
+        const AllowList = McpServer.visibility(({ target }) =>
+          Effect.map(CurrentUser, (user) => user === "admin" || target === "Deploy")
+        )
+        const registrations = McpServer.toolSource({
+          list: Effect.flatMap(CurrentUser, () =>
+            state.failList
+              ? Effect.fail(new McpSchema.InternalError({ message: "Upstream unavailable" }))
+              : Effect.succeed(["Deploy", "AdminReset"].map(descriptor))),
+          call: Effect.fnUntraced(function*(name) {
+            if (name === "Invalid") {
+              return yield* new McpSchema.InvalidParams({ message: "Missing id" })
+            }
+            if (name === "Broken") {
+              return yield* new McpSchema.InternalError({ message: "Upstream failed" })
+            }
+            return textResult(`${yield* CurrentUser}:${name}`)
+          })
+        }).pipe(Layer.provide(AllowList.combine(Auth).layer))
+
+        const harness = yield* makeMcpStdioHarness(McpProtocol.v2025_11_25, [McpProtocol.v2025_11_25], registrations)
+        const initialized = yield* harness.initialize()
+        assert.deepStrictEqual((initialized.result as any).capabilities.tools, { listChanged: true })
+
+        assert.deepStrictEqual(listedNames(yield* harness.sendRequest("tools/list")), ["Deploy"])
+        assert.deepStrictEqual(
+          (yield* harness.sendRequest("tools/call", { name: "AdminReset", arguments: {} })).error,
+          { code: -32602, message: "Tool 'AdminReset' not found" }
+        )
+
+        state.user = "admin"
+        assert.deepStrictEqual(listedNames(yield* harness.sendRequest("tools/list")), ["Deploy", "AdminReset"])
+        assert.strictEqual(
+          callText(yield* harness.sendRequest("tools/call", { name: "AdminReset", arguments: {} })),
+          "admin:AdminReset"
+        )
+        assert.deepStrictEqual(
+          (yield* harness.sendRequest("tools/call", { name: "Invalid", arguments: {} })).result,
+          { content: [{ type: "text", text: "Missing id" }], isError: true }
+        )
+        assert.deepStrictEqual(
+          (yield* harness.sendRequest("tools/call", { name: "Broken", arguments: {} })).result,
+          { content: [{ type: "text", text: "Upstream failed" }], isError: true }
+        )
+
+        state.failList = true
+        assert.deepInclude(
+          (yield* harness.sendRequest("tools/list")).error,
+          { code: -32603, message: "Upstream unavailable" }
+        )
+      }))
+  })
 })
