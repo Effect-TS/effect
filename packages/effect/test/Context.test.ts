@@ -200,12 +200,41 @@ describe("Context", () => {
       strictEqual((context as unknown as { depth: number }).depth, 0)
     }
 
-    context = Context.merge(context, Context.make(A, 4)).pipe(
-      Context.add(B, 5),
-      Context.add(C, 6),
-      Context.add(A, 7)
-    )
+    // A small right-hand context is added as overlays, and the limit still applies.
+    context = Context.merge(context, Context.make(A, 4))
+    strictEqual((context as unknown as { depth: number }).depth, 1)
+    context = Context.add(context, B, 5)
+    strictEqual((context as unknown as { depth: number }).depth, 2)
+    context = Context.add(context, C, 6)
     strictEqual((context as unknown as { depth: number }).depth, 0)
+
+    // A right-hand context larger than the limit is merged into a flat map.
+    const large = Context.make(A, 7).pipe(Context.add(B, 8), Context.add(C, 9))
+    context = Context.merge(Context.add(context, A, 0), large).pipe(Context.add(A, 1), Context.add(B, 2))
+    strictEqual((context as unknown as { depth: number }).depth, 2)
+    context = Context.add(context, C, 3)
+    strictEqual((context as unknown as { depth: number }).depth, 0)
+  })
+
+  it("merges a small context without copying the left-hand map", () => {
+    const Ref = Context.Reference<number>("ContextTest/MergeRef", { defaultValue: () => 0 })
+    const CachedRef = Context.Reference<number>("ContextTest/MergeCachedRef", {
+      fiberCached: true,
+      defaultValue: () => 0
+    })
+    const left = Context.makeUnsafe<never>(new Map([[A.key, 1], [B.key, 2]]))
+    const merged = Context.merge(left, Context.make(B, 3).pipe(Context.add(Ref, 4)))
+
+    strictEqual((merged as unknown as { base: ReadonlyMap<string, unknown> }).base, left.mapUnsafe)
+    deepStrictEqual([...merged.mapUnsafe], [[A.key, 1], [B.key, 3], [Ref.key, 4]])
+    deepStrictEqual([...left.mapUnsafe], [[A.key, 1], [B.key, 2]])
+    assertTrue(Context.hasSameCache(left, merged))
+    assertFalse(Context.hasSameCache(left, Context.merge(left, Context.make(CachedRef, 1))))
+
+    // The emptiness check must not flatten a context that has overlays.
+    const overlaid = Context.add(left, C, 3)
+    Context.merge(overlaid, Context.make(A, 5))
+    strictEqual((overlaid as unknown as { _flat: unknown })._flat, undefined)
   })
 
   it("keeps maxDepth when picking zero or one key", () => {

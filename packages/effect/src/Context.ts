@@ -1247,10 +1247,25 @@ export const merge: {
   <R1>(that: Context<R1>): <Services>(self: Context<Services>) => Context<R1 | Services>
   <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1>
 } = dual(2, <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1> => {
-  if (self.mapUnsafe.size === 0) return that as any
-  if (that.mapUnsafe.size === 0) return self as any
-  return withFlat(self, (map) => that.mapUnsafe.forEach((value, key) => map.set(key, value)))
+  if (isEmpty(self)) return that as any
+  const thatMap = that.mapUnsafe
+  if (thatMap.size === 0) return self as any
+  if (thatMap.size <= (self as ContextImpl<Services>).maxDepth) {
+    // Adding a few services as overlays avoids copying a large left-hand map.
+    let out: Context<any> = self
+    thatMap.forEach((value, key) => {
+      out = addUnsafe(out, key, value)
+    })
+    return out
+  }
+  return withFlat(self, (map) => thatMap.forEach((value, key) => map.set(key, value)))
 })
+
+// Avoids `mapUnsafe`, which would flatten an overlay context only to read its size.
+const isEmpty = (self: Context<any>): boolean => {
+  const impl = self as ContextImpl<any>
+  return impl.overlay === undefined && impl.base.size === 0
+}
 
 /**
  * Merges any number of `Context`s into one.
