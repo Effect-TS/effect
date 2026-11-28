@@ -30,6 +30,12 @@ export * as Csv from "./Csv.ts"
 export * as EncodingError from "./EncodingError.ts"
 
 /**
+ * @stability experimental
+ * @since 4.1.5
+ */
+export * as FlatBuffers from "./FlatBuffers.ts"
+
+/**
  * @stability stable
  * @since 4.0.0
  */
