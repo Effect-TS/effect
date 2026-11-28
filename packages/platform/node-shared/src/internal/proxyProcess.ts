@@ -367,9 +367,8 @@ class Proxy implements ProxiedProcessOwner {
   private startTimer(key: number | "ready"): void {
     const millis = this.options.responseTimeoutMillis
     const timer = setTimeout(() => {
-      // A blocked event loop runs due timers before it reads replies that are
-      // already queued, so check again once they have been read. The immediate
-      // stays referenced, so an idle event loop does not wait to run it.
+      // Defer past the I/O poll so queued replies are read first; keep
+      // referenced so an idle loop still runs the check immediately.
       setImmediate(() => {
         if (this.timers.get(key) !== timer) return
         this.stop(
