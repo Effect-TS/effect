@@ -203,39 +203,28 @@ ${proxyProcessSource}`
 
   it.live("keeps a proxy process whose reply waits behind a blocked event loop", () =>
     Effect.gen(function*() {
-      const spawn = NodeChildProcess.spawn
-      let blocked = false
-      yield* Effect.acquireRelease(
-        Effect.sync(() => {
-          const spy = vi.spyOn(NodeChildProcess, "spawn").mockImplementation((...args: Array<any>) => {
-            const proxy = (spawn as (...args: Array<any>) => NodeChildProcess.ChildProcess)(...args)
-            const send = proxy.send.bind(proxy)
-            proxy.send = ((message: { readonly command?: string }, ...rest: Array<any>) => {
-              const sent = (send as (...args: Array<any>) => boolean)(message, ...rest)
-              if (message.command !== undefined && !blocked) {
-                blocked = true
-                // Blocks the application past the reply deadline, as a loaded one does
-                spawnSync("sleep", ["1.5"])
-              }
-              return sent
-            }) as typeof proxy.send
-            return proxy
-          })
-          syncBuiltinESMExports()
-          return spy
-        }),
-        (spy) =>
-          Effect.sync(() => {
-            spy.mockRestore()
-            syncBuiltinESMExports()
-          })
-      )
+      const fs = yield* FileSystem.FileSystem
+      const started = join(yield* fs.makeTempDirectoryScoped(), "started")
       yield* Effect.gen(function*() {
-        const first = yield* proxyPid
-        assert.isTrue(blocked)
+        const first = Option.getOrThrow(yield* currentPid)
+        const spawned = yield* Effect.forkChild(
+          ChildProcessSpawner.use((spawner) =>
+            spawner.string(ChildProcess.make("sh", ["-c", "> \"$1\" && echo $PPID", "_", started]))
+          ),
+          { startImmediately: true }
+        )
+        const wait = new Int32Array(new SharedArrayBuffer(4))
+        const deadline = performance.now() + 1_100
+        const limit = performance.now() + 5_000
+        while (performance.now() < limit && !NodeFs.existsSync(started)) {
+          Atomics.wait(wait, 0, 0, 10)
+        }
+        Atomics.wait(wait, 0, 0, Math.max(deadline - performance.now(), 20))
+        assert.isTrue(NodeFs.existsSync(started))
+        assert.strictEqual(Number((yield* Fiber.join(spawned)).trim()), first)
         assert.strictEqual(yield* proxyPid, first)
       }).pipe(Effect.provide(proxyServices({ responseTimeout: "1 second" })))
-    }).pipe(Effect.scoped))
+    }).pipe(Effect.provide(NodeFileSystem.layer), Effect.scoped))
 
   it("generates the default launcher's program from the worker that run calls", () => {
     const script = join(__dirname, "..", "scripts", "generateProxyProcessSource.ts")
