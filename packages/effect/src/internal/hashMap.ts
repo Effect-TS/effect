@@ -63,6 +63,26 @@ const bitpos = (hash: number, shift: number): number => 1 << mask(hash, shift)
 /** @internal */
 const index = (bitmap: number, bit: number): number => popcount(bitmap & (bit - 1))
 
+// Persistent updates copy a node's array on every `set` and `remove`. These
+// write the copy in one pass, where `slice` followed by `splice` copies the
+// elements and then shifts them.
+const insertAt = <A>(self: ReadonlyArray<A>, index: number, value: A): Array<A> => {
+  const out = new globalThis.Array<A>(self.length + 1)
+  let i = 0
+  for (; i < index; i++) out[i] = self[i]
+  out[i] = value
+  for (; i < self.length; i++) out[i + 1] = self[i]
+  return out
+}
+
+const removeAt = <A>(self: ReadonlyArray<A>, index: number): Array<A> => {
+  const out = new globalThis.Array<A>(self.length - 1)
+  let i = 0
+  for (; i < index; i++) out[i] = self[i]
+  for (; i < out.length; i++) out[i] = self[i + 1]
+  return out
+}
+
 /** @internal */
 function mergeLeaves<K, V>(
   edit: number,
@@ -432,9 +452,7 @@ class CollisionNode<K, V> extends Node<K, V> {
       return this
     }
 
-    const newEntries = this.entries.slice()
-    newEntries.splice(idx, 1)
-    return new CollisionNode(edit, this.hash, newEntries)
+    return new CollisionNode(edit, this.hash, removeAt(this.entries, idx))
   }
 
   computeHash(): number {
@@ -537,8 +555,7 @@ class IndexedNode<K, V> extends Node<K, V> {
         return this
       }
 
-      const newChildren = this.children.slice()
-      newChildren.splice(idx, 0, newChild)
+      const newChildren = insertAt(this.children, idx, newChild)
 
       if (newChildren.length > MAX_INDEX_NODE) {
         return this.expand(edit, newBitmap, newChildren)
@@ -589,9 +606,7 @@ class IndexedNode<K, V> extends Node<K, V> {
         return this
       }
 
-      const newChildren = this.children.slice()
-      newChildren.splice(idx, 1)
-      return new IndexedNode(edit, newBitmap, newChildren)
+      return new IndexedNode(edit, newBitmap, removeAt(this.children, idx))
     }
 
     if (child === newChild) {

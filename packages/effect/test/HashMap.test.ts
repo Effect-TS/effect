@@ -541,6 +541,23 @@ describe("HashMap", () => {
       }
     }
 
+    it("set and remove copy a node at every position without changing the source map", () => {
+      // Distinct hashes share one bitmap node; equal hashes share one collision node
+      const distinct = Array.from({ length: 8 }, (_, i) => new FixedHashKey(`k${i}`, i))
+      const colliding = Array.from({ length: 4 }, (_, i) => new FixedHashKey(`c${i}`, 9))
+      for (const keys of [distinct, colliding]) {
+        const full = HashMap.fromIterable(keys.map((key) => [key, key.id] as const))
+        const entries = Array.from(full)
+        for (const key of keys) {
+          const without = HashMap.remove(full, key)
+          const restored = HashMap.set(without, key, key.id)
+          expect(Array.from(without)).toEqual(entries.filter(([k]) => k !== key))
+          expect(Equal.equals(restored, full)).toBe(true)
+          expect(Array.from(full)).toEqual(entries)
+        }
+      }
+    })
+
     it("handles custom hashes that are not 32-bit integers", () => {
       const fractional = new FixedHashKey("fractional", 1.25)
       const other = new FixedHashKey("other", 1.5)
