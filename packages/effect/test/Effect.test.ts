@@ -5776,6 +5776,34 @@ describe("Effect", () => {
       })
     }
 
+    it("resumes a fiber whose captured async context can no longer be entered", async () => {
+      // Cloudflare Workers ties async context to the request that created it, and
+      // refuses to enter it from a later request.
+      const builtin = process.getBuiltinModule
+      vi.spyOn(process, "getBuiltinModule").mockImplementation(
+        ((name: string) =>
+          name === "node:async_hooks"
+            ? {
+              AsyncResource: class {
+                runInAsyncScope() {
+                  throw new Error("Cannot call this AsyncLocalStorage bound function outside of its request")
+                }
+                emitDestroy() {}
+              }
+            }
+            : builtin(name)) as typeof process.getBuiltinModule
+      )
+      vi.resetModules()
+      try {
+        const { Effect: Fresh } = await import("effect")
+        const resumed = await Fresh.runPromise(Fresh.sleep(1).pipe(Fresh.as("resumed")))
+        assert.strictEqual(resumed, "resumed")
+      } finally {
+        vi.restoreAllMocks()
+        vi.resetModules()
+      }
+    })
+
     // Bun's async_hooks report no trigger ids or destroy events, so any process.nextTick
     // in the worker, including from concurrent tests, would count as a leak.
     const itWithAsyncHooks = it.skipIf(process.versions.bun !== undefined)
