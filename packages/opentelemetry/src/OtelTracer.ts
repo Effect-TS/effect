@@ -26,6 +26,7 @@ import type * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import type * as Fiber from "effect/Fiber"
 import { constTrue, dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -109,18 +110,26 @@ export const make: Effect.Effect<Tracer.Tracer, never, OtelTracer> = Effect.map(
           options
         )
       },
-      context(primitive, fiber) {
+      context<X>(primitive: Tracer.EffectPrimitive<X>, fiber: Fiber.Fiber<any, any>): X {
         const currentSpan = getPropagatedSpan(fiber.cache.span)
 
         if (currentSpan === undefined) {
           return primitive["~effect/Effect/evaluate"](fiber)
         }
 
-        const context = populateContext(Otel.context.active(), currentSpan)
-        return Otel.context.with(
-          context.setValue(EffectSpanKey, Otel.trace.getSpan(context)),
-          () => primitive["~effect/Effect/evaluate"](fiber)
-        )
+        // This runs for every step of a fiber inside a span, so the context
+        // derived for a span is kept while the active context stays the same.
+        const active = Otel.context.active()
+        let installed = installedContexts.get(currentSpan)
+        if (installed === undefined || installed.active !== active) {
+          if (installed !== undefined && installed.context === active) {
+            return primitive["~effect/Effect/evaluate"](fiber)
+          }
+          const context = populateContext(active, currentSpan)
+          installed = { active, context: context.setValue(EffectSpanKey, Otel.trace.getSpan(context)) }
+          installedContexts.set(currentSpan, installed)
+        }
+        return Otel.context.with(installed.context, evaluatePrimitive<X>, undefined, primitive, fiber)
       }
     })
 )
@@ -415,7 +424,7 @@ export class OtelSpan implements Tracer.Span {
   readonly span: Otel.Span
   readonly spanId: string
   readonly traceId: string
-  readonly attributes = new Map<string, unknown>()
+  #attributes: Map<string, unknown> | undefined
   readonly sampled: boolean
   readonly parent: Option.Option<Tracer.AnySpan>
   status: Tracer.SpanStatus
@@ -466,7 +475,12 @@ export class OtelSpan implements Tracer.Span {
   attribute(key: string, value: unknown) {
     if (this.status._tag === "Ended") return
     this.span.setAttribute(key, unknownToAttributeValue(value))
-    this.attributes.set(key, value)
+    ;(this.#attributes ??= new Map()).set(key, value)
+  }
+
+  // Created on first use: many spans never get an attribute.
+  get attributes(): ReadonlyMap<string, unknown> {
+    return this.#attributes ??= new Map()
   }
 
   addLinks(links: ReadonlyArray<Tracer.SpanLink>): void {
@@ -527,6 +541,14 @@ class OtelParentSpanContext extends Context.Service<
   OtelParentSpanContext,
   Otel.SpanContext
 >()("@effect/opentelemetry/Tracer/OtelParentSpanContext") {}
+
+const installedContexts = new WeakMap<
+  Tracer.AnySpan,
+  { readonly active: Otel.Context; readonly context: Otel.Context }
+>()
+
+const evaluatePrimitive = <X>(primitive: Tracer.EffectPrimitive<X>, fiber: Fiber.Fiber<any, any>): X =>
+  primitive["~effect/Effect/evaluate"](fiber)
 
 // Prevents re-entry from inheriting Effect-installed spans.
 const EffectSpanKey = Otel.createContextKey("@effect/opentelemetry/OtelTracer/EffectSpan")
