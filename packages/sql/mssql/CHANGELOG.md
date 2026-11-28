@@ -1,5 +1,12 @@
 # @effect/sql-mssql
 
+## 4.2.0
+
+### Patch Changes
+
+- Updated dependencies [[`ad548eb`](https://github.com/Effect-TS/effect/commit/ad548ebad0d6bf4807438d629a3405d08a060758), [`33352ec`](https://github.com/Effect-TS/effect/commit/33352ec0f0f2cff780066525e13ce717c1677fe0), [`8dfec63`](https://github.com/Effect-TS/effect/commit/8dfec63ce1fc8d82a5bc667f0ab175a7b5db82b1), [`ac4eb36`](https://github.com/Effect-TS/effect/commit/ac4eb3649e3aa48506d38bfc94da2f9124665280), [`36a5e5f`](https://github.com/Effect-TS/effect/commit/36a5e5f82c37807159d4e29d9cbc6c92035d5f8b), [`d055e9f`](https://github.com/Effect-TS/effect/commit/d055e9f422e09c8c37f2209c8e6dffeb57e0453d), [`96596ea`](https://github.com/Effect-TS/effect/commit/96596ea832eb9514d10f9c226d00bde2cf9ae1c0), [`8245e5a`](https://github.com/Effect-TS/effect/commit/8245e5a271254a33c41ac1c1314ce705e950f5b8), [`e29869a`](https://github.com/Effect-TS/effect/commit/e29869a863b95498747b3b65d34f846ff6ab7088), [`847e605`](https://github.com/Effect-TS/effect/commit/847e6055d3397f81cbc8b2ef8911f14b308cc176), [`d211297`](https://github.com/Effect-TS/effect/commit/d2112974d6ece2e378f40602d594f2b43453c03e), [`f6075de`](https://github.com/Effect-TS/effect/commit/f6075de491fe8247328c86979cab766b974ed835), [`a366aea`](https://github.com/Effect-TS/effect/commit/a366aeadc60c3d191d77f2ffea0c3f992e398259), [`4fcd9ac`](https://github.com/Effect-TS/effect/commit/4fcd9ac2b4772179de11afde92064fc43adbc8e6), [`c1bbe62`](https://github.com/Effect-TS/effect/commit/c1bbe6267bb8b3246bfcec51d0adba27a35eeae9), [`a154d06`](https://github.com/Effect-TS/effect/commit/a154d06b32fcfc062ca5baac9e0e0450acf40a78), [`f22c052`](https://github.com/Effect-TS/effect/commit/f22c0528865c89cdf8b3ed67d55910e00969bee8), [`603e1ef`](https://github.com/Effect-TS/effect/commit/603e1efe3709f992d2cb0dac510bcdff93c811f3), [`30a8fbf`](https://github.com/Effect-TS/effect/commit/30a8fbfe5dacfb6523d145e922d90f2283ee4842), [`5fea4eb`](https://github.com/Effect-TS/effect/commit/5fea4eb75c1ecde3f0db6e92db5257abf025adea), [`3fae6ad`](https://github.com/Effect-TS/effect/commit/3fae6adab36436cc7f3ca8f57213b33a7c4387ff), [`ddd3e73`](https://github.com/Effect-TS/effect/commit/ddd3e73530d66920679fae35af085783ce931832), [`24e1b04`](https://github.com/Effect-TS/effect/commit/24e1b04d00660d7b515cb36f6e1437517599cdc8)]:
+  - effect@4.2.0
+
 ## 4.1.7
 
 ### Patch Changes
