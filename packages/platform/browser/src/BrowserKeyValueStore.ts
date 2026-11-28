@@ -68,14 +68,14 @@ export const layerSessionStorage: Layer.Layer<KeyValueStore.KeyValueStore> = Key
  */
 export const layerIndexedDb = (options?: {
   readonly database?: string | undefined
-}): Layer.Layer<KeyValueStore.KeyValueStore, never, IndexedDb> =>
+}): Layer.Layer<KeyValueStore.KeyValueStore, KeyValueStore.KeyValueStoreError, IndexedDb> =>
   Layer.effect(KeyValueStore.KeyValueStore)(
     Effect.gen(function*() {
       const { IDBKeyRange } = yield* IndexedDb
       const db = yield* Effect.acquireRelease(
         openDatabase(options?.database ?? "effect_key_value_store"),
         (db) => Effect.sync(() => db.close())
-      ).pipe(Effect.orDie)
+      )
 
       return KeyValueStore.make({
         clear: Effect.suspend(() => {
@@ -87,47 +87,58 @@ export const layerIndexedDb = (options?: {
         }),
         clearPrefix: (prefix: string) =>
           Effect.asVoid(Effect.suspend(() => {
-            const range = prefixKeyRange(IDBKeyRange, prefix)
             return idbWriteRequest(
               db,
               { method: "clearPrefix", message: "Failed to clear prefix in backing store", key: prefix },
-              (store) => range === undefined ? store.clear() : store.delete(range)
+              (store) => {
+                const range = prefixKeyRange(IDBKeyRange, prefix)
+                return range === undefined ? store.clear() : store.delete(range)
+              }
             )
           })),
         get: (key: string) =>
           Effect.map(
-            Effect.suspend(() => {
-              const store = getKvsEntriesStore(db, "readonly")
-              return idbRequest<{ key: string; value: string } | undefined>({
-                method: "get",
-                message: "Failed to get value from backing store",
-                key
-              }, () => store.get(key))
-            }),
+            Effect.suspend(() =>
+              idbReadRequest<{ key: string; value: string } | undefined>(
+                db,
+                {
+                  method: "get",
+                  message: "Failed to get value from backing store",
+                  key
+                },
+                (store) => store.get(key)
+              )
+            ),
             (found) => typeof found?.value === "string" ? found.value : undefined
           ),
         getUint8Array: (key: string) =>
           Effect.map(
-            Effect.suspend(() => {
-              const store = getKvsEntriesStore(db, "readonly")
-              return idbRequest<{ key: string; value: Uint8Array } | undefined>({
-                method: "getUint8Array",
-                message: "Failed to get value from backing store",
-                key
-              }, () => store.get(key))
-            }),
+            Effect.suspend(() =>
+              idbReadRequest<{ key: string; value: Uint8Array } | undefined>(
+                db,
+                {
+                  method: "getUint8Array",
+                  message: "Failed to get value from backing store",
+                  key
+                },
+                (store) => store.get(key)
+              )
+            ),
             (found) => found?.value && found.value instanceof Uint8Array ? found.value : undefined
           ),
         has: (key: string) =>
           Effect.map(
-            Effect.suspend(() => {
-              const store = getKvsEntriesStore(db, "readonly")
-              return idbRequest<number>({
-                method: "has",
-                message: "Failed to check key in backing store",
-                key
-              }, () => store.count(key))
-            }),
+            Effect.suspend(() =>
+              idbReadRequest<number>(
+                db,
+                {
+                  method: "has",
+                  message: "Failed to check key in backing store",
+                  key
+                },
+                (store) => store.count(key)
+              )
+            ),
             (count) => count > 0
           ),
         set: (key: string, value: string | Uint8Array) =>
@@ -138,21 +149,21 @@ export const layerIndexedDb = (options?: {
               (store) => store.put({ key, value })
             )
           })),
-        size: Effect.suspend(() => {
-          const store = getKvsEntriesStore(db, "readonly")
-          return idbRequest<number>(
+        size: Effect.suspend(() =>
+          idbReadRequest<number>(
+            db,
             { method: "size", message: "Failed to get backing store size" },
-            () => store.count()
+            (store) => store.count()
           )
-        }),
-        keys: Effect.suspend(() => {
-          const store = getKvsEntriesStore(db, "readonly")
-          return idbRequest(
+        ),
+        keys: Effect.suspend(() =>
+          idbReadRequest(
+            db,
             { method: "keys", message: "Failed to get backing store keys" },
             // keys are always strings since `set` only accepts string keys
-            () => store.getAllKeys() as IDBRequest<Array<string>>
+            (store) => store.getAllKeys() as IDBRequest<Array<string>>
           )
-        }),
+        ),
         remove: (key: string) =>
           Effect.asVoid(Effect.suspend(() => {
             return idbWriteRequest(
@@ -202,13 +213,28 @@ const openDatabase = Effect.fnUntraced(function*(database: string) {
   return yield* idbRequest({ method: "open", message: "Failed to open backing store database" }, () => openRequest)
 })
 
+const idbReadRequest = <A>(
+  db: IDBDatabase,
+  failArgs: { method: string; message: string; key?: string },
+  evaluate: (store: IDBObjectStore) => IDBRequest<A>
+): Effect.Effect<A, KeyValueStore.KeyValueStoreError> =>
+  idbRequest(failArgs, () => evaluate(getKvsEntriesStore(db, "readonly")))
+
 const idbRequest = <A>(
   failArgs: { method: string; message: string; key?: string },
   evaluate: () => IDBRequest<A>
 ): Effect.Effect<A, KeyValueStore.KeyValueStoreError> =>
   Effect.callback<A, KeyValueStore.KeyValueStoreError>((resume) => {
-    const request = evaluate()
+    let request: IDBRequest<A>
+    try {
+      request = evaluate()
+    } catch (cause) {
+      return resume(Effect.fail(new KeyValueStore.KeyValueStoreError({ ...failArgs, cause })))
+    }
     if (request.readyState === "done") {
+      if (request.error !== null) {
+        return resume(Effect.fail(new KeyValueStore.KeyValueStoreError({ ...failArgs, cause: request.error })))
+      }
       return resume(Effect.succeed(request.result))
     }
     request.onsuccess = () => {
@@ -229,18 +255,42 @@ const idbWriteRequest = <A>(
   evaluate: (store: IDBObjectStore) => IDBRequest<A>
 ): Effect.Effect<A, KeyValueStore.KeyValueStoreError> =>
   Effect.callback<A, KeyValueStore.KeyValueStoreError>((resume) => {
-    const transaction = db.transaction(entriesStoreName, "readwrite")
-    const request = evaluate(transaction.objectStore(entriesStoreName))
-    let result: A
     let done = false
-
     const fail = (cause: unknown) => {
       if (done) return
       done = true
       resume(Effect.fail(new KeyValueStore.KeyValueStoreError({ ...failArgs, cause })))
     }
 
+    let transaction: IDBTransaction | undefined
+    let request: IDBRequest<A>
+    try {
+      transaction = db.transaction(entriesStoreName, "readwrite")
+      request = evaluate(transaction.objectStore(entriesStoreName))
+    } catch (cause) {
+      if (transaction !== undefined) {
+        try {
+          transaction.abort()
+        } catch {
+          // ignore if the transaction is already inactive
+        }
+      }
+      fail(cause)
+      return
+    }
+
+    let result: A
+
     if (request.readyState === "done") {
+      if (request.error !== null) {
+        try {
+          transaction.abort()
+        } catch {
+          // ignore if the transaction is already inactive
+        }
+        fail(request.error)
+        return
+      }
       result = request.result
     } else {
       request.onsuccess = () => {
@@ -258,7 +308,13 @@ const idbWriteRequest = <A>(
     transaction.onabort = () => fail(transaction.error)
 
     return Effect.sync(() => {
-      if (!done) transaction.abort()
+      if (!done) {
+        try {
+          transaction.abort()
+        } catch {
+          // ignore if the transaction is already inactive
+        }
+      }
     })
   })
 
