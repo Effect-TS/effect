@@ -33,6 +33,7 @@ const PoolClock = Symbol()
 const Failures = Symbol()
 const ResizePending = Symbol()
 const Acquiring = Symbol()
+const StoppedOnFailure = Symbol()
 
 interface PoolImpl<A, E> extends Pool<A, E> {
   readonly [Acquire]: Effect.Effect<A, E, Scope.Scope>
@@ -43,6 +44,8 @@ interface PoolImpl<A, E> extends Pool<A, E> {
   /** Whether a borrower forked a resize that has not read the target yet. */
   [ResizePending]: boolean
   [Acquiring]: number
+  /** Whether the last resize stopped after a failure with no waiting borrowers. */
+  [StoppedOnFailure]: boolean
 }
 
 /**
@@ -426,6 +429,7 @@ export const makeWithStrategy = <A, E, R>(options: {
       [Failures]: 0,
       [ResizePending]: false,
       [Acquiring]: 0,
+      [StoppedOnFailure]: false,
       config,
       state,
       pipe() {
@@ -643,10 +647,11 @@ const getSlowWith = <A, E, X, R>(
         return internal.interrupt
       }
       const impl = self as PoolImpl<A, E>
+      impl[StoppedOnFailure] = false
       waiter.failures = impl[Failures]
       // A pending resize has yet to read the target, so it will count this
       // borrower. A running one may not.
-      if (impl[ResizePending] || targetSize(self) <= activeSize(self)) return step
+      if (impl[ResizePending] || targetSize(self) <= activeSize(self) + impl[Acquiring]) return step
       impl[ResizePending] = true
       return internal.flatMap(Effect.forkIn(Effect.interruptible(resize(self)), state.scope), () => step)
     })
@@ -1033,6 +1038,7 @@ const invalidatePoolItem = <A, E>(self: Pool<A, E>, poolItem: PoolItem<A, E>): E
       ))
     }
     self.state.invalidated.add(poolItem)
+    ;(self as PoolImpl<A, E>)[StoppedOnFailure] = false
     removeAvailable(self, poolItem)
     // An invalidated item stops counting towards the pool's active size, so the
     // pool is now below target and has to top itself back up. Waiting for the
@@ -1048,8 +1054,12 @@ const resize = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
 
 const resizeLoop = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
   Effect.suspend(() => {
+    const impl = self as PoolImpl<A, E>
     // The target read below counts every borrower so far.
-    ;(self as PoolImpl<A, E>)[ResizePending] = false
+    impl[ResizePending] = false
+    if (impl[StoppedOnFailure] && self.state.usage === 0) {
+      return Effect.void
+    }
     const active = activeSize(self)
     const target = targetSize(self)
     if (active >= target) {
@@ -1082,7 +1092,13 @@ const resizeLoop = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
     )
     // After a failure, keep acquiring only while a borrower is asleep to take
     // the next result. Each failure is delivered to one of them, so this ends.
-    const next = (failed: boolean) => failed && failureRecipient(self) === undefined ? Effect.void : resizeLoop(self)
+    const next = (failed: boolean) => {
+      if (failed && failureRecipient(self) === undefined) {
+        impl[StoppedOnFailure] = true
+        return Effect.void
+      }
+      return resizeLoop(self)
+    }
     return toAcquire === 1
       ? Effect.flatMap(acquireOne, (item) => next(item.exit._tag === "Failure"))
       : Effect.flatMap(

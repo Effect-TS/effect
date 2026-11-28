@@ -1573,5 +1573,78 @@ describe("Pool", () => {
         yield* waitUntil(() => pool.state.items.size === 2)
         deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 0, acquiring: 0, pending: 0, min: 2, max: 2 })
       }))
+
+    it.effect("does not retry acquisition after a failed checkout with no callers waiting", () =>
+      Effect.gen(function*() {
+        let acquisitions = 0
+        let shouldFail = true
+        const pool = yield* Pool.make({
+          acquire: Effect.suspend(() => {
+            const attempt = ++acquisitions
+            return Effect.sleep("20 millis").pipe(
+              Effect.andThen(shouldFail ? Effect.fail(`boom-${attempt}`) : Effect.succeed(attempt))
+            )
+          }),
+          size: 1
+        })
+
+        const fiber = yield* Effect.forkChild(Effect.exit(Effect.scoped(Pool.get(pool))))
+        yield* TestClock.adjust("20 millis")
+        const checkout = yield* Fiber.join(fiber)
+        strictEqual(checkout._tag, "Failure")
+        strictEqual(acquisitions, 1)
+
+        yield* TestClock.adjust("200 millis")
+        strictEqual(acquisitions, 1)
+
+        // A subsequent borrower still triggers a new acquisition.
+        shouldFail = false
+        const nextFiber = yield* Effect.forkChild(Effect.scoped(Pool.get(pool)))
+        yield* TestClock.adjust("20 millis")
+        strictEqual(yield* Fiber.join(nextFiber), 2)
+      }))
+
+    it.effect("does not retry acquisition after concurrent failed checkouts in fixed and TTL pools", () =>
+      Effect.gen(function*() {
+        let fixedAcquisitions = 0
+        const fixedPool = yield* Pool.make({
+          acquire: Effect.suspend(() => {
+            fixedAcquisitions++
+            return Effect.sleep("20 millis").pipe(Effect.andThen(Effect.fail("boom")))
+          }),
+          size: 2
+        })
+
+        const fixedFibers = yield* Effect.forEach(
+          [0, 1],
+          () => Effect.forkChild(Effect.exit(Effect.scoped(Pool.get(fixedPool))))
+        )
+        yield* TestClock.adjust("20 millis")
+        const fixedExits = yield* Fiber.joinAll(fixedFibers)
+        strictEqual(fixedExits.every((e) => e._tag === "Failure"), true)
+        yield* TestClock.adjust("200 millis")
+        strictEqual(fixedAcquisitions, 2)
+
+        let ttlAcquisitions = 0
+        const ttlPool = yield* Pool.makeWithTTL({
+          acquire: Effect.suspend(() => {
+            ttlAcquisitions++
+            return Effect.sleep("20 millis").pipe(Effect.andThen(Effect.fail("boom")))
+          }),
+          min: 1,
+          max: 2,
+          timeToLive: "1 minute"
+        })
+
+        const ttlFibers = yield* Effect.forEach(
+          [0, 1],
+          () => Effect.forkChild(Effect.exit(Effect.scoped(Pool.get(ttlPool))))
+        )
+        yield* TestClock.adjust("40 millis")
+        const ttlExits = yield* Fiber.joinAll(ttlFibers)
+        strictEqual(ttlExits.every((e) => e._tag === "Failure"), true)
+        yield* TestClock.adjust("200 millis")
+        strictEqual(ttlAcquisitions, 2)
+      }))
   })
 })
