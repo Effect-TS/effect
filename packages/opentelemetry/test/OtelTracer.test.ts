@@ -160,6 +160,49 @@ describe("Tracer", () => {
         Effect.provide(TracingLayer)
       ))
 
+    it.effect("the active span follows the current span across nested spans and other active contexts", () =>
+      Effect.gen(function*() {
+        const activeSpanId = Effect.sync(() => OtelApi.trace.getSpan(OtelApi.context.active())?.spanContext().spanId)
+        const outer = yield* Effect.currentSpan
+        const seen: Array<string | undefined> = []
+        for (let i = 0; i < 3; i++) seen.push(yield* activeSpanId)
+        const inner = yield* Effect.gen(function*() {
+          const span = yield* Effect.currentSpan
+          seen.push(yield* activeSpanId)
+          return span
+        }).pipe(Effect.withSpan("inner"))
+        seen.push(yield* activeSpanId)
+        assert.deepStrictEqual(seen, [outer.spanId, outer.spanId, outer.spanId, inner.spanId, outer.spanId])
+
+        // Run the same fiber context under a different active context: its values must be kept.
+        const key = OtelApi.createContextKey("test/other")
+        const services = yield* Effect.context<never>()
+        const other = OtelApi.context.with(
+          OtelApi.ROOT_CONTEXT.setValue(key, "kept"),
+          () =>
+            Effect.runSyncWith(services)(Effect.sync(() => ({
+              value: OtelApi.context.active().getValue(key),
+              spanId: OtelApi.trace.getSpan(OtelApi.context.active())?.spanContext().spanId
+            })))
+        )
+        assert.deepStrictEqual(other, { value: "kept", spanId: outer.spanId })
+        assert.strictEqual(yield* activeSpanId, outer.spanId)
+      }).pipe(
+        Effect.withSpan("outer"),
+        Effect.provide(TracingLayer)
+      ))
+
+    it.effect("span attributes are readable before and after the first attribute", () =>
+      Effect.gen(function*() {
+        const span = yield* Effect.currentSpan
+        assert.strictEqual(span.attributes.size, 0)
+        yield* Effect.annotateCurrentSpan("key", "value")
+        assert.deepStrictEqual([...span.attributes], [["key", "value"]])
+      }).pipe(
+        Effect.withSpan("ok"),
+        Effect.provide(TracingLayer)
+      ))
+
     it.effect("supervisor sets context generator", () =>
       Effect.gen(function*() {
         yield* Effect.yieldNow
