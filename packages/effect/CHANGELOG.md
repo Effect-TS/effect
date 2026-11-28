@@ -1,5 +1,92 @@
 # effect
 
+## 4.2.0
+
+### Minor Changes
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`ad548eb`](https://github.com/Effect-TS/effect/commit/ad548ebad0d6bf4807438d629a3405d08a060758) Thanks @typedrat! - Add `Toolkit.HandlerContext.modelOutput` so tool handlers can set the model-facing output for their final result.
+  
+  Manually constructed `Toolkit.HandlerContext` values must now include `modelOutput` (e.g. `() => Effect.void`).
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`33352ec`](https://github.com/Effect-TS/effect/commit/33352ec0f0f2cff780066525e13ce717c1677fe0) Thanks @effect-bot! - Support passing numeric file descriptors in `ChildProcess` (`stdin`, `stdout`, `stderr`, and `additionalFds`) and add `ChildProcessHandle.exitStatus` (`ExitStatus`) for structured exit codes and terminating signals.
+  
+  Custom `ChildProcessSpawner.makeHandle` implementations must now provide `exitStatus`.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`ac4eb36`](https://github.com/Effect-TS/effect/commit/ac4eb3649e3aa48506d38bfc94da2f9124665280) Thanks @jpowersdev! - `Cookies` now identifies cookies by name, domain and path, so `HttpClientResponse.cookies`, `HttpClient.withCookiesRef` and `HttpServerResponse` keep same-name cookies set for a different domain or path.
+  
+  - `Cookies.cookies` and the `Schema.Cookies` isomorphic encoding are now a `ReadonlyArray<Cookie>` in the order cookies were last set. Replace `cookies.cookies[name]` with `Cookies.get` or `Cookies.getValue`.
+  - On `cookies.cookies`, `in` and `Object.hasOwn` check array properties rather than cookie names, while `Object.keys` and `Object.entries` enumerate array indices rather than names. Use `Option.isSome(Cookies.get(cookies, name))` for name-based membership, or enumerate `Cookies.toRecord(cookies)` for names and decoded string values (the last cookie set for each name).
+  - `Cookies` constructors and combinators that add a cookie, and the `HttpServerResponse` cookie helpers, replace an existing cookie only when its name, domain and path match. Pass the same `domain` and `path` to override or expire a cookie.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`36a5e5f`](https://github.com/Effect-TS/effect/commit/36a5e5f82c37807159d4e29d9cbc6c92035d5f8b) Thanks @effect-bot! - Add `Filter.map` to transform passing values while preserving failures.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`d055e9f`](https://github.com/Effect-TS/effect/commit/d055e9f422e09c8c37f2209c8e6dffeb57e0453d) Thanks @effect-bot! - Add `failsWith` to `HttpClient.withRateLimiter` to report limiter failures as either raw limiter errors or HTTP transport errors.
+  
+  Omitting the option still returns raw limiter errors at runtime. Calls with an omitted, hidden, or union-valued mode now add both `RateLimiterError` and `HttpClientError` to the inferred error type. Specify `failsWith: "RateLimiterError"` to retain the previous narrow type, or `failsWith: "HttpClientError"` to add only the HTTP error.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`96596ea`](https://github.com/Effect-TS/effect/commit/96596ea832eb9514d10f9c226d00bde2cf9ae1c0) Thanks @effect-bot! - Build `HttpRouter.toHttpEffect` apps with their own router, so sub-app routes and middleware no longer register on the outer server's router when built inside `HttpRouter.serve` or `HttpRouter.toWebHandler`. The sub-app's router also stands in for `HttpRouter.layer` within the app, so apps that provide it themselves are isolated too.
+  
+  `HttpRouter.serve` likewise always builds its own router, instead of reusing an `HttpRouter.layer` already built outside it. Its `routerConfig` option now always applies.
+  
+  `Layer.forkMemoMap`, `Layer.forkMemoMapUnsafe` and `Layer.CurrentMemoMap.forkOrCreate` accept a `fresh` option listing layers that the child memo map builds again instead of reusing from its parent.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`e29869a`](https://github.com/Effect-TS/effect/commit/e29869a863b95498747b3b65d34f846ff6ab7088) Thanks @effect-bot! - Add `Match.whenFilter`, a case that runs a `Filter` once and passes its extracted value to the handler, falling through with the original input when the filter fails.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`847e605`](https://github.com/Effect-TS/effect/commit/847e6055d3397f81cbc8b2ef8911f14b308cc176) Thanks @tim-smart! - `McpSchema.InputRequired` is now a schema class and `McpSchema.McpInputRequest` is now a schema, so a toolkit tool can declare `failure: McpSchema.InputRequired`.
+  
+  ### Migration
+  
+  - The `McpSchema.InputRequired` constructor now validates its fields and throws when they are invalid, for example for an unknown input request `method`.
+  - A `Schema.instanceOf(McpSchema.InputRequired)` failure schema has no JSON codec, so in `failureMode: "return"` it fails with `ToolResultEncodingError`. Declare `failure: McpSchema.InputRequired` instead.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`d211297`](https://github.com/Effect-TS/effect/commit/d2112974d6ece2e378f40602d594f2b43453c03e) Thanks @creatifcoding! - `McpServer.toolkit` and `McpServer.registerToolkit` return a declared `McpSchema.InputRequired` failure as an `input_required` result, so toolkit tools can request client input.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`f6075de`](https://github.com/Effect-TS/effect/commit/f6075de491fe8247328c86979cab766b974ed835) Thanks @duailibe! - Add trace sampling to the OTLP tracer.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`a366aea`](https://github.com/Effect-TS/effect/commit/a366aeadc60c3d191d77f2ffea0c3f992e398259) Thanks @effect-bot! - Add the unstable `PathFilter` module, make `FileSystem.glob` take a single `PathFilter.Input` instead of a pattern and options, and add experimental `IgnoreFile` parsers that build `PathFilter`s from `.gitignore` and `.dockerignore` sources.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`4fcd9ac`](https://github.com/Effect-TS/effect/commit/4fcd9ac2b4772179de11afde92064fc43adbc8e6) Thanks @effect-bot! - Add `acquiring` to `Pool.stats` and `PgClient.poolStats` to count in-flight acquisitions independently of waiting borrowers.
+  
+  Manually constructed `Pool.Stats` snapshots must include `acquiring` (use `0` when no acquisition is running).
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`c1bbe62`](https://github.com/Effect-TS/effect/commit/c1bbe6267bb8b3246bfcec51d0adba27a35eeae9) Thanks @effect-bot! - Add the module function `Semaphore.withPermitsTraced(limit, permits, spanName, options?)` to trace time spent waiting for permits without tracing the guarded effect.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`a154d06`](https://github.com/Effect-TS/effect/commit/a154d06b32fcfc062ca5baac9e0e0450acf40a78) Thanks @effect-bot! - Add `SqlClient.batch`, which returns each statement's rows as a typed tuple and runs as one atomic round trip on PostgreSQL (also via the new `PgConnection.batch`) and libSQL, or one statement at a time on drivers without the new optional `Connection.executeBatch` hook.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`f22c052`](https://github.com/Effect-TS/effect/commit/f22c0528865c89cdf8b3ed67d55910e00969bee8) Thanks @effect-bot! - Add `onStdinEnd: "interrupt"` to `McpServer.layerStdio` and `RpcServer.layerProtocolStdio` to stop the server when stdin closes, interrupting active requests without remote cancellation.
+  
+  ### Breaking changes
+  
+  - `RpcServer.layerProtocolStdio` and `RpcServer.makeProtocolStdio` are now functions: replace `RpcServer.layerProtocolStdio` with `RpcServer.layerProtocolStdio()` and `RpcServer.makeProtocolStdio` with `RpcServer.makeProtocolStdio()`.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`603e1ef`](https://github.com/Effect-TS/effect/commit/603e1efe3709f992d2cb0dac510bcdff93c811f3) Thanks @harrysolovay! - Add `String.hasNonWhitespace`, which checks whether a string contains at least one non-whitespace character.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`30a8fbf`](https://github.com/Effect-TS/effect/commit/30a8fbfe5dacfb6523d145e922d90f2283ee4842) Thanks @fubhy! - Add a `blockedOn` option to `Effect.callback`, which tells a Supervisor what the waiting fiber is blocked on; existing calls are unchanged.
+  
+  Also add the experimental `Supervisor` module for observing fiber lifecycles. A Supervisor is called when each fiber starts, blocks, unblocks and ends, and is told what a blocked fiber waits on. Install one with `Effect.withSupervisor` or `Supervisor.layer`, and combine several with `Supervisor.combine`. This release also adds `TestClock.stateUnsafe` for reading the pending test sleeps, and the guards `Latch.isLatch`, `Semaphore.isSemaphore`, `PartitionedSemaphore.isPartitionedSemaphore`, `TxRef.isTxRef` and `PubSub.isSubscription`.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`5fea4eb`](https://github.com/Effect-TS/effect/commit/5fea4eb75c1ecde3f0db6e92db5257abf025adea) Thanks @effect-bot! - Support TOML 1.1 syntax in `Toml.parse`: multiline inline tables with comments and trailing commas, the `\e` and `\xHH` escapes, and times without seconds. Times without seconds are normalized to `:00`, so `13:37` parses as `"13:37:00"`.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`3fae6ad`](https://github.com/Effect-TS/effect/commit/3fae6adab36436cc7f3ca8f57213b33a7c4387ff) Thanks @effect-bot! - Add `Yaml.parseAll` for YAML document streams, with anchors scoped to each document and support for the `%YAML 1.2` directive.
+  
+  `Yaml.parse` now fails on input it used to misread instead of skipping or dropping it: `%YAML` versions other than 1.2, `%TAG` and other directives, a directive without a following `---`, and plain scalars starting with `%`. Input with more than one document still fails, with a message pointing to `Yaml.parseAll`.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`ddd3e73`](https://github.com/Effect-TS/effect/commit/ddd3e73530d66920679fae35af085783ce931832) Thanks @tim-smart! - `Yaml.parse` now returns a `Result` instead of throwing, failing with an `EncodingError` on invalid input.
+
+- [#10149](https://github.com/Effect-TS/effect/pull/10149) [`24e1b04`](https://github.com/Effect-TS/effect/commit/24e1b04d00660d7b515cb36f6e1437517599cdc8) Thanks @effect-bot! - Add `Yaml.stringify` and `Yaml.stringifyAll` for block-style YAML output, and extend parsing with YAML 1.2 core tags and more collection and multiline scalar syntax.
+  
+  ### Breaking changes
+  
+  - `Yaml.parse` and `Yaml.parseAll` now use YAML 1.2 core scalar, tag and key resolution. Quote values and keys to preserve literal text.
+  - Unsupported tags, key properties and invalid or ambiguous collection syntax now fail instead of becoming text. Quote literals or use supported YAML syntax.
+  - Non-YAML whitespace is preserved, and parsing enforces nesting and merge-expansion limits. Remove unintended whitespace or byte order marks, and reduce excessive nesting or merge expansion.
+
+### Patch Changes
+
+- [#10991](https://github.com/Effect-TS/effect/pull/10991) [`8dfec63`](https://github.com/Effect-TS/effect/commit/8dfec63ce1fc8d82a5bc667f0ab175a7b5db82b1) Thanks @effect-bot! - Fix `ClusterWorkflowEngine` waking a polling parent before a discarded child workflow's result is saved, by deferring the parent's `resume` wake with `DeliverAt` until the child's terminal reply is stored.
+
+- [#10940](https://github.com/Effect-TS/effect/pull/10940) [`8245e5a`](https://github.com/Effect-TS/effect/commit/8245e5a271254a33c41ac1c1314ce705e950f5b8) Thanks @RhysSullivan! - Add an unstable `onReference` option to `JsonSchema.fromSchemaOpenApi3_1` and `JsonSchema.fromSchemaOpenApi3_0` to report each visited reference with its original value and keyword.
+
 ## 4.1.7
 
 ### Patch Changes

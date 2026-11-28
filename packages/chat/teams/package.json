@@ -1,6 +1,6 @@
 {
   "name": "@effect/chat-teams",
-  "version": "4.1.7",
+  "version": "4.2.0",
   "type": "module",
   "license": "MIT",
   "description": "The Microsoft Teams adapter for effect/chat",
