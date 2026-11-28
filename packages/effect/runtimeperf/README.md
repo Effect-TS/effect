@@ -170,6 +170,12 @@ The compiler comparison calls `z.compile(schema, { strict: true })` and uses
 Zod's `validate` API for boolean checks. Ten representative scenarios also run
 against equivalent Valibot schemas using `parse` and `is`.
 
+The `schema-boot` suite is not part of the registry. It measures one-shot costs
+that a batched steady-state worker cannot: importing a bundle of `effect`
+sources, defining many schemas, and the first decode, request or OpenAPI
+document. It has its own runner; see
+[`suites/schema-boot/README.md`](suites/schema-boot/README.md).
+
 ## Measurement model
 
 Each worker validates the fixture before and after measuring. The Effect
