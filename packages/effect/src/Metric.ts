@@ -1669,6 +1669,8 @@ export const MetricRegistry: Context.Reference<MetricRegistry> = Context.Referen
 
 const TypeId = "~effect/Metric"
 
+const maxCachedSeries = 1024
+
 abstract class Metric$<in Input, out State> implements Metric<Input, State> {
   readonly [TypeId] = TypeId
 
@@ -1680,6 +1682,9 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
   #extraAttributes: Metric.AttributeSet | undefined
   #mergedAttributes: Metric.AttributeSet | undefined
   #key = ""
+  #series:
+    | Map<string, { readonly key: string; readonly attributes: Metric.AttributeSet | undefined }>
+    | undefined
 
   readonly id: string
   readonly description: string | undefined
@@ -1748,8 +1753,23 @@ abstract class Metric$<in Input, out State> implements Metric<Input, State> {
     if (extraAttributes !== this.#extraAttributes) {
       this.#extraAttributes = extraAttributes
       const merged = mergeAttributes(this.attributes, extraAttributes)
-      this.#mergedAttributes = Object.keys(extraAttributes).length > 0 ? merged : this.attributes
-      this.#key = makeKey(this, merged)
+      // A metric updated with several attribute sets in turn would otherwise
+      // sort and serialize its attributes on every update. Insertion order is
+      // enough to recognize a set seen before.
+      const seen = JSON.stringify(merged)
+      const cache = this.#series ??= new Map()
+      let series = cache.get(seen)
+      if (series === undefined) {
+        series = {
+          key: makeKey(this, merged),
+          attributes: Object.keys(extraAttributes).length > 0 ? merged : this.attributes
+        }
+        // Bounds the cache for attribute values that never repeat.
+        if (cache.size >= maxCachedSeries) cache.clear()
+        cache.set(seen, series)
+      }
+      this.#mergedAttributes = series.attributes
+      this.#key = series.key
     }
     return this.#key
   }

@@ -236,6 +236,33 @@ describe("Metric", () => {
   })
 
   describe("withAttributes", () => {
+    it.effect("keeps series apart when attribute sets alternate or differ only in key order", () =>
+      Effect.gen(function*() {
+        const counter = Metric.counter(nextId())
+        const ok = Metric.withAttributes(counter, { outcome: "ok", route: "/users" })
+        const error = Metric.withAttributes(counter, { outcome: "error", route: "/users" })
+        const reordered = Metric.withAttributes(counter, { route: "/users", outcome: "ok" })
+
+        for (let i = 0; i < 6; i++) {
+          yield* Metric.update(i % 2 === 0 ? ok : error, 1)
+        }
+        yield* Metric.update(reordered, 10)
+        // Enough distinct sets to go past the bound on remembered series keys.
+        for (let i = 0; i < 1100; i++) {
+          yield* Metric.update(Metric.withAttributes(counter, { outcome: `other-${i}`, route: "/users" }), 1)
+        }
+        yield* Metric.update(ok, 100)
+
+        const counts = new Map(
+          (yield* series).map(([attributes, count]) => [(attributes as { outcome: string }).outcome, count])
+        )
+        assert.strictEqual(counts.size, 1102)
+        assert.strictEqual(counts.get("ok"), 113)
+        assert.strictEqual(counts.get("error"), 3)
+        assert.strictEqual(counts.get("other-0"), 1)
+        assert.strictEqual(counts.get("other-1099"), 1)
+      }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+
     it.effect("follows the contextual attributes when they change between updates", () =>
       Effect.gen(function*() {
         const counter = Metric.withAttributes(Metric.counter(nextId()), { route: "/users" })
