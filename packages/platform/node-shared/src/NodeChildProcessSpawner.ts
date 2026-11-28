@@ -41,6 +41,7 @@ import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
@@ -687,6 +688,26 @@ const makeWith = Effect.fnUntraced(function*(
     }
   }
 
+  const getUnforwardedStreams = (
+    handle: ChildProcessHandle,
+    command: ChildProcess.StandardCommand,
+    from: ChildProcess.PipeFromOption | undefined
+  ): Array<Stream.Stream<Uint8Array, PlatformError.PlatformError>> => {
+    const fromOption = from ?? "stdout"
+    const forwardedFd = ChildProcess.parseFdName(fromOption)
+    const outputFds = resolveAdditionalFds(command.options).flatMap(({ fd }) =>
+      fd === forwardedFd ? [] : [handle.getOutputFd(fd)]
+    )
+    switch (fromOption) {
+      case "all":
+        return outputFds
+      case "stderr":
+        return [handle.stdout, ...outputFds]
+      default:
+        return [Predicate.isUndefined(forwardedFd) ? handle.stderr : handle.all, ...outputFds]
+    }
+  }
+
   const spawnCommand: (
     command: ChildProcess.Command
   ) => Effect.Effect<
@@ -845,9 +866,18 @@ const makeWith = Effect.fnUntraced(function*(
           const options = pipeOptions[i] ?? {}
           const stdinConfig = resolveStdinOption(command.options)
 
+          const source = handles[handles.length - 1]
+          const drain = yield* Effect.forkScoped(
+            Effect.forEach(getUnforwardedStreams(source, commands[i], options.from), Stream.runDrain, {
+              concurrency: "unbounded",
+              discard: true
+            })
+          )
           // Get the appropriate stream from the source based on `from` option
           const sourceStream = Stream.unwrap(
-            Effect.succeed(getSourceStream(handles[handles.length - 1], options.from))
+            Effect.succeed(
+              Stream.drainFork(getSourceStream(source, options.from), Stream.fromEffect(Fiber.join(drain)))
+            )
           )
 
           // Determine where to pipe: stdin or custom fd

@@ -12,6 +12,7 @@ import type * as Arr from "effect/Array"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
 import * as PlatformError from "effect/PlatformError"
@@ -178,20 +179,23 @@ const make = Effect.gen(function*() {
     command: ChildProcess.StandardCommand,
     childProcess: Deno.ChildProcess,
     stdoutConfig: ChildProcess.StdoutConfig,
-    stderrConfig: ChildProcess.StderrConfig
+    stderrConfig: ChildProcess.StderrConfig,
+    releaseLockOnEnd?: boolean
   ) => {
     let stdout: Stream.Stream<Uint8Array, PlatformError.PlatformError> =
       outputToStdioOption(stdoutConfig.stream) === "piped"
         ? Stream.fromReadableStream({
           evaluate: () => childProcess.stdout,
-          onError: (cause) => toPlatformError("fromReadable(stdout)", cause, command)
+          onError: (cause) => toPlatformError("fromReadable(stdout)", cause, command),
+          releaseLockOnEnd
         })
         : Stream.empty
     let stderr: Stream.Stream<Uint8Array, PlatformError.PlatformError> =
       outputToStdioOption(stderrConfig.stream) === "piped"
         ? Stream.fromReadableStream({
           evaluate: () => childProcess.stderr,
-          onError: (cause) => toPlatformError("fromReadable(stderr)", cause, command)
+          onError: (cause) => toPlatformError("fromReadable(stderr)", cause, command),
+          releaseLockOnEnd
         })
         : Stream.empty
 
@@ -264,6 +268,8 @@ const make = Effect.gen(function*() {
         return handle.all
     }
   }
+
+  const pipelineDrains = new WeakMap<ChildProcessHandle, ReturnType<typeof setupChildOutputStreams>>()
 
   const spawnCommand: (
     command: ChildProcess.Command
@@ -392,7 +398,7 @@ const make = Effect.gen(function*() {
           ).pipe(Effect.asVoid)
         }
 
-        return makeHandle({
+        const handle = makeHandle({
           pid: ProcessId(childProcess.pid),
           exitCode,
           exitStatus,
@@ -406,6 +412,8 @@ const make = Effect.gen(function*() {
           getOutputFd: () => Stream.empty,
           unref
         })
+        pipelineDrains.set(handle, setupChildOutputStreams(cmd, childProcess, stdoutConfig, stderrConfig, true))
+        return handle
       }
       case "PipedCommand": {
         const { commands, pipeOptions } = flattenCommand(cmd)
@@ -424,7 +432,11 @@ const make = Effect.gen(function*() {
           ) {
             return yield* Effect.fail(unsupported("additionalFds"))
           }
-          const sourceStream = getSourceStream(handles[handles.length - 1], from)
+          const source = handles[handles.length - 1]
+          const drains = pipelineDrains.get(source)
+          const unforwarded = from === "stdout" ? drains?.stderr : from === "stderr" ? drains?.stdout : undefined
+          const drain = yield* Effect.forkScoped(Stream.runDrain(unforwarded ?? Stream.empty))
+          const sourceStream = Stream.drainFork(getSourceStream(source, from), Stream.fromEffect(Fiber.join(drain)))
           handles.push(
             yield* spawnCommand(ChildProcess.make(command.command, command.args, {
               ...command.options,
