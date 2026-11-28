@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertNone, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Cause, Context, Duration, Effect, Exit, Fiber, Layer, Logger, Scheduler, Tracer } from "effect"
+import { Cause, Context, Duration, Effect, Exit, Fiber, Layer, Logger, References, Scheduler, Tracer } from "effect"
 import { HttpBody, HttpClient, HttpClientResponse } from "effect/http"
 import { OtlpSerialization, OtlpTracer } from "effect/observability"
 import { TestClock } from "effect/testing"
@@ -229,6 +229,51 @@ describe("Tracer", () => {
 
         strictEqual(result, 42)
       }))
+  })
+
+  describe("span and stack frame scope", () => {
+    const observe = Effect.gen(function*() {
+      const span = yield* Effect.currentSpan
+      const frame = yield* References.CurrentStackFrame
+      return { span, frame: frame?.name, ended: span.status._tag === "Ended" }
+    })
+
+    it.effect("Effect.withSpan provides the span and its frame, then restores both and ends the span", () =>
+      Effect.gen(function*() {
+        const outer = yield* Effect.currentSpan
+        const outerFrame = yield* References.CurrentStackFrame
+        const inner = yield* Effect.withSpan(observe, "inner")
+
+        strictEqual(inner.span.name, "inner")
+        strictEqual(getParent(inner.span), outer)
+        strictEqual(inner.frame, "inner")
+        strictEqual(inner.ended, false)
+        strictEqual(inner.span.status._tag, "Ended")
+        strictEqual(yield* Effect.currentSpan, outer)
+        strictEqual(yield* References.CurrentStackFrame, outerFrame)
+      }).pipe(Effect.withSpan("outer")))
+
+    it.effect("Effect.fn provides the span and its frame, then restores both on failure", () =>
+      Effect.gen(function*() {
+        let seen: Tracer.Span | undefined
+        const failing = Effect.fn("failing")(function*() {
+          const observed = yield* observe
+          seen = observed.span
+          strictEqual(observed.frame, "failing")
+          return yield* Effect.fail("boom")
+        })
+        const outer = yield* Effect.currentSpan
+        const outerFrame = yield* References.CurrentStackFrame
+        const exit = yield* Effect.exit(failing())
+
+        assert.isTrue(Exit.isFailure(exit))
+        strictEqual(seen?.name, "failing")
+        strictEqual(getParent(seen!), outer)
+        const status = seen!.status
+        assert.isTrue(status._tag === "Ended" && Exit.isFailure(status.exit))
+        strictEqual(yield* Effect.currentSpan, outer)
+        strictEqual(yield* References.CurrentStackFrame, outerFrame)
+      }).pipe(Effect.withSpan("outer")))
   })
 
   describe("ended spans", () => {

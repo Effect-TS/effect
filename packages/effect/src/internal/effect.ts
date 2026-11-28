@@ -1463,13 +1463,9 @@ const makeFn = (
       callError = new globalThis.Error()
       setStackTraceLimit(prevLimit)
     }
-    return updateService(
-      addSpan ?
-        useSpan(name, spanOptions!, (span) => provideParentSpan(result, span)) :
-        result,
-      CurrentStackFrame,
-      makeCallFrame(callError)
-    )
+    return addSpan
+      ? withSpanAndFrame(result, name, spanOptions, makeCallFrame(callError))
+      : updateService(result, CurrentStackFrame, makeCallFrame(callError))
   })
 }
 
@@ -6303,6 +6299,33 @@ export const useSpan: {
 
 const provideParentSpan = provideService(Tracer.ParentSpan)
 
+// Runs `self` in a new span with the span and its stack frame provided. One
+// context update and one exit handler replace the three of `useSpan` around
+// `provideParentSpan` around `updateService`.
+const withSpanAndFrame = <A, E, R>(
+  self: Effect.Effect<A, E, R>,
+  name: string,
+  options: Tracer.SpanOptionsNoTrace | undefined,
+  makeFrame: (parent: StackFrame | undefined) => StackFrame
+): Effect.Effect<A, E, R> =>
+  withFiber((fiber) => {
+    const prevContext = fiber.context
+    const span = makeSpanUnsafe(fiber, name, options)
+    const clock = fiber.getRef(ClockRef)
+    const timingEnabled = fiber.getRef(TracerTimingEnabled)
+    fiber.setContext(Context.add(
+      Context.add(prevContext, CurrentStackFrame, makeFrame(Context.getUnsafe(prevContext, CurrentStackFrame))),
+      Tracer.ParentSpan,
+      span
+    ))
+    onExitUnsafe(fiber, (exit) => {
+      fiber.setContext(prevContext)
+      endSpanUnsafe(span, exit, clock, timingEnabled)
+      return undefined
+    })
+    return self
+  })
+
 /** @internal */
 export const withParentSpan: {
   (
@@ -6345,18 +6368,15 @@ export const withSpan: {
   const dataFirst = typeof arguments[0] !== "string"
   const name = dataFirst ? arguments[1] : arguments[0]
   const traceOptions = addSpanStackTrace(arguments[2])
+  const stack = typeof traceOptions?.captureStackTrace === "function" ? traceOptions.captureStackTrace : constUndefined
+  const makeFrame = (parent: StackFrame | undefined): StackFrame => ({ name, stack, parent })
   if (dataFirst) {
-    const self = arguments[0]
-    return useSpan(name, arguments[2], (span) => withParentSpan(self, span, traceOptions))
+    return withSpanAndFrame(arguments[0], name, arguments[2], makeFrame)
   }
   const fnArg = typeof arguments[1] === "function" ? arguments[1] : undefined
   const options = fnArg ? undefined : arguments[1]
   return (self: Effect.Effect<any, any, any>, ...args: any) =>
-    useSpan(
-      name,
-      fnArg ? fnArg(...args) : options,
-      (span) => withParentSpan(self, span, traceOptions)
-    )
+    withSpanAndFrame(self, name, fnArg ? fnArg(...args) : options, makeFrame)
 } as any
 
 /** @internal */
