@@ -681,7 +681,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
         observers[i](exit)
       }
     }
-    this._stack.length = 0
+    // Usually empty by now; assigning `length` is a runtime call in V8 anyway
+    if (this._stack.length > 0) this._stack.length = 0
     this._children = undefined
     this.context = Context.empty()
     // The cache is shared with other fibers, so replace it rather than mutate
