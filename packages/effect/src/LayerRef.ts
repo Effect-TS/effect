@@ -134,7 +134,7 @@ export interface LayerRef<in out I, in out E = never> {
  * @since 4.0.0
  */
 export const make = Effect.fnUntraced(
-  function*<I, E, R, X, const Preload extends boolean = false, SE = never, SR = never>(
+  function*<I, E, R, X, const Preload extends boolean | undefined = false, SE = never, SR = never>(
     layer: Layer.Layer<I, E, R>,
     options?: {
       /**
@@ -153,7 +153,7 @@ export const make = Effect.fnUntraced(
     } | undefined
   ): Effect.fn.Return<
     LayerRef<I, E>,
-    [Preload] extends [true] ? E : never,
+    Preload extends false | undefined ? never : E,
     Scope.Scope | R | SR
   > {
     const context = yield* Effect.context<never>()
@@ -319,7 +319,7 @@ export const Service = <Self>() =>
   R,
   X,
   const Deps extends ReadonlyArray<Layer.Layer<any, any, any>> = [],
-  const Preload extends boolean = false,
+  const Preload extends boolean | undefined = false,
   SE = never,
   SR = never
 >(
@@ -353,7 +353,7 @@ export const Service = <Self>() =>
   I,
   E,
   R | SR,
-  [Preload] extends [true] ? E : never,
+  Preload extends false | undefined ? never : E,
   Deps[number]
 > => {
   const limit = getStackTraceLimit()
