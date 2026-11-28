@@ -692,8 +692,7 @@ const releaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effec
     const state = self.state
     item.refCount--
     state.usage--
-    // Only the usage TTL strategy reads `idleSince`; fixed pools skip the clock.
-    if (item.refCount === 0 && self.config.strategy !== strategyNoop) {
+    if (item.refCount === 0) {
       item.idleSince = (self as PoolImpl<A, E>)[PoolClock].currentTimeMillisUnsafe()
     }
     if (state.invalidated.has(item)) {

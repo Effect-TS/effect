@@ -1747,7 +1747,7 @@ export const asVoid = <A, E, R>(
 /** @internal */
 export const sandbox = <A, E, R>(
   self: Effect.Effect<A, E, R>
-): Effect.Effect<A, Cause.Cause<E>, R> => catchCauseUnary(self, fail)
+): Effect.Effect<A, Cause.Cause<E>, R> => catchCause(self, fail)
 
 /** @internal */
 export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
@@ -2759,25 +2759,21 @@ export const catchCause: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (cause: NoInfer<Cause.Cause<E>>) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<A | B, E2, R | R2> => catchCauseUnary(self, f.length !== 1 ? (cause: Cause.Cause<E>) => f(cause) : f)
+  ): Effect.Effect<A | B, E2, R | R2> => new OnFailureImpl(self, f)
 )
 const OnFailureProto = makePrimitiveProto({
   op: "OnFailure",
-  [evaluate]: evaluateCont
+  [evaluate]: evaluateCont,
+  // The run loop also passes the fiber, which handlers must not see
+  [contE](this: any, cause: Cause.Cause<unknown>) {
+    return this.f(cause)
+  }
 })
 const OnFailureImpl = function(this: any, self: Effect.Effect<any, any, any>, f: any) {
   this[args] = self
-  this[contE] = f
+  this.f = f
 } as unknown as PrimitiveCtor<[self: Effect.Effect<any, any, any>, f: any]>
 OnFailureImpl.prototype = OnFailureProto
-
-// `catchCause` for a handler that takes only the cause. Internal handlers use
-// it to skip reading `f.length`, which is slow on fresh closures in
-// JavaScriptCore, and the `dual` dispatch.
-const catchCauseUnary = <A, E, R, B, E2, R2>(
-  self: Effect.Effect<A, E, R>,
-  f: (cause: Cause.Cause<E>) => Effect.Effect<B, E2, R2>
-): Effect.Effect<A | B, E2, R | R2> => new OnFailureImpl(self, f)
 
 /** @internal */
 export const catchCauseIf: {
@@ -2799,7 +2795,7 @@ export const catchCauseIf: {
     predicate: Predicate.Predicate<Cause.Cause<E>>,
     f: (cause: Cause.Cause<E>) => Effect.Effect<B, E2, R2>
   ): Effect.Effect<A | B, E | E2, R | R2> =>
-    catchCauseUnary(self, (cause): Effect.Effect<B, E | E2, R2> => {
+    catchCause(self, (cause): Effect.Effect<B, E | E2, R2> => {
       if (!predicate(cause)) {
         return failCause(cause) as any
       }
@@ -2827,7 +2823,7 @@ export const catchCauseFilter: {
     filter: Filter.Filter<Cause.Cause<E>, EB, X>,
     f: (failure: EB, cause: Cause.Cause<E>) => Effect.Effect<B, E2, R2>
   ): Effect.Effect<A | B, Cause.Cause.Error<X> | E2, R | R2> =>
-    catchCauseUnary(self, (cause): Effect.Effect<B, Cause.Cause.Error<X> | E2, R2> => {
+    catchCause(self, (cause): Effect.Effect<B, Cause.Cause.Error<X> | E2, R2> => {
       const eb = filter(cause)
       return Result.isFailure(eb) ? failCause(eb.failure) : f(eb.success, cause)
     })
@@ -2895,7 +2891,7 @@ export const tapCause: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (cause: NoInfer<Cause.Cause<E>>) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<A, E | E2, R | R2> => catchCauseUnary(self, (cause) => andThen(f(cause), failCause(cause)))
+  ): Effect.Effect<A, E | E2, R | R2> => catchCause(self, (cause) => andThen(f(cause), failCause(cause)))
 )
 
 /** @internal */
@@ -2941,7 +2937,7 @@ export const tapCauseFilter: {
     filter: Filter.Filter<Cause.Cause<E>, EB, X>,
     f: (a: EB, cause: Cause.Cause<E>) => Effect.Effect<B, E2, R2>
   ): Effect.Effect<A, E | E2, R | R2> =>
-    catchCauseUnary(self, (cause) => {
+    catchCause(self, (cause) => {
       const result = filter(cause)
       if (Result.isFailure(result)) {
         return failCause(cause)
@@ -3034,14 +3030,15 @@ export const tapDefect: {
   ): Effect.Effect<A, E | E2, R | R2> => tapCauseFilter(self, findDefect as any, (_: any) => f(_)) as any
 )
 
-// `catchIf` without the `dual` dispatch, for `catchTag`
+// The body of `catchIf`, called directly by `catchTag` to skip a second
+// `dual` dispatch, whose predicate needs a materialized `arguments` object
 const catchIfImpl = <A, E, R, A2, E2, R2, A3 = never, E3 = E, R3 = never>(
   self: Effect.Effect<A, E, R>,
   predicate: Predicate.Predicate<E>,
   f: (e: E) => Effect.Effect<A2, E2, R2>,
   orElse?: ((e: E) => Effect.Effect<A3, E3, R3>) | undefined
 ): Effect.Effect<A | A2 | A3, E2 | E3, R | R2 | R3> =>
-  catchCauseUnary(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
+  catchCause(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
     const error = findRecoverableError(cause)
     if (Result.isFailure(error)) return failCause(error.failure)
     if (!predicate(error.success)) {
@@ -3111,7 +3108,7 @@ export const catchFilter: {
     f: (e: EB) => Effect.Effect<A2, E2, R2>,
     orElse?: ((e: X) => Effect.Effect<A3, E3, R3>) | undefined
   ): Effect.Effect<A | A2 | A3, E2 | E3, R | R2 | R3> =>
-    catchCauseUnary(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
+    catchCause(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
       const error = findRecoverableError(cause)
       if (Result.isFailure(error)) return failCause(error.failure)
       const result = filter(error.success)
@@ -3467,7 +3464,7 @@ export const mapError: {
   <A, E, R, E2>(
     self: Effect.Effect<A, E, R>,
     f: (e: E) => E2
-  ): Effect.Effect<A, E2, R> => catchCauseUnary(self, (cause) => failCause(causeMap(cause, f)))
+  ): Effect.Effect<A, E2, R> => catchCause(self, (cause) => failCause(causeMap(cause, f)))
 )
 
 /** @internal */
@@ -4075,7 +4072,7 @@ const combineFinalizerCause = <A, E, XE, XR>(
 ): Effect.Effect<void, E | XE, XR> =>
   exitIsSuccess(exit_)
     ? finalizer
-    : catchCauseUnary(finalizer, (cause) => failCause(causeElectDefects(causeCombine(exit_.cause, cause))))
+    : catchCause(finalizer, (cause) => failCause(causeElectDefects(causeCombine(exit_.cause, cause))))
 
 const scopeCloseFinalizers = fnUntraced(function*<A, E>(
   self: Scope.Scope,
