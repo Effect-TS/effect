@@ -217,7 +217,7 @@ class Proxy implements ProxiedProcessOwner {
   private server: Net.Server | undefined
   private child: NodeChildProcess.ChildProcess | undefined
   // Bounds the wait for `Ready`, and for the reply to each sent request
-  private readonly timers = new Map<number | "ready", () => void>()
+  private readonly timers = new Map<number | "ready", ReturnType<typeof setTimeout>>()
 
   constructor(options: Options) {
     this.options = options
@@ -366,13 +366,12 @@ class Proxy implements ProxiedProcessOwner {
 
   private startTimer(key: number | "ready"): void {
     const millis = this.options.responseTimeoutMillis
-    let immediate: ReturnType<typeof setImmediate> | undefined
     const timer = setTimeout(() => {
-      // A blocked event loop runs due timers before polling IPC, so defer to
-      // the check phase to let already-queued replies be processed first. Keep
-      // the immediate referenced so I/O poll returns promptly in an idle parent.
-      immediate = setImmediate(() => {
-        this.timers.delete(key)
+      // A blocked event loop runs due timers before it reads replies that are
+      // already queued, so check again once they have been read. The immediate
+      // stays referenced, so an idle event loop does not wait to run it.
+      setImmediate(() => {
+        if (this.timers.get(key) !== timer) return
         this.stop(
           Object.assign(new Error(`The proxy process did not respond within ${millis} ms`), { code: "ETIMEDOUT" })
         )
@@ -380,14 +379,11 @@ class Proxy implements ProxiedProcessOwner {
     }, millis)
     // Whatever waits for the reply keeps the application running
     timer.unref()
-    this.timers.set(key, () => {
-      clearTimeout(timer)
-      if (immediate !== undefined) clearImmediate(immediate)
-    })
+    this.timers.set(key, timer)
   }
 
   private stopTimer(key: number | "ready"): void {
-    this.timers.get(key)?.()
+    clearTimeout(this.timers.get(key))
     this.timers.delete(key)
   }
 
@@ -470,7 +466,7 @@ class Proxy implements ProxiedProcessOwner {
   private end(cause: Error): void {
     if (this.exited) return
     this.exited = true
-    for (const cancel of this.timers.values()) cancel()
+    for (const timer of this.timers.values()) clearTimeout(timer)
     this.timers.clear()
     if (!this.ready) this.unref()
     const unacknowledged = new Error(
