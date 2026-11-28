@@ -1104,9 +1104,9 @@ function asSync<T, E>(
 }
 
 function runSync<T>(effect: Effect.Effect<T, SchemaIssue.Issue>, message: string): T {
-  const exit = Effect.runSyncExit(effect)
-  if (Exit.isSuccess(exit)) {
-    return exit.value
+  const exit = effectIsExit(effect) ? effect : Effect.runSyncExit(effect)
+  if (exit._tag === "Success") {
+    return (exit as InternalParser.Success<T, SchemaIssue.Issue>)[InternalParser.args]
   }
   const issue = InternalSchemaCause.getSchemaIssueOrThrow(exit.cause, message)
   throw new Error("Schema validation failed", { cause: issue })

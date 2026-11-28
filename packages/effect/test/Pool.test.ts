@@ -1574,4 +1574,38 @@ describe("Pool", () => {
         deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 0, acquiring: 0, pending: 0, min: 2, max: 2 })
       }))
   })
+
+  it.effect("updates PoolItem.idleSince on release for fixed pools", () =>
+    Effect.gen(function*() {
+      const pool = yield* Pool.make({ acquire: Effect.succeed("item"), size: 1 })
+      const lease = yield* Scope.make()
+      yield* Scope.provide(Pool.get(pool), lease)
+      yield* TestClock.adjust("5 seconds")
+      yield* Scope.close(lease, Exit.void)
+      const [item] = Array.from(pool.state.items)
+      strictEqual(item.idleSince, 5000)
+    }))
+
+  it.effect("wakes waiters across coalesced releases and custom schedulers", () =>
+    Effect.gen(function*() {
+      const pool = yield* Pool.make({ acquire: Effect.succeed(1), size: 2 })
+      const customScheduler = new Scheduler.MixedScheduler("async")
+      const gate = yield* Deferred.make<void>()
+      const holders = yield* Effect.forEach([0, 1], (i) =>
+        Effect.forkChild(
+          Pool.use(pool, () => Deferred.await(gate)).pipe(
+            i === 1 ? Effect.provideService(Scheduler.Scheduler, customScheduler) : (e) => e
+          )
+        ))
+      yield* waitUntil(() => pool.state.usage === 2)
+      const waiters = yield* Effect.forEach([0, 1, 2, 3], () =>
+        Effect.forkChild(Pool.use(pool, (n) => Effect.succeed(n))))
+      yield* waitUntil(() =>
+        pool.state.waiters.size === 4
+      )
+      yield* Deferred.succeed(gate, undefined)
+      yield* Fiber.joinAll(holders)
+      const results = yield* Fiber.joinAll(waiters)
+      deepStrictEqual(results, [1, 1, 1, 1])
+    }))
 })

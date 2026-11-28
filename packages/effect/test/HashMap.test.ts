@@ -746,5 +746,31 @@ describe("HashMap", () => {
       expect(HashMap.has(map, key2)).toBe(false)
       expect(HashMap.has(map, key3)).toBe(true)
     })
+
+    it("preserves exact size across re-entrant Equal.equals updates", () => {
+      let sideMap = HashMap.empty<string, number>()
+      class ReentrantKey implements Equal.Equal {
+        constructor(readonly id: number) {}
+        [Hash.symbol](): number {
+          return 7
+        }
+        [Equal.symbol](that: unknown): boolean {
+          // Trigger nested set/remove during key comparison.
+          sideMap = HashMap.set(sideMap, `k-${this.id}`, this.id)
+          sideMap = HashMap.remove(sideMap, `k-${this.id}`)
+          return that instanceof ReentrantKey && this.id === that.id
+        }
+      }
+      const k1 = new ReentrantKey(1)
+      const k2 = new ReentrantKey(2)
+      let map = HashMap.set(HashMap.empty<ReentrantKey, string>(), k1, "a")
+      map = HashMap.set(map, k2, "b")
+      map = HashMap.set(map, new ReentrantKey(1), "a2")
+      expect(HashMap.size(map)).toBe(2)
+      expect(HashMap.get(map, k1)).toEqual(Option.some("a2"))
+      map = HashMap.remove(map, new ReentrantKey(2))
+      expect(HashMap.size(map)).toBe(1)
+      expect(HashMap.has(map, k2)).toBe(false)
+    })
   })
 })

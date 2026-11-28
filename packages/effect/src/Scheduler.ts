@@ -128,17 +128,37 @@ const setTimer: (f: () => void) => () => void = "setImmediate" in globalThis
   // Browsers clamp nested `setTimeout(f, 0)` calls to 4ms, so a fiber that
   // yields repeatedly would wait that long on every yield. The Prioritized Task
   // Scheduling API (`scheduler.postTask`) queues an unclamped task, in FIFO
-  // order with other tasks of the same priority. The `in` check keeps this
-  // branch tree-shakeable.
+  // order with other tasks of the same priority. Catching inside the callback
+  // preserves uncaught-error reporting instead of turning a thrown task error
+  // into an unhandled rejection. The `in` check keeps this branch tree-shakeable.
   : "scheduler" in globalThis
   ? (f) => {
-    const scheduler = (globalThis as { scheduler?: { postTask?: (f: () => void) => unknown } }).scheduler
-    if (typeof scheduler?.postTask !== "function") return setTimeoutTimer(f)
     let cancelled = false
-    scheduler.postTask(() => cancelled || f())
-    return (): void => {
-      cancelled = true
+    try {
+      const s = (globalThis as { scheduler?: { postTask?: (f: () => void) => unknown } }).scheduler
+      if (typeof s?.postTask === "function") {
+        s.postTask(() => {
+          if (cancelled) return
+          try {
+            f()
+          } catch (error) {
+            if (typeof reportError === "function") {
+              reportError(error)
+            } else {
+              setTimeout(() => {
+                throw error
+              }, 0)
+            }
+          }
+        })
+        return (): void => {
+          cancelled = true
+        }
+      }
+    } catch {
+      // Fall through to setTimeout
     }
+    return setTimeoutTimer(f)
   }
   : setTimeoutTimer
 
@@ -223,6 +243,8 @@ export class MixedScheduler implements Scheduler {
 }
 
 class MixedSchedulerDispatcher implements SchedulerDispatcher {
+  // Single default-priority task slot avoids allocating bucket arrays on single-yield turns.
+  private task: (() => void) | undefined = undefined
   // Sorted by priority, each bucket holding its tasks in FIFO order
   private buckets: Array<[priority: number, tasks: Array<() => void>]> = []
   private running: (() => void) | undefined = undefined
@@ -237,14 +259,18 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    */
   scheduleTask(task: () => void, priority: number) {
     const buckets = this.buckets
-    let index = 0
-    while (index < buckets.length && buckets[index][0] < priority) index++
-    if (index === buckets.length) {
-      buckets.push([priority, [task]])
-    } else if (buckets[index][0] === priority) {
-      buckets[index][1].push(task)
+    if (priority === 0 && buckets.length === 0 && this.task === undefined) {
+      this.task = task
     } else {
-      buckets.splice(index, 0, [priority, [task]])
+      if (this.task !== undefined) {
+        buckets.push([0, [this.task]])
+        this.task = undefined
+      }
+      let index = 0
+      while (index < buckets.length && buckets[index][0] < priority) index++
+      if (index === buckets.length) buckets.push([priority, [task]])
+      else if (buckets[index][0] === priority) buckets[index][1].push(task)
+      else buckets.splice(index, 0, [priority, [task]])
     }
     this.running ??= this.setImmediate(this.afterScheduled)
   }
@@ -261,6 +287,12 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    * @since 2.0.0
    */
   runTasks() {
+    const task = this.task
+    if (task !== undefined) {
+      this.task = undefined
+      task()
+      return
+    }
     const buckets = this.buckets
     this.buckets = []
     for (let i = 0; i < buckets.length; i++) {
@@ -275,7 +307,7 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    * @since 2.0.0
    */
   flush() {
-    while (this.buckets.length > 0) {
+    while (this.task !== undefined || this.buckets.length > 0) {
       this.running?.()
       this.running = undefined
       this.runTasks()

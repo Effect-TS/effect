@@ -113,13 +113,14 @@ export const dual: {
   ): DataLast & DataFirst
 } = function(arity, body) {
   if (typeof arity === "function") {
-    // Rest parameters rather than `arguments`: V8 spreads a captured arguments
-    // object through the slow iterator path, and materializing both is slower
-    // still. The predicate reads only `length` and indexes, which an array has.
-    return function(this: any, ...args: Array<any>) {
-      return arity(args as unknown as IArguments)
-        ? body.apply(this, args)
-        : ((self: any) => body(self, ...args)) as any
+    // Pass the real `arguments` object to `arity` for observable compatibility,
+    // and copy once into an array so data-last spreads avoid V8's slow arguments path.
+    return function(this: any) {
+      if (arity(arguments)) {
+        return body.apply(this, arguments as any)
+      }
+      const args = Array.from(arguments)
+      return ((self: any) => body(self, ...args)) as any
     }
   }
 
@@ -130,34 +131,21 @@ export const dual: {
 
     case 2:
       return function(a, b) {
-        if (arguments.length >= 2) {
-          return body(a, b)
-        }
-        return function(self: any) {
-          return body(self, a)
-        }
+        return arguments.length >= 2 ? body(a, b) : (self: any) => body(self, a)
       }
 
     case 3:
       return function(a, b, c) {
-        if (arguments.length >= 3) {
-          return body(a, b, c)
-        }
-        return function(self: any) {
-          return body(self, a, b)
-        }
+        return arguments.length >= 3 ? body(a, b, c) : (self: any) => body(self, a, b)
       }
 
     default:
-      return function() {
+      return function(this: any) {
         if (arguments.length >= arity) {
-          // @ts-expect-error
-          return body.apply(this, arguments)
+          return body.apply(this, arguments as any)
         }
-        const args = arguments
-        return function(self: any) {
-          return body(self, ...args)
-        }
+        const args = Array.from(arguments)
+        return (self: any) => body(self, ...args)
       }
   }
 }
@@ -1237,15 +1225,11 @@ export function flow<
 export function flow(
   ab: Function,
   bc?: Function,
-  cd?: Function,
-  de?: Function,
-  ef?: Function,
-  fg?: Function,
-  gh?: Function,
-  hi?: Function,
-  ij?: Function
+  cd?: Function
 ): unknown {
   switch (arguments.length) {
+    case 0:
+      return
     case 1:
       return ab
     case 2:
@@ -1256,32 +1240,17 @@ export function flow(
       return function(this: unknown) {
         return cd!(bc!(ab.apply(this, arguments)))
       }
-    case 4:
+    default: {
+      const fns = Array.from(arguments)
       return function(this: unknown) {
-        return de!(cd!(bc!(ab.apply(this, arguments))))
+        let ret = ab.apply(this, arguments)
+        for (let i = 1; i < fns.length; i++) {
+          ret = fns[i](ret)
+        }
+        return ret
       }
-    case 5:
-      return function(this: unknown) {
-        return ef!(de!(cd!(bc!(ab.apply(this, arguments)))))
-      }
-    case 6:
-      return function(this: unknown) {
-        return fg!(ef!(de!(cd!(bc!(ab.apply(this, arguments))))))
-      }
-    case 7:
-      return function(this: unknown) {
-        return gh!(fg!(ef!(de!(cd!(bc!(ab.apply(this, arguments)))))))
-      }
-    case 8:
-      return function(this: unknown) {
-        return hi!(gh!(fg!(ef!(de!(cd!(bc!(ab.apply(this, arguments))))))))
-      }
-    case 9:
-      return function(this: unknown) {
-        return ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab.apply(this, arguments)))))))))
-      }
+    }
   }
-  return
 }
 
 /**

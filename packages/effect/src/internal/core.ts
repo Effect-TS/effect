@@ -500,7 +500,8 @@ export const makePrimitiveProto = <Op extends string>(options: {
   ) => Primitive | Effect.Effect<any, any, any> | Yield
   readonly [contAll]?: (
     this: Primitive,
-    fiber: FiberImpl
+    fiber: FiberImpl,
+    symbol?: string
   ) => void | ((value: any, fiber: FiberImpl) => void)
 }): Primitive =>
   ({
@@ -550,7 +551,8 @@ export const makePrimitive = <
     this: Primitive & {
       readonly [args]: Parameters<Fn>[0]
     },
-    fiber: FiberImpl
+    fiber: FiberImpl,
+    symbol?: string
   ) => void | ((value: any, fiber: FiberImpl) => void)
 }): Fn => {
   const Proto = makePrimitiveProto(options as any)

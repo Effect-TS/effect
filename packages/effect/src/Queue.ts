@@ -689,19 +689,34 @@ export const unbounded = <A, E = never>(): Effect<Queue<A, E>> => make()
  * @category offering
  * @since 2.0.0
  */
+const QueueOfferImpl = (function() {
+  const Proto = core.makePrimitiveProto({
+    op: "QueueOffer",
+    [core.evaluate](this: any, fiber) {
+      const self = this.self
+      const message = this.message
+      if (offerUnsafe(self, message)) {
+        return fiber.succeedWith(true)
+      }
+      return self.state._tag === "Open" && self.strategy === "suspend"
+        ? offerOrWait(self, message)
+        : fiber.succeedWith(false)
+    }
+  })
+  const Impl = function(this: any, self: any, message: any) {
+    this.self = self
+    this.message = message
+  } as unknown as new(self: any, message: any) => Effect<boolean>
+  Impl.prototype = Proto
+  return Impl
+})()
+
 export const offer: {
   <A>(message: A): <E>(self: Enqueue<A, E>) => Effect<boolean>
   <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): Effect<boolean>
 } = dual(
   2,
-  <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): Effect<boolean> =>
-    internalEffect.suspend(() =>
-      offerUnsafe(self, message)
-        ? exitTrue
-        : self.state._tag === "Open" && self.strategy === "suspend"
-        ? offerOrWait(self, message)
-        : exitFalse
-    )
+  <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): Effect<boolean> => new QueueOfferImpl(self, message)
 )
 
 /**
@@ -819,13 +834,13 @@ export const offerAll: {
 } = dual(2, <A, E>(self: Enqueue<A, E>, messages: Iterable<A>): Effect<Array<A>> =>
   // Admitting what fits and registering the rest are one step, so no take can
   // free capacity between them
-  internalEffect.callbackNoSignal<Array<A>>((resume) => {
+  internalEffect.callback<Array<A>>((resume) => {
     const remaining = offerAllUnsafe(self, messages)
     if (remaining.length === 0 || self.strategy === "dropping") {
       return resume(core.exitSucceed(remaining))
     }
     return waitToOffer(self, { _tag: "Array", remaining, offset: 0, resume })
-  }, self))
+  }, { blockedOn: self }))
 
 /**
  * Adds multiple messages to the queue synchronously. Returns the remaining messages that
@@ -1510,8 +1525,27 @@ export const takeBetween: {
  * @category taking
  * @since 2.0.0
  */
-export const take = <A, E>(self: Dequeue<A, E>): Effect<A, E> =>
-  suspendTake(() => takeUnsafe(self) ?? internalEffect.andThen(awaitTake(self, () => canTake(self, 1)), take(self)))
+const QueueTakeImpl: (self: Dequeue<any, any>) => Effect<any, any> = core.makePrimitive({
+  op: "QueueTake",
+  [core.evaluate](fiber) {
+    const self = this[core.args]
+    if (self.state._tag === "Done") {
+      return self.state.exit
+    }
+    if (self.messages.length > 0) {
+      const message = MutableList.take(self.messages)!
+      releaseCapacity(self)
+      return fiber.succeedWith(message)
+    } else if (self.capacity <= 0 && self.state.offers.size > 0) {
+      const message = takeOfferUnsafe(self.state.offers)
+      releaseCapacity(self)
+      return fiber.succeedWith(message)
+    }
+    return internalEffect.andThen(awaitTake(self, () => canTake(self, 1)), this as any)
+  }
+})
+
+export const take = <A, E>(self: Dequeue<A, E>): Effect<A, E> => QueueTakeImpl(self)
 
 /**
  * Attempts to take one item from the queue without waiting.
@@ -1739,7 +1773,7 @@ export const flushUnsafe = <A, E>(self: Enqueue<A, E>): void => releaseTakers(se
 export const flush = <A, E>(self: Enqueue<A, E>): Effect<void> => internalEffect.sync(() => flushUnsafe(self))
 
 const await_ = <A, E>(self: Dequeue<A, E>): Effect<void, Exclude<E, Done>> =>
-  internalEffect.callbackNoSignal<void, Exclude<E, Done>>((resume) => {
+  internalEffect.callback<void, Exclude<E, Done>>((resume) => {
     const awaiter = (effect: Effect<void, E>) => resume(Pull.catchDone(effect, () => internalEffect.exitVoid))
     if (self.state._tag === "Done") {
       return awaiter(self.state.exit)
@@ -1750,7 +1784,7 @@ const await_ = <A, E>(self: Dequeue<A, E>): Effect<void, Exclude<E, Done>> =>
         self.state.awaiters.delete(awaiter)
       }
     })
-  }, self)
+  }, { blockedOn: self })
 
 export {
   /**
@@ -2074,7 +2108,7 @@ const canTake = <A, E>(self: Dequeue<A, E>, min: number): boolean =>
 // message can arrive between them. Wake-ups resume with void and the caller
 // retries, which keeps the fiber stack flat across spurious wake-ups.
 const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
-  internalEffect.callbackNoSignal<void, E>((resume) => {
+  internalEffect.callback<void, E>((resume) => {
     if (self.state._tag === "Done") return resume(self.state.exit)
     if (ready()) return resume(internalEffect.exitVoid)
     const taker = { ready, resume }
@@ -2082,12 +2116,12 @@ const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
     return internalEffect.sync(() => {
       if (self.state._tag !== "Done") self.state.takers.delete(taker)
     })
-  }, self)
+  }, { blockedOn: self })
 
 const offerOrWait = <A, E>(self: Enqueue<A, E>, message: A) =>
-  internalEffect.callbackNoSignal<boolean>(
+  internalEffect.callback<boolean>(
     (resume) => offerUnsafe(self, message) ? resume(exitTrue) : waitToOffer(self, { _tag: "Single", message, resume }),
-    self
+    { blockedOn: self }
   )
 
 const waitToOffer = <A, E>(self: Enqueue<A, E>, entry: Queue.OfferEntry<A>) => {

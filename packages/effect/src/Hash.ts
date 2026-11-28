@@ -387,7 +387,7 @@ export const number = (n: number) => {
 export const string = (str: string) => {
   let h = 5381, i = str.length
   while (i) {
-    h = (h * 33) ^ str.charCodeAt(--i)
+    h = ((h << 5) + h) ^ str.charCodeAt(--i)
   }
   return optimize(h)
 }

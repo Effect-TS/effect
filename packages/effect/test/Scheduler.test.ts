@@ -255,16 +255,63 @@ describe("Scheduler", () => {
       assert.isTrue(released)
     })
 
-    it("falls back to setTimeout without postTask", async () => {
+    it("falls back to setTimeout for missing, partial, or throwing scheduler globals", async () => {
       const { Effect } = browser
-      vi.stubGlobal("scheduler", undefined)
-      const setTimeout = vi.spyOn(globalThis, "setTimeout")
-      try {
-        assert.strictEqual(await Effect.runPromise(Effect.as(Effect.yieldNow, 1)), 1)
-        assert.isAbove(setTimeout.mock.calls.length, 0)
-      } finally {
-        setTimeout.mockRestore()
+      for (
+        const candidate of [
+          undefined,
+          {},
+          { postTask: null },
+          {
+            postTask() {
+              throw new Error("postTask disallowed")
+            }
+          }
+        ]
+      ) {
+        vi.stubGlobal("scheduler", candidate)
+        const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout")
+        try {
+          assert.strictEqual(await Effect.runPromise(Effect.as(Effect.yieldNow, 1)), 1)
+          assert.isAbove(setTimeoutSpy.mock.calls.length, 0)
+        } finally {
+          setTimeoutSpy.mockRestore()
+        }
       }
+    })
+
+    it("reports thrown postTask errors via reportError instead of unhandled rejections", async () => {
+      const { Scheduler } = browser
+      const rejections: Array<unknown> = []
+      const reported: Array<unknown> = []
+      vi.stubGlobal("scheduler", {
+        postTask(task: () => void) {
+          return new Promise<void>((resolve, reject) => {
+            realSetImmediate(() => {
+              try {
+                task()
+                resolve()
+              } catch (error) {
+                reject(error)
+              }
+            })
+          }).catch((error) => {
+            rejections.push(error)
+          })
+        }
+      })
+      vi.stubGlobal("reportError", (error: unknown) => {
+        reported.push(error)
+      })
+      const boom = new Error("task failure")
+      const dispatcher = new Scheduler.MixedScheduler().makeDispatcher()
+      dispatcher.scheduleTask(() => {
+        throw boom
+      }, 0)
+      await nextMacrotask()
+      await nextMacrotask()
+      assert.deepStrictEqual(rejections, [])
+      assert.deepStrictEqual(reported, [boom])
     })
   })
 })

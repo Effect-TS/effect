@@ -2440,35 +2440,74 @@ export const Arrays: new(
       return InternalParser.succeed(state.output)
     }
 
-    const parse = (
-      input: ReadonlyArray<unknown>,
-      options: ParseOptions
+    const continueArray = (
+      state: ArrayParserState,
+      start: number,
+      end: number,
+      concurrency: number
     ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
-      const len = input.length
-      const state: ArrayParserState = {
-        ast,
-        getParser,
-        input,
-        len,
-        tailThreshold: Math.max(elementLen, len - tailLen),
-        output: [],
-        issues: undefined,
-        options
-      }
-      const end = ast.rest.length === 0 ? elementLen : Math.max(len, elementLen + tailLen)
-      const concurrency = options.concurrency === undefined ? 1 : resolveConcurrency(options.concurrency)
       const eff = concurrency === 1
-        ? parseArray(state, input, 0, end)
-        : parseArrayConcurrent(state, input, { concurrency, end })
+        ? parseArray(state, state.input, start, end)
+        : parseArrayConcurrent(state, state.input, { concurrency, end })
       if (!eff) return finish(state)
       if (effectIsExit(eff)) return Effect.flatMapEager(eff, () => finish(state))
       // Reparse on later runs to avoid reusing mutable traversal state.
       let first = true
       return Effect.suspend(() => {
-        if (!first) return parse(input, options)
+        if (!first) return parse(state.input, state.options)
         first = false
         return Effect.flatMap(eff, () => finish(state))
       })
+    }
+
+    const parse = (
+      input: ReadonlyArray<unknown>,
+      options: ParseOptions
+    ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
+      const len = input.length
+      const concurrency = options.concurrency === undefined ? 1 : resolveConcurrency(options.concurrency)
+      const makeState = (output: Array<unknown>, tailThreshold: number): ArrayParserState => ({
+        ast,
+        getParser,
+        input,
+        len,
+        tailThreshold,
+        output,
+        issues: undefined,
+        options
+      })
+      if (
+        elementLen === 0 &&
+        ast.rest.length === 1 &&
+        (options === defaultParseOptions || (options.errors !== "all" && concurrency === 1))
+      ) {
+        const itemParser = rest![0].parser
+        const out = new Array<unknown>(len)
+        for (let i = 0; i < len; i++) {
+          const item = input[i]
+          const exit = itemParser(item, options)
+          if (InternalParser.isSameExit(exit)) {
+            out[i] = item
+            continue
+          }
+          if (effectIsExit(exit) && exit._tag === "Success") {
+            const value = (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
+            if (value !== InternalParser.missing) {
+              out[i] = value
+              continue
+            }
+          }
+          const state = makeState(out.slice(0, i), len)
+          const after = (s: ArrayParserState, e: Exit.Exit<unknown, SchemaIssue.Issue>) =>
+            stepArray(s, item, e, i) ?? continueArray(s, i + 1, len, 1)
+          return effectIsExit(exit)
+            ? after(state, exit)
+            : Effect.flatMap(Effect.exit(exit), (e) => after({ ...state, output: state.output.slice() }, e))
+        }
+        return InternalParser.succeed(out)
+      }
+      const end = ast.rest.length === 0 ? elementLen : Math.max(len, elementLen + tailLen)
+      return continueArray(makeState([], Math.max(elementLen, len - tailLen)), 0, end, concurrency)
     }
 
     return (input, options) => {
@@ -3142,9 +3181,10 @@ export const Objects: new(
     return (input, options) => {
       if (input === InternalParser.missing) return InternalParser.missingExit
       if (
-        options.errors === "all" ||
-        options.onExcessProperty !== undefined ||
-        (options.concurrency !== undefined && resolveConcurrency(options.concurrency) !== 1)
+        options !== defaultParseOptions &&
+        (options.errors === "all" ||
+          options.onExcessProperty !== undefined ||
+          (options.concurrency !== undefined && resolveConcurrency(options.concurrency) !== 1))
       ) {
         return (fallback ??= makeFallback())(input, options)
       }
@@ -3154,22 +3194,35 @@ export const Objects: new(
       const props = compileMembers()
       const record = input as Record<PropertyKey, unknown>
       const out: Record<PropertyKey, unknown> = {}
-      const state: ObjectParserState = { ast, input: record, out, issues: undefined, options }
+      let state: ObjectParserState | undefined
+      const getState = () => state ??= { ast, input: record, out, issues: undefined, options }
       try {
         for (let index = 0; index < props.length; index++) {
           const property = props[index]
           const name = property.name
-          const hasKey = property.ownOnly ? Object.hasOwn(record, name) : name in record
-          const value = hasKey ? record[name] : InternalParser.missing
-          const exit = property.parser(value, options)
-          if (!effectIsExit(exit)) {
-            return resume(state, index, exit)
-          }
+          const ownOnly = property.ownOnly
+          let value: unknown
+          const hasKey = ownOnly
+            ? Object.hasOwn(record, name) && ((value = record[name]), true)
+            : (value = record[name]) !== undefined || name in record
+          const exit = property.parser(hasKey ? value : InternalParser.missing, options)
           if (InternalParser.isSameExit(exit)) {
-            if (hasKey) InternalRecord.assignProperty(out, name, value)
+            if (hasKey) {
+              if (ownOnly) InternalRecord.assignProperty(out, name, value)
+              else out[name] = value
+            }
             continue
           }
-          const terminal = stepProperty(state, property, exit)
+          if (!effectIsExit(exit)) return resume(getState(), index, exit)
+          if (exit._tag === "Success") {
+            const next = (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
+            if (next !== InternalParser.missing) {
+              if (ownOnly) InternalRecord.assignProperty(out, name, next)
+              else out[name] = next
+              continue
+            }
+          }
+          const terminal = stepProperty(getState(), property, exit)
           if (terminal) return terminal
         }
       } catch (error) {

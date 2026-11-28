@@ -429,4 +429,26 @@ describe("Fiber", () => {
     assert.isTrue(Exit.hasInterrupts(child.pollUnsafe()!))
     assert.deepStrictEqual(main.pollUnsafe(), Exit.void)
   })
+
+  it.effect("interrupting a fiber blocked on Fiber.join runs finalizers and leaves target healthy", () =>
+    Effect.gen(function*() {
+      const gate = yield* Deferred.make<number>()
+      const target = yield* Effect.forkChild(Deferred.await(gate))
+      let finalized = false
+      const joiner = yield* Effect.forkChild(
+        Effect.ensuring(
+          Fiber.join(target),
+          Effect.sync(() => {
+            finalized = true
+          })
+        )
+      )
+      yield* Effect.yieldNow
+      yield* Fiber.interrupt(joiner)
+      const joinerExit = yield* Fiber.await(joiner)
+      assert.isTrue(Exit.hasInterrupts(joinerExit))
+      assert.isTrue(finalized)
+      yield* Deferred.succeed(gate, 42)
+      assert.strictEqual(yield* Fiber.join(target), 42)
+    }))
 })
