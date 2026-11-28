@@ -195,6 +195,16 @@ describe("HttpClient", () => {
       assert.deepStrictEqual(bytes, Array.from(new TextEncoder().encode("data: hello\n\n")))
     }))
 
+  it("HttpClientResponse.headers reads the source headers once", () => {
+    const response = HttpClientResponse.fromWeb(
+      HttpClientRequest.get("http://localhost/"),
+      new Response(null, { headers: { "Content-Type": "text/plain", "X-Request-Id": "1" } })
+    )
+    strictEqual(response.headers["content-type"], "text/plain")
+    strictEqual(response.headers["x-request-id"], "1")
+    strictEqual(response.headers, response.headers)
+  })
+
   it("HttpClientResponse.link resolves the first matching link against the request URL", () => {
     const request = HttpClientRequest.get("https://example.com/items")
     const response = HttpClientResponse.fromWeb(

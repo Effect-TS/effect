@@ -448,8 +448,9 @@ class WebHttpClientResponse extends Inspectable.Class implements HttpClientRespo
     return url.value.href
   }
 
+  cachedHeaders?: Headers.Headers
   get headers(): Headers.Headers {
-    return Headers.fromInput(this.source.headers)
+    return this.cachedHeaders ??= Headers.fromInput(this.source.headers)
   }
 
   cachedCookies?: Cookies.Cookies

@@ -73,6 +73,19 @@ describe("Headers", () => {
     deepStrictEqual({ ...result }, { keep: "me" })
   })
 
+  it("isRedactedName ignores case in both the name and the patterns, on repeated use of one list", () => {
+    const patterns = ["X-Api-Key", "cookie", /^x-secret-/]
+    for (let i = 0; i < 2; i++) {
+      assertTrue(Headers.isRedactedName("x-api-key", patterns))
+      assertTrue(Headers.isRedactedName("X-API-KEY", patterns))
+      assertTrue(Headers.isRedactedName("Cookie", patterns))
+      assertTrue(Headers.isRedactedName("x-secret-one", patterns))
+      assertFalse(Headers.isRedactedName("X-Secret-One", patterns))
+      assertFalse(Headers.isRedactedName("content-type", patterns))
+    }
+    assertFalse(Headers.isRedactedName("cookie", ["set-cookie"]))
+  })
+
   it("isRedactedName compares string patterns case-insensitively", () => {
     strictEqual(Headers.isRedactedName("Authorization", ["authorization"]), true)
   })
