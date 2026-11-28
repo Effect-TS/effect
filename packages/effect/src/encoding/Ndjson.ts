@@ -411,7 +411,7 @@ export const decode = <IE = never, Done = unknown>(options?: {
           }
           if (start < chunk.length) {
             // Copy, so a reused upstream buffer cannot change the line
-            pending.push(chunk.slice(start))
+            pending.push(new Uint8Array(chunk.subarray(start)))
             pendingBytes += chunk.length - start
           }
         }

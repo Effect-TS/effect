@@ -57,6 +57,19 @@ describe("Ndjson", () => {
       assert.deepStrictEqual(values, [1, 2, 3])
     }))
 
+  it.effect("decode keeps a partial line when upstream reuses its Buffer", () =>
+    Effect.gen(function*() {
+      const storage = Buffer.alloc(2)
+      const read = (text: string) => Stream.sync(() => storage.subarray(0, storage.write(text)))
+      const values = yield* read("1").pipe(
+        Stream.concat(read("2\n")),
+        Stream.pipeThroughChannel(Ndjson.decode()),
+        Stream.runCollect
+      )
+
+      assert.deepStrictEqual(values, [12])
+    }))
+
   it.effect("ignoreEmptyLines skips lines containing only spaces or tabs", () =>
     Effect.gen(function*() {
       const input = "1\n \t\n2\n\t"
