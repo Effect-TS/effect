@@ -255,6 +255,19 @@ describe("Scheduler", () => {
       assert.isTrue(released)
     })
 
+    it("reports an error thrown by a task rather than rejecting", async () => {
+      const { Scheduler } = browser
+      const reportError = vi.fn()
+      vi.stubGlobal("reportError", reportError)
+      const error = new Error("boom")
+      new Scheduler.MixedScheduler().makeDispatcher().scheduleTask(() => {
+        throw error
+      }, 0)
+      await nextMacrotask()
+      await nextMacrotask()
+      assert.deepStrictEqual(reportError.mock.calls, [[error]])
+    })
+
     it("falls back to setTimeout without postTask", async () => {
       const { Effect } = browser
       vi.stubGlobal("scheduler", undefined)
@@ -271,13 +284,14 @@ describe("Scheduler", () => {
 
 const nextMacrotask = () => new Promise((resolve) => setTimeout(resolve, 0))
 
-// Stands in for the browser's scheduler.postTask: queues a real macrotask.
+// Stands in for the browser's scheduler.postTask: runs the task in a real
+// macrotask and settles the returned promise with its result.
 const realSetImmediate = globalThis.setImmediate
 let postTaskCalls = 0
 const fakeTaskScheduler = {
   postTask(task: () => void) {
     postTaskCalls++
-    realSetImmediate(task)
+    return new Promise<void>((resolve) => realSetImmediate(resolve)).then(task)
   }
 }
 

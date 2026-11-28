@@ -63,6 +63,23 @@ const bitpos = (hash: number, shift: number): number => 1 << mask(hash, shift)
 /** @internal */
 const index = (bitmap: number, bit: number): number => popcount(bitmap & (bit - 1))
 
+// Persistent updates copy a node's array on every insert and remove. Copying
+// in one pass is several times faster than `slice` followed by `splice`.
+const insertAt = <A>(array: ReadonlyArray<A>, at: number, value: A): Array<A> => {
+  const out = new globalThis.Array<A>(array.length + 1)
+  for (let i = 0; i < at; i++) out[i] = array[i]
+  out[at] = value
+  for (let i = at; i < array.length; i++) out[i + 1] = array[i]
+  return out
+}
+
+const removeAt = <A>(array: ReadonlyArray<A>, at: number): Array<A> => {
+  const out = new globalThis.Array<A>(array.length - 1)
+  for (let i = 0; i < at; i++) out[i] = array[i]
+  for (let i = at; i < out.length; i++) out[i] = array[i + 1]
+  return out
+}
+
 /** @internal */
 function mergeLeaves<K, V>(
   edit: number,
@@ -432,9 +449,7 @@ class CollisionNode<K, V> extends Node<K, V> {
       return this
     }
 
-    const newEntries = this.entries.slice()
-    newEntries.splice(idx, 1)
-    return new CollisionNode(edit, this.hash, newEntries)
+    return new CollisionNode(edit, this.hash, removeAt(this.entries, idx))
   }
 
   computeHash(): number {
@@ -537,8 +552,7 @@ class IndexedNode<K, V> extends Node<K, V> {
         return this
       }
 
-      const newChildren = this.children.slice()
-      newChildren.splice(idx, 0, newChild)
+      const newChildren = insertAt(this.children, idx, newChild)
 
       if (newChildren.length > MAX_INDEX_NODE) {
         return this.expand(edit, newBitmap, newChildren)
@@ -589,9 +603,7 @@ class IndexedNode<K, V> extends Node<K, V> {
         return this
       }
 
-      const newChildren = this.children.slice()
-      newChildren.splice(idx, 1)
-      return new IndexedNode(edit, newBitmap, newChildren)
+      return new IndexedNode(edit, newBitmap, removeAt(this.children, idx))
     }
 
     if (child === newChild) {

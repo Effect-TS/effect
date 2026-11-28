@@ -75,6 +75,31 @@ describe("Function", () => {
       )
       assert.strictEqual(F.pipe(2, sum(3)), 5)
     })
+
+    it("predicate-based - passes the arguments object and forwards the receiver", () => {
+      const seen: Array<string> = []
+      const method = F.dual(
+        (args) => {
+          seen.push(Object.prototype.toString.call(args))
+          return args.length === 2
+        },
+        function(this: { readonly base: number }, self: number, that: number) {
+          return (this?.base ?? 0) + self + that
+        }
+      )
+      const receiver = { base: 10, method }
+      assert.strictEqual(receiver.method(1, 2), 13)
+      assert.strictEqual(F.pipe(1, method(2)), 3)
+      assert.deepStrictEqual(seen, ["[object Arguments]", "[object Arguments]"])
+    })
+
+    it("arity 4 - data-last keeps the arguments of each call", () => {
+      const join = F.dual(4, (a: string, b: string, c: string, d: string) => a + b + c + d)
+      const x = join("b", "c", "d")
+      const y = join("x", "y", "z")
+      assert.strictEqual(x("a"), "abcd")
+      assert.strictEqual(y("w"), "wxyz")
+    })
   })
 
   describe("apply", () => {

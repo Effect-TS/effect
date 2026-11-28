@@ -819,7 +819,7 @@ export const offerAll: {
 } = dual(2, <A, E>(self: Enqueue<A, E>, messages: Iterable<A>): Effect<Array<A>> =>
   // Admitting what fits and registering the rest are one step, so no take can
   // free capacity between them
-  internalEffect.callbackNoSignal<Array<A>>((resume) => {
+  internalEffect.callbackOptions<Array<A>>((resume) => {
     const remaining = offerAllUnsafe(self, messages)
     if (remaining.length === 0 || self.strategy === "dropping") {
       return resume(core.exitSucceed(remaining))
@@ -1739,7 +1739,7 @@ export const flushUnsafe = <A, E>(self: Enqueue<A, E>): void => releaseTakers(se
 export const flush = <A, E>(self: Enqueue<A, E>): Effect<void> => internalEffect.sync(() => flushUnsafe(self))
 
 const await_ = <A, E>(self: Dequeue<A, E>): Effect<void, Exclude<E, Done>> =>
-  internalEffect.callbackNoSignal<void, Exclude<E, Done>>((resume) => {
+  internalEffect.callbackOptions<void, Exclude<E, Done>>((resume) => {
     const awaiter = (effect: Effect<void, E>) => resume(Pull.catchDone(effect, () => internalEffect.exitVoid))
     if (self.state._tag === "Done") {
       return awaiter(self.state.exit)
@@ -2074,7 +2074,7 @@ const canTake = <A, E>(self: Dequeue<A, E>, min: number): boolean =>
 // message can arrive between them. Wake-ups resume with void and the caller
 // retries, which keeps the fiber stack flat across spurious wake-ups.
 const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
-  internalEffect.callbackNoSignal<void, E>((resume) => {
+  internalEffect.callbackOptions<void, E>((resume) => {
     if (self.state._tag === "Done") return resume(self.state.exit)
     if (ready()) return resume(internalEffect.exitVoid)
     const taker = { ready, resume }
@@ -2085,7 +2085,7 @@ const awaitTake = <A, E>(self: Dequeue<A, E>, ready: () => boolean) =>
   }, self)
 
 const offerOrWait = <A, E>(self: Enqueue<A, E>, message: A) =>
-  internalEffect.callbackNoSignal<boolean>(
+  internalEffect.callbackOptions<boolean>(
     (resume) => offerUnsafe(self, message) ? resume(exitTrue) : waitToOffer(self, { _tag: "Single", message, resume }),
     self
   )

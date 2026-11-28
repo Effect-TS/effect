@@ -891,7 +891,7 @@ export const fiberAwait = <A, E>(
 ): Effect.Effect<Exit.Exit<A, E>> => {
   const impl = self as FiberImpl<A, E>
   if (impl._exit) return succeed(impl._exit)
-  return callbackNoSignal((resume) => {
+  return callbackOptions((resume) => {
     if (impl._exit) return resume(succeed(impl._exit))
     return sync(self.addObserver((exit) => resume(succeed(exit))))
   }, impl)
@@ -912,7 +912,7 @@ export const fiberAwaitAll = <Fiber extends Fiber.Fiber<any, any>>(
     // Read once, when the effect runs: the Supervisor gets this array, and a
     // one-shot iterable is not consumed twice
     const fibers = Array.from(self as Iterable<any>) as Array<FiberImpl>
-    return callbackNoSignal((resume) => {
+    return callbackOptions((resume) => {
       const exits: Array<Exit.Exit<any, any>> = []
       let cancel: (() => void) | undefined = undefined
       function loop() {
@@ -939,7 +939,7 @@ export const fiberAwaitAll = <Fiber extends Fiber.Fiber<any, any>>(
 export const fiberJoin = <A, E>(self: Fiber.Fiber<A, E>): Effect.Effect<A, E> => {
   const impl = self as FiberImpl<A, E>
   if (impl._exit) return impl._exit
-  return callbackNoSignal((resume) => {
+  return callbackOptions((resume) => {
     if (impl._exit) return resume(impl._exit)
     return sync(self.addObserver(resume))
   }, impl)
@@ -953,7 +953,7 @@ export const fiberJoinAll = <A extends Iterable<Fiber.Fiber<any, any>>>(self: A)
   suspend(() => {
     const fibers = Array.from(self) as Array<FiberImpl>
     if (fibers.length === 0) return succeed(Arr.empty() as any)
-    return callbackNoSignal((resume) => {
+    return callbackOptions((resume) => {
       const out = new Array<any>(fibers.length) as Arr.NonEmptyArray<any>
       const observers = Arr.empty<(exit: Exit.Exit<any, any>) => void>()
       const removeObservers = () => {
@@ -1183,12 +1183,16 @@ export { try_ as try }
 export const promise = <A>(
   evaluate: (signal: AbortSignal) => PromiseLike<A>
 ): Effect.Effect<A> =>
-  callbackOptions<A>(function(resume, signal) {
-    evaluate(signal!).then(
-      (a) => resume(succeed(a)),
-      (e) => resume(die(e))
-    )
-  }, evaluate.length !== 0)
+  callbackOptions<A>(
+    function(resume, signal) {
+      evaluate(signal!).then(
+        (a) => resume(succeed(a)),
+        (e) => resume(die(e))
+      )
+    },
+    undefined,
+    evaluate.length !== 0
+  )
 
 /** @internal */
 export const tryPromise = <A, E = Cause.UnknownError>(
@@ -1201,25 +1205,29 @@ export const tryPromise = <A, E = Cause.UnknownError>(
   const catcher = typeof options === "function"
     ? ((cause: unknown) => new UnknownError(cause, "An error occurred in Effect.tryPromise"))
     : options.catch
-  return callbackOptions<A, E>(function(resume, signal) {
-    // Defer the catcher until the fiber restores its async context.
-    const failWithCatch = (cause: unknown) =>
-      suspend(() => {
-        try {
-          return fail(internalCall(() => catcher(cause)) as E)
-        } catch (err) {
-          return die(err)
-        }
-      })
-    try {
-      f(signal!).then(
-        (a) => resume(succeed(a)),
-        (e) => resume(failWithCatch(e))
-      )
-    } catch (err) {
-      resume(failWithCatch(err))
-    }
-  }, f.length !== 0)
+  return callbackOptions<A, E>(
+    function(resume, signal) {
+      // Defer the catcher until the fiber restores its async context.
+      const failWithCatch = (cause: unknown) =>
+        suspend(() => {
+          try {
+            return fail(internalCall(() => catcher(cause)) as E)
+          } catch (err) {
+            return die(err)
+          }
+        })
+      try {
+        f(signal!).then(
+          (a) => resume(succeed(a)),
+          (e) => resume(failWithCatch(e))
+        )
+      } catch (err) {
+        resume(failWithCatch(err))
+      }
+    },
+    undefined,
+    f.length !== 0
+  )
 }
 
 /** @internal */
@@ -1233,14 +1241,23 @@ export const fiber = withFiber(succeed)
 /** @internal */
 export const fiberId = withFiberId(succeed)
 
-const callbackOptions: <A, E = never, R = never>(
+/**
+ * The primitive behind `callback`, `promise` and `tryPromise`. `register`
+ * receives an AbortSignal only when `withSignal` is set. Internal waits call
+ * this directly rather than through `callback`, which decides by reading
+ * `register.length`, a slow read on a fresh closure (about 80ns in
+ * JavaScriptCore).
+ *
+ * @internal
+ */
+export const callbackOptions: <A, E = never, R = never>(
   register: (
     this: Scheduler.Scheduler,
     resume: (effect: Effect.Effect<A, E, R>) => void,
     signal?: AbortSignal
   ) => void | Effect.Effect<void, E, R>,
-  withSignal: boolean,
-  blockedOn?: object
+  blockedOn?: object,
+  withSignal?: boolean
 ) => Effect.Effect<A, E, R> = (function() {
   const Proto = makePrimitiveProto({
     op: "Async",
@@ -1286,14 +1303,14 @@ const callbackOptions: <A, E = never, R = never>(
       return Yield
     }
   })
-  const AsyncImpl = function(this: any, register: any, withSignal: boolean, blockedOn: object | undefined) {
+  const AsyncImpl = function(this: any, register: any, blockedOn: object | undefined, withSignal: boolean) {
     this.register = register
-    this.withSignal = withSignal
     this.blockedOn = blockedOn
-  } as unknown as PrimitiveCtor<[register: any, withSignal: boolean, blockedOn: object | undefined]>
+    this.withSignal = withSignal
+  } as unknown as PrimitiveCtor<[register: any, blockedOn: object | undefined, withSignal: boolean]>
   AsyncImpl.prototype = Proto
-  return function(register: any, withSignal: boolean, blockedOn?: object) {
-    return new AsyncImpl(register, withSignal, blockedOn)
+  return function(register: any, blockedOn?: object, withSignal = false) {
+    return new AsyncImpl(register, blockedOn, withSignal)
   } as any
 })()
 
@@ -1324,19 +1341,7 @@ export const callback = <A, E = never, R = never>(
   options?: {
     readonly blockedOn?: object | undefined
   } | undefined
-): Effect.Effect<A, E, R> => callbackOptions(register as any, register.length >= 2, options?.blockedOn)
-
-/**
- * `callback` for a register that never reads the AbortSignal. Internal waits
- * use it because reading `length` from a fresh closure, as `callback` does to
- * decide whether to create a signal, is slow in JavaScriptCore.
- *
- * @internal
- */
-export const callbackNoSignal = <A, E = never, R = never>(
-  register: (resume: (effect: Effect.Effect<A, E, R>) => void) => void | Effect.Effect<void, E, R>,
-  blockedOn?: object
-): Effect.Effect<A, E, R> => callbackOptions(register, false, blockedOn)
+): Effect.Effect<A, E, R> => callbackOptions(register as any, options?.blockedOn, register.length >= 2)
 
 /** @internal */
 export const never: Effect.Effect<never> = (() => {
@@ -1747,7 +1752,7 @@ export const asVoid = <A, E, R>(
 /** @internal */
 export const sandbox = <A, E, R>(
   self: Effect.Effect<A, E, R>
-): Effect.Effect<A, Cause.Cause<E>, R> => catchCauseUnary(self, fail)
+): Effect.Effect<A, Cause.Cause<E>, R> => catchCause(self, fail)
 
 /** @internal */
 export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
@@ -1767,7 +1772,7 @@ export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
   withFiber((parent) => {
     const fibers = new Set<Fiber.Fiber<any, any>>()
     onExitUnsafe(parent, () => fibers.size === 0 ? undefined : fiberInterruptAll(fibers))
-    return callbackNoSignal((resume) => {
+    return callbackOptions((resume) => {
       const effects = Arr.fromIterable(all)
       const len = effects.length
       let doneCount = 0
@@ -1826,7 +1831,7 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
   withFiber((parent) => {
     const fibers = new Set<Fiber.Fiber<any, any>>()
     onExitUnsafe(parent, () => fibers.size === 0 ? undefined : fiberInterruptAll(fibers))
-    return callbackNoSignal((resume) => {
+    return callbackOptions((resume) => {
       let done = false
       let i = 0
       for (const effect of all) {
@@ -2759,25 +2764,23 @@ export const catchCause: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (cause: NoInfer<Cause.Cause<E>>) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<A | B, E2, R | R2> => catchCauseUnary(self, f.length !== 1 ? (cause: Cause.Cause<E>) => f(cause) : f)
+  ): Effect.Effect<A | B, E2, R | R2> => new OnFailureImpl(self, f)
 )
 const OnFailureProto = makePrimitiveProto({
   op: "OnFailure",
-  [evaluate]: evaluateCont
+  [evaluate]: evaluateCont,
+  // The fiber calls `[contE]` with itself as a second argument. Passing only
+  // the cause keeps it from a handler with optional or rest parameters,
+  // without reading `f.length`, which is slow on fresh closures.
+  [contE](this: any, cause) {
+    return this.f(cause)
+  }
 })
 const OnFailureImpl = function(this: any, self: Effect.Effect<any, any, any>, f: any) {
   this[args] = self
-  this[contE] = f
+  this.f = f
 } as unknown as PrimitiveCtor<[self: Effect.Effect<any, any, any>, f: any]>
 OnFailureImpl.prototype = OnFailureProto
-
-// `catchCause` for a handler that takes only the cause. Internal handlers use
-// it to skip reading `f.length`, which is slow on fresh closures in
-// JavaScriptCore, and the `dual` dispatch.
-const catchCauseUnary = <A, E, R, B, E2, R2>(
-  self: Effect.Effect<A, E, R>,
-  f: (cause: Cause.Cause<E>) => Effect.Effect<B, E2, R2>
-): Effect.Effect<A | B, E2, R | R2> => new OnFailureImpl(self, f)
 
 /** @internal */
 export const catchCauseIf: {
@@ -2799,7 +2802,7 @@ export const catchCauseIf: {
     predicate: Predicate.Predicate<Cause.Cause<E>>,
     f: (cause: Cause.Cause<E>) => Effect.Effect<B, E2, R2>
   ): Effect.Effect<A | B, E | E2, R | R2> =>
-    catchCauseUnary(self, (cause): Effect.Effect<B, E | E2, R2> => {
+    catchCause(self, (cause): Effect.Effect<B, E | E2, R2> => {
       if (!predicate(cause)) {
         return failCause(cause) as any
       }
@@ -2827,7 +2830,7 @@ export const catchCauseFilter: {
     filter: Filter.Filter<Cause.Cause<E>, EB, X>,
     f: (failure: EB, cause: Cause.Cause<E>) => Effect.Effect<B, E2, R2>
   ): Effect.Effect<A | B, Cause.Cause.Error<X> | E2, R | R2> =>
-    catchCauseUnary(self, (cause): Effect.Effect<B, Cause.Cause.Error<X> | E2, R2> => {
+    catchCause(self, (cause): Effect.Effect<B, Cause.Cause.Error<X> | E2, R2> => {
       const eb = filter(cause)
       return Result.isFailure(eb) ? failCause(eb.failure) : f(eb.success, cause)
     })
@@ -2895,7 +2898,7 @@ export const tapCause: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (cause: NoInfer<Cause.Cause<E>>) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<A, E | E2, R | R2> => catchCauseUnary(self, (cause) => andThen(f(cause), failCause(cause)))
+  ): Effect.Effect<A, E | E2, R | R2> => catchCause(self, (cause) => andThen(f(cause), failCause(cause)))
 )
 
 /** @internal */
@@ -2941,7 +2944,7 @@ export const tapCauseFilter: {
     filter: Filter.Filter<Cause.Cause<E>, EB, X>,
     f: (a: EB, cause: Cause.Cause<E>) => Effect.Effect<B, E2, R2>
   ): Effect.Effect<A, E | E2, R | R2> =>
-    catchCauseUnary(self, (cause) => {
+    catchCause(self, (cause) => {
       const result = filter(cause)
       if (Result.isFailure(result)) {
         return failCause(cause)
@@ -3034,22 +3037,6 @@ export const tapDefect: {
   ): Effect.Effect<A, E | E2, R | R2> => tapCauseFilter(self, findDefect as any, (_: any) => f(_)) as any
 )
 
-// `catchIf` without the `dual` dispatch, for `catchTag`
-const catchIfImpl = <A, E, R, A2, E2, R2, A3 = never, E3 = E, R3 = never>(
-  self: Effect.Effect<A, E, R>,
-  predicate: Predicate.Predicate<E>,
-  f: (e: E) => Effect.Effect<A2, E2, R2>,
-  orElse?: ((e: E) => Effect.Effect<A3, E3, R3>) | undefined
-): Effect.Effect<A | A2 | A3, E2 | E3, R | R2 | R3> =>
-  catchCauseUnary(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
-    const error = findRecoverableError(cause)
-    if (Result.isFailure(error)) return failCause(error.failure)
-    if (!predicate(error.success)) {
-      return orElse ? orElse(error.success as any) : failCause(cause as any as Cause.Cause<E3>)
-    }
-    return f(error.success as any)
-  })
-
 /** @internal */
 export const catchIf: {
   <E, EB extends E, A2, E2, R2, A3 = unassigned, E3 = never, R3 = never>(
@@ -3086,7 +3073,23 @@ export const catchIf: {
     f: (e: E) => Effect.Effect<A2, E2, R2>,
     orElse?: ((e: E) => Effect.Effect<A3, E3, R3>) | undefined
   ): Effect.Effect<A | A2 | Exclude<A3, unassigned>, E2 | E3 | (A3 extends unassigned ? E : never), R | R2 | R3>
-} = dual((args) => isEffect(args[0]), catchIfImpl)
+} = dual(
+  (args) => isEffect(args[0]),
+  <A, E, R, A2, E2, R2, A3 = never, E3 = E, R3 = never>(
+    self: Effect.Effect<A, E, R>,
+    predicate: Predicate.Predicate<E>,
+    f: (e: E) => Effect.Effect<A2, E2, R2>,
+    orElse?: ((e: E) => Effect.Effect<A3, E3, R3>) | undefined
+  ): Effect.Effect<A | A2 | A3, E2 | E3, R | R2 | R3> =>
+    catchCause(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
+      const error = findRecoverableError(cause)
+      if (Result.isFailure(error)) return failCause(error.failure)
+      if (!predicate(error.success)) {
+        return orElse ? orElse(error.success as any) : failCause(cause as any as Cause.Cause<E3>)
+      }
+      return f(error.success as any)
+    })
+)
 
 /** @internal */
 export const catchFilter: {
@@ -3111,7 +3114,7 @@ export const catchFilter: {
     f: (e: EB) => Effect.Effect<A2, E2, R2>,
     orElse?: ((e: X) => Effect.Effect<A3, E3, R3>) | undefined
   ): Effect.Effect<A | A2 | A3, E2 | E3, R | R2 | R3> =>
-    catchCauseUnary(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
+    catchCause(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
       const error = findRecoverableError(cause)
       if (Result.isFailure(error)) return failCause(error.failure)
       const result = filter(error.success)
@@ -3199,7 +3202,7 @@ export const catchTag: {
     const pred = Array.isArray(k)
       ? ((e: E): e is any => hasProperty(e, "_tag") && k.includes(e._tag))
       : isTagged(k as string)
-    return catchIfImpl(self, pred, f as any, orElse as any) as any
+    return catchIf(self, pred, f, orElse as any) as any
   }
 )
 
@@ -3467,7 +3470,7 @@ export const mapError: {
   <A, E, R, E2>(
     self: Effect.Effect<A, E, R>,
     f: (e: E) => E2
-  ): Effect.Effect<A, E2, R> => catchCauseUnary(self, (cause) => failCause(causeMap(cause, f)))
+  ): Effect.Effect<A, E2, R> => catchCause(self, (cause) => failCause(causeMap(cause, f)))
 )
 
 /** @internal */
@@ -4075,7 +4078,7 @@ const combineFinalizerCause = <A, E, XE, XR>(
 ): Effect.Effect<void, E | XE, XR> =>
   exitIsSuccess(exit_)
     ? finalizer
-    : catchCauseUnary(finalizer, (cause) => failCause(causeElectDefects(causeCombine(exit_.cause, cause))))
+    : catchCause(finalizer, (cause) => failCause(causeElectDefects(causeCombine(exit_.cause, cause))))
 
 const scopeCloseFinalizers = fnUntraced(function*<A, E>(
   self: Scope.Scope,
@@ -5207,7 +5210,7 @@ const iterateConcurrentImpl = <S, A, X, E, R, E2>(options: IterateOptions<S, A, 
           if (terminal) break
         } else if (!parentFiber) {
           fibers = new Set()
-          return callbackNoSignal((cb) => {
+          return callbackOptions((cb) => {
             parentFiber = getCurrentFiber()!
             effect = eff
             resume = cb
@@ -6016,7 +6019,7 @@ class Latch implements _Latch.Latch {
     this.flushWaiters()
     return true
   }
-  await = callbackNoSignal<void>((resume) => {
+  await = callbackOptions<void>((resume) => {
     if (this._isOpen) {
       return resume(void_)
     }
@@ -6463,7 +6466,7 @@ class ClockImpl implements Clock.Clock {
   private sleepMillis(millis: number): Effect.Effect<void> {
     if (millis <= 0) return yieldNow
     else if (!Number.isFinite(millis)) return never
-    return callbackNoSignal((resume) => {
+    return callbackOptions((resume) => {
       const continuation = millis > MAX_TIMER_MILLIS
         ? this.sleepMillis(millis - MAX_TIMER_MILLIS)
         : void_

@@ -1574,4 +1574,14 @@ describe("Pool", () => {
         deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 0, acquiring: 0, pending: 0, min: 2, max: 2 })
       }))
   })
+
+  it.effect("a fixed pool records when a released item became idle", () =>
+    Effect.gen(function*() {
+      const pool = yield* Pool.make({ acquire: Effect.succeed("item"), size: 1 })
+      yield* Effect.scoped(Pool.get(pool))
+      const [item] = pool.state.items
+      yield* TestClock.adjust("50 millis")
+      yield* Effect.scoped(Pool.get(pool))
+      strictEqual(item.idleSince, 50)
+    }))
 })

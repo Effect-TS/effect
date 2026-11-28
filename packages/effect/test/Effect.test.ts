@@ -4582,6 +4582,12 @@ describe("Effect", () => {
         )
         assert.deepStrictEqual(result, "e2")
       }))
+    it.effect("passes only the cause to handlers with rest or optional parameters", () =>
+      Effect.gen(function*() {
+        const rest = yield* Effect.catchCause(Effect.fail("e"), (...args) => Effect.succeed(args.length))
+        const optional = yield* Effect.catchCause(Effect.fail("e"), (_, extra?: unknown) => Effect.succeed(extra))
+        assert.deepStrictEqual([rest, optional], [1, undefined])
+      }))
   })
 
   describe("transaction (composable transactions)", () => {

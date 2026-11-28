@@ -132,10 +132,12 @@ const setTimer: (f: () => void) => () => void = "setImmediate" in globalThis
   // branch tree-shakeable.
   : "scheduler" in globalThis
   ? (f) => {
-    const scheduler = (globalThis as { scheduler?: { postTask?: (f: () => void) => unknown } }).scheduler
-    if (typeof scheduler?.postTask !== "function") return setTimeoutTimer(f)
+    const scheduler = (globalThis as { scheduler?: { postTask?: (task: () => void) => Promise<unknown> } }).scheduler
+    if (!scheduler?.postTask) return setTimeoutTimer(f)
     let cancelled = false
-    scheduler.postTask(() => cancelled || f())
+    // A task that throws rejects the promise `postTask` returns. Report it as
+    // an uncaught error, as a throwing `setTimeout` callback would be.
+    scheduler.postTask(() => cancelled || f()).catch(globalThis.reportError)
     return (): void => {
       cancelled = true
     }
