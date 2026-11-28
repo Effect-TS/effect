@@ -822,6 +822,17 @@ describe("Effect", () => {
         return result + this.b
       }).pipe(Effect.runPromise).then((_) => assert.deepStrictEqual(_, 3)))
 
+    it("deeply nested generators return without overflowing the stack", () => {
+      let effect: Effect.Effect<number> = Effect.succeed(0)
+      for (let i = 0; i < 10_000; i++) {
+        const inner = effect
+        effect = Effect.gen(function*() {
+          return (yield* inner) + 1
+        })
+      }
+      assert.strictEqual(Effect.runSync(effect), 10_000)
+    })
+
     it("iterator yields the effect once, then completes with the sent value", () => {
       const effect = Effect.succeed(1)
       const iterator = effect[Symbol.iterator]()
@@ -4581,6 +4592,20 @@ describe("Effect", () => {
           Effect.catchCause(Effect.fail("e1" as const), () => Effect.fail("e2" as const))
         )
         assert.deepStrictEqual(result, "e2")
+      }))
+
+    it.effect("passes only the cause to variadic and multi-parameter handlers", () =>
+      Effect.gen(function*() {
+        const variadicCount = yield* Effect.catchCause(
+          Effect.fail("e1"),
+          (...args: Array<unknown>) => Effect.succeed(args.length)
+        )
+        const twoArg = ((_cause: Cause.Cause<string>, extra?: unknown) => Effect.succeed(extra)) as (
+          cause: Cause.Cause<string>
+        ) => Effect.Effect<unknown>
+        const secondArg = yield* Effect.catchCause(Effect.fail("e1"), twoArg)
+        assert.strictEqual(variadicCount, 1)
+        assert.strictEqual(secondArg, undefined)
       }))
   })
 

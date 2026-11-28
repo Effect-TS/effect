@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Deferred, Effect, Fiber, Supervisor, TxRef } from "effect"
+import { Context, Deferred, Effect, Fiber, Latch, Pool, PubSub, Queue, Semaphore, Supervisor, TxRef } from "effect"
 
 type Event =
   | { readonly _tag: "start"; readonly fiber: Fiber.Fiber<unknown, unknown>; readonly parent: unknown }
@@ -121,6 +121,31 @@ describe("Supervisor", () => {
       Effect.gen(function*() {
         const deferred = Deferred.makeUnsafe<void>()
         assert.strictEqual((yield* blockOf(Deferred.await(deferred))).blockedOn, deferred)
+      }))
+
+    it.effect("fiber, queue, pubsub, semaphore, pool and latch waits report what they wait on", () =>
+      Effect.gen(function*() {
+        const fiber = yield* Effect.forkChild(Effect.never)
+        const queue = yield* Queue.bounded<number>(1)
+        const full = yield* Queue.bounded<number>(1)
+        yield* Queue.offer(full, 0)
+        const pubsub = yield* PubSub.bounded<number>(1)
+        const subscription = yield* PubSub.subscribe(pubsub)
+        const semaphore = yield* Semaphore.make(0)
+        const pool = yield* Pool.make({ acquire: Effect.succeed("item"), size: 1 })
+        yield* Pool.get(pool)
+        const latch = Latch.makeUnsafe()
+
+        assert.strictEqual((yield* blockOf(Fiber.join(fiber))).blockedOn, fiber)
+        assert.strictEqual((yield* blockOf(Fiber.await(fiber))).blockedOn, fiber)
+        assert.deepStrictEqual((yield* blockOf(Fiber.joinAll([fiber]))).members, [fiber])
+        assert.deepStrictEqual((yield* blockOf(Fiber.awaitAll([fiber]))).members, [fiber])
+        assert.strictEqual((yield* blockOf(Queue.take(queue))).blockedOn, queue)
+        assert.strictEqual((yield* blockOf(Queue.offer(full, 1))).blockedOn, full)
+        assert.strictEqual((yield* blockOf(PubSub.take(subscription))).blockedOn, subscription)
+        assert.strictEqual((yield* blockOf(Semaphore.take(semaphore, 1))).blockedOn, semaphore)
+        assert.strictEqual((yield* blockOf(Effect.scoped(Pool.get(pool)))).blockedOn, pool)
+        assert.strictEqual((yield* blockOf(Latch.await(latch))).blockedOn, latch)
       }))
 
     it.effect("a race reports the Set of fibers it forked", () =>

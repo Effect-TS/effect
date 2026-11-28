@@ -429,4 +429,45 @@ describe("Fiber", () => {
     assert.isTrue(Exit.hasInterrupts(child.pollUnsafe()!))
     assert.deepStrictEqual(main.pollUnsafe(), Exit.void)
   })
+
+  it.effect("interrupting a fiber blocked on Fiber.join runs finalizers and leaves target healthy", () =>
+    Effect.gen(function*() {
+      const gate = yield* Deferred.make<number>()
+      const target = yield* Effect.forkChild(Deferred.await(gate))
+      let finalized = false
+      const joiner = yield* Effect.forkChild(
+        Effect.ensuring(
+          Fiber.join(target),
+          Effect.sync(() => {
+            finalized = true
+          })
+        )
+      )
+      yield* Effect.yieldNow
+      yield* Fiber.interrupt(joiner)
+      const joinerExit = yield* Fiber.await(joiner)
+      assert.isTrue(Exit.hasInterrupts(joinerExit))
+      assert.isTrue(finalized)
+      yield* Deferred.succeed(gate, 42)
+      assert.strictEqual(yield* Fiber.join(target), 42)
+    }))
+
+  it.effect("a child started immediately forks its own children", () =>
+    Effect.gen(function*() {
+      const grandchildInterrupted = yield* Deferred.make<void>()
+      const child = yield* Effect.forkChild(
+        Effect.gen(function*() {
+          yield* Effect.forkChild(
+            Effect.onInterrupt(Effect.never, () => Deferred.succeed(grandchildInterrupted, undefined)),
+            { startImmediately: true }
+          )
+          return yield* Effect.never
+        }),
+        { startImmediately: true }
+      )
+      const detached = yield* Effect.forkDetach(Effect.succeed(1), { startImmediately: true })
+      assert.deepStrictEqual(detached.pollUnsafe(), Exit.succeed(1))
+      yield* Fiber.interrupt(child)
+      yield* Deferred.await(grandchildInterrupted)
+    }))
 })
