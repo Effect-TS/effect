@@ -324,6 +324,34 @@ describe("Formatter", () => {
   })
 
   describe("formatJson", () => {
+    it("redacts values with toJSON under plain holders, getter holders and their siblings", () => {
+      const secret = (label: string) => ({
+        [Redactable.symbolRedactable]: () => `<${label}>`,
+        toJSON: () => "leaked"
+      })
+      const withGetter = {
+        plain: { secret: secret("nested"), list: [secret("item"), 1] },
+        get computed() {
+          return secret("getter")
+        }
+      }
+      const input = {
+        first: secret("first"),
+        holder: withGetter,
+        after: { secret: secret("after") },
+        list: [{ secret: secret("in-list") }, secret("element")]
+      }
+      strictEqual(
+        formatJson(input),
+        JSON.stringify({
+          first: "<first>",
+          holder: { plain: { secret: "<nested>", list: ["<item>", 1] }, computed: "<getter>" },
+          after: { secret: "<after>" },
+          list: [{ secret: "<in-list>" }, "<element>"]
+        })
+      )
+    })
+
     it("returns valid JSON for undefined input", () => {
       strictEqual(formatJson(undefined), `null`)
     })

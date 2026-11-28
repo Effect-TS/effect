@@ -311,11 +311,21 @@ export function formatJson(input: unknown, options?: {
   readonly space?: number | string | undefined
 }): string {
   const ancestors: Array<object> = []
-  const sources = new WeakMap<object, object>()
+  // Holders known to have only data properties, so a key can be read directly.
+  // Depth-first traversal means the holder is the last ancestor pushed.
+  const plain: Array<boolean> = []
+  let sources: WeakMap<object, object> | undefined
   return JSON.stringify(
     input,
     function(this: object, key: string, value: unknown) {
-      const original = Object.getOwnPropertyDescriptor(sources.get(this) ?? this, key)?.value
+      while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {
+        ancestors.pop()
+        plain.pop()
+      }
+      // The root holder is the wrapper JSON.stringify creates around the input.
+      const original = ancestors.length === 0 || plain[plain.length - 1]
+        ? (this as any)[key]
+        : Object.getOwnPropertyDescriptor(sources?.get(this) ?? this, key)?.value
       const redacted = hasProperty(original, symbolRedactable)
         ? redact(original)
         : redact(value)
@@ -328,32 +338,44 @@ export function formatJson(input: unknown, options?: {
       const current = redacted instanceof Error && !hasProperty(redacted, "toJSON")
         ? { ...redacted, name: redacted.name, message: redacted.message }
         : redacted
-      while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {
-        ancestors.pop()
-      }
       if (ancestors.includes(redacted)) {
         return undefined // circular reference
       }
       ancestors.push(redacted)
+      plain.push(false)
       if (current !== redacted) {
         ancestors.push(current)
+        plain.push(false)
       }
       // Leave boxed primitives intact so JSON.stringify can unbox them natively.
-      if (!hasGetter(current) || isJsonPrimitiveWrapper(current)) {
+      if (!hasGetter(current)) {
+        plain[plain.length - 1] = true
+        return current
+      }
+      if (isJsonPrimitiveWrapper(current)) {
         return current
       }
       const view = redactingView(current)
-      sources.set(view, current)
+      ;(sources ??= new WeakMap()).set(view, current)
       ancestors.push(view)
+      plain.push(false)
       return view
     },
     options?.space
   ) ?? "null"
 }
 
+// Annex B `__lookupGetter__` answers for an own property without allocating a
+// property descriptor. Engines without it fall back to the descriptor.
+const lookupGetter: ((this: object, key: string) => unknown) | undefined = (Object.prototype as any).__lookupGetter__
+
 function hasGetter(object: object): boolean {
-  for (const key of Object.getOwnPropertyNames(object)) {
-    if (Object.getOwnPropertyDescriptor(object, key)?.get !== undefined) {
+  const keys = Object.getOwnPropertyNames(object)
+  for (let i = 0; i < keys.length; i++) {
+    const getter = lookupGetter !== undefined
+      ? lookupGetter.call(object, keys[i])
+      : Object.getOwnPropertyDescriptor(object, keys[i])?.get
+    if (getter !== undefined) {
       return true
     }
   }
