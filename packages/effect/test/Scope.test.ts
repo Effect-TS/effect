@@ -1,5 +1,5 @@
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Cause, Deferred, Duration, Effect, Exit, Fiber, Scope } from "effect"
+import { Cause, Context, Deferred, Duration, Effect, Exit, Fiber, Scope } from "effect"
 import { TestClock } from "effect/testing"
 
 describe("Scope", () => {
@@ -28,6 +28,45 @@ describe("Scope", () => {
       yield* Fiber.join(closing)
       assert.deepStrictEqual(whileBlocked, [])
       assert.deepStrictEqual(order, ["release", "effect", "scope"])
+    }))
+
+  it.effect("keeps resources acquired during finalization alive until each cleanup finishes", () =>
+    Effect.gen(function*() {
+      const Tag = Context.Service<string>("ScopeTest/Tag")
+      const events: Array<string> = []
+      const cleanup = Effect.fnUntraced(function*(label: string, exit: Exit.Exit<unknown, unknown>) {
+        const tag = yield* Tag
+        yield* Effect.acquireRelease(
+          Effect.sync(() => {
+            events.push(`acquire:${label}`)
+          }),
+          () =>
+            Effect.sync(() => {
+              events.push(`release:${label}`)
+            })
+        )
+        events.push(`use:${label}:${tag}:${Exit.isFailure(exit) ? String(Cause.squash(exit.cause)) : "ok"}`)
+      })
+
+      yield* Effect.scoped(
+        Effect.gen(function*() {
+          yield* Effect.addFinalizer((exit) => cleanup("finalizer", exit)).pipe(Effect.provideService(Tag, "captured"))
+          yield* Effect.acquireRelease(
+            Effect.succeed("resource"),
+            (resource, exit) => cleanup(resource, exit)
+          ).pipe(Effect.provideService(Tag, "captured"))
+          return yield* Effect.fail("boom")
+        })
+      ).pipe(Effect.exit)
+
+      expect(events).toEqual([
+        "acquire:resource",
+        "use:resource:captured:boom",
+        "release:resource",
+        "acquire:finalizer",
+        "use:finalizer:captured:boom",
+        "release:finalizer"
+      ])
     }))
 
   describe("parallel finalization", () => {
