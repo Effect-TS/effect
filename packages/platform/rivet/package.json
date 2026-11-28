@@ -1,0 +1,39 @@
+{
+  "name": "@effect/platform-rivet",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Prototype: Effect Cluster entities on Rivet Actors",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git",
+    "directory": "packages/platform/rivet"
+  },
+  "bugs": {
+    "url": "https://github.com/Effect-TS/effect/issues"
+  },
+  "sideEffects": [],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null,
+    "./index": null,
+    "./*/index": null
+  },
+  "scripts": {
+    "codegen": "effect-utils codegen",
+    "check": "tsc -b tsconfig.json"
+  },
+  "peerDependencies": {
+    "effect": "workspace:^",
+    "rivetkit": "^3.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "effect": "workspace:^",
+    "rivetkit": "3.1.1"
+  }
+}

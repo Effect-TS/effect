@@ -12,6 +12,9 @@ const integrationTestsEnabled = process.env.EFFECT_INTEGRATION_TESTS === "1"
 // Set EFFECT_MSSQL_INTEGRATION_TESTS=0 to skip only the MSSQL integration tests.
 const mssqlIntegrationTestsDisabled = integrationTestsEnabled && process.env.EFFECT_MSSQL_INTEGRATION_TESTS === "0"
 const clusterTestsEnabled = process.env.EFFECT_CLUSTER_TESTS === "1"
+// The Rivet prototype suite starts a Rivet engine and node processes on fixed
+// ports, so it only runs when asked for.
+const rivetTestsEnabled = process.env.EFFECT_RIVET_TESTS === "1"
 
 const project = (
   name: string,
@@ -206,6 +209,28 @@ export default defineConfig({
         ]
       ),
       ...project("@effect/platform-node-shared", "packages/platform/node-shared", isNode),
+      ...project("@effect/platform-rivet", "packages/platform/rivet", isNode, {}, [
+        ...exclude,
+        "**/test/integration/**"
+      ]),
+      ...project(
+        "@effect/platform-rivet-integration",
+        "packages/platform/rivet",
+        isNode && rivetTestsEnabled,
+        {
+          test: {
+            retry: 0,
+            fileParallelism: false,
+            sequence: {
+              concurrent: false
+            },
+            testTimeout: 300_000,
+            hookTimeout: 120_000
+          }
+        },
+        undefined,
+        ["test/integration/**/*.test.ts"]
+      ),
       ...project("@effect/vitest", "packages/vitest"),
       ...project("@effect/sql-clickhouse", "packages/sql/clickhouse"),
       ...project("@effect/sql-d1", "packages/sql/d1", !isDeno),

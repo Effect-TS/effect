@@ -19,6 +19,7 @@ enableGlobalVirtualStore: false
 fetchTimeout: 180000
 
 allowBuilds:
+  cbor-extract: false
   core-js: false
   cpu-features: false
   dprint: false
