@@ -16,6 +16,8 @@ import * as Cause from "../Cause.ts"
 import * as Clock from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Digest from "../crypto/Digest.ts"
+import * as Mac from "../crypto/Mac.ts"
+import * as SecureRandom from "../crypto/SecureRandom.ts"
 import * as Data from "../Data.ts"
 import * as Deferred from "../Deferred.ts"
 import * as Duration from "../Duration.ts"
@@ -26,6 +28,7 @@ import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import * as FindMyWay from "../http/FindMyWay.ts"
 import * as Headers from "../http/Headers.ts"
+import * as HttpClient from "../http/HttpClient.ts"
 import { appendPreResponseHandlerUnsafe } from "../http/HttpEffect.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
 import * as HttpServerRequest from "../http/HttpServerRequest.ts"
@@ -34,6 +37,7 @@ import * as HttpTraceContext from "../http/HttpTraceContext.ts"
 import type * as JsonSchema from "../JsonSchema.ts"
 import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
+import type * as Dns from "../net/Dns.ts"
 import * as Option from "../Option.ts"
 import * as Predicate from "../Predicate.ts"
 import * as PubSub from "../PubSub.ts"
@@ -55,10 +59,12 @@ import * as Stream from "../Stream.ts"
 import * as Tracer from "../Tracer.ts"
 import type * as Types from "../Types.ts"
 import * as AiError from "./AiError.ts"
+import * as McpCallbackGuard from "./internal/mcpCallbackGuard.ts"
 import * as McpCore from "./internal/mcpCore.ts"
 import * as McpProtocolInternal from "./internal/mcpProtocol.ts"
 import * as McpRuntime from "./internal/mcpRuntime.ts"
 import * as McpSkills from "./internal/mcpSkills.ts"
+import * as McpWebhooks from "./internal/mcpWebhooks.ts"
 import * as InternalStructuredOutput from "./internal/structured-output.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
 import * as McpSchema from "./McpSchema.ts"
@@ -345,6 +351,11 @@ export type MiddlewareMethod =
   | "skills/list"
   | "skills/get"
   | "resources/directory/read"
+  | "events/list"
+  | "events/poll"
+  | "events/stream"
+  | "events/subscribe"
+  | "events/unsubscribe"
 
 /**
  * Request metadata passed to MCP middleware.
@@ -820,11 +831,17 @@ const internalError = new InternalError({ message: "Internal error" })
 const rejectWith = (error: McpErrorBase) =>
   Effect.fail(new McpCore.RequestRejected({ code: error.code, message: error.message, data: error.data, error }))
 
-type CallMethod = "tools/call" | "resources/read" | "prompts/get" | "completion/complete" | "skills/get"
+type CallMethod =
+  | "tools/call"
+  | "resources/read"
+  | "prompts/get"
+  | "completion/complete"
+  | "skills/get"
+  | McpCore.EventMethod
 
 type ListMethod = Exclude<MiddlewareMethod, CallMethod>
 
-interface NotFoundErrors {
+interface NotFoundErrors extends Record<McpCore.EventMethod, McpSchema.NotFound> {
   readonly "tools/call": McpCore.ToolNotFound
   readonly "resources/read": McpCore.ResourceNotFound
   readonly "prompts/get": McpCore.PromptNotFound
@@ -844,6 +861,11 @@ const notFound = (method: CallMethod, target: string): NotFoundErrors[CallMethod
       return new InvalidParams({ message: "Unknown completion reference or argument" })
     case "skills/get":
       return new McpCore.SkillNotFound({ uri: target })
+    case "events/poll":
+    case "events/stream":
+    case "events/subscribe":
+    case "events/unsubscribe":
+      return McpCore.eventNotFound(target)
   }
 }
 
@@ -4204,6 +4226,451 @@ export const skill: {
   (options: SkillOptions): Layer.Layer<never, Cause.IllegalArgumentError, McpServer>
 } = (skillOrOptions: Skill.Skill | SkillOptions, registration?: SkillRegistration) =>
   Layer.effectDiscard(registerSkillFiles(toSkillOptions(skillOrOptions, registration)))
+
+// Events
+// =============================================================================
+
+/**
+ * A failure an event handler reports to the client: a JSON-RPC error on a
+ * poll or when a push stream opens, and `notifications/events/terminated`
+ * once it is open.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export type EventError =
+  | InvalidParams
+  | InternalError
+  | McpSchema.NotFound
+  | McpSchema.Forbidden
+  | McpSchema.ResourceExhausted
+  | McpSchema.Unsupported
+
+/**
+ * Where a poll starts. `cursor` is `null` to start from now, which replays
+ * nothing. With a cursor, replay starts at whichever is later: the cursor, or
+ * `maxAgeMs` before now.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export interface EventPollRequest {
+  readonly cursor: string | null
+  readonly maxAgeMs?: number | undefined
+  readonly maxEvents?: number | undefined
+}
+
+/**
+ * Where a push stream starts, read as for {@link EventPollRequest}.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export interface EventStreamRequest {
+  readonly cursor: string | null
+  readonly maxAgeMs?: number | undefined
+}
+
+/**
+ * One occurrence, with its payload as the event's `payload` schema types it.
+ * `eventId` stays the same however often the occurrence is delivered.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export interface EventOccurrence<A> {
+  readonly eventId: string
+  readonly timestamp: string
+  readonly data: A
+  readonly _meta?: Readonly<Record<string, unknown>> | undefined
+}
+
+/**
+ * A poll's answer. `truncated` says delivery started later than the cursor,
+ * and `hasMore` that `maxEvents` cut the batch short. `nextPollMs` defaults
+ * to 30 seconds.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export interface EventPollResult<A> {
+  readonly events: ReadonlyArray<EventOccurrence<A>>
+  readonly cursor: string | null
+  readonly truncated?: boolean | undefined
+  readonly hasMore?: boolean | undefined
+  readonly nextPollMs?: number | undefined
+}
+
+/**
+ * What a push stream carries: an occurrence and the cursor after it; a
+ * position checked without a match, which the next heartbeat reports; a gap,
+ * sent as a fresh `notifications/events/active` with `truncated`; or an error
+ * that leaves the stream open.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export type EventStreamItem<A> =
+  | ({ readonly _tag: "Event"; readonly cursor: string | null } & EventOccurrence<A>)
+  | { readonly _tag: "Position"; readonly cursor: string | null }
+  | { readonly _tag: "Gap"; readonly cursor: string | null }
+  | { readonly _tag: "Error"; readonly error: EventError }
+
+/**
+ * An accepted push subscription: where it starts, and its items. A failure
+ * of `items` ends it.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export interface EventSubscription<A, R> {
+  readonly cursor: string | null
+  readonly truncated?: boolean | undefined
+  readonly items: Stream.Stream<EventStreamItem<A>, EventError, R>
+}
+
+/**
+ * A schema for an event's `data`. SEP-3415 requires `data` to be a JSON
+ * object, so the schema must encode to one, as `Schema.Struct`,
+ * `Schema.Class` and `Schema.Record` do.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export type EventPayloadSchema = Schema.Codec<any, { readonly [x: string]: unknown }>
+
+/**
+ * Options for {@link registerEvent} and {@link event}.
+ *
+ * **Details**
+ *
+ * `parameters` types the subscription arguments, an empty object by default,
+ * and `payload` the occurrences' `data`, which must encode to a JSON object
+ * (see {@link EventPayloadSchema}); both are advertised as JSON Schema
+ * by `events/list`. `poll` offers poll delivery and `stream` push delivery,
+ * and at least one is required. Once {@link layerEventWebhooks} is installed,
+ * `stream` also backs webhook delivery; without it, `events/subscribe` and
+ * `events/unsubscribe` answer `Unsupported`.
+ *
+ * Both handlers receive the client's cursor, `null` to start from now, and
+ * own the replay rules: an absent cursor returns no past events, replay starts
+ * at whichever is later of the cursor and `maxAgeMs` before now, and
+ * `maxEvents` caps a poll's batch.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export type EventOptions<Params extends Schema.Codec<any, any>, Payload extends EventPayloadSchema, R> =
+  & {
+    readonly name: string
+    readonly description?: string | undefined
+    readonly parameters?: Params | undefined
+    readonly payload: Payload
+    readonly _meta?: Readonly<Record<string, unknown>> | undefined
+    readonly annotations?: Context.Context<never> | undefined
+  }
+  & (
+    | {
+      readonly poll: EventPollHandler<Params, Payload, R>
+      readonly stream?: EventStreamHandler<Params, Payload, R> | undefined
+    }
+    | {
+      readonly poll?: EventPollHandler<Params, Payload, R> | undefined
+      readonly stream: EventStreamHandler<Params, Payload, R>
+    }
+  )
+
+/**
+ * Answers an `events/poll` request with the occurrences after its cursor.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export type EventPollHandler<Params extends Schema.Codec<any, any>, Payload extends EventPayloadSchema, R> = (
+  args: Params["Type"],
+  request: EventPollRequest
+) => Effect.Effect<EventPollResult<Payload["Type"]>, EventError, R>
+
+/**
+ * Opens a push subscription, or a webhook subscription once
+ * {@link layerEventWebhooks} is installed. The scope is the subscription's, so
+ * its finalizers run when it ends.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export type EventStreamHandler<Params extends Schema.Codec<any, any>, Payload extends EventPayloadSchema, R> = (
+  args: Params["Type"],
+  request: EventStreamRequest
+) => Effect.Effect<EventSubscription<Payload["Type"], R>, EventError, R | Scope.Scope>
+
+const DEFAULT_NEXT_POLL_MS = 30_000
+
+/**
+ * Registers an event type under the MCP Events extension (SEP-3415).
+ *
+ * **Details**
+ *
+ * The server declares `io.modelcontextprotocol/events` on revision
+ * `2026-07-28` once any event type is registered, and answers `events/list`,
+ * `events/poll`, `events/stream`, and with {@link layerEventWebhooks}
+ * `events/subscribe` and `events/unsubscribe`. A push stream runs `stream` for its
+ * lifetime inside the request's middleware, sends heartbeats carrying the
+ * last cursor, and ends when the client goes away. Services read by `poll`
+ * and `stream` are request-level, as for tools.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export const registerEvent: <
+  Params extends Schema.Codec<any, any> = Schema.Struct<{}>,
+  Payload extends EventPayloadSchema = EventPayloadSchema,
+  R = never
+>(options: EventOptions<Params, Payload, R>) => Effect.Effect<void, never, RegistrationRequirements<never, R>> = Effect
+  .fnUntraced(function*(options: EventOptions<Schema.Codec<any, any>, EventPayloadSchema, any>) {
+    const { name, poll, stream } = options
+    // Typed callers cannot get here; untyped ones still might.
+    if (poll === undefined && stream === undefined) {
+      return yield* Effect.die(new Cause.IllegalArgumentError(`Event ${name}: give it poll, stream or both`))
+    }
+    const registry = yield* McpServer
+    const { core, globalMiddleware } = internalState.get(registry)!
+    const services = yield* Effect.context<never>()
+    const annotations = options.annotations ?? Context.empty()
+    const { invoke, visible } = makeInvoke(services, globalMiddleware)
+    const parameters = options.parameters ?? Schema.Struct({})
+    const decodeArguments = Schema.decodeUnknownEffect(Schema.toCodecJson(parameters))
+    const encodePayload = Schema.encodeUnknownEffect(Schema.toCodecJson(options.payload))
+    const argumentsOf = (args: unknown) =>
+      decodeArguments(args).pipe(Effect.mapError((error) => new InvalidParams({ message: error.message })))
+    const encodeEvent = (event: EventOccurrence<unknown>) =>
+      encodePayload(event.data).pipe(
+        Effect.flatMap((data) => Predicate.isReadonlyObject(data) ? Effect.succeed(data) : Effect.fail(data)),
+        Effect.map((data): McpCore.EncodedEvent => ({
+          eventId: event.eventId,
+          timestamp: event.timestamp,
+          data,
+          ...(event._meta === undefined ? {} : { _meta: event._meta })
+        })),
+        Effect.mapError(() => new InternalError({ message: `Event '${name}' payload failed to encode` }))
+      )
+    yield* core.events.register({
+      descriptor: {
+        name,
+        ...(options.description === undefined ? {} : { description: options.description }),
+        delivery: [
+          ...(poll === undefined ? [] : ["poll" as const]),
+          ...(stream === undefined ? [] : ["push" as const])
+        ],
+        inputSchema: toolJsonSchema(parameters, false) as Record<string, unknown>,
+        payloadSchema: toolJsonSchema(options.payload, false) as Record<string, unknown>,
+        ...(options._meta === undefined ? {} : { _meta: options._meta })
+      },
+      isVisible: isEnabled(annotations),
+      visible: visible("events/list", name),
+      decodeArguments: argumentsOf,
+      invoke: (effect, invocation, request) =>
+        invoke(effect, invocation, { method: request.method, target: name, payload: request.payload }),
+      // Request services come from the middleware `invoke` runs them in.
+      poll: poll === undefined ? undefined : Effect.fnUntraced(function*(
+        args: unknown,
+        request: McpCore.EventPollRequest
+      ) {
+        const result = yield* poll(args, request)
+        return {
+          events: yield* Effect.forEach(result.events, encodeEvent),
+          cursor: result.cursor,
+          truncated: result.truncated ?? false,
+          hasMore: result.hasMore ?? false,
+          nextPollMs: result.nextPollMs ?? DEFAULT_NEXT_POLL_MS
+        }
+      }) as unknown as McpCore.EventRegistration["poll"],
+      stream: stream === undefined ? undefined : (args, request, deliver) =>
+        Effect.scoped(Effect.gen(function*() {
+          const subscription = yield* stream(args, request)
+          // The items run on the delivery fiber, so they keep this request's services.
+          const context = yield* Effect.context<any>()
+          const items = subscription.items.pipe(
+            Stream.mapEffect((item): Effect.Effect<McpCore.EventStreamItem> =>
+              item._tag === "Event"
+                ? encodeEvent(item).pipe(
+                  Effect.map((event) => ({ ...event, _tag: "Event" as const, cursor: item.cursor })),
+                  Effect.catch((error) => Effect.succeed({ _tag: "Error" as const, error }))
+                )
+                : Effect.succeed(item)
+            ),
+            Stream.provideContext(context)
+          )
+          yield* deliver({ cursor: subscription.cursor, truncated: subscription.truncated ?? false, items })
+        })) as unknown as Effect.Effect<void, McpCore.EventFailure>
+    })
+  }) as any
+
+/**
+ * Creates a layer that registers an event type under the MCP Events
+ * extension (SEP-3415).
+ *
+ * @see {@link registerEvent} for the Effect-level event registration API
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export const event = <
+  Params extends Schema.Codec<any, any> = Schema.Struct<{}>,
+  Payload extends EventPayloadSchema = EventPayloadSchema,
+  R = never
+>(options: EventOptions<Params, Payload, R>): Layer.Layer<never, never, RegistrationRequirements<never, R>> =>
+  Layer.effectDiscard(registerEvent(options))
+
+/**
+ * The reason a {@link CallbackGuard} refuses a callback URL.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export class CallbackRejected extends Data.TaggedError("CallbackRejected")<{
+  readonly message: string
+}> {}
+
+/**
+ * Decides which webhook callback URLs may be reached.
+ *
+ * **Details**
+ *
+ * `check` runs when a subscription is created and again before every POST.
+ * Resolving a host name needs the platform, so the default refuses every URL:
+ * a server that offers webhooks provides a guard that resolves the host and
+ * refuses addresses that are not globally routable. That check alone cannot
+ * stop DNS rebinding, so the `HttpClient` given to {@link layerEventWebhooks}
+ * must connect only to the address it validated, sending the original host
+ * name in `Host` and TLS SNI, and must not follow redirects. `allowsPlaintext`
+ * admits an `http:` URL, which only a local test setup should do.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export const CallbackGuard = Context.Reference<{
+  readonly check: (url: URL) => Effect.Effect<void, CallbackRejected>
+  readonly allowsPlaintext?: ((url: URL) => boolean) | undefined
+}>("effect/ai/McpServer/CallbackGuard", {
+  defaultValue: () => ({
+    check: (url) => Effect.fail(new CallbackRejected({ message: `No callback guard admits ${url.host}` }))
+  })
+})
+
+/**
+ * Provides a {@link CallbackGuard} that admits callbacks only to globally
+ * routable addresses.
+ *
+ * **Details**
+ *
+ * `check` resolves the URL's host with `Dns` and refuses it when any address
+ * it resolves to is not globally routable, such as loopback, private,
+ * link-local, or other special-purpose addresses. A host in `allowedHosts`
+ * may resolve to any address and may use plain `http:`, which is meant for a
+ * local receiver during development.
+ *
+ * **Gotchas**
+ *
+ * The guard checks an address before each POST but does not choose the
+ * address the `HttpClient` connects to, so on its own it cannot stop DNS
+ * rebinding. Pair it with a client that connects only to an address it
+ * checked, such as the one `NodeMcpServer.layerEventWebhooks` from
+ * `@effect/platform-node` uses, or admit only hosts you control.
+ *
+ * @stability experimental
+ * @category events
+ * @since 4.1.6
+ */
+export const layerCallbackGuard = (options?: {
+  readonly allowedHosts?: ReadonlyArray<string> | undefined
+}): Layer.Layer<never, never, Dns.Dns> =>
+  Layer.effect(
+    CallbackGuard,
+    Effect.map(McpCallbackGuard.make(options ?? {}), (guard) => ({
+      check: (url: URL) => Effect.mapError(guard.check(url), (message) => new CallbackRejected({ message })),
+      allowsPlaintext: guard.allowsPlaintext
+    }))
+  ) as Layer.Layer<never, never, Dns.Dns>
+
+/**
+ * Turns on webhook delivery for event types under the MCP Events extension
+ * (SEP-3415).
+ *
+ * **Details**
+ *
+ * Once this layer is built, every event type registered with a `stream` also
+ * lists `"webhook"` in `events/list` and accepts `events/subscribe` and
+ * `events/unsubscribe`. A subscribe validates the callback, verifies the
+ * endpoint with a signed challenge, and runs the event's `stream` for the
+ * subscription's lifetime, POSTing each occurrence with Standard Webhooks
+ * signatures, one at a time, retrying with backoff. A failure of the stream,
+ * such as `Forbidden` when access is revoked, ends the subscription with a
+ * `terminated` envelope.
+ *
+ * `principal` names the authenticated subject of an `events/subscribe` or
+ * `events/unsubscribe` request. It runs inside the event type's middleware,
+ * after its visibility checks, so it can read services that middleware
+ * provides; it fails with `Forbidden` for a caller that may not subscribe. A
+ * subscription's identity is its principal, callback URL, event name, and
+ * arguments, so the principal must stay the same across token refreshes.
+ *
+ * Callbacks are admitted by the current {@link CallbackGuard}, which refuses
+ * every URL by default, and POSTed with the provided `HttpClient`, which must
+ * not follow redirects.
+ *
+ * **Gotchas**
+ *
+ * Subscriptions live in memory in one process. Every grant is finite, between
+ * a minute and an hour, so a client refreshing from its cursor recreates what
+ * a restart lost, but behind a load balancer each instance that receives a
+ * refresh starts its own delivery. The event's `stream` runs for up to an hour
+ * after the subscribing request has been answered and keeps that request's
+ * services, so it must not rely on anything scoped to the request.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export const layerEventWebhooks = <R = never>(options: {
+  readonly principal: Effect.Effect<string, McpSchema.Forbidden, R>
+}): Layer.Layer<
+  never,
+  never,
+  McpServer | HttpClient.HttpClient | McpRequest.From<"Requires", Exclude<R, McpRequestContext>>
+> =>
+  Layer.effectDiscard(Effect.gen(function*() {
+    const { core } = internalState.get(yield* McpServer)!
+    const webhooks = yield* McpWebhooks.make({
+      guard: yield* CallbackGuard,
+      client: yield* HttpClient.HttpClient
+    }).pipe(
+      Effect.provide(
+        Layer.mergeAll(Mac.layerWebCrypto, Digest.layerWebCrypto).pipe(
+          Layer.provideMerge(SecureRandom.layerWebCrypto)
+        )
+      )
+    )
+    yield* core.events.installWebhooks({
+      webhooks,
+      principal: options.principal as Effect.Effect<string, McpSchema.Forbidden>
+    })
+  }))
 
 /**
  * Registers an MCP prompt from an Effect program.

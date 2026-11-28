@@ -741,6 +741,57 @@ export const HEADER_MISMATCH_ERROR_CODE = -32020 as const
 export const UNSUPPORTED_PROTOCOL_VERSION_ERROR_CODE = -32022 as const
 
 /**
+ * Represents the MCP error code for a referenced entity that does not exist,
+ * such as an unknown event name. `data.kind` may say which.
+ *
+ * @stability unstable
+ * @category constants
+ * @since 4.1.6
+ */
+export const NOT_FOUND_ERROR_CODE = -32023 as const
+
+/**
+ * Represents the MCP error code for a principal that is not permitted, or
+ * whose access was revoked.
+ *
+ * @stability unstable
+ * @category constants
+ * @since 4.1.6
+ */
+export const FORBIDDEN_ERROR_CODE = -32024 as const
+
+/**
+ * Represents the MCP error code for a server-imposed limit or quota.
+ * `data.limit` names it.
+ *
+ * @stability unstable
+ * @category constants
+ * @since 4.1.6
+ */
+export const RESOURCE_EXHAUSTED_ERROR_CODE = -32025 as const
+
+/**
+ * Represents the MCP error code for a well-formed request that asks for a
+ * capability or option not supported here. `data` identifies it, for example
+ * `{ feature: "deliveryMode", value: "push" }`.
+ *
+ * @stability unstable
+ * @category constants
+ * @since 4.1.6
+ */
+export const UNSUPPORTED_ERROR_CODE = -32026 as const
+
+/**
+ * Represents the MCP error code for a client-supplied callback endpoint that
+ * failed verification or could not be reached.
+ *
+ * @stability unstable
+ * @category constants
+ * @since 4.1.6
+ */
+export const CALLBACK_ENDPOINT_ERROR_CODE = -32027 as const
+
+/**
  * Represents an MCP/JSON-RPC error for invalid JSON that could not be parsed.
  *
  * **When to use**
@@ -853,6 +904,74 @@ export class InternalError extends Schema.Error<InternalError>("effect/ai/McpSch
 }
 
 /**
+ * Represents an MCP error for a referenced entity that does not exist.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.6
+ */
+export class NotFound extends Schema.Error<NotFound>("effect/ai/McpSchema/NotFound")({
+  ...McpErrorBase.fields,
+  _tag: Schema.tag("NotFound"),
+  code: Schema.tag(NOT_FOUND_ERROR_CODE)
+}) {}
+
+/**
+ * Represents an MCP error for a principal that is not permitted.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.6
+ */
+export class Forbidden extends Schema.Error<Forbidden>("effect/ai/McpSchema/Forbidden")({
+  ...McpErrorBase.fields,
+  _tag: Schema.tag("Forbidden"),
+  code: Schema.tag(FORBIDDEN_ERROR_CODE)
+}) {}
+
+/**
+ * Represents an MCP error for a server-imposed limit or quota.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.6
+ */
+export class ResourceExhausted extends Schema.Error<ResourceExhausted>("effect/ai/McpSchema/ResourceExhausted")({
+  ...McpErrorBase.fields,
+  _tag: Schema.tag("ResourceExhausted"),
+  code: Schema.tag(RESOURCE_EXHAUSTED_ERROR_CODE)
+}) {}
+
+/**
+ * Represents an MCP error for a capability or option not supported here.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.6
+ */
+export class Unsupported extends Schema.Error<Unsupported>("effect/ai/McpSchema/Unsupported")({
+  ...McpErrorBase.fields,
+  _tag: Schema.tag("Unsupported"),
+  code: Schema.tag(UNSUPPORTED_ERROR_CODE)
+}) {}
+
+/**
+ * Represents an MCP error for a callback endpoint that failed verification or
+ * could not be reached.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.1.6
+ */
+export class CallbackEndpointError
+  extends Schema.Error<CallbackEndpointError>("effect/ai/McpSchema/CallbackEndpointError")({
+    ...McpErrorBase.fields,
+    _tag: Schema.tag("CallbackEndpointError"),
+    code: Schema.tag(CALLBACK_ENDPOINT_ERROR_CODE)
+  })
+{}
+
+/**
  * Schema for MCP protocol errors returned in JSON-RPC failure responses,
  * including standard protocol errors and custom `McpErrorBase` values.
  *
@@ -866,6 +985,11 @@ export const McpError = Schema.Union([
   MethodNotFound,
   InvalidParams,
   InternalError,
+  NotFound,
+  Forbidden,
+  ResourceExhausted,
+  Unsupported,
+  CallbackEndpointError,
   McpErrorBase
 ])
 
@@ -1500,6 +1624,82 @@ export class Skill extends Schema.Class<Skill>(
   resources: Schema.Union([Schema.Array(SkillResource), Schema.Literal("dynamic")]),
   _meta: optional(UnknownObject)
 }) {}
+
+// =============================================================================
+// Events
+// =============================================================================
+
+/**
+ * How a client receives an event type's occurrences under the MCP Events
+ * extension (SEP-3415): by `events/poll`, an `events/stream` push stream, or
+ * a webhook registered with `events/subscribe`.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export const EventDelivery = Schema.Literals(["poll", "push", "webhook"])
+
+/**
+ * The type of {@link EventDelivery}.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export type EventDelivery = typeof EventDelivery.Type
+
+/**
+ * An event type listed by `events/list`: its subscription arguments, its
+ * payload, and the delivery modes it supports.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export const EventDescriptor = Schema.Struct({
+  name: Schema.String,
+  description: optional(Schema.String),
+  delivery: Schema.Array(EventDelivery),
+  inputSchema: UnknownObject,
+  payloadSchema: UnknownObject,
+  _meta: optional(UnknownObject)
+})
+
+/**
+ * The type of {@link EventDescriptor}.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export type EventDescriptor = typeof EventDescriptor.Type
+
+/**
+ * One delivered event. `cursor` is the subscription's position after it, on
+ * push and webhook delivery; poll carries the cursor on the result.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export const EventOccurrence = Schema.Struct({
+  eventId: Schema.String,
+  name: Schema.String,
+  timestamp: Schema.String,
+  data: UnknownObject,
+  cursor: optional(Schema.NullOr(Schema.String)),
+  _meta: optional(UnknownObject)
+})
+
+/**
+ * The type of {@link EventOccurrence}.
+ *
+ * @stability unstable
+ * @category events
+ * @since 4.1.6
+ */
+export type EventOccurrence = typeof EventOccurrence.Type
 
 // =============================================================================
 // Prompts

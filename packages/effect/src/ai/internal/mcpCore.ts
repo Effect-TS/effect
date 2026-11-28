@@ -6,8 +6,11 @@ import * as Arr from "../../Array.ts"
 import * as Cause from "../../Cause.ts"
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
+import type * as Scope from "../../Scope.ts"
+import type * as Stream from "../../Stream.ts"
 import type * as McpProtocol from "../McpProtocol.ts"
 import * as McpSchema from "../McpSchema.ts"
+import type * as McpWebhooks from "./mcpWebhooks.ts"
 
 /**
  * @internal
@@ -331,6 +334,143 @@ export interface SkillRegistration {
 }
 
 /**
+ * A failure an event handler reports to the client as a JSON-RPC error, such
+ * as `McpSchema.Forbidden` or `McpSchema.InvalidParams`.
+ *
+ * @internal
+ */
+export interface EventFailure {
+  readonly code: number
+  readonly message: string
+  readonly data?: unknown
+}
+
+/**
+ * @internal
+ */
+export interface EventPollRequest {
+  readonly cursor: string | null
+  readonly maxAgeMs?: number | undefined
+  readonly maxEvents?: number | undefined
+}
+
+/**
+ * An occurrence with its payload already encoded for the wire.
+ *
+ * @internal
+ */
+export interface EncodedEvent {
+  readonly eventId: string
+  readonly timestamp: string
+  readonly data: Readonly<Record<string, unknown>>
+  readonly _meta?: Readonly<Record<string, unknown>> | undefined
+}
+
+/**
+ * @internal
+ */
+export interface EventPollOutcome {
+  readonly events: ReadonlyArray<EncodedEvent>
+  readonly cursor: string | null
+  readonly truncated: boolean
+  readonly hasMore: boolean
+  readonly nextPollMs: number
+}
+
+/**
+ * @internal
+ */
+export interface EventStreamRequest {
+  readonly cursor: string | null
+  readonly maxAgeMs?: number | undefined
+}
+
+/**
+ * What a push stream carries after `notifications/events/active`: occurrences,
+ * a position checked without a match (carried by the next heartbeat), a gap
+ * (a fresh `active` with `truncated`), or a recoverable error.
+ *
+ * @internal
+ */
+export type EventStreamItem =
+  | ({ readonly _tag: "Event"; readonly cursor: string | null } & EncodedEvent)
+  | { readonly _tag: "Position"; readonly cursor: string | null }
+  | { readonly _tag: "Gap"; readonly cursor: string | null }
+  | { readonly _tag: "Error"; readonly error: EventFailure }
+
+/**
+ * A push subscription the handler accepted. A failure of `items` ends it with
+ * `notifications/events/terminated`.
+ *
+ * @internal
+ */
+export interface EventSubscription {
+  readonly cursor: string | null
+  readonly truncated: boolean
+  readonly items: Stream.Stream<EventStreamItem, EventFailure>
+}
+
+/**
+ * The requests an event type answers, each run inside its middleware.
+ *
+ * @internal
+ */
+export type EventMethod = "events/poll" | "events/stream" | "events/subscribe" | "events/unsubscribe"
+
+/**
+ * @internal
+ */
+export interface EventRegistration {
+  readonly descriptor: McpSchema.EventDescriptor
+  readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
+  readonly visible?: Visible | undefined
+  readonly decodeArguments: (args: unknown) => Effect.Effect<unknown, EventFailure>
+  // Runs a request inside the event type's middleware and services, so a
+  // hidden event answers `NotFound` before anything the request checks.
+  readonly invoke: <A, E>(
+    effect: Effect.Effect<A, E>,
+    invocation: McpInvocation,
+    request: { readonly method: EventMethod; readonly payload: unknown }
+  ) => Effect.Effect<A, E | McpSchema.NotFound | RequestRejected>
+  // `poll` and `stream` take what `decodeArguments` returned.
+  readonly poll?:
+    | ((args: unknown, request: EventPollRequest) => Effect.Effect<EventPollOutcome, EventFailure>)
+    | undefined
+  // Runs for the subscription's lifetime: `deliver` takes over once the
+  // handler accepts it, so a failure before that is the request's error.
+  readonly stream?:
+    | ((
+      args: unknown,
+      request: EventStreamRequest,
+      deliver: (subscription: EventSubscription) => Effect.Effect<void>
+    ) => Effect.Effect<void, EventFailure>)
+    | undefined
+}
+
+/**
+ * Webhook delivery installed on a server.
+ *
+ * @internal
+ */
+export interface EventWebhooks {
+  readonly webhooks: McpWebhooks.Webhooks
+  // Read inside the event type's middleware.
+  readonly principal: Effect.Effect<string, McpSchema.Forbidden>
+}
+
+/**
+ * @internal
+ */
+export interface Events {
+  readonly register: (registration: EventRegistration) => Effect.Effect<void>
+  readonly list: (invocation: McpInvocation) => Effect.Effect<ReadonlyArray<McpSchema.EventDescriptor>, RequestRejected>
+  readonly get: (name: string, invocation: McpInvocation) => Effect.Effect<EventRegistration, McpSchema.NotFound>
+  // Installed for the lifetime of the scope; a server takes one.
+  readonly installWebhooks: (webhooks: EventWebhooks) => Effect.Effect<void, never, Scope.Scope>
+  readonly webhooks: Effect.Effect<EventWebhooks | undefined>
+}
+
+/**
  * @internal
  */
 export interface Skills {
@@ -507,11 +647,13 @@ export interface McpCore {
   readonly prompts: Prompts
   readonly completions: Completions
   readonly skills: Skills
+  readonly events: Events
   readonly registrationPresence: Effect.Effect<{
     readonly tools: boolean
     readonly resources: boolean
     readonly prompts: boolean
     readonly skills: boolean
+    readonly events: boolean
   }>
 }
 
@@ -522,6 +664,12 @@ export interface McpCore {
  * @internal
  */
 export type Visible = (invocation: McpInvocation) => Effect.Effect<boolean, RequestRejected>
+
+/**
+ * @internal
+ */
+export const eventNotFound = (name: string): McpSchema.NotFound =>
+  new McpSchema.NotFound({ message: `Event '${name}' not found`, data: { kind: "event" } })
 
 // Whether one skill directory contains the other, or both are the same.
 const skillsOverlap = (a: string, b: string): boolean => {
@@ -539,6 +687,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
   const resourceTemplateRegistrations: Array<ResourceTemplateRegistration> = []
   const promptRegistrations = new Map<string, PromptRegistration>()
   const skillRegistrations = new Map<string, SkillRegistration>()
+  const eventRegistrations = new Map<string, EventRegistration>()
   const skillFiles = new Set<string>()
   const completionRegistrations = new Map<
     string,
@@ -717,12 +866,44 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     })
   }
 
+  let installedWebhooks: EventWebhooks | undefined
+  const events: Events = {
+    installWebhooks: (webhooks) =>
+      Effect.acquireRelease(
+        Effect.suspend(() => {
+          if (installedWebhooks !== undefined) {
+            return Effect.die(new Cause.IllegalArgumentError("Webhook delivery is already installed on this server"))
+          }
+          installedWebhooks = webhooks
+          return Effect.void
+        }),
+        () =>
+          Effect.sync(() => {
+            installedWebhooks = undefined
+          })
+      ),
+    webhooks: Effect.sync(() => installedWebhooks),
+    register: (registration) =>
+      Effect.sync(() => {
+        eventRegistrations.set(registration.descriptor.name, registration)
+      }),
+    list: (invocation) => filterList(eventRegistrations.values(), invocation),
+    get: (name, invocation) =>
+      Effect.suspend(() => {
+        const registration = eventRegistrations.get(name)
+        return registration !== undefined && registration.isVisible(invocation.protocol)
+          ? Effect.succeed(registration)
+          : Effect.fail(eventNotFound(name))
+      })
+  }
+
   const registrationPresence = Effect.sync(() => ({
     tools: registrations.size > 0,
     resources: resourceRegistrations.length > 0 || resourceTemplateRegistrations.length > 0,
     prompts: promptRegistrations.size > 0,
-    skills: skillRegistrations.size > 0
+    skills: skillRegistrations.size > 0,
+    events: eventRegistrations.size > 0
   }))
 
-  return { tools, resources, prompts, completions, skills, registrationPresence }
+  return { tools, resources, prompts, completions, skills, events, registrationPresence }
 })

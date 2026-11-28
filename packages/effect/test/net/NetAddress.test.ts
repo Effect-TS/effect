@@ -278,6 +278,67 @@ describe("NetAddress", () => {
       assert.isFalse(NetAddress.isUniqueLocal(ipv6("fe00::")))
     })
 
+    it("classifies global reachability using the IANA special-purpose registries", () => {
+      const globals = [
+        "8.8.8.8",
+        "192.0.0.9",
+        "192.0.0.10",
+        "2606:4700:4700::1111",
+        "::ffff:8.8.8.8",
+        "64:ff9b::808:808",
+        "2001:1::1",
+        "2001:1::3",
+        "2001:3::1",
+        "2001:4:112::1",
+        "2001:20::1",
+        "2001:30::1"
+      ]
+      for (const text of globals) {
+        assert.isTrue(NetAddress.isGlobal(ip(text)), text)
+      }
+      const nonGlobals = [
+        "0.0.0.0",
+        "10.0.0.1",
+        "100.64.0.0",
+        "127.0.0.1",
+        "169.254.169.254",
+        "172.16.0.1",
+        "192.0.0.8",
+        "192.0.0.11",
+        "192.0.2.1",
+        "192.88.99.1",
+        "192.168.1.1",
+        "198.18.0.0",
+        "198.51.100.1",
+        "203.0.113.1",
+        "224.0.0.1",
+        "240.0.0.1",
+        "255.255.255.255",
+        "::",
+        "::1",
+        "::ffff:127.0.0.1",
+        "64:ff9b::7f00:1",
+        "64:ff9b:1::808:808",
+        "::7f00:1",
+        "100::1",
+        "2001::1",
+        "2001:1::4",
+        "2001:2::1",
+        "2001:4:113::1",
+        "2001:db8::1",
+        "2002:808:808::1",
+        "3fff::1",
+        "5f00::1",
+        "fc00::1",
+        "fe80::1",
+        "fec0::1",
+        "ff02::1"
+      ]
+      for (const text of nonGlobals) {
+        assert.isFalse(NetAddress.isGlobal(ip(text)), text)
+      }
+    })
+
     it("classifies the independent MAC group and administration bits", () => {
       const cases = [
         ["00:00:5e:00:53:01", false, false],

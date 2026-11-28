@@ -53,6 +53,10 @@ const routingNameKey = (method: string): "name" | "uri" | undefined => {
   switch (method) {
     case "tools/call":
     case "prompts/get":
+    case "events/poll":
+    case "events/stream":
+    case "events/subscribe":
+    case "events/unsubscribe":
       return "name"
     case "resources/read":
       return "uri"
@@ -502,6 +506,8 @@ export const make = Effect.fnUntraced(function*(
       return {
         _tag: "Accepted",
         acknowledge: !isRequest || !hasId,
+        // `events/stream` is left out: it answers an invalid subscription with a plain
+        // JSON-RPC error, and its heartbeats replace the keepalive comments.
         isSubscription: Predicate.hasProperty(input, "method") && input.method === "subscriptions/listen"
       }
     },

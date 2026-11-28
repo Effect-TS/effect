@@ -497,6 +497,15 @@ describe("McpServer", () => {
     })
   })
 
+  describe("events", () => {
+    it("accepts only payload schemas that encode to a JSON object", () => {
+      const poll = () => Effect.succeed({ events: [], cursor: null })
+      expect(McpServer.event).type.toBeCallableWith({ name: "a", payload: Schema.Struct({ id: Schema.String }), poll })
+      expect(McpServer.event).type.not.toBeCallableWith({ name: "a", payload: Schema.String, poll })
+      expect(McpServer.event).type.not.toBeCallableWith({ name: "a", payload: Schema.Array(Schema.String), poll })
+    })
+  })
+
   describe("skills", () => {
     it("should accept a Skill value in registerSkill and skill", () => {
       const skill = hole<Skill.Skill>()

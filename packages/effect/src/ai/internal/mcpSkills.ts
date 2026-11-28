@@ -161,12 +161,6 @@ export class StatelessRpcs extends RpcGroup.make(ListSkills, GetSkill, ReadResou
 // Handlers
 // =============================================================================
 
-const methodNotFound = (method: string) =>
-  new McpProtocol.ProtocolError({
-    code: PublicMcpSchema.METHOD_NOT_FOUND_ERROR_CODE,
-    message: `Method not found: ${method}`
-  })
-
 /**
  * Fails with `Method not found` while no skill is registered, as a server
  * that does not declare the extension.
@@ -174,10 +168,7 @@ const methodNotFound = (method: string) =>
  * @internal
  */
 export const requireSkills = (core: McpCore.McpCore, method: string) =>
-  Effect.flatMap(
-    core.registrationPresence,
-    (presence) => presence.skills ? Effect.void : Effect.fail(methodNotFound(method))
-  )
+  McpProtocol.requireExtension(core, "skills", method)
 
 /**
  * Handlers for {@link LegacyRpcs}, for the sessionful adapters.

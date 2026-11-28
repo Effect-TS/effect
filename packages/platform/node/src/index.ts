@@ -91,6 +91,12 @@ export * as NodeHttpServerRequest from "./NodeHttpServerRequest.ts"
 
 /**
  * @stability unstable
+ * @since 4.1.6
+ */
+export * as NodeMcpServer from "./NodeMcpServer.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as NodeMultipart from "./NodeMultipart.ts"
