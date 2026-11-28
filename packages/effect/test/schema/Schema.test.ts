@@ -1231,6 +1231,38 @@ Expected no excess property
   at [1]`
       )
     })
+
+    it.effect("keeps unchanged, transformed and suspended elements in order", () =>
+      Effect.gen(function*() {
+        const calls: Array<string> = []
+        const element = Schema.String.pipe(
+          Schema.decode({
+            decode: SchemaGetter.transformEffect((value) => {
+              calls.push(value)
+              if (value === "fail") return Effect.fail(new SchemaIssue.InvalidValue())
+              if (value === "upper") return Effect.succeed(value.toUpperCase())
+              return value === "yield" ? Effect.yieldNow.pipe(Effect.as(value)) : Effect.succeed(value)
+            }),
+            encode: SchemaGetter.passthrough()
+          })
+        )
+        const decode = Schema.decodeUnknownEffect(Schema.Array(element))
+
+        const program = decode(["a", "upper", "yield", "upper", "b"])
+        deepStrictEqual(yield* program, ["a", "UPPER", "yield", "UPPER", "b"])
+        // The returned effect runs again from the first element
+        deepStrictEqual(yield* program, ["a", "UPPER", "yield", "UPPER", "b"])
+        deepStrictEqual(calls, ["a", "upper", "yield", "upper", "b", "a", "upper", "yield", "upper", "b"])
+
+        calls.length = 0
+        const issue = yield* Effect.flip(decode(["a", "yield", "fail", "b"]))
+        strictEqual(
+          String(issue),
+          `SchemaError(Expected a valid value
+  at [2])`
+        )
+        deepStrictEqual(calls, ["a", "yield", "fail"])
+      }))
   })
 
   describe("mutable", () => {
