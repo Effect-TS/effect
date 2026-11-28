@@ -71,6 +71,88 @@ const paths = [
 ] as const
 
 describe("HttpClient generation", () => {
+  describe("type-only server-sent events", () => {
+    const makeClient = Effect.fnUntraced(function*(chunks: ReadonlyArray<string>) {
+      const spec = OpenApi.fromApi(
+        HttpApi.make("Api").add(
+          HttpApiGroup.make("events", { topLevel: true }).add(
+            HttpApiEndpoint.get("read", "/events/:undefined", {
+              params: { undefined: Schema.String },
+              success: HttpApiSchema.StreamSse({ data: Schema.Json })
+            })
+          )
+        )
+      )
+      spec.paths["/values/{globalThis}"] = {
+        get: {
+          operationId: "values",
+          parameters: [{ name: "globalThis", in: "path", required: true, schema: { type: "string" } }],
+          security: [],
+          tags: ["events"],
+          responses: { 200: { description: "JSON values", content: { "text/event-stream": { schema: {} } } } }
+        }
+      }
+      const generator = yield* OpenApiGenerator.OpenApiGenerator
+      const source = yield* generator.generate(spec, { name: "TestClient", format: "httpclient-type-only" })
+      const make = yield* Effect.promise(() =>
+        loadClient<{
+          readSse: (feed: string) => Stream.Stream<Sse.EventEncoded, HttpClientError.HttpClientError>
+          valuesSse: (feed: string) => Stream.Stream<unknown, HttpClientError.HttpClientError>
+        }>(source)
+      )
+      const httpClient = HttpClient.make((request) => {
+        const body = Stream.fromIterable(chunks).pipe(Stream.encodeText, Stream.toReadableStream)
+        return Effect.succeed(HttpClientResponse.fromWeb(
+          request,
+          new Response(body, {
+            headers: { "content-type": "text/event-stream" }
+          })
+        ))
+      }).pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl("https://example.com")))
+      return make(httpClient)
+    }, Effect.provide(OpenApiGenerator.layerTransformerTs))
+
+    it.effect("returns complete events for fromApi and JSON values for a data schema", () =>
+      Effect.gen(function*() {
+        const client = yield* makeClient([
+          "retry: 1000\n\n",
+          "data:42\r\n\r",
+          "\nid: 7\nevent: update\ndata: [1,\ndata: 2]\n\ndata: 3\n"
+        ])
+        // The path argument named `undefined` matches the second event ID.
+        assert.deepStrictEqual(yield* Stream.runCollect(client.readSse("7")), [
+          { event: "message", data: "42" },
+          { id: "7", event: "update", data: "[1,\n2]" }
+        ])
+        assert.deepStrictEqual(yield* Stream.runCollect(client.valuesSse("7")), [42, [1, 2]])
+      }))
+
+    it.effect("reports malformed JSON only for a data schema", () =>
+      Effect.gen(function*() {
+        const client = yield* makeClient(["data:42\n\ndata:1\ndata:2\n\n"])
+        assert.deepStrictEqual(yield* Stream.runCollect(client.readSse("7")), [
+          { event: "message", data: "42" },
+          { event: "message", data: "1\n2" }
+        ])
+        const received: Array<unknown> = []
+        const error = yield* Effect.flip(
+          Stream.runForEach(client.valuesSse("7"), (value) => Effect.sync(() => received.push(value)))
+        )
+        assert.deepStrictEqual(received, [42])
+        assert.strictEqual(error.reason._tag, "DecodeError")
+      }))
+
+    it.effect("reads the same large JSON value regardless of where the response is split", () =>
+      Effect.gen(function*() {
+        const value = "x".repeat(11 * 1024 * 1024)
+        const line = `data: "${value}"`
+        for (const chunks of [[line + "\n\n"], [line, "\n\n"]]) {
+          const client = yield* makeClient(chunks)
+          assert.deepStrictEqual(yield* Stream.runCollect(client.valuesSse("7")), [value])
+        }
+      }))
+  })
+
   it.effect.each(["httpclient", "httpclient-type-only"] as const)(
     "types and sends the multipart alternative in %s",
     (format) =>

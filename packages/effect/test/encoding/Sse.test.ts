@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Stream } from "effect"
+import { Duration, Effect, Stream } from "effect"
 import * as Sse from "effect/encoding/Sse"
 import * as Schema from "effect/Schema"
 
@@ -240,6 +240,37 @@ describe("Sse", () => {
           type: "ok"
         }
       }])
+    }))
+
+  it.effect("decodeAnyEvent emits retry hints in order and continues reading", () =>
+    Effect.gen(function*() {
+      const first = "id: 7\ndata:before\n\nretry: 1000\n"
+      const last = "data:after\n\n"
+      for (const chunks of [[first + last], [first, last]]) {
+        const events = yield* Stream.fromIterable(chunks, { chunkSize: 1 }).pipe(
+          Stream.pipeThroughChannel(Sse.decodeAnyEvent()),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(events, [
+          { _tag: "Event", id: "7", event: "message", data: "before" },
+          new Sse.Retry({ duration: Duration.millis(1000), lastEventId: "7" }),
+          { _tag: "Event", id: "7", event: "message", data: "after" }
+        ])
+      }
+    }))
+
+  it.effect("decode reports a retry hint as a failure after emitting buffered events", () =>
+    Effect.gen(function*() {
+      const data: Array<string> = []
+      const error = yield* Stream.fromIterable(["id: 7\ndata:before\n\nretry: 1000\n", "data:after\n\n"], {
+        chunkSize: 1
+      }).pipe(
+        Stream.pipeThroughChannel(Sse.decode()),
+        Stream.runForEach((event) => Effect.sync(() => data.push(event.data))),
+        Effect.flip
+      )
+      assert.deepStrictEqual(data, ["before"])
+      assert.deepStrictEqual(error, new Sse.Retry({ duration: Duration.millis(1000), lastEventId: "7" }))
     }))
 
   it.effect("fails when an unterminated line exceeds maxEventSize", () =>

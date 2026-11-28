@@ -111,6 +111,7 @@ const defaultMaxEventSize = 10 * 1024 * 1024
  * reconnect with the requested delay.
  * Events parsed before an event-size error are emitted before the channel fails.
  *
+ * @see {@link decodeAnyEvent} for reading retry directives as values
  * @stability unstable
  * @category decoding
  * @since 4.0.0
@@ -123,17 +124,38 @@ export const decode = <IE, Done>(options?: DecodeOptions): Channel.Channel<
   IE,
   Done
 > =>
+  decodeWith<IE, Done, Event, Retry>((emit, fail) =>
+    makeParser((event) => event._tag === "Retry" ? fail(event) : emit(event), options)
+  )
+
+/**
+ * Parses Server-Sent Events text chunks into `Event` and `Retry` values in
+ * wire order and continues reading after each retry directive.
+ *
+ * @see {@link decode} for receiving retry directives as failures
+ * @stability unstable
+ * @category decoding
+ * @since 4.1.6
+ */
+export const decodeAnyEvent = <IE, Done>(options?: DecodeOptions): Channel.Channel<
+  NonEmptyReadonlyArray<AnyEvent>,
+  IE | SseError,
+  Done,
+  NonEmptyReadonlyArray<string>,
+  IE,
+  Done
+> => decodeWith<IE, Done, AnyEvent, never>((emit) => makeParser(emit, options))
+
+const decodeWith = <IE, Done, A, E>(
+  createParser: (emit: (event: A) => void, fail: (error: E) => void) => Parser
+): Channel.Channel<NonEmptyReadonlyArray<A>, IE | E | SseError, Done, NonEmptyReadonlyArray<string>, IE, Done> =>
   Channel.fromTransform((upstream, _scope) =>
     Effect.sync(() => {
-      let buffer: Array<Event> = []
-      let failure: Retry | SseError | undefined
-      const parser = makeParser((event) => {
-        if (event._tag === "Retry") {
-          failure = event
-        } else {
-          buffer.push(event)
-        }
-      }, options)
+      let buffer: Array<A> = []
+      let failure: E | SseError | undefined
+      const parser = createParser((event) => buffer.push(event), (error) => {
+        failure = error
+      })
 
       const pump = Effect.flatMap(upstream, (arr) => {
         for (let i = 0; i < arr.length; i++) {
@@ -146,7 +168,7 @@ export const decode = <IE, Done>(options?: DecodeOptions): Channel.Channel<
         return Effect.void
       })
 
-      return Effect.suspend(function loop(): Pull.Pull<NonEmptyReadonlyArray<Event>, IE | Retry | SseError, Done> {
+      return Effect.suspend(function loop(): Pull.Pull<NonEmptyReadonlyArray<A>, IE | E | SseError, Done> {
         if (Arr.isArrayNonEmpty(buffer)) {
           const out = buffer
           buffer = []
@@ -615,8 +637,9 @@ const RetryTypeId = "~effect/encoding/Sse/Retry" as const
  *
  * **Details**
  *
- * Decoders surface this value as a failure to request reconnection after
- * `duration`; encoders serialize an upstream `Retry` failure as a `retry:` line.
+ * `decode` reports a failure with the requested delay. `decodeAnyEvent`
+ * emits the directive as a value. Encoders write an upstream `Retry` failure
+ * as a `retry:` line.
  *
  * @stability unstable
  * @category models

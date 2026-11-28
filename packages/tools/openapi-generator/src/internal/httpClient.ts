@@ -778,7 +778,8 @@ export const make = <E, R>(
         pipeline.push(`${render(imports.HttpClientRequest)}.bodyJsonUnsafe(options.payload)`)
       }
 
-      pipeline.push(`sseRequest<${operation.httpClientResponses.sseSchema}>`)
+      const { sseSchema, sseSchemaMode } = operation.httpClientResponses
+      pipeline.push(`__sseRequest.${sseSchemaMode}<${sseSchema}>`)
 
       return (
         `${JSON.stringify(`${operation.id}Sse`)}: (${params}) => ` +
@@ -1062,17 +1063,35 @@ export const make = <E, R>(
 
   // Type-only mode helpers (no schema decoding)
   const sseRequestSourceTs = () =>
-    `const sseRequest = <A>(request: ${render(imports.HttpClientRequest)}.HttpClientRequest): ${
-      render(imports.Stream)
-    }.Stream<A, E | ${render(imports.HttpClientError)}.HttpClientError, R> =>
+    `const sseRequestWith = (readEvent: (event: ${render(imports.Sse)}.Event) => unknown) => <A>(request: ${
+      render(imports.HttpClientRequest)
+    }.HttpClientRequest): ${render(imports.Stream)}.Stream<A, E | ${
+      render(imports.HttpClientError)
+    }.HttpClientError, R> =>
     executeStreamRequest(request).pipe(
-      ${render(imports.Effect)}.map((response) => response.stream),
-      ${render(imports.Stream)}.unwrap,
-      ${render(imports.Stream)}.decodeText(),
-      ${render(imports.Stream)}.splitLines,
-      ${render(imports.Stream)}.filter((line) => line.startsWith("data: ")),
-      ${render(imports.Stream)}.map((line) => JSON.parse(line.slice(6)) as A)
-    )`
+      ${render(imports.Effect)}.map((response) => {
+        const decodeError = (cause: unknown) => new ${render(imports.HttpClientError)}.HttpClientError({
+          reason: new ${render(imports.HttpClientError)}.DecodeError({ request: response.request, response, cause })
+        })
+        return response.stream.pipe(
+          ${render(imports.Stream)}.decodeText(),
+          ${render(imports.Stream)}.pipeThroughChannel(${
+      render(imports.Sse)
+    }.decodeAnyEvent({ maxEventSize: globalThis.Infinity })),
+          ${render(imports.Stream)}.mapError((error) => error._tag === "SseError" ? decodeError(error) : error),
+          ${render(imports.Stream)}.filter((event) => event._tag === "Event"),
+          ${render(imports.Stream)}.mapEffect((event) => ${render(imports.Effect)}.try({
+            try: () => readEvent(event) as A,
+            catch: decodeError
+          }))
+        )
+      }),
+      ${render(imports.Stream)}.unwrap
+    )
+  const __sseRequest = {
+    event: sseRequestWith(({ event, id, data }) => id === undefined ? { event, data } : { id, event, data }),
+    data: sseRequestWith(({ data }) => JSON.parse(data))
+  }`
 
   const binaryRequestSourceTs = () =>
     `const binaryRequest = (request: ${render(imports.HttpClientRequest)}.HttpClientRequest): ${
