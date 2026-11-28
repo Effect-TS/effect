@@ -103,20 +103,18 @@ export const Scheduler: Context.Reference<Scheduler> = Context.shareDefaultValue
   getDefaultScheduler
 )
 
-const setMicrotask = (f: () => void) => {
+// Schedules `f` with `schedule` and returns a function that cancels the run.
+const cancellable = (schedule: (run: () => void) => void) => (f: () => void): () => void => {
   let cancelled = false
-  Promise.resolve().then(() => {
+  schedule(() => {
     if (!cancelled) f()
   })
-  return (): void => {
+  return () => {
     cancelled = true
   }
 }
 
-const setTimeoutTimer = (f: () => void): () => void => {
-  const timer = setTimeout(f, 0)
-  return (): void => clearTimeout(timer)
-}
+const setMicrotask = cancellable((run) => Promise.resolve().then(run))
 
 const setTimer: (f: () => void) => () => void = "setImmediate" in globalThis
   ? (f) => {
@@ -125,22 +123,29 @@ const setTimer: (f: () => void) => () => void = "setImmediate" in globalThis
     // @ts-ignore
     return (): void => globalThis.clearImmediate(timer)
   }
-  // Browsers clamp nested `setTimeout(f, 0)` calls to 4ms, so a fiber that
-  // yields repeatedly would wait that long on every yield. The Prioritized Task
-  // Scheduling API (`scheduler.postTask`) queues an unclamped task, in FIFO
-  // order with other tasks of the same priority. The `in` check keeps this
-  // branch tree-shakeable.
-  : "scheduler" in globalThis
-  ? (f) => {
+  : cancellable((run) => {
     const scheduler = (globalThis as { scheduler?: { postTask?: (f: () => void) => unknown } }).scheduler
-    if (typeof scheduler?.postTask !== "function") return setTimeoutTimer(f)
-    let cancelled = false
-    scheduler.postTask(() => cancelled || f())
-    return (): void => {
-      cancelled = true
+    if (typeof scheduler?.postTask !== "function") {
+      setTimeout(run, 0)
+      return
     }
-  }
-  : setTimeoutTimer
+    // Browsers clamp nested `setTimeout(f, 0)` calls to 4ms, so a fiber that
+    // yields repeatedly would wait that long on every yield. The Prioritized
+    // Task Scheduling API queues an unclamped task, in FIFO order with other
+    // tasks of the same priority.
+    scheduler.postTask(() => {
+      try {
+        run()
+      } catch (error) {
+        // A throw here would reject the promise `postTask` returns and be
+        // reported as an unhandled rejection. Rethrow it from a timer, so it
+        // is an uncaught error as it is with `setTimeout`.
+        setTimeout(() => {
+          throw error
+        }, 0)
+      }
+    })
+  })
 
 // Some runtimes (e.g. Cloudflare Workers) throw when a timer is set in global
 // scope. Fall back to a microtask so effects can still yield at module load.

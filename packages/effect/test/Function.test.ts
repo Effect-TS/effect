@@ -75,6 +75,26 @@ describe("Function", () => {
       )
       assert.strictEqual(F.pipe(2, sum(3)), 5)
     })
+
+    it("predicate-based - passes the arguments object and forwards the receiver", () => {
+      const seen: Array<string> = []
+      const dual = F.dual<
+        (b: number, c: number) => (self: number) => unknown,
+        (self: number, b: number, c: number) => unknown
+      >(
+        (args) => {
+          seen.push(Object.prototype.toString.call(args))
+          return args.length === 3
+        },
+        function(this: unknown, self: number, b: number, c: number) {
+          return [this, self, b, c]
+        }
+      )
+      const receiver = { dual }
+      assert.deepStrictEqual(receiver.dual(1, 2, 3), [receiver, 1, 2, 3])
+      assert.deepStrictEqual(F.pipe(1, receiver.dual(2, 3)), [undefined, 1, 2, 3])
+      assert.deepStrictEqual(seen, ["[object Arguments]", "[object Arguments]"])
+    })
   })
 
   describe("apply", () => {

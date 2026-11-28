@@ -255,13 +255,42 @@ describe("Scheduler", () => {
       assert.isTrue(released)
     })
 
-    it("falls back to setTimeout without postTask", async () => {
+    it.each([undefined, {}])("falls back to setTimeout without postTask (scheduler: %o)", async (scheduler) => {
       const { Effect } = browser
-      vi.stubGlobal("scheduler", undefined)
+      vi.stubGlobal("scheduler", scheduler)
       const setTimeout = vi.spyOn(globalThis, "setTimeout")
       try {
         assert.strictEqual(await Effect.runPromise(Effect.as(Effect.yieldNow, 1)), 1)
         assert.isAbove(setTimeout.mock.calls.length, 0)
+      } finally {
+        setTimeout.mockRestore()
+      }
+    })
+
+    it("rethrows a task error from a timer, leaving the postTask promise fulfilled", async () => {
+      const { Scheduler } = browser
+      // As in browsers, the returned promise settles with the outcome of the task
+      let posted: Promise<void> | undefined
+      vi.stubGlobal("scheduler", {
+        postTask: (task: () => void) => posted = new Promise<void>((resolve) => realSetImmediate(resolve)).then(task)
+      })
+      const rethrown: Array<unknown> = []
+      const setTimeout = vi.spyOn(globalThis, "setTimeout").mockImplementation(
+        ((f: () => void) => {
+          try {
+            f()
+          } catch (error) {
+            rethrown.push(error)
+          }
+        }) as any
+      )
+      try {
+        const error = new Error("boom")
+        new Scheduler.MixedScheduler().makeDispatcher().scheduleTask(() => {
+          throw error
+        }, 0)
+        await posted
+        assert.deepStrictEqual(rethrown, [error])
       } finally {
         setTimeout.mockRestore()
       }

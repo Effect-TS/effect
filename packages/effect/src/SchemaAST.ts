@@ -3159,15 +3159,26 @@ export const Objects: new(
         for (let index = 0; index < props.length; index++) {
           const property = props[index]
           const name = property.name
-          const hasKey = property.ownOnly ? Object.hasOwn(record, name) : name in record
-          const value = hasKey ? record[name] : InternalParser.missing
-          const exit = property.parser(value, options)
-          if (!effectIsExit(exit)) {
-            return resume(state, index, exit)
+          let value: unknown
+          let hasKey: boolean
+          if (property.ownOnly) {
+            hasKey = Object.hasOwn(record, name)
+            value = hasKey ? record[name] : InternalParser.missing
+          } else {
+            // Read first: a defined value proves the key is present, so only
+            // `undefined` needs the slower `in` check to rule out a missing key.
+            value = record[name]
+            hasKey = value !== undefined || name in record
+            if (!hasKey) value = InternalParser.missing
           }
+          const exit = property.parser(value, options)
+          // The most common result
           if (InternalParser.isSameExit(exit)) {
             if (hasKey) InternalRecord.assignProperty(out, name, value)
             continue
+          }
+          if (!effectIsExit(exit)) {
+            return resume(state, index, exit)
           }
           const terminal = stepProperty(state, property, exit)
           if (terminal) return terminal

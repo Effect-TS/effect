@@ -2829,6 +2829,37 @@ describe("Effect", () => {
         assert.strictEqual(signal!.aborted, true)
       }))
 
+    it.effect("callback with a signal aborts it before running its cleanup effect, once", () =>
+      Effect.gen(function*() {
+        const events: Array<string> = []
+        let resume!: (effect: Effect.Effect<void>) => void
+        const fiber = yield* Effect.callback<void>((resume_, signal) => {
+          resume = resume_
+          signal.addEventListener("abort", () => events.push("abort"))
+          return Effect.sync(() => events.push("cleanup"))
+        }).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Fiber.interrupt(fiber)
+        // A resume that arrives after the interrupt is ignored
+        resume(Effect.void)
+        assert.deepStrictEqual(events, ["abort", "cleanup"])
+        assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
+      }))
+
+    it.effect("callback cleanup effect is skipped when the callback resumes", () =>
+      Effect.gen(function*() {
+        let cleanedUp = false
+        let resume!: (effect: Effect.Effect<number>) => void
+        const fiber = yield* Effect.callback<number>((resume_) => {
+          resume = resume_
+          return Effect.sync(() => {
+            cleanedUp = true
+          })
+        }).pipe(Effect.forkChild({ startImmediately: true }))
+        resume(Effect.succeed(1))
+        assert.strictEqual(yield* Fiber.join(fiber), 1)
+        assert.isFalse(cleanedUp)
+      }))
+
     it.effect("callback cleanup effect runs on interrupt", () =>
       Effect.gen(function*() {
         let cleanedUp = false
@@ -4550,6 +4581,20 @@ describe("Effect", () => {
   })
 
   describe("catchCause", () => {
+    it("passes only the cause to handlers regardless of declared arity", () => {
+      function unary(this: unknown, _cause: Cause.Cause<string>) {
+        // eslint-disable-next-line prefer-rest-params
+        return Effect.succeed([this, arguments.length])
+      }
+      function variadic(this: unknown, ..._args: Array<unknown>) {
+        // eslint-disable-next-line prefer-rest-params
+        return Effect.succeed([this, arguments.length])
+      }
+      for (const handler of [unary, variadic]) {
+        assert.deepStrictEqual(Effect.runSync(Effect.catchCause(Effect.fail("boom"), handler)), [undefined, 1])
+      }
+    })
+
     it.effect("recovers from Effect.interrupt with the current fiber as interruptor", () =>
       Effect.gen(function*() {
         const id = yield* Effect.fiberId

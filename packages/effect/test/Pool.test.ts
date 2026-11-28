@@ -28,6 +28,16 @@ describe("Pool", () => {
       deepStrictEqual(admitted, [0, 1, 2, 3, 4, 5])
     }))
 
+  it.effect("records when an item of a fixed pool was last released", () =>
+    Effect.gen(function*() {
+      const pool = yield* Pool.make({ acquire: Effect.succeed("item"), size: 1 })
+      yield* Effect.scoped(Pool.get(pool))
+      yield* TestClock.adjust("5 seconds")
+      yield* Effect.scoped(Pool.get(pool))
+      const [item] = pool.state.items
+      strictEqual(item.idleSince, 5000)
+    }))
+
   it.effect("preallocates pool items", () =>
     Effect.gen(function*() {
       const count = yield* Ref.make(0)

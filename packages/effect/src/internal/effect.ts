@@ -83,6 +83,7 @@ import {
   StackTraceKey as CauseStackTrace,
   TaggedError,
   withFiber,
+  withFiberSucceed,
   Yield
 } from "./core.ts"
 import * as doNotation from "./doNotation.ts"
@@ -793,9 +794,11 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._yielded = value
     return Yield
   }
-  yieldNow(effect: Primitive, priority = 0, automatic = false): Yield {
+  // Resumes with `effect` from a scheduled task, unless the fiber is resumed
+  // some other way first, such as by an interrupt.
+  yieldNow(effect: Primitive, priority = 0, automatic = false, dispatcher = this.currentDispatcher): Yield {
     let resumed = false
-    this.currentDispatcher.scheduleTask(() => {
+    dispatcher.scheduleTask(() => {
       if (resumed) return
       this._autoYielded = automatic
       this.evaluate(effect)
@@ -1259,30 +1262,22 @@ const callbackOptions: <A, E = never, R = never>(
       }, controller?.signal)
       if (yielded !== false) return yielded
       yielded = true
-      if (fiber.supervisor === undefined) {
-        // V8 pretenures closures assigned to a property; a method argument avoids that and survives minification
-        fiber.yieldWith(() => {
-          resumed = true
-        })
-      } else {
-        fiber.supervisor.onBlock(fiber, this.blockedOn)
-        // Read from the fiber rather than captured, so that no blocked fiber's
-        // closure context grows by a slot
-        fiber.yieldWith(() => {
-          resumed = true
-          fiber.supervisor!.onUnblock(fiber)
-        })
-      }
-      if (controller === undefined && onCancel === undefined) {
-        return Yield
-      }
-      fiber._stack.push(
-        asyncFinalizer(() => {
-          resumed = true
-          controller?.abort()
-          return onCancel ?? exitVoid
-        })
-      )
+      fiber.supervisor?.onBlock(fiber, this.blockedOn)
+      // V8 pretenures closures assigned to a property; a method argument avoids
+      // that and survives minification. The supervisor is read from the fiber
+      // rather than captured, so that no blocked fiber's closure context grows
+      // by a slot.
+      fiber.yieldWith(() => {
+        resumed = true
+        fiber.supervisor?.onUnblock(fiber)
+      })
+      // The fiber runs the hook above before it continues, so `resumed` is
+      // already set when the finalizer runs.
+      const cancel = controller === undefined ? onCancel : suspend(() => {
+        controller.abort()
+        return onCancel ?? exitVoid
+      })
+      if (cancel !== undefined) fiber._stack.push(asyncFinalizer(cancel))
       return Yield
     }
   })
@@ -1298,7 +1293,7 @@ const callbackOptions: <A, E = never, R = never>(
 })()
 
 const asyncFinalizer: (
-  onInterrupt: () => Effect.Effect<void, any, any>
+  onInterrupt: Effect.Effect<void, any, any>
 ) => Primitive = makePrimitive({
   op: "AsyncFinalizer",
   [contAll](fiber) {
@@ -1309,7 +1304,7 @@ const asyncFinalizer: (
   },
   [contE](cause, _fiber) {
     return hasInterrupts(cause)
-      ? flatMap(combineFinalizerCause(exitFailCause(cause), this[args]()), () => failCause(cause))
+      ? new ContImpl(combineFinalizerCause(exitFailCause(cause), this[args]), returnPayload, failCause(cause))
       : failCause(cause)
   }
 })
@@ -1559,7 +1554,7 @@ const fromIteratorUnsafe: (
       const iter = this.iterator
       while (true) {
         const state = iter.next(value)
-        if (state.done) return succeed(state.value)
+        if (state.done) return fiber.succeedWith(state.value)
         if (!effectIsExit(state.value)) {
           fiber._stack.push(this)
           return state.value
@@ -1747,7 +1742,7 @@ export const asVoid = <A, E, R>(
 /** @internal */
 export const sandbox = <A, E, R>(
   self: Effect.Effect<A, E, R>
-): Effect.Effect<A, Cause.Cause<E>, R> => catchCauseUnary(self, fail)
+): Effect.Effect<A, Cause.Cause<E>, R> => catchCause(self, fail)
 
 /** @internal */
 export const raceAll = <Eff extends Effect.Effect<any, any, any>>(
@@ -2759,25 +2754,23 @@ export const catchCause: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (cause: NoInfer<Cause.Cause<E>>) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<A | B, E2, R | R2> => catchCauseUnary(self, f.length !== 1 ? (cause: Cause.Cause<E>) => f(cause) : f)
+  ): Effect.Effect<A | B, E2, R | R2> => new OnFailureImpl(self, f)
 )
 const OnFailureProto = makePrimitiveProto({
   op: "OnFailure",
-  [evaluate]: evaluateCont
+  [evaluate]: evaluateCont,
+  // The run loop also passes the fiber and the exit. Calling the handler from
+  // here gives it the cause alone, whatever parameters it declares.
+  [contE](this: any, cause) {
+    const f = this.payload
+    return f(cause)
+  }
 })
 const OnFailureImpl = function(this: any, self: Effect.Effect<any, any, any>, f: any) {
   this[args] = self
-  this[contE] = f
+  this.payload = f
 } as unknown as PrimitiveCtor<[self: Effect.Effect<any, any, any>, f: any]>
 OnFailureImpl.prototype = OnFailureProto
-
-// `catchCause` for a handler that takes only the cause. Internal handlers use
-// it to skip reading `f.length`, which is slow on fresh closures in
-// JavaScriptCore, and the `dual` dispatch.
-const catchCauseUnary = <A, E, R, B, E2, R2>(
-  self: Effect.Effect<A, E, R>,
-  f: (cause: Cause.Cause<E>) => Effect.Effect<B, E2, R2>
-): Effect.Effect<A | B, E2, R | R2> => new OnFailureImpl(self, f)
 
 /** @internal */
 export const catchCauseIf: {
@@ -2799,7 +2792,7 @@ export const catchCauseIf: {
     predicate: Predicate.Predicate<Cause.Cause<E>>,
     f: (cause: Cause.Cause<E>) => Effect.Effect<B, E2, R2>
   ): Effect.Effect<A | B, E | E2, R | R2> =>
-    catchCauseUnary(self, (cause): Effect.Effect<B, E | E2, R2> => {
+    catchCause(self, (cause): Effect.Effect<B, E | E2, R2> => {
       if (!predicate(cause)) {
         return failCause(cause) as any
       }
@@ -2827,7 +2820,7 @@ export const catchCauseFilter: {
     filter: Filter.Filter<Cause.Cause<E>, EB, X>,
     f: (failure: EB, cause: Cause.Cause<E>) => Effect.Effect<B, E2, R2>
   ): Effect.Effect<A | B, Cause.Cause.Error<X> | E2, R | R2> =>
-    catchCauseUnary(self, (cause): Effect.Effect<B, Cause.Cause.Error<X> | E2, R2> => {
+    catchCause(self, (cause): Effect.Effect<B, Cause.Cause.Error<X> | E2, R2> => {
       const eb = filter(cause)
       return Result.isFailure(eb) ? failCause(eb.failure) : f(eb.success, cause)
     })
@@ -2895,7 +2888,7 @@ export const tapCause: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (cause: NoInfer<Cause.Cause<E>>) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<A, E | E2, R | R2> => catchCauseUnary(self, (cause) => andThen(f(cause), failCause(cause)))
+  ): Effect.Effect<A, E | E2, R | R2> => catchCause(self, (cause) => andThen(f(cause), failCause(cause)))
 )
 
 /** @internal */
@@ -2941,7 +2934,7 @@ export const tapCauseFilter: {
     filter: Filter.Filter<Cause.Cause<E>, EB, X>,
     f: (a: EB, cause: Cause.Cause<E>) => Effect.Effect<B, E2, R2>
   ): Effect.Effect<A, E | E2, R | R2> =>
-    catchCauseUnary(self, (cause) => {
+    catchCause(self, (cause) => {
       const result = filter(cause)
       if (Result.isFailure(result)) {
         return failCause(cause)
@@ -3034,22 +3027,6 @@ export const tapDefect: {
   ): Effect.Effect<A, E | E2, R | R2> => tapCauseFilter(self, findDefect as any, (_: any) => f(_)) as any
 )
 
-// `catchIf` without the `dual` dispatch, for `catchTag`
-const catchIfImpl = <A, E, R, A2, E2, R2, A3 = never, E3 = E, R3 = never>(
-  self: Effect.Effect<A, E, R>,
-  predicate: Predicate.Predicate<E>,
-  f: (e: E) => Effect.Effect<A2, E2, R2>,
-  orElse?: ((e: E) => Effect.Effect<A3, E3, R3>) | undefined
-): Effect.Effect<A | A2 | A3, E2 | E3, R | R2 | R3> =>
-  catchCauseUnary(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
-    const error = findRecoverableError(cause)
-    if (Result.isFailure(error)) return failCause(error.failure)
-    if (!predicate(error.success)) {
-      return orElse ? orElse(error.success as any) : failCause(cause as any as Cause.Cause<E3>)
-    }
-    return f(error.success as any)
-  })
-
 /** @internal */
 export const catchIf: {
   <E, EB extends E, A2, E2, R2, A3 = unassigned, E3 = never, R3 = never>(
@@ -3086,7 +3063,23 @@ export const catchIf: {
     f: (e: E) => Effect.Effect<A2, E2, R2>,
     orElse?: ((e: E) => Effect.Effect<A3, E3, R3>) | undefined
   ): Effect.Effect<A | A2 | Exclude<A3, unassigned>, E2 | E3 | (A3 extends unassigned ? E : never), R | R2 | R3>
-} = dual((args) => isEffect(args[0]), catchIfImpl)
+} = dual(
+  (args) => isEffect(args[0]),
+  <A, E, R, A2, E2, R2, A3 = never, E3 = E, R3 = never>(
+    self: Effect.Effect<A, E, R>,
+    predicate: Predicate.Predicate<E>,
+    f: (e: E) => Effect.Effect<A2, E2, R2>,
+    orElse?: ((e: E) => Effect.Effect<A3, E3, R3>) | undefined
+  ): Effect.Effect<A | A2 | A3, E2 | E3, R | R2 | R3> =>
+    catchCause(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
+      const error = findRecoverableError(cause)
+      if (Result.isFailure(error)) return failCause(error.failure)
+      if (!predicate(error.success)) {
+        return orElse ? orElse(error.success as any) : failCause(cause as any as Cause.Cause<E3>)
+      }
+      return f(error.success as any)
+    })
+)
 
 /** @internal */
 export const catchFilter: {
@@ -3111,7 +3104,7 @@ export const catchFilter: {
     f: (e: EB) => Effect.Effect<A2, E2, R2>,
     orElse?: ((e: X) => Effect.Effect<A3, E3, R3>) | undefined
   ): Effect.Effect<A | A2 | A3, E2 | E3, R | R2 | R3> =>
-    catchCauseUnary(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
+    catchCause(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
       const error = findRecoverableError(cause)
       if (Result.isFailure(error)) return failCause(error.failure)
       const result = filter(error.success)
@@ -3199,7 +3192,7 @@ export const catchTag: {
     const pred = Array.isArray(k)
       ? ((e: E): e is any => hasProperty(e, "_tag") && k.includes(e._tag))
       : isTagged(k as string)
-    return catchIfImpl(self, pred, f as any, orElse as any) as any
+    return catchIf(self, pred, f, orElse as any) as any
   }
 )
 
@@ -3467,7 +3460,7 @@ export const mapError: {
   <A, E, R, E2>(
     self: Effect.Effect<A, E, R>,
     f: (e: E) => E2
-  ): Effect.Effect<A, E2, R> => catchCauseUnary(self, (cause) => failCause(causeMap(cause, f)))
+  ): Effect.Effect<A, E2, R> => catchCause(self, (cause) => failCause(causeMap(cause, f)))
 )
 
 /** @internal */
@@ -4075,7 +4068,7 @@ const combineFinalizerCause = <A, E, XE, XR>(
 ): Effect.Effect<void, E | XE, XR> =>
   exitIsSuccess(exit_)
     ? finalizer
-    : catchCauseUnary(finalizer, (cause) => failCause(causeElectDefects(causeCombine(exit_.cause, cause))))
+    : catchCause(finalizer, (cause) => failCause(causeElectDefects(causeCombine(exit_.cause, cause))))
 
 const scopeCloseFinalizers = fnUntraced(function*<A, E>(
   self: Scope.Scope,
@@ -4291,7 +4284,7 @@ const OnExitImpl = (function() {
       } catch (defect) {
         eff = exitDie(defect)
       }
-      return eff ? flatMap(eff, (_) => exit) : exit
+      return eff ? new ContImpl(eff, returnPayload, exit) : exit
     },
     [contE](this: any, cause, _, exit) {
       exit ??= exitFailCause(cause)
@@ -4301,7 +4294,7 @@ const OnExitImpl = (function() {
       } catch (defect) {
         eff = exitDie(defect)
       }
-      return eff ? flatMap(combineFinalizerCause(exit, eff), (_) => exit) : exit
+      return eff ? new ContImpl(combineFinalizerCause(exit, eff), returnPayload, exit) : exit
     }
   })
   const OnExitImpl = function(this: any, effect: any, onExit: any, interruptible: any) {
@@ -5609,15 +5602,15 @@ export const forkChild: {
     readonly uninterruptible?: boolean | "inherit"
   }
 ): Effect.Effect<Fiber.Fiber<A, E>, never, R> =>
-  withFiber((fiber) => {
+  withFiberSucceed((fiber) => {
     interruptChildrenPatch()
-    return succeed(forkUnsafe(
+    return forkUnsafe(
       fiber,
       self,
       options?.startImmediately,
       false,
       options?.uninterruptible ?? false
-    ))
+    )
   }))
 
 /** @internal */
@@ -5640,15 +5633,8 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   } else {
     // Preserve the fork context rather than the dispatcher's context.
     child._asyncContext = captureAsyncContext()
-    // Cancel the deferred start if an interrupt runs first.
-    let resumed = false
-    child.yieldWith(() => {
-      resumed = true
-    })
-    parentRuntime.currentDispatcher.scheduleTask(() => {
-      if (resumed) return
-      child.evaluate(effect as any)
-    }, 0)
+    // Start from the parent's dispatcher; an interrupt that runs first cancels the start.
+    child.yieldNow(effect as any, 0, false, parentRuntime.currentDispatcher)
   }
   return child
 }
@@ -5678,7 +5664,7 @@ export const forkDetach: {
     readonly uninterruptible?: boolean | "inherit" | undefined
   }
 ): Effect.Effect<Fiber.Fiber<A, E>, never, R> =>
-  withFiber((fiber) => succeed(forkUnsafe(fiber, self, options?.startImmediately, true, options?.uninterruptible))))
+  withFiberSucceed((fiber) => forkUnsafe(fiber, self, options?.startImmediately, true, options?.uninterruptible)))
 
 /** @internal */
 export const awaitAllChildren = <A, E, R>(

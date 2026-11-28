@@ -57,6 +57,17 @@ const popcount = (n: number): number => {
 /** @internal */
 const mask = (hash: number, shift: number): number => (hash >>> shift) & BITMAP_INDEX_MASK
 
+// A copy of `array` with `value` inserted at `index`, made in one pass:
+// `slice` followed by `splice` moves the tail twice.
+const insertAt = <A>(array: ReadonlyArray<A>, index: number, value: A): Array<A> => {
+  const out = new Array<A>(array.length + 1)
+  let i = 0
+  for (; i < index; i++) out[i] = array[i]
+  out[index] = value
+  for (; i < array.length; i++) out[i + 1] = array[i]
+  return out
+}
+
 /** @internal */
 const bitpos = (hash: number, shift: number): number => 1 << mask(hash, shift)
 
@@ -537,8 +548,7 @@ class IndexedNode<K, V> extends Node<K, V> {
         return this
       }
 
-      const newChildren = this.children.slice()
-      newChildren.splice(idx, 0, newChild)
+      const newChildren = insertAt(this.children, idx, newChild)
 
       if (newChildren.length > MAX_INDEX_NODE) {
         return this.expand(edit, newBitmap, newChildren)

@@ -665,6 +665,27 @@ Missing key
       assert.deepStrictEqual(Schema.encodeSync(schema)(input), input)
     })
 
+    it("tells a key holding undefined from a missing key and reads each value once", () => {
+      const decode = Schema.decodeUnknownSync(Schema.Struct({
+        a: Schema.optionalKey(Schema.UndefinedOr(Schema.String)),
+        toString: Schema.optionalKey(Schema.String)
+      }))
+      // `toString` is inherited from Object.prototype, so it counts as missing
+      assert.deepStrictEqual(Object.keys(decode({})), [])
+      assert.deepStrictEqual(Object.keys(decode({ a: undefined })), ["a"])
+      assert.deepStrictEqual(decode(Object.create({ a: "inherited" })), { a: "inherited" })
+      let reads = 0
+      const input = {
+        get a() {
+          reads++
+          return "a"
+        },
+        toString: "own"
+      }
+      assert.deepStrictEqual(decode(input), { a: "a", toString: "own" })
+      assert.strictEqual(reads, 1)
+    })
+
     it("allows duplicate property signatures in the low-level AST constructor", () => {
       const ast = new SchemaAST.Objects(
         [

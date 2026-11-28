@@ -541,6 +541,18 @@ describe("HashMap", () => {
       }
     }
 
+    it("set leaves earlier maps unchanged while trie nodes grow", () => {
+      const count = 200
+      const maps = [HashMap.empty<number, number>()]
+      for (let i = 0; i < count; i++) maps.push(HashMap.set(maps[i], i, i))
+      maps.forEach((map, size) => {
+        assert.strictEqual(HashMap.size(map), size)
+        for (let i = 0; i < count; i++) {
+          assert.deepStrictEqual(HashMap.get(map, i), i < size ? Option.some(i) : Option.none())
+        }
+      })
+    })
+
     it("handles custom hashes that are not 32-bit integers", () => {
       const fractional = new FixedHashKey("fractional", 1.25)
       const other = new FixedHashKey("other", 1.5)
