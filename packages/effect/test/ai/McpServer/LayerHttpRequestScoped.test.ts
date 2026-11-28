@@ -4,6 +4,7 @@ import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
 import * as Tool from "effect/ai/Tool"
 import * as Toolkit from "effect/ai/Toolkit"
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -393,5 +394,90 @@ describe("McpServer.layerHttpRequestScoped", () => {
           1
         ], path)
       }
+    }).pipe(Effect.timeout("2 seconds")))
+
+  it.live("lists and calls caller-specific tools from a tool source across overlapping requests", () =>
+    Effect.gen(function*() {
+      class CurrentCaller extends Context.Service<CurrentCaller, string>()("test/RequestScoped/CurrentCaller") {}
+      const Auth = McpServer.middleware<{ provides: CurrentCaller }>()((effect, { headers }) =>
+        Effect.provideService(effect, CurrentCaller, String(headers["x-caller"] ?? "anonymous"))
+      )
+      const arrived = { alice: yield* Deferred.make<void>(), bob: yield* Deferred.make<void>() }
+      const StaticTools = Toolkit.make(Tool.make("Static", { success: Schema.String }))
+      const registrations = Layer.mergeAll(
+        McpServer.toolkit(StaticTools).pipe(
+          Layer.provide(StaticTools.toLayer({ Static: () => Effect.succeed("static") }))
+        ),
+        McpServer.toolSource({
+          list: Effect.gen(function*() {
+            const caller = yield* CurrentCaller
+            if (caller === "alice" || caller === "bob") {
+              // Hold both callers in flight so their list requests overlap.
+              yield* Deferred.succeed(arrived[caller], undefined)
+              yield* Deferred.await(arrived[caller === "alice" ? "bob" : "alice"])
+            }
+            return [new McpSchema.Tool({ name: `${caller}_tool`, inputSchema: { type: "object" } })]
+          }),
+          call: (name) =>
+            Effect.flatMap(CurrentCaller, (caller) =>
+              name === `${caller}_tool`
+                ? Effect.succeed(
+                  new McpSchema.CallToolResult({ content: [{ type: "text", text: `${caller}:${name}` }] })
+                )
+                : Effect.fail(new Cause.NoSuchElementError()))
+        }).pipe(Layer.provide(Auth.layer))
+      )
+      const harness = yield* makeHttpHarness(
+        McpServer.layerHttpRequestScoped({
+          name: "PerCallerSources",
+          version: "1.0.0",
+          path: "/mcp",
+          protocols: [protocol],
+          registrations
+        })
+      )
+      const post = (caller: string, method: "tools/list" | "tools/call", params: Record<string, unknown> = {}) =>
+        harness.post({
+          jsonrpc: "2.0",
+          id: 1,
+          method,
+          params: {
+            ...params,
+            _meta: {
+              "io.modelcontextprotocol/protocolVersion": protocol.protocolVersion,
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": { name: "test", version: "1.0.0" }
+            }
+          }
+        }, {
+          "MCP-Protocol-Version": protocol.protocolVersion,
+          "Mcp-Method": method,
+          ...(typeof params.name === "string" ? { "Mcp-Name": params.name } : {}),
+          "x-caller": caller
+        }).pipe(
+          Effect.flatMap(readMcpHttpResponse),
+          Effect.map((message) => message as { readonly result?: any; readonly error?: any })
+        )
+
+      const [aliceList, bobList] = yield* Effect.all(
+        [post("alice", "tools/list"), post("bob", "tools/list")],
+        { concurrency: "unbounded" }
+      )
+      assert.deepStrictEqual(
+        aliceList.result.tools.map((tool: { readonly name: string }) => tool.name),
+        ["Static", "alice_tool"]
+      )
+      assert.deepStrictEqual(
+        bobList.result.tools.map((tool: { readonly name: string }) => tool.name),
+        ["Static", "bob_tool"]
+      )
+
+      // Direct call for a caller that never listed first.
+      const carolCall = yield* post("carol", "tools/call", { name: "carol_tool", arguments: {} })
+      assert.strictEqual(carolCall.result.content[0].text, "carol:carol_tool")
+
+      // A caller cannot invoke another caller's tool.
+      const crossCall = yield* post("alice", "tools/call", { name: "bob_tool", arguments: {} })
+      assert.deepStrictEqual(crossCall.error, { code: -32602, message: "Tool 'bob_tool' not found" })
     }).pipe(Effect.timeout("2 seconds")))
 })
