@@ -19,7 +19,7 @@ describe("Dns", () => {
         Result.isFailure(Dns.makeRecord("SRV", { target: name("a.b"), port: 70000, priority: 0, weight: 0 }))
       )
       assert.isTrue(Result.isFailure(Dns.makeRecord("MX", { exchange: name("a.b"), priority: 1.5 })))
-      assert.isTrue(Result.isFailure(Dns.makeRecord("CNAME", { target: "not a name" as Host.DomainName })))
+      assert.isTrue(Result.isFailure(Dns.makeRecord("CNAME", { target: "" })))
       assert.isTrue(
         Result.isFailure(Dns.makeRecord("A", { address: ip("2001:db8::1") as NetAddress.Ipv4Address }))
       )
@@ -31,6 +31,19 @@ describe("Dns", () => {
       assert.isTrue(
         Result.isFailure(Dns.makeRecord("TLSA", { certUsage: 3, selector: 1, matchingType: 1, data: new Uint8Array() }))
       )
+    })
+
+    it("makes records of types without their own record value", () => {
+      const record = Dns.makeUnknownRecordUnsafe({ type: 0xff00, data: new Uint8Array([1, 2]) })
+      assert.isTrue(
+        Equal.equals(record, Dns.makeUnknownRecordUnsafe({ type: 0xff00, data: new Uint8Array([1, 2]) }))
+      )
+      assert.isTrue(Result.isFailure(Dns.makeUnknownRecord({ type: 0x10000, data: new Uint8Array() })))
+      assert.isTrue(Dns.isUnknownRecord(record))
+      assert.isFalse(Dns.isDnsRecord(record))
+      assert.isFalse(Dns.isUnknownRecord(Dns.makeRecordUnsafe("TXT", { chunks: ["a"] })))
+      assert.isFalse(Dns.isRecordType("UNKNOWN"))
+      assert.notInclude(Dns.recordTypes, "UNKNOWN")
     })
 
     it("copies TLSA data", () => {
@@ -50,7 +63,19 @@ describe("Dns", () => {
         Dns.formatRecord(Dns.makeRecordUnsafe("PTR", { host: "Office Printer._ipp._tcp.local." })),
         "PTR Office\\032Printer._ipp._tcp.local."
       )
+      assert.strictEqual(
+        Dns.formatRecord(Dns.makeRecordUnsafe("CNAME", { target: "1.0/25.2.0.192.in-addr.arpa." })),
+        "CNAME 1.0/25.2.0.192.in-addr.arpa."
+      )
       assert.strictEqual(Dns.formatRecord(tlsa(new Uint8Array([0x0a, 0xbc, 0xde]))), "TLSA 3 1 1 0ABCDE")
+      assert.strictEqual(
+        Dns.formatRecord(Dns.makeUnknownRecordUnsafe({ type: 65280, data: new Uint8Array([0x0a, 0xbc]) })),
+        "TYPE65280 \\# 2 0ABC"
+      )
+      assert.strictEqual(
+        Dns.formatRecord(Dns.makeUnknownRecordUnsafe({ type: 10, data: new Uint8Array() })),
+        "TYPE10 \\# 0"
+      )
     })
 
     it("implements equality and hashing", () => {
@@ -74,6 +99,7 @@ describe("Dns", () => {
 
     it("encodes and decodes JSON", () => {
       const codec = Schema.toCodecJson(Schema.DnsRecord)
+      const unknownCodec = Schema.toCodecJson(Schema.DnsUnknownRecord)
       const soa = Dns.makeRecordUnsafe("SOA", {
         primary: name("ns.example.com"),
         admin: "hostmaster.example.com",
@@ -95,12 +121,39 @@ describe("Dns", () => {
       }
       assert.deepStrictEqual(Schema.encodeSync(codec)(soa), json)
       assert.isTrue(Equal.equals(Schema.decodeUnknownSync(codec)(json), soa))
-      assert.throws(() => Schema.decodeUnknownSync(codec)({ _tag: "CNAME", target: "Example.com" }))
+      assert.throws(() => Schema.decodeUnknownSync(codec)({ _tag: "CNAME", target: "" }))
       const record = tlsa(new Uint8Array([0x0a, 0xbc]))
       const tlsaJson = { _tag: "TLSA", certUsage: 3, selector: 1, matchingType: 1, data: "0abc" }
       assert.deepStrictEqual(Schema.encodeSync(codec)(record), tlsaJson)
       assert.isTrue(Equal.equals(Schema.decodeUnknownSync(codec)(tlsaJson), record))
       assert.throws(() => Schema.decodeUnknownSync(codec)({ ...tlsaJson, data: "" }))
+      const unknown = Dns.makeUnknownRecordUnsafe({ type: 65280, data: new Uint8Array([0x0a, 0xbc]) })
+      const unknownJson = { _tag: "UNKNOWN", type: 65280, data: "0abc" }
+      assert.deepStrictEqual(Schema.encodeSync(unknownCodec)(unknown), unknownJson)
+      assert.isTrue(Equal.equals(Schema.decodeUnknownSync(unknownCodec)(unknownJson), unknown))
+      assert.throws(() => Schema.decodeUnknownSync(unknownCodec)({ ...unknownJson, type: 0x10000 }))
+      assert.throws(() => Schema.decodeUnknownSync(codec)(unknownJson))
+    })
+
+    it("encodes and decodes resource records as JSON", () => {
+      const codec = Schema.toCodecJson(Schema.DnsResourceRecord)
+      const a = {
+        owner: "example.com.",
+        ttl: Duration.seconds(300),
+        class: 1,
+        data: Dns.makeRecordUnsafe("A", { address: ip("192.0.2.1") as NetAddress.Ipv4Address })
+      }
+      const json = { owner: "example.com.", ttl: 300, class: 1, data: { _tag: "A", address: "192.0.2.1" } }
+      assert.deepStrictEqual(Schema.encodeSync(codec)(a), json)
+      assert.isTrue(Equal.equals(Schema.decodeUnknownSync(codec)(json), a))
+      const unknown = { ...a, data: Dns.makeUnknownRecordUnsafe({ type: 65280, data: new Uint8Array([0x0a]) }) }
+      const unknownJson = { ...json, data: { _tag: "UNKNOWN", type: 65280, data: "0a" } }
+      assert.deepStrictEqual(Schema.encodeSync(codec)(unknown), unknownJson)
+      assert.isTrue(Equal.equals(Schema.decodeUnknownSync(codec)(unknownJson), unknown))
+      assert.throws(() => Schema.decodeUnknownSync(codec)({ ...json, ttl: 1.5 }))
+      assert.throws(() => Schema.decodeUnknownSync(codec)({ ...json, class: 0x10000 }))
+      assert.throws(() => Schema.decodeUnknownSync(codec)({ ...json, owner: "" }))
+      assert.throws(() => Schema.encodeSync(codec)({ ...a, ttl: Duration.millis(1500) }))
     })
   })
 
@@ -185,6 +238,18 @@ describe("Dns", () => {
         assert.strictEqual(reverse.reason, "Unsupported")
         assert.strictEqual(reverse.method, "reverse")
         assert.strictEqual(reverse.hostname, "192.0.2.1")
+      }))
+
+    it.effect("reports queries of types that are not record types as unsupported", () =>
+      Effect.gen(function*() {
+        const queried: Array<string> = []
+        const dns = Dns.make({
+          lookup: () => Effect.succeed([]),
+          resolve: (_, type) => Effect.sync(() => (queried.push(type), []))
+        })
+        const error = yield* Effect.flip(dns.resolve("a.b", "UNKNOWN" as Dns.RecordType))
+        assert.deepStrictEqual([error.reason, error.hostname, error.recordType], ["Unsupported", "a.b", "UNKNOWN"])
+        assert.deepStrictEqual(queried, [])
       }))
 
     it.effect("derives reverse lookups from PTR queries", () =>

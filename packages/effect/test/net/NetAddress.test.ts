@@ -24,6 +24,13 @@ describe("NetAddress", () => {
     assert.deepStrictEqual([ipv4, ipv6].filter(NetAddress.isFamily("IPv6")), [ipv6])
   })
 
+  it("checks for a scope ID", () => {
+    assert.isTrue(NetAddress.isScoped(success(NetAddress.inetAddressFromString("[fe80::1%1]:53"))))
+    assert.isFalse(NetAddress.isScoped(success(NetAddress.inetAddressFromString("[fe80::1]:53"))))
+    assert.isFalse(NetAddress.isScoped(success(NetAddress.inetAddressFromString("192.0.2.1:53"))))
+    assert.isFalse(NetAddress.isScoped(success(NetAddress.ipv6FromString("fe80::1"))))
+  })
+
   it("returns IP address widths", () => {
     assert.strictEqual(NetAddress.width(success(NetAddress.ipv4FromString("1.2.3.4"))), 32)
     assert.strictEqual(NetAddress.width(success(NetAddress.ipv6FromString("2001:db8::1"))), 128)
