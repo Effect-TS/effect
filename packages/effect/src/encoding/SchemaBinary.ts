@@ -1747,10 +1747,7 @@ class Reader {
   }
   // Decoded bytes outlive the parser's buffer, so they are copied, not viewed.
   takeCopy(n: number): Uint8Array<ArrayBuffer> {
-    if (this.pos + n > this.end) invalid("complete value", undefined, this.options)
-    const out = this.buf.slice(this.pos, this.pos + n) as Uint8Array<ArrayBuffer>
-    this.pos += n
-    return out
+    return new Uint8Array(this.take(n))
   }
   // Decode a bounded child value without allocating another reader.
   enter(len: number): number {
