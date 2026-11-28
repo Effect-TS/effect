@@ -1416,7 +1416,7 @@ export const takeAll = <A>(self: Subscription<A>): Effect.Effect<Arr.NonEmptyArr
   })
 
 const pollForItem = <A>(self: Subscription<A>) =>
-  internalEffect.callbackNoSignal<A>((resume) => {
+  internalEffect.callbackInternal<A>((resume) => {
     if (self.shutdownFlag.current) return resume(Effect.interrupt)
     if (Option.isSome(self.ended.current)) {
       // Messages may have been published after the empty check, before this callback ran.
@@ -2610,7 +2610,7 @@ export class BackPressureStrategy<in out A> implements PubSub.Strategy<A> {
     ended: MutableRef.MutableRef<Option.Option<A>>,
     owner?: PubSub<A>
   ): Effect.Effect<boolean> {
-    return internalEffect.callbackNoSignal<boolean>((resume) => {
+    return internalEffect.callbackInternal<boolean>((resume) => {
       // The publisher may have yielded since `publish` checked `ended`, and
       // `end` only rejects publishers that are already registered.
       if (Option.isSome(ended.current)) return resume(Effect.succeed(false))

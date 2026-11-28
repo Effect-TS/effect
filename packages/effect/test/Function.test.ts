@@ -75,6 +75,36 @@ describe("Function", () => {
       )
       assert.strictEqual(F.pipe(2, sum(3)), 5)
     })
+
+    it("predicate-based receives Arguments and forwards this receiver", () => {
+      const observedTags: Array<string> = []
+      const observedThis: Array<unknown> = []
+      const fn = F.dual<
+        (b: number) => (a: number) => number,
+        (a: number, b: number) => number
+      >(
+        (args) => {
+          observedTags.push(Object.prototype.toString.call(args))
+          return args.length === 2
+        },
+        function(this: unknown, a: number, b: number) {
+          observedThis.push(this)
+          return a + b
+        }
+      )
+      const receiver = { tag: "receiver" }
+      assert.strictEqual((fn as any).call(receiver, 2, 3), 5)
+      assert.strictEqual((fn as any).call(receiver, 3).call(receiver, 2), 5)
+      assert.deepStrictEqual(observedTags, ["[object Arguments]", "[object Arguments]"])
+      assert.deepStrictEqual(observedThis, [receiver, receiver])
+    })
+
+    it("arity 4 data-last isolates arguments across curried calls", () => {
+      const add4 = F.dual(4, (a: number, b: number, c: number, d: number) => a + b + c + d)
+      const partial = add4(2, 3, 4)
+      assert.strictEqual(partial(1), 10)
+      assert.strictEqual(partial(10), 19)
+    })
   })
 
   describe("apply", () => {

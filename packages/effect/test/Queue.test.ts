@@ -1002,4 +1002,16 @@ describe("Queue", () => {
       assert.deepStrictEqual(producerExit, Exit.succeed([]))
       assert.deepStrictEqual(done, Exit.void)
     }))
+
+  it.effect("interrupting a waiting take or offer does not lose items", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.bounded<number>(1)
+      const waiter = yield* Queue.take(queue).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Fiber.interrupt(waiter)
+      assert.isTrue(yield* Queue.offer(queue, 1))
+      const blockedOffer = yield* Queue.offer(queue, 2).pipe(Effect.forkChild({ startImmediately: true }))
+      yield* Fiber.interrupt(blockedOffer)
+      assert.strictEqual(yield* Queue.take(queue), 1)
+      assert.deepStrictEqual(yield* Queue.poll(queue), Option.none())
+    }))
 })

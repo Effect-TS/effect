@@ -257,13 +257,107 @@ describe("Scheduler", () => {
 
     it("falls back to setTimeout without postTask", async () => {
       const { Effect } = browser
-      vi.stubGlobal("scheduler", undefined)
-      const setTimeout = vi.spyOn(globalThis, "setTimeout")
+      for (const stub of [undefined, {}]) {
+        vi.stubGlobal("scheduler", stub)
+        const setTimeout = vi.spyOn(globalThis, "setTimeout")
+        try {
+          assert.strictEqual(await Effect.runPromise(Effect.as(Effect.yieldNow, 1)), 1)
+          assert.isAbove(setTimeout.mock.calls.length, 0)
+        } finally {
+          setTimeout.mockRestore()
+        }
+      }
+    })
+
+    it("reports throwing postTask callbacks via reportError without unhandled rejections", async () => {
+      const { Scheduler } = browser
+      const boom = new Error("task boom")
+      const reported: Array<unknown> = []
+      let unhandled = 0
+      const onUnhandled = () => {
+        unhandled++
+      }
+      process.on("unhandledRejection", onUnhandled)
+      vi.stubGlobal("scheduler", {
+        postTask(task: () => void) {
+          return new Promise<void>((resolve, reject) => {
+            realSetImmediate(() => {
+              try {
+                task()
+                resolve()
+              } catch (error) {
+                reject(error)
+              }
+            })
+          })
+        }
+      })
+      vi.stubGlobal("reportError", (error: unknown) => {
+        reported.push(error)
+      })
       try {
-        assert.strictEqual(await Effect.runPromise(Effect.as(Effect.yieldNow, 1)), 1)
-        assert.isAbove(setTimeout.mock.calls.length, 0)
+        const dispatcher = new Scheduler.MixedScheduler().makeDispatcher()
+        dispatcher.scheduleTask(() => {
+          throw boom
+        }, 0)
+        await nextMacrotask()
+        await nextMacrotask()
+        assert.deepStrictEqual(reported, [boom])
+        assert.strictEqual(unhandled, 0)
       } finally {
-        setTimeout.mockRestore()
+        process.off("unhandledRejection", onUnhandled)
+      }
+    })
+
+    it("falls back to setTimeout rethrow when reportError is missing", async () => {
+      const { Scheduler } = browser
+      const boom = new Error("missing reportError boom")
+      let unhandled = 0
+      const onUnhandled = () => {
+        unhandled++
+      }
+      const scheduled: Array<() => void> = []
+      process.on("unhandledRejection", onUnhandled)
+      vi.stubGlobal("scheduler", {
+        postTask(task: () => void) {
+          return new Promise<void>((resolve, reject) => {
+            realSetImmediate(() => {
+              try {
+                task()
+                resolve()
+              } catch (error) {
+                reject(error)
+              }
+            })
+          })
+        }
+      })
+      vi.stubGlobal("reportError", undefined)
+      const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout").mockImplementation(
+        ((fn: () => void) => {
+          scheduled.push(fn)
+          return 0 as any
+        }) as any
+      )
+      try {
+        const dispatcher = new Scheduler.MixedScheduler().makeDispatcher()
+        dispatcher.scheduleTask(() => {
+          throw boom
+        }, 0)
+        await new Promise((resolve) => realSetImmediate(resolve))
+        await new Promise((resolve) => realSetImmediate(resolve))
+        assert.strictEqual(unhandled, 0)
+        assert.strictEqual(scheduled.length, 1)
+        let caught: unknown
+        try {
+          scheduled[0]()
+        } catch (error) {
+          caught = error
+        }
+        assert.strictEqual(caught, boom)
+      } finally {
+        setTimeoutSpy.mockRestore()
+        process.off("unhandledRejection", onUnhandled)
       }
     })
   })

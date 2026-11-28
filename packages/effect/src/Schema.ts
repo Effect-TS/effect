@@ -1270,6 +1270,9 @@ export function isSchemaError(u: unknown): u is SchemaError {
   return isSchemaErrorInternal(u)
 }
 
+const mapIssueCause = (cause: Cause_.Cause<SchemaIssue.Issue>): Cause_.Cause<SchemaError> =>
+  Cause_.map(cause, (issue) => new SchemaError(issue))
+
 function fromIssueEffect<A, R>(
   self: Effect.Effect<A, SchemaIssue.Issue, R>
 ): Effect.Effect<A, SchemaError, R> {
@@ -1278,14 +1281,14 @@ function fromIssueEffect<A, R>(
   }
   return Effect.catchCause(
     self,
-    (cause) => Effect.failCauseSync(() => Cause_.map(cause, (issue) => new SchemaError(issue)))
+    (cause) => Effect.failCauseSync(() => mapIssueCause(cause))
   )
 }
 
 function fromIssueExit<A>(exit: Exit_.Exit<A, SchemaIssue.Issue>): Exit_.Exit<A, SchemaError> {
   return Exit_.isSuccess(exit)
     ? exit as unknown as Exit_.Exit<A, SchemaError>
-    : Exit_.failCause(Cause_.map(exit.cause, (issue) => new SchemaError(issue)))
+    : Exit_.failCause(mapIssueCause(exit.cause))
 }
 
 function getSchemaErrorOrThrow(
@@ -1316,14 +1319,14 @@ function runSchemaErrorPromise<A>(
   })
 }
 
-function runSchemaErrorSync<A>(
-  self: Effect.Effect<A, SchemaError>
+function runIssueSync<A>(
+  self: Effect.Effect<A, SchemaIssue.Issue>
 ): A {
-  const exit = Effect.runSyncExit(self)
-  if (Exit_.isSuccess(exit)) {
+  const exit = effectIsExit(self) ? self : Effect.runSyncExit(self)
+  if (exit._tag === "Success") {
     return exit.value
   }
-  throw getSchemaErrorOrThrow(exit.cause, "Sync adapter can only throw schema errors")
+  throw getSchemaErrorOrThrow(mapIssueCause(exit.cause), "Sync adapter can only throw schema errors")
 }
 /**
  * Returns a "Standard Schema" object conforming to the [Standard Schema
@@ -1881,9 +1884,9 @@ export const decodePromise: <S extends ConstraintDecoder<unknown>>(
  * @since 4.0.0
  */
 export function decodeUnknownSync<S extends ConstraintDecoder<unknown>>(schema: S, options?: SchemaAST.ParseOptions) {
-  const parser = decodeUnknownEffect(schema, options)
+  const parser = SchemaParser.decodeUnknownEffect(schema, options)
   return (input: unknown, options?: SchemaAST.ParseOptions): S["Type"] => {
-    return runSchemaErrorSync(parser(input, options))
+    return runIssueSync(parser(input, options) as Effect.Effect<S["Type"], SchemaIssue.Issue>)
   }
 }
 /**
@@ -2285,9 +2288,9 @@ export const encodePromise: <S extends ConstraintEncoder<unknown>>(
  * @since 4.0.0
  */
 export function encodeUnknownSync<S extends ConstraintEncoder<unknown>>(schema: S, options?: SchemaAST.ParseOptions) {
-  const parser = encodeUnknownEffect(schema, options)
+  const parser = SchemaParser.encodeUnknownEffect(schema, options)
   return (input: unknown, options?: SchemaAST.ParseOptions): S["Encoded"] => {
-    return runSchemaErrorSync(parser(input, options) as Effect.Effect<S["Encoded"], SchemaError>)
+    return runIssueSync(parser(input, options) as Effect.Effect<S["Encoded"], SchemaIssue.Issue>)
   }
 }
 /**

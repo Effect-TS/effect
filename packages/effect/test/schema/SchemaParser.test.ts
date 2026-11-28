@@ -1354,5 +1354,51 @@ describe("SchemaParser", () => {
         assertTrue(SchemaIssue.isIssue(error.success))
       }
     })
+
+    it("reads Proxy struct properties and array elements at most once on success and failure", () => {
+      const trackReads = <T extends object>(target: T) => {
+        const gets = new Map<PropertyKey, number>()
+        const proxy = new Proxy(target, {
+          get(t, prop, receiver) {
+            gets.set(prop, (gets.get(prop) ?? 0) + 1)
+            return Reflect.get(t, prop, receiver)
+          }
+        })
+        return { proxy, gets }
+      }
+
+      const structSchema = Schema.Struct({
+        a: Schema.String,
+        b: Schema.Number,
+        opt: Schema.optionalKey(Schema.Boolean)
+      })
+      const decodeStruct = SchemaParser.decodeUnknownExit(structSchema)
+
+      const validObj = trackReads({ a: "ok", b: 1 })
+      assertTrue(Exit.isSuccess(decodeStruct(validObj.proxy)))
+      strictEqual(validObj.gets.get("a"), 1)
+      strictEqual(validObj.gets.get("b"), 1)
+      strictEqual(validObj.gets.get("opt"), undefined)
+
+      const invalidObj = trackReads({ a: "ok", b: "bad" })
+      assertTrue(Exit.isFailure(decodeStruct(invalidObj.proxy)))
+      strictEqual(invalidObj.gets.get("a"), 1)
+      strictEqual(invalidObj.gets.get("b"), 1)
+
+      const arraySchema = Schema.Array(Schema.String)
+      const decodeArray = SchemaParser.decodeUnknownExit(arraySchema)
+
+      const validArr = trackReads(["x", "y"])
+      assertTrue(Exit.isSuccess(decodeArray(validArr.proxy)))
+      strictEqual(validArr.gets.get("0"), 1)
+      strictEqual(validArr.gets.get("1"), 1)
+
+      const invalidArr = trackReads(["x", 42, "z"])
+      const arrayFailure = decodeArray(invalidArr.proxy)
+      assertTrue(Exit.isFailure(arrayFailure))
+      strictEqual(invalidArr.gets.get("0"), 1)
+      strictEqual(invalidArr.gets.get("1"), 1)
+      strictEqual(invalidArr.gets.get("2"), undefined)
+    })
   })
 })

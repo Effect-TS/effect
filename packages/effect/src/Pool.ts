@@ -22,6 +22,7 @@ import * as internal from "./internal/effect.ts"
 import { type Pipeable, pipeArguments } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Queue from "./Queue.ts"
+import type * as Scheduler from "./Scheduler.ts"
 import * as Scope from "./Scope.ts"
 import * as Semaphore from "./Semaphore.ts"
 
@@ -33,6 +34,20 @@ const PoolClock = Symbol()
 const Failures = Symbol()
 const ResizePending = Symbol()
 const Acquiring = Symbol()
+const Reservations = Symbol()
+const WakeState = Symbol()
+const ReleaseNow = Symbol()
+
+interface PoolItemImpl<A, E> extends PoolItem<A, E> {
+  [ReleaseNow]: (exit: Exit.Exit<any, any>) => Effect.Effect<void>
+}
+
+interface PoolWakeState {
+  readonly scheduler: Scheduler.Scheduler
+  readonly dispatcher: Scheduler.SchedulerDispatcher
+  readonly run: () => void
+  pending: number
+}
 
 interface PoolImpl<A, E> extends Pool<A, E> {
   readonly [Acquire]: Effect.Effect<A, E, Scope.Scope>
@@ -43,6 +58,9 @@ interface PoolImpl<A, E> extends Pool<A, E> {
   /** Whether a borrower forked a resize that has not read the target yet. */
   [ResizePending]: boolean
   [Acquiring]: number
+  /** Active reservation count for this pool, guarding `reservations` lookups. */
+  [Reservations]: number
+  [WakeState]: PoolWakeState | undefined
 }
 
 /**
@@ -426,6 +444,8 @@ export const makeWithStrategy = <A, E, R>(options: {
       [Failures]: 0,
       [ResizePending]: false,
       [Acquiring]: 0,
+      [Reservations]: 0,
+      [WakeState]: undefined,
       config,
       state,
       pipe() {
@@ -496,8 +516,9 @@ const shutdown = Effect.fnUntraced(function*<A, E>(self: Pool<A, E>) {
  * @category getters
  * @since 2.0.0
  */
-export const get = <A, E>(self: Pool<A, E>): Effect.Effect<A, E, Scope.Scope> =>
-  core.withFiber((fiber) => {
+export const get: <A, E>(self: Pool<A, E>) => Effect.Effect<A, E, Scope.Scope> = core.makeFiberEffect(
+  "PoolGet",
+  (self, fiber) => {
     const state = self.state
     if (state.isShuttingDown) return internal.interrupt
     if (state.waiters.size === 0 && state.availableHead?.exit._tag === "Success") {
@@ -508,7 +529,8 @@ export const get = <A, E>(self: Pool<A, E>): Effect.Effect<A, E, Scope.Scope> =>
       state.usage--
     }
     return getSlowWith(self, leaseItemWith)
-  })
+  }
+)
 
 /**
  * Borrows an item while an effect runs and returns it when the effect exits.
@@ -573,7 +595,7 @@ const useItem = <A, E, B, E2, R2>(
   restore?: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
 ): Effect.Effect<B, E | E2, R2> => {
   leaseItemBookkeeping(self, item)
-  internal.onExitUnsafe(fiber, item.release)
+  internal.onExitUnsafe(fiber, (item as PoolItemImpl<A, E>)[ReleaseNow])
   let body: Effect.Effect<B, E2, R2>
   try {
     body = f((item.exit as Exit.Success<A, E>).value)
@@ -673,10 +695,11 @@ const leaseItem = <A, E>(
 ): Effect.Effect<A, E> => {
   leaseItemBookkeeping(self, item)
   const scope = Context.getUnsafe(fiber.context, Scope.Scope)
+  const release = (item as PoolItemImpl<A, E>)[ReleaseNow]
   if (scope.state._tag === "Closed") {
-    internal.onExitUnsafe(fiber, item.release)
+    internal.onExitUnsafe(fiber, release)
   } else {
-    internal.scopeAddFinalizerUnsafe(scope, {}, item.release)
+    internal.scopeAddFinalizerUnsafe(scope, undefined, release)
   }
   return item.exit
 }
@@ -687,29 +710,43 @@ const leaseItemWith = <A, E>(
   fiber: Fiber.Fiber<unknown, unknown>
 ): Effect.Effect<A, E, Scope.Scope> => leaseItem(self, item, fiber)
 
+const releaseItemNow = <A, E>(
+  self: Pool<A, E>,
+  item: PoolItem<A, E>,
+  fiber?: Fiber.Fiber<unknown, unknown>
+): Effect.Effect<void> => {
+  const state = self.state
+  item.refCount--
+  state.usage--
+  if (item.refCount === 0) {
+    item.idleSince = (self as PoolImpl<A, E>)[PoolClock].currentTimeMillisUnsafe()
+  }
+  if (state.invalidated.size > 0 && state.invalidated.has(item)) {
+    return invalidatePoolItem(self, item)
+  }
+  // Every release frees one slot, so it can admit one waiter. Reacting only
+  // to the saturated-to-unsaturated transition strands the rest: several
+  // leases returning at once would wake a single waiter and leave the others
+  // asleep against an item that has capacity for them. `addAvailable` is
+  // idempotent, so re-adding an available item is free.
+  if (item.refCount < self.config.concurrency) {
+    addAvailableFront(self, item)
+    if (state.waiters.size > 0) {
+      if (fiber !== undefined) {
+        wakeWaiters(self, fiber, 1)
+      } else {
+        return core.withFiber((f) => {
+          wakeWaiters(self, f, 1)
+          return internal.exitVoid
+        })
+      }
+    }
+  }
+  return internal.exitVoid
+}
+
 const releaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effect<void> =>
-  core.withFiber((fiber) => {
-    const state = self.state
-    item.refCount--
-    state.usage--
-    // Only the usage TTL strategy reads `idleSince`; fixed pools skip the clock.
-    if (item.refCount === 0 && self.config.strategy !== strategyNoop) {
-      item.idleSince = (self as PoolImpl<A, E>)[PoolClock].currentTimeMillisUnsafe()
-    }
-    if (state.invalidated.has(item)) {
-      return invalidatePoolItem(self, item)
-    }
-    // Every release frees one slot, so it can admit one waiter. Reacting only
-    // to the saturated-to-unsaturated transition strands the rest: several
-    // leases returning at once would wake a single waiter and leave the others
-    // asleep against an item that has capacity for them. `addAvailable` is
-    // idempotent, so re-adding an available item is free.
-    if (item.refCount < self.config.concurrency) {
-      addAvailableFront(self, item)
-      wakeWaiters(self, fiber, 1)
-    }
-    return internal.void
-  })
+  core.withFiber((fiber) => releaseItemNow(self, item, fiber))
 
 const firstHealthyAvailable = <A, E>(self: Pool<A, E>): PoolItem<A, E> | undefined => {
   let item = self.state.availableHead
@@ -758,7 +795,7 @@ const makeWaiter = <A, E>(): Waiter<A, E> => {
 }
 
 const waitForItem = <A, E>(self: Pool<A, E>, waiter: Waiter<A, E>): Effect.Effect<void, E> =>
-  internal.callbackNoSignal((resume) => {
+  internal.callbackInternal((resume) => {
     const state = self.state
     if (
       state.isShuttingDown ||
@@ -787,21 +824,46 @@ const waitForItem = <A, E>(self: Pool<A, E>, waiter: Waiter<A, E>): Effect.Effec
     })
   }, self)
 
+const drainWaiters = <A, E>(self: Pool<A, E>, count: number) => {
+  // Walk the live set, so a waiter that leaves during the walk does not use
+  // up a wake. Skip waiters already woken, and stop once nothing is left to
+  // take.
+  let remaining = count
+  for (const notify of self.state.waiters) {
+    if (remaining <= 0 || self.state.availableHead === undefined) break
+    if ((notify as Waiter<A, E>).resume === undefined) continue
+    remaining--
+    notify()
+  }
+}
+
 const wakeWaiters = <A, E>(self: Pool<A, E>, fiber: Fiber.Fiber<unknown, unknown>, count: number) => {
-  const waiters = self.state.waiters
-  if (waiters.size === 0) return
-  fiber.currentDispatcher.scheduleTask(() => {
-    // Walk the live set, so a waiter that leaves during the walk does not use
-    // up a wake. Skip waiters already woken, and stop once nothing is left to
-    // take.
-    let remaining = count
-    for (const notify of waiters) {
-      if (remaining <= 0 || self.state.availableHead === undefined) break
-      if ((notify as Waiter<A, E>).resume === undefined) continue
-      remaining--
-      notify()
+  if (self.state.waiters.size === 0) return
+  const impl = self as PoolImpl<A, E>
+  const scheduler = fiber.cache.scheduler
+  let wake = impl[WakeState]
+  if (wake === undefined) {
+    wake = impl[WakeState] = {
+      scheduler,
+      dispatcher: scheduler.makeDispatcher(),
+      pending: 0,
+      run: () => {
+        const remaining = wake!.pending
+        wake!.pending = 0
+        drainWaiters(self, remaining)
+      }
     }
-  }, 0)
+  }
+  if (wake.scheduler === scheduler) {
+    // Coalesce wakes from releases on the same scheduler into one macrotask turn.
+    const pending = wake.pending
+    wake.pending = pending + count
+    if (pending === 0) {
+      wake.dispatcher.scheduleTask(wake.run, 0)
+    }
+    return
+  }
+  fiber.currentDispatcher.scheduleTask(() => drainWaiters(self, count), 0)
 }
 
 const firstSleepingWaiter = <A, E>(self: Pool<A, E>) => {
@@ -821,7 +883,7 @@ const reservations = new WeakMap<PoolItem<unknown, unknown>, number>()
 
 /** Adds a freshly acquired item, which has no use behind it, at the back. */
 const addAvailable = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
-  if (item.isAvailable || reservations.has(item)) return
+  if (item.isAvailable || ((self as PoolImpl<A, E>)[Reservations] > 0 && reservations.has(item))) return
   item.isAvailable = true
   item.availablePrevious = self.state.availableTail
   item.availableNext = undefined
@@ -847,7 +909,7 @@ const addAvailable = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
  * item is checked out either way.
  */
 const addAvailableFront = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
-  if (item.isAvailable || reservations.has(item)) return
+  if (item.isAvailable || ((self as PoolImpl<A, E>)[Reservations] > 0 && reservations.has(item))) return
   item.isAvailable = true
   item.availablePrevious = undefined
   item.availableNext = self.state.availableHead
@@ -937,6 +999,7 @@ export const reserve: {
           const existing = reservations.get(poolItem)
           if (existing === undefined) self.state.usage += self.config.concurrency - 1
           reservations.set(poolItem, (existing ?? 0) + 1)
+          ;(self as PoolImpl<A, E>)[Reservations]++
           removeAvailable(self, poolItem)
           return poolItem
         }
@@ -946,6 +1009,7 @@ export const reserve: {
         core.withFiber((fiber) => {
           if (poolItem === undefined) return internal.void
           const remaining = (reservations.get(poolItem) ?? 1) - 1
+          ;(self as PoolImpl<A, E>)[Reservations]--
           if (remaining > 0) {
             reservations.set(poolItem, remaining)
             return internal.void
@@ -1120,6 +1184,7 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           release: undefined as any
         }
         item.release = constant(releaseItem(self, item))
+        ;(item as PoolItemImpl<A, E>)[ReleaseNow] = () => releaseItemNow(self, item)
         const onAcquire = Effect.suspend(() =>
           // A borrower may have removed the item before the callback runs.
           self.state.items.has(item) ? self.config.strategy.onAcquire(item) : Effect.void

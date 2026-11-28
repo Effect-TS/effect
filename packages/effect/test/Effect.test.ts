@@ -5820,5 +5820,66 @@ describe("Effect", () => {
         .map(({ type }) => type)
       assert.deepStrictEqual(leaks, [])
     })
+
+    it.effect("catchCause passes only the cause argument to handlers", () =>
+      Effect.gen(function*() {
+        const argCounts: Array<number> = []
+        const value = yield* Effect.fail("boom").pipe(
+          Effect.catchCause((...args: Array<unknown>) => {
+            argCounts.push(args.length)
+            return Effect.succeed("recovered")
+          })
+        )
+        assert.strictEqual(value, "recovered")
+        assert.deepStrictEqual(argCounts, [1])
+      }))
+
+    it.effect("callback ignores duplicate resumes and resumes after interruption", () =>
+      Effect.gen(function*() {
+        const value = yield* Effect.callback<number>((resume) => {
+          resume(Effect.succeed(1))
+          resume(Effect.succeed(2))
+        })
+        assert.strictEqual(value, 1)
+
+        let lateResume: ((effect: Effect.Effect<number>) => void) | undefined
+        let finalized = 0
+        const fiber = yield* Effect.callback<number>((resume) => {
+          lateResume = resume
+          return Effect.sync(() => {
+            finalized++
+          })
+        }).pipe(Effect.forkChild({ startImmediately: true }))
+
+        const exit = yield* Fiber.interrupt(fiber).pipe(Effect.andThen(Fiber.await(fiber)))
+        lateResume?.(Effect.succeed(99))
+        yield* Effect.yieldNow
+        assert.isTrue(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause))
+        assert.strictEqual(finalized, 1)
+      }))
+
+    it.effect("forkChild interrupted before deferred start does not run its body", () =>
+      Effect.gen(function*() {
+        let ran = false
+        const fiber = yield* Effect.forkChild(Effect.sync(() => {
+          ran = true
+        }))
+        yield* Fiber.interrupt(fiber)
+        yield* Effect.yieldNow
+        assert.isFalse(ran)
+      }))
+
+    it.effect("scoped restores fiber cache when inner effect overrides a cached service", () =>
+      Effect.gen(function*() {
+        const before = yield* Effect.withFiber((fiber) => Effect.succeed(fiber.cache.maxOpsBeforeYield))
+        const inside = yield* Effect.scoped(
+          Effect.withFiber((fiber) => Effect.succeed(fiber.cache.maxOpsBeforeYield)).pipe(
+            Effect.provideService(Scheduler.MaxOpsBeforeYield, before + 7)
+          )
+        )
+        const after = yield* Effect.withFiber((fiber) => Effect.succeed(fiber.cache.maxOpsBeforeYield))
+        assert.strictEqual(inside, before + 7)
+        assert.strictEqual(after, before)
+      }))
   })
 })

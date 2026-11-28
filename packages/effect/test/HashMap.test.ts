@@ -746,5 +746,65 @@ describe("HashMap", () => {
       expect(HashMap.has(map, key2)).toBe(false)
       expect(HashMap.has(map, key3)).toBe(true)
     })
+
+    it("handles re-entrant HashMap mutations inside Equal.equals without corrupting size", () => {
+      let inner = HashMap.make(["k0", 0])
+      class ReentrantKey implements Equal.Equal {
+        constructor(readonly id: number) {}
+        [Equal.symbol](that: Equal.Equal): boolean {
+          inner = HashMap.set(inner, `set-${this.id}`, this.id)
+          inner = HashMap.remove(inner, "k0")
+          return that instanceof ReentrantKey && this.id === that.id
+        }
+        [Hash.symbol](): number {
+          return 7
+        }
+      }
+
+      const k1 = new ReentrantKey(1)
+      const k2 = new ReentrantKey(2)
+      const k1Dup = new ReentrantKey(1)
+
+      let map = HashMap.empty<ReentrantKey, string>()
+      map = HashMap.set(map, k1, "a")
+      map = HashMap.set(map, k2, "b")
+      map = HashMap.set(map, k1Dup, "a2")
+      expect(HashMap.size(map)).toBe(2)
+      expect(HashMap.get(map, k1)).toEqual(Option.some("a2"))
+      expect(HashMap.get(map, k2)).toEqual(Option.some("b"))
+
+      const afterRemove = HashMap.remove(map, k1Dup)
+      expect(HashMap.size(afterRemove)).toBe(1)
+      expect(HashMap.size(map)).toBe(2)
+      expect(HashMap.get(afterRemove, k2)).toEqual(Option.some("b"))
+
+      const mutated = HashMap.mutate(map, (m) => {
+        HashMap.remove(m, k1Dup)
+        HashMap.set(m, new ReentrantKey(3), "c")
+      })
+      expect(HashMap.size(mutated)).toBe(2)
+      expect(HashMap.size(map)).toBe(2)
+      expect(HashMap.size(inner)).toBe(2)
+    })
+
+    it("preserves persistent snapshots and exact sizes across node expansion and shrinking", () => {
+      const snapshots: Array<HashMap.HashMap<number, number>> = []
+      let map = HashMap.empty<number, number>()
+      for (let i = 0; i < 64; i++) {
+        map = HashMap.set(map, i, i * 10)
+        snapshots.push(map)
+      }
+      let shrunk = map
+      for (let i = 0; i < 64; i += 2) {
+        shrunk = HashMap.remove(shrunk, i)
+      }
+      expect(HashMap.size(shrunk)).toBe(32)
+      expect(HashMap.size(snapshots[63])).toBe(64)
+      for (let i = 0; i < 64; i++) {
+        expect(HashMap.size(snapshots[i])).toBe(i + 1)
+        expect(HashMap.get(snapshots[63], i)).toEqual(Option.some(i * 10))
+        expect(HashMap.has(shrunk, i)).toBe(i % 2 === 1)
+      }
+    })
   })
 })

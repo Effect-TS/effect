@@ -3,6 +3,7 @@ import type * as Context from "../Context.ts"
 import type * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
 import type * as Exit from "../Exit.ts"
+import type * as Fiber from "../Fiber.ts"
 import { format } from "../Formatter.ts"
 import { dual, identity } from "../Function.ts"
 import * as Hash from "../Hash.ts"
@@ -463,7 +464,8 @@ export interface Primitive {
     | undefined
   readonly [contAll]:
     | ((
-      fiber: FiberImpl
+      fiber: FiberImpl,
+      symbol?: contA | contE
     ) =>
       | ((value: unknown, fiber: FiberImpl) => Primitive | Yield)
       | undefined)
@@ -500,7 +502,8 @@ export const makePrimitiveProto = <Op extends string>(options: {
   ) => Primitive | Effect.Effect<any, any, any> | Yield
   readonly [contAll]?: (
     this: Primitive,
-    fiber: FiberImpl
+    fiber: FiberImpl,
+    symbol?: contA | contE
   ) => void | ((value: any, fiber: FiberImpl) => void)
 }): Primitive =>
   ({
@@ -550,7 +553,8 @@ export const makePrimitive = <
     this: Primitive & {
       readonly [args]: Parameters<Fn>[0]
     },
-    fiber: FiberImpl
+    fiber: FiberImpl,
+    symbol?: contA | contE
   ) => void | ((value: any, fiber: FiberImpl) => void)
 }): Fn => {
   const Proto = makePrimitiveProto(options as any)
@@ -561,6 +565,49 @@ export const makePrimitive = <
   return function(value: any) {
     return new PrimitiveImpl(value)
   } as Fn
+}
+
+/**
+ * Builds a unary Effect constructor whose evaluator receives the argument and
+ * current fiber directly, avoiding a per-call closure allocation.
+ *
+ * @internal
+ */
+export const makeFiberEffect = <Fn extends (arg: any) => Effect.Effect<any, any, any>>(
+  op: string,
+  run: (
+    arg: Parameters<Fn>[0],
+    fiber: FiberImpl<unknown, unknown>,
+    self: ReturnType<Fn>
+  ) => Effect.Effect<any, any, any>
+): Fn =>
+  makePrimitive<Fn>({
+    op,
+    [evaluate](fiber) {
+      return run(this[args], fiber, this as any)
+    }
+  })
+
+/**
+ * Passes a computed value straight to the fiber's next success continuation
+ * without allocating an `Exit.Success`, respecting `maxInlineSteps` for stack
+ * safety.
+ *
+ * @internal
+ */
+export const succeedFiber = <A>(fiber: Fiber.Fiber<any, any>, value: A): Effect.Effect<A> =>
+  (fiber as FiberImpl).succeedWith(value) as any
+
+/**
+ * Delivers a value to the next success continuation on the current fiber step
+ * without bouncing through the run loop, preventing interruption between a
+ * destructive read (such as `Queue.take`) and its consumer.
+ *
+ * @internal
+ */
+export const deliverImmediate = <A>(fiber: FiberImpl<unknown, unknown>, value: A): Effect.Effect<A> => {
+  const cont = fiber.getCont(contA)
+  return (cont ? cont[contA](value, fiber) : fiber.yieldWith(exitSucceed(value))) as any
 }
 
 /** @internal */
@@ -693,9 +740,7 @@ export const withFiberSucceed: <A, R = never>(
 ) => Effect.Effect<A, never, R> = makePrimitive({
   op: "WithFiberSucceed",
   [evaluate](fiber) {
-    const value = this[args](fiber)
-    const cont = fiber.getCont(contA)
-    return cont ? cont[contA](value, fiber) : fiber.yieldWith(exitSucceed(value))
+    return fiber.succeedWith(this[args](fiber))
   }
 })
 

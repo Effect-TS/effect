@@ -1017,7 +1017,10 @@ function asPromise<T, E>(
 function asExit<T, E, R>(
   parser: (input: E, options?: SchemaAST.ParseOptions) => Effect.Effect<T, SchemaIssue.Issue, R>
 ): (input: E, options?: SchemaAST.ParseOptions) => Exit.Exit<T, SchemaIssue.Issue> {
-  return (input: E, options?: SchemaAST.ParseOptions) => Effect.runSyncExit(parser(input, options) as any)
+  return (input: E, options?: SchemaAST.ParseOptions) => {
+    const effect = parser(input, options)
+    return effectIsExit(effect) ? effect as Exit.Exit<T, SchemaIssue.Issue> : Effect.runSyncExit(effect as any)
+  }
 }
 
 /** @internal */
@@ -1104,9 +1107,9 @@ function asSync<T, E>(
 }
 
 function runSync<T>(effect: Effect.Effect<T, SchemaIssue.Issue>, message: string): T {
-  const exit = Effect.runSyncExit(effect)
-  if (Exit.isSuccess(exit)) {
-    return exit.value
+  const exit = effectIsExit(effect) ? effect : Effect.runSyncExit(effect)
+  if (exit._tag === "Success") {
+    return (exit as InternalParser.Success<T, SchemaIssue.Issue>)[InternalParser.args]
   }
   const issue = InternalSchemaCause.getSchemaIssueOrThrow(exit.cause, message)
   throw new Error("Schema validation failed", { cause: issue })

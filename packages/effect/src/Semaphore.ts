@@ -295,7 +295,7 @@ const takePermits = <A, E, R>(
     self.waiters.add(waiter)
     if (n < self.waiterPermitsLowerBound) self.waiterPermitsLowerBound = n
     internal.onExitUnsafe(fiber, remove)
-    const wait = restore(internal.callbackNoSignal<void>((resume) => {
+    const wait = restore(internal.callbackInternal<void>((resume) => {
       // The fiber may have yielded since the last check, missing a wake.
       if (firstAvailableWaiter(self) === waiter) {
         resume(internal.void)

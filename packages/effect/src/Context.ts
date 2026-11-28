@@ -17,7 +17,7 @@ import * as Equal from "./Equal.ts"
 import { dual, identity, type LazyArg } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import type { Inspectable } from "./Inspectable.ts"
-import { contextMaker, exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts"
+import { contextMaker, exitSucceed, PipeInspectableProto, succeedFiber, withFiber } from "./internal/core.ts"
 import { fiberCachedKeys } from "./internal/fiberCachedKeys.ts"
 import { hasProperty } from "./internal/predicate.ts"
 import * as Option from "./Option.ts"
@@ -282,7 +282,7 @@ const ServiceProto: any = Object.assign(
   Effectable.Prototype<Service<never, any>>({
     label: "Service",
     evaluate(fiber) {
-      return exitSucceed(get(fiber.context, this))
+      return succeedFiber(fiber, get(fiber.context, this))
     }
   }),
   {

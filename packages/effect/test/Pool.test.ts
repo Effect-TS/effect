@@ -1573,5 +1573,55 @@ describe("Pool", () => {
         yield* waitUntil(() => pool.state.items.size === 2)
         deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 0, acquiring: 0, pending: 0, min: 2, max: 2 })
       }))
+
+    it.effect("updates idleSince on fixed pools when items are released", () =>
+      Effect.gen(function*() {
+        const pool = yield* Pool.make({ acquire: Effect.succeed("conn"), size: 1 })
+        yield* TestClock.adjust(500)
+        yield* Pool.use(pool, Effect.succeed)
+        strictEqual(pool.state.availableHead?.idleSince, 500)
+      }))
+
+    it.effect("wakes contended waiters in FIFO order across coalesced releases and skips interrupted waiters", () =>
+      Effect.gen(function*() {
+        let acquired = 0
+        const pool = yield* Pool.make({ acquire: Effect.sync(() => ++acquired), size: 2 })
+        const lease1 = yield* Scope.fork(yield* Effect.scope)
+        const lease2 = yield* Scope.fork(yield* Effect.scope)
+        yield* Scope.provide(Pool.get(pool), lease1)
+        yield* Scope.provide(Pool.get(pool), lease2)
+
+        const order: Array<string> = []
+        const borrow = (label: string) =>
+          Effect.scoped(Pool.get(pool).pipe(Effect.tap(() => Effect.sync(() => order.push(label)))))
+
+        const w1 = yield* Effect.forkChild(borrow("w1"), { startImmediately: true })
+        const w2 = yield* Effect.forkChild(borrow("w2"), { startImmediately: true })
+        const w3 = yield* Effect.forkChild(borrow("w3"), { startImmediately: true })
+        yield* Fiber.interrupt(w2)
+
+        yield* Scope.close(lease1, Exit.void)
+        yield* Scope.close(lease2, Exit.void)
+        yield* Fiber.join(w1)
+        yield* Fiber.join(w3)
+        deepStrictEqual(order, ["w1", "w3"])
+        deepStrictEqual(yield* Pool.stats(pool), { idle: 2, used: 0, acquiring: 0, pending: 0, min: 2, max: 2 })
+      }))
+
+    it.effect("keeps Pool.reserve state isolated between independent pools", () =>
+      Effect.gen(function*() {
+        const pool1 = yield* Pool.make({ acquire: Effect.succeed("a"), size: 1, concurrency: 2 })
+        const pool2 = yield* Pool.make({ acquire: Effect.succeed("b"), size: 1, concurrency: 2 })
+        const lease = yield* Scope.fork(yield* Effect.scope)
+        const reservation = yield* Scope.fork(yield* Effect.scope)
+        yield* Scope.provide(Pool.get(pool1), lease)
+        yield* Scope.provide(Pool.reserve(pool1, "a"), reservation)
+        yield* Scope.close(lease, Exit.void)
+        yield* Pool.use(pool2, Effect.succeed)
+        deepStrictEqual(yield* Pool.stats(pool1), { idle: 0, used: 1, acquiring: 0, pending: 0, min: 1, max: 1 })
+        deepStrictEqual(yield* Pool.stats(pool2), { idle: 1, used: 0, acquiring: 0, pending: 0, min: 1, max: 1 })
+        yield* Scope.close(reservation, Exit.void)
+        deepStrictEqual(yield* Pool.stats(pool1), { idle: 1, used: 0, acquiring: 0, pending: 0, min: 1, max: 1 })
+      }))
   })
 })
