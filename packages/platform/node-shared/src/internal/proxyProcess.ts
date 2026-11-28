@@ -217,7 +217,7 @@ class Proxy implements ProxiedProcessOwner {
   private server: Net.Server | undefined
   private child: NodeChildProcess.ChildProcess | undefined
   // Bounds the wait for `Ready`, and for the reply to each sent request
-  private readonly timers = new Map<number | "ready", ReturnType<typeof setTimeout>>()
+  private readonly timers = new Map<number | "ready", () => void>()
 
   constructor(options: Options) {
     this.options = options
@@ -366,18 +366,28 @@ class Proxy implements ProxiedProcessOwner {
 
   private startTimer(key: number | "ready"): void {
     const millis = this.options.responseTimeoutMillis
+    let immediate: ReturnType<typeof setImmediate> | undefined
     const timer = setTimeout(() => {
-      this.stop(
-        Object.assign(new Error(`The proxy process did not respond within ${millis} ms`), { code: "ETIMEDOUT" })
-      )
+      // A blocked event loop runs due timers before polling IPC, so defer to
+      // the check phase to let already-queued replies be processed first
+      immediate = setImmediate(() => {
+        this.timers.delete(key)
+        this.stop(
+          Object.assign(new Error(`The proxy process did not respond within ${millis} ms`), { code: "ETIMEDOUT" })
+        )
+      })
+      immediate.unref()
     }, millis)
     // Whatever waits for the reply keeps the application running
     timer.unref()
-    this.timers.set(key, timer)
+    this.timers.set(key, () => {
+      clearTimeout(timer)
+      if (immediate !== undefined) clearImmediate(immediate)
+    })
   }
 
   private stopTimer(key: number | "ready"): void {
-    clearTimeout(this.timers.get(key))
+    this.timers.get(key)?.()
     this.timers.delete(key)
   }
 
@@ -460,7 +470,7 @@ class Proxy implements ProxiedProcessOwner {
   private end(cause: Error): void {
     if (this.exited) return
     this.exited = true
-    for (const timer of this.timers.values()) clearTimeout(timer)
+    for (const cancel of this.timers.values()) cancel()
     this.timers.clear()
     if (!this.ready) this.unref()
     const unacknowledged = new Error(

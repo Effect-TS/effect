@@ -255,8 +255,8 @@ ${proxyProcessSource}`
       const runs = join(directory, "runs")
       const dropFlag = join(directory, "drop")
       yield* fs.writeFileString(dropFlag, "")
-      // The first proxy process starts commands but never acknowledges them
-      const program = `const dropSpawned = (() => {
+      // The first proxy process starts the first command but never acknowledges it
+      const program = `let drop = (() => {
   try {
     process.getBuiltinModule("node:fs").rmSync(${JSON.stringify(dropFlag)})
     return true
@@ -265,12 +265,37 @@ ${proxyProcessSource}`
   }
 })()
 const sendMessage = process.send.bind(process)
-process.send = (message, ...rest) => dropSpawned && message._tag === "Spawned" ? true : sendMessage(message, ...rest)
+process.send = (message, ...rest) => {
+  if (drop && message._tag === "Spawned") {
+    drop = false
+    return true
+  }
+  return sendMessage(message, ...rest)
+}
 ${proxyProcessSource}`
 
       yield* Effect.gen(function*() {
         const first = Option.getOrThrow(yield* currentPid)
-        const error = yield* Effect.flip(Effect.scoped(ChildProcess.make("sh", ["-c", "echo run >> \"$0\"", runs])))
+        const unacknowledged = yield* Effect.forkChild(
+          Effect.flip(Effect.scoped(ChildProcess.make("sh", ["-c", "echo run >> \"$0\"", runs]))),
+          { startImmediately: true }
+        )
+        // Unrelated IPC traffic on the same proxy must not extend a missing reply's deadline
+        let unrelatedSpawns = 0
+        const chatter = yield* Effect.forkChild(
+          Effect.forever(
+            Effect.gen(function*() {
+              yield* Effect.sleep("100 millis")
+              if (Option.getOrUndefined(yield* currentPid) === first) {
+                yield* proxyPid
+                unrelatedSpawns++
+              }
+            }).pipe(Effect.ignore)
+          )
+        )
+        const error = yield* Fiber.join(unacknowledged).pipe(Effect.timeout("4 seconds"))
+        yield* Fiber.interrupt(chatter)
+        assert.isAbove(unrelatedSpawns, 0)
         assert.include(String((error.reason.cause as Error).message), "may have started")
         assert.deepStrictEqual(yield* currentPid, Option.none())
         // The command ran once

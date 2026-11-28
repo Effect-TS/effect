@@ -1006,10 +1006,10 @@ export class ProxyProcess extends Context.Service<ProxyProcess, {
  * `PlatformError`. Its command was not sent, so retrying is safe. After the
  * layer's scope closes, spawns fail without starting a proxy process.
  *
- * A spawn request is sent at most once. If the proxy process exits, or sends
- * nothing within `responseTimeout`, after a request was sent but before it
- * replied, the command may already be running. The proxy process is stopped,
- * the spawn fails with a `PlatformError`, and the request is not sent again.
+ * A spawn request is sent at most once. If the proxy process exits, or does
+ * not reply within `responseTimeout`, after a request was sent, the command
+ * may already be running. The proxy process is stopped, the spawn fails with a
+ * `PlatformError`, and the request is not sent again.
  *
  * **Gotchas**
  *
