@@ -686,6 +686,27 @@ Missing key
       assert.strictEqual(reads, 1)
     })
 
+    it("checks a key with the has trap before reading it with the get trap", () => {
+      const decode = Schema.decodeUnknownSync(Schema.Struct({
+        a: Schema.String,
+        b: Schema.optionalKey(Schema.String)
+      }))
+      const traps: Array<string> = []
+      // `has` hides "b", which `get` would still return
+      const input = new Proxy({ a: "a", b: "b" }, {
+        has: (target, key) => {
+          traps.push(`has ${String(key)}`)
+          return key !== "b" && key in target
+        },
+        get: (target, key, receiver) => {
+          traps.push(`get ${String(key)}`)
+          return Reflect.get(target, key, receiver)
+        }
+      })
+      assert.deepStrictEqual(decode(input), { a: "a" })
+      assert.deepStrictEqual(traps, ["has a", "get a", "has b"])
+    })
+
     it("allows duplicate property signatures in the low-level AST constructor", () => {
       const ast = new SchemaAST.Objects(
         [
