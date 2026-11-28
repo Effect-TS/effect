@@ -170,6 +170,14 @@ export class CauseImpl<E> implements Cause.Cause<E> {
 
 const annotationsMap = new WeakMap<object, ReadonlyMap<string, unknown>>()
 
+const hasAllKeys = (self: ReadonlyMap<string, unknown>, keys: ReadonlyMap<string, unknown>): boolean => {
+  if (self.size < keys.size) return false
+  for (const key of keys.keys()) {
+    if (!self.has(key)) return false
+  }
+  return true
+}
+
 const annotateReasonMap = <T extends ReasonBase<any>>(
   reason: T,
   annotations: ReadonlyMap<string, unknown>,
@@ -177,6 +185,8 @@ const annotateReasonMap = <T extends ReasonBase<any>>(
 ): T => {
   if (annotations.size === 0) return reason
   const overwrite = options?.overwrite === true
+  // Check before copying: a failure is annotated again at every frame it passes.
+  if (!overwrite && hasAllKeys(reason.annotations, annotations)) return reason
   const newAnnotations = new Map(reason.annotations)
   for (const [key, value] of annotations) {
     if (overwrite || !newAnnotations.has(key)) {
@@ -408,11 +418,36 @@ export const causeAnnotateMap = <E>(
   context?: Context.Context<never>
 ): Cause.Cause<E> => {
   if (annotations.size === 0) return self
-  return new CauseImpl(self.reasons.map((f) =>
-    f.annotate as unknown === ReasonBase.prototype.annotate
-      ? annotateReasonMap(f as any, annotations, options)
-      : f.annotate(context ?? contextMaker.makeUnsafe!(annotations), options)
-  ))
+  // Keep the cause, and its reasons array, when no reason changes.
+  let reasons: Array<Cause.Reason<E>> | undefined
+  for (let i = 0; i < self.reasons.length; i++) {
+    const reason = self.reasons[i]
+    const next = reason.annotate as unknown === ReasonBase.prototype.annotate
+      ? annotateReasonMap(reason as any, annotations, options)
+      : reason.annotate(context ?? contextMaker.makeUnsafe!(annotations), options)
+    if (next !== reason) {
+      reasons ??= self.reasons.slice()
+      reasons[i] = next
+    }
+  }
+  return reasons === undefined ? self : new CauseImpl(reasons)
+}
+
+/**
+ * Annotates the reasons that have no stack frame yet. Returns `self` when
+ * every reason has one, which is the case each time a failure is evaluated
+ * again further up the same call.
+ *
+ * @internal
+ */
+export const causeAnnotateStackFrame = <E>(self: Cause.Cause<E>, frame: StackFrame): Cause.Cause<E> => {
+  for (let i = 0; i < self.reasons.length; i++) {
+    const reason = self.reasons[i]
+    if (reason.annotate as unknown !== ReasonBase.prototype.annotate || !reason.annotations.has(StackTraceKey)) {
+      return causeAnnotateMap(self, new Map([[StackTraceKey, frame]]))
+    }
+  }
+  return self
 }
 
 /** @internal */
@@ -641,8 +676,11 @@ export const exitFailCause: <E>(cause: Cause.Cause<E>) => Exit.Exit<never, E> = 
     let cause = this[args]
     let annotated = false
     if (fiber.cache.stackFrame) {
-      cause = causeAnnotateMap(cause, new Map([[StackTraceKey, fiber.cache.stackFrame]]))
-      annotated = true
+      const withFrame = causeAnnotateStackFrame(cause, fiber.cache.stackFrame)
+      if (withFrame !== cause) {
+        cause = withFrame
+        annotated = true
+      }
     }
     let cont = fiber.getCont(contE)
     const interruptedCause = fiber._interruptedCause
