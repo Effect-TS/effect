@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { DateTime, Effect, Option, Result, SchemaGetter, SchemaIssue } from "effect"
+import { DateTime, Effect, Option, Result, Schema, SchemaGetter, SchemaIssue } from "effect"
 import { assertSome, deepStrictEqual } from "../utils/assert.ts"
 
 const formatIssue = SchemaIssue.makeFormatterDefault()
@@ -17,6 +17,29 @@ function makeAsserts<T, E>(getter: SchemaGetter.Getter<T, E>) {
 }
 
 describe("SchemaGetter", () => {
+  it.effect("Number reports failed coercions with InvalidValue", () =>
+    Effect.gen(function*() {
+      const input = Symbol("label")
+      const issue = yield* SchemaGetter.run(SchemaGetter.Number<symbol>(), Option.some(input), {
+        reportInput: true
+      }).pipe(Effect.flip)
+      assert.instanceOf(issue, SchemaIssue.InvalidValue)
+      assert(SchemaIssue.hasInput(issue))
+      assert.strictEqual(issue.input, input)
+    }))
+
+  it("Number preserves successful coercions and lets unions continue after a failed coercion", () => {
+    const converted = Schema.Unknown.pipe(Schema.decodeTo(Schema.Number, {
+      decode: SchemaGetter.Number(),
+      encode: SchemaGetter.passthrough()
+    }))
+    const decode = Schema.decodeUnknownSync(Schema.Union([converted, Schema.Symbol]))
+    const symbol = Symbol("label")
+    assert.strictEqual(decode("42"), 42)
+    assert.isNaN(decode("not a number"))
+    assert.strictEqual(decode(symbol), symbol)
+  })
+
   it.effect("BigInt rejects invalid strings and numbers with InvalidValue", () =>
     Effect.gen(function*() {
       const getter = SchemaGetter.BigInt()

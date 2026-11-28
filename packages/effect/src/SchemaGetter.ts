@@ -930,8 +930,8 @@ export function String<E>(): Getter<string, E> {
  *
  * **Details**
  *
- * The getter is pure, never fails, and delegates to `globalThis.Number`. It may
- * produce `NaN` for non-numeric inputs.
+ * - Delegates to `globalThis.Number` and may produce `NaN` for non-numeric inputs.
+ * - Fails with `SchemaIssue.InvalidValue` if the conversion throws.
  *
  * **Example** (Coercing to a number)
  *
@@ -949,7 +949,19 @@ export function String<E>(): Getter<string, E> {
  * @since 4.0.0
  */
 export function Number<E>(): Getter<number, E> {
-  return transform(globalThis.Number)
+  return transformEffect((input, options) => {
+    try {
+      return Effect.succeed(globalThis.Number(input))
+    } catch {
+      return Effect.fail(
+        new SchemaIssue.InvalidValue(
+          { expected: "a value that can be converted to a number" },
+          input,
+          options
+        )
+      )
+    }
+  })
 }
 
 /**
