@@ -229,12 +229,26 @@ describe("Context", () => {
     ]
     for (let context of contexts) {
       for (let i = 0; i < 8; i++) {
-        context = Context.add(context, A, i)
+        context = Context.add(context, Context.Service<number>(`ContextTest/Depth${i}`), i)
       }
       strictEqual((context as unknown as { depth: number }).depth, 8)
       context = Context.add(context, B, 8)
       strictEqual((context as unknown as { depth: number }).depth, 0)
     }
+  })
+
+  it("reuses the overlay slot when an overlaid key is added again", () => {
+    const base = Context.makeUnsafe<never>(new Map([[A.key, 0]]))
+    let context = Context.add(base, B, 0).pipe(Context.add(C, 0))
+    for (let i = 1; i <= 32; i++) {
+      context = Context.add(context, i % 2 === 0 ? B : C, i)
+    }
+    const impl = context as unknown as { depth: number; base: ReadonlyMap<string, unknown> }
+    strictEqual(impl.depth, 2)
+    strictEqual(impl.base, base.mapUnsafe)
+    strictEqual(Context.get(context, B), 32)
+    strictEqual(Context.get(context, C), 31)
+    deepStrictEqual([...context.mapUnsafe], [[A.key, 0], [B.key, 32], [C.key, 31]])
   })
 
   it("flattens after repeated base fall-throughs", () => {

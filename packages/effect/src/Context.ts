@@ -542,6 +542,16 @@ const applyOverlays = (map: Map<string, any>, overlay: Overlay | undefined): voi
   map.set(overlay.key, overlay.value)
 }
 
+// Returns the chain with the entry for `key` holding `value`, in its original
+// position so `mapUnsafe` keeps its order, or `undefined` when the chain does
+// not hold `key`.
+const replaceOverlay = (overlay: Overlay, key: string, value: unknown): Overlay | undefined => {
+  if (overlay.key === key) return { key, value, parent: overlay.parent }
+  if (overlay.parent === undefined) return undefined
+  const parent = replaceOverlay(overlay.parent, key, value)
+  return parent === undefined ? undefined : { key: overlay.key, value: overlay.value, parent }
+}
+
 const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
   if (self._flat) return self._flat
   if (!self.overlay) return self._flat = self.base
@@ -874,6 +884,14 @@ export const addUnsafe = <Services, I, S>(
 ): Context<Services | I> => {
   const impl = self as ContextImpl<Services>
   const cacheRoot = fiberCachedKeys.has(key) ? undefined : impl.cacheRoot
+  if (impl.overlay !== undefined) {
+    // Overwriting an overlaid key reuses its slot, so nested updates of the
+    // same service never grow the chain towards a rebase.
+    const overlay = replaceOverlay(impl.overlay, key, service)
+    if (overlay !== undefined) {
+      return makeOverlay(cacheRoot, impl.base, overlay, impl.depth, impl.maxDepth)
+    }
+  }
   if (impl.depth >= impl.maxDepth) {
     // Avoid mapUnsafe: it would flatten the parent before copying.
     const map = new Map(impl._flat ?? impl.base)
