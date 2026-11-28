@@ -763,6 +763,25 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       }).pipe(Effect.scoped)
     ))
 
+  it("copy preserves relative symlinks in a directory", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const root = yield* fs.makeTempDirectoryScoped()
+        const source = `${root}/source`
+        const destination = `${root}/copy`
+        yield* fs.makeDirectory(source)
+        yield* fs.writeFileString(`${source}/target`, "content")
+        yield* fs.symlink("target", `${source}/link`)
+
+        yield* fs.copy(source, destination)
+        yield* fs.remove(source, { recursive: true })
+
+        assert.strictEqual(yield* fs.readLink(`${destination}/link`), "target")
+        assert.strictEqual(yield* fs.readFileString(`${destination}/link`), "content")
+      }).pipe(Effect.scoped)
+    ))
+
   it("rename moves directories and replaces existing files", () =>
     runPromise(
       Effect.gen(function*() {
