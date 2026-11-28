@@ -1853,7 +1853,7 @@ class FrequencyMetric extends Metric$<string, FrequencyState> {
       const count = occurrences.get(word) ?? 0
       occurrences.set(word, count + 1)
     }
-    return makeHooks(() => ({ occurrences }), update)
+    return makeHooks(() => ({ occurrences: new Map(occurrences) }), update)
   }
 }
 
