@@ -2,14 +2,17 @@
 // prints the fastest and the median ns/op of each. On a machine shared with other work
 // the fastest run is the one least disturbed, so `min A/B` is the steadier ratio; above 1
 // means B is faster.
-//   node hill-climb-tools/abmin.mjs A_DIR B_DIR "case,case" [runs] [ms] [hosts]
+//   [PIN=<cpu>] node hill-climb-tools/abmin.mjs A_DIR B_DIR "case,case" [runs] [ms] [hosts]
 import { spawnSync } from "node:child_process"
 
 const [a, b, cases, runs = "9", ms = "400", hosts = "node,bun"] = process.argv.slice(2)
 const runner = new URL("run-case.mjs", import.meta.url).pathname
 
+// PIN="3" runs every process on that CPU with taskset, so other work on the machine moves less
+const pin = process.env.PIN
 const run = (host, dir, name) => {
-  const out = spawnSync(host, [runner, name, ms], { env: { ...process.env, HC_OUT: dir }, encoding: "utf8" }).stdout
+  const [cmd, args] = pin ? ["taskset", ["-c", pin, host, runner, name, ms]] : [host, [runner, name, ms]]
+  const out = spawnSync(cmd, args, { env: { ...process.env, HC_OUT: dir }, encoding: "utf8" }).stdout
   return Number(out.trim().split(" ").at(-2))
 }
 const median = (values) => values.toSorted((x, y) => x - y)[values.length >> 1]
