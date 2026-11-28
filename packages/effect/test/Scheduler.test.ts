@@ -267,6 +267,26 @@ describe("Scheduler", () => {
       }
     })
 
+    it("cancels a pending setTimeout fallback with clearTimeout", () => {
+      const { Scheduler } = browser
+      vi.stubGlobal("scheduler", undefined)
+      const setTimeout = vi.spyOn(globalThis, "setTimeout")
+      const clearTimeout = vi.spyOn(globalThis, "clearTimeout")
+      try {
+        const dispatcher = new Scheduler.MixedScheduler().makeDispatcher()
+        let runs = 0
+        dispatcher.scheduleTask(() => runs++, 0)
+        // Flushing runs the task now, so the pending timer is cleared rather than left to fire
+        dispatcher.flush()
+        assert.strictEqual(runs, 1)
+        assert.strictEqual(setTimeout.mock.calls.length, 1)
+        assert.deepStrictEqual(clearTimeout.mock.calls, [[setTimeout.mock.results[0].value]])
+      } finally {
+        setTimeout.mockRestore()
+        clearTimeout.mockRestore()
+      }
+    })
+
     it("rethrows a task error from a timer, leaving the postTask promise fulfilled", async () => {
       const { Scheduler } = browser
       // As in browsers, the returned promise settles with the outcome of the task
