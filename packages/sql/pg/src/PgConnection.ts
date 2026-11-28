@@ -1071,6 +1071,13 @@ const inferredParameter = (oid: number, value: unknown): PgTypes.Parameter => ({
   value
 })
 
+const isInterval = (value: unknown): value is PgTypes.Interval =>
+  typeof value === "object" && value !== null &&
+  Reflect.ownKeys(value).length === 3 &&
+  typeof (value as PgTypes.Interval).months === "number" &&
+  typeof (value as PgTypes.Interval).days === "number" &&
+  typeof (value as PgTypes.Interval).microseconds === "bigint"
+
 const inferScalar = (value: unknown): PgTypes.Parameter => {
   if (PgTypes.isParameter(value)) return value
   if (value === null || value === undefined) return inferredParameter(0, null)
@@ -1103,6 +1110,7 @@ const inferScalar = (value: unknown): PgTypes.Parameter => {
       new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
     )
   }
+  if (isInterval(value)) return inferredParameter(PgTypes.OID.interval, value)
   throw new PgTypes.CodecError({ message: `Cannot infer a PostgreSQL type for ${String(value)}` })
 }
 
