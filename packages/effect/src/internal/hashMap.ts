@@ -63,6 +63,78 @@ const bitpos = (hash: number, shift: number): number => 1 << mask(hash, shift)
 /** @internal */
 const index = (bitmap: number, bit: number): number => popcount(bitmap & (bit - 1))
 
+// Tracks whether the current `set` or `remove` changed the entry count.
+// Saved and restored at entry points so re-entrant `Equal.equals` calls stay isolated.
+let mutFlag = false
+
+// Persistent updates copy a node's array on every `set` and `remove`. These
+// write the copy in one pass, where `slice` followed by `splice` copies the
+// elements and then shifts them.
+const insertAt = <A>(self: ReadonlyArray<A>, idx: number, value: A): Array<A> => {
+  const out = new globalThis.Array<A>(self.length + 1)
+  let i = 0
+  for (; i < idx; i++) out[i] = self[i]
+  out[i] = value
+  for (; i < self.length; i++) out[i + 1] = self[i]
+  return out
+}
+
+const removeAt = <A>(self: ReadonlyArray<A>, idx: number): Array<A> => {
+  const out = new globalThis.Array<A>(self.length - 1)
+  let i = 0
+  for (; i < idx; i++) out[i] = self[i]
+  for (; i < out.length; i++) out[i] = self[i + 1]
+  return out
+}
+
+const notFound = Symbol()
+
+const lookup = <K, V>(root: Node<K, V>, hash: number, key: K): V | typeof notFound => {
+  let node: Node<K, V> | undefined = root
+  let shift = 0
+  while (node !== undefined) {
+    switch (node._tag) {
+      case "IndexedNode": {
+        const indexed = node as IndexedNode<K, V>
+        const bit = bitpos(hash, shift)
+        if ((indexed.bitmap & bit) === 0) return notFound
+        node = indexed.children[index(indexed.bitmap, bit)]
+        shift += SHIFT
+        break
+      }
+      case "ArrayNode": {
+        node = (node as ArrayNode<K, V>).children[mask(hash, shift)]
+        shift += SHIFT
+        break
+      }
+      case "LeafNode": {
+        const leaf = node as LeafNode<K, V>
+        return leaf.hash === hash && (leaf.key === key || Equal_.equals(leaf.key, key))
+          ? leaf.value
+          : notFound
+      }
+      case "CollisionNode": {
+        const collision = node as CollisionNode<K, V>
+        if (collision.hash !== hash) return notFound
+        const entries = collision.entries
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i]
+          if (entry[0] === key || Equal_.equals(entry[0], key)) return entry[1]
+        }
+        return notFound
+      }
+      default:
+        return notFound
+    }
+  }
+  return notFound
+}
+
+const getNode = <K, V>(root: Node<K, V>, hash: number, key: K): Option.Option<V> => {
+  const value = lookup(root, hash, key)
+  return value === notFound ? Option.none() : Option.some(value)
+}
+
 /** @internal */
 function mergeLeaves<K, V>(
   edit: number,
@@ -111,22 +183,18 @@ abstract class Node<K, V> {
   abstract readonly edit: number
   abstract get size(): number
   // `hash` must be a 32-bit integer: callers coerce with `| 0` before entering the trie.
-  abstract get(shift: number, hash: number, key: K): Option.Option<V>
-  abstract has(shift: number, hash: number, key: K): boolean
   abstract set(
     edit: number,
     shift: number,
     hash: number,
     key: K,
-    value: V,
-    added: { value: boolean }
+    value: V
   ): Node<K, V>
   abstract remove(
     edit: number,
     shift: number,
     hash: number,
-    key: K,
-    removed: { value: boolean }
+    key: K
   ): Node<K, V> | undefined
 
   canEdit(edit: number): boolean {
@@ -162,23 +230,14 @@ class EmptyNode<K, V> extends Node<K, V> {
     return 0
   }
 
-  get(_shift: number, _hash: number, _key: K): Option.Option<V> {
-    return Option.none()
-  }
-
-  has(_shift: number, _hash: number, _key: K): boolean {
-    return false
-  }
-
   set(
     edit: number,
     _shift: number,
     hash: number,
     key: K,
-    value: V,
-    added: { value: boolean }
+    value: V
   ): Node<K, V> {
-    added.value = true
+    mutFlag = true
     return new LeafNode(edit, hash, key, value)
   }
 
@@ -186,8 +245,7 @@ class EmptyNode<K, V> extends Node<K, V> {
     _edit: number,
     _shift: number,
     _hash: number,
-    _key: K,
-    _removed: { value: boolean }
+    _key: K
   ): Node<K, V> | undefined {
     return this
   }
@@ -227,27 +285,15 @@ class LeafNode<K, V> extends Node<K, V> {
     return 1
   }
 
-  get(_shift: number, hash: number, key: K): Option.Option<V> {
-    if (this.hash === hash && Equal_.equals(this.key, key)) {
-      return Option.some(this.value)
-    }
-    return Option.none()
-  }
-
-  has(_shift: number, hash: number, key: K): boolean {
-    return this.hash === hash && Equal_.equals(this.key, key)
-  }
-
   set(
     edit: number,
     shift: number,
     hash: number,
     key: K,
-    value: V,
-    added: { value: boolean }
+    value: V
   ): Node<K, V> {
     if (this.canEdit(edit)) this._hash = undefined
-    if (this.hash === hash && Equal_.equals(this.key, key)) {
+    if (this.hash === hash && (this.key === key || Equal_.equals(this.key, key))) {
       if (Object.is(this.value, value)) {
         return this
       }
@@ -259,7 +305,7 @@ class LeafNode<K, V> extends Node<K, V> {
       return new LeafNode(edit, hash, key, value)
     }
 
-    added.value = true
+    mutFlag = true
 
     if (this.hash === hash) {
       return new CollisionNode(edit, hash, [[this.key, this.value], [key, value]])
@@ -272,7 +318,7 @@ class LeafNode<K, V> extends Node<K, V> {
       return new IndexedNode(
         edit,
         newBit,
-        [this.set(edit, shift + SHIFT, hash, key, value, added)]
+        [this.set(edit, shift + SHIFT, hash, key, value)]
       )
     }
 
@@ -288,11 +334,10 @@ class LeafNode<K, V> extends Node<K, V> {
     _edit: number,
     _shift: number,
     hash: number,
-    key: K,
-    removed: { value: boolean }
+    key: K
   ): Node<K, V> | undefined {
-    if (this.hash === hash && Equal_.equals(this.key, key)) {
-      removed.value = true
+    if (this.hash === hash && (this.key === key || Equal_.equals(this.key, key))) {
+      mutFlag = true
       return undefined
     }
     return this
@@ -327,43 +372,16 @@ class CollisionNode<K, V> extends Node<K, V> {
     return this.entries.length
   }
 
-  get(_shift: number, hash: number, key: K): Option.Option<V> {
-    if (this.hash !== hash) {
-      return Option.none()
-    }
-
-    for (const [k, v] of this.entries) {
-      if (Equal_.equals(k, key)) {
-        return Option.some(v)
-      }
-    }
-    return Option.none()
-  }
-
-  has(_shift: number, hash: number, key: K): boolean {
-    if (this.hash !== hash) {
-      return false
-    }
-
-    for (const [k] of this.entries) {
-      if (Equal_.equals(k, key)) {
-        return true
-      }
-    }
-    return false
-  }
-
   set(
     edit: number,
     shift: number,
     hash: number,
     key: K,
-    value: V,
-    added: { value: boolean }
+    value: V
   ): Node<K, V> {
     if (this.canEdit(edit)) this._hash = undefined
     if (this.hash !== hash) {
-      added.value = true
+      mutFlag = true
       // Need to merge this collision node with new leaf
       return mergeLeaves(
         edit,
@@ -377,7 +395,7 @@ class CollisionNode<K, V> extends Node<K, V> {
 
     // Same hash - update or add to collision list
     for (let i = 0; i < this.entries.length; i++) {
-      if (Equal_.equals(this.entries[i][0], key)) {
+      if (this.entries[i][0] === key || Equal_.equals(this.entries[i][0], key)) {
         if (Object.is(this.entries[i][1], value)) {
           return this
         }
@@ -391,7 +409,7 @@ class CollisionNode<K, V> extends Node<K, V> {
       }
     }
 
-    added.value = true
+    mutFlag = true
     if (this.canEdit(edit)) {
       this.entries.push([key, value])
       return this
@@ -403,20 +421,19 @@ class CollisionNode<K, V> extends Node<K, V> {
     edit: number,
     _shift: number,
     hash: number,
-    key: K,
-    removed: { value: boolean }
+    key: K
   ): Node<K, V> | undefined {
     if (this.canEdit(edit)) this._hash = undefined
     if (this.hash !== hash) {
       return this
     }
 
-    const idx = this.entries.findIndex(([k]) => Equal_.equals(k, key))
+    const idx = this.entries.findIndex(([k]) => k === key || Equal_.equals(k, key))
     if (idx === -1) {
       return this
     }
 
-    removed.value = true
+    mutFlag = true
 
     if (this.entries.length === 1) {
       return undefined
@@ -432,9 +449,7 @@ class CollisionNode<K, V> extends Node<K, V> {
       return this
     }
 
-    const newEntries = this.entries.slice()
-    newEntries.splice(idx, 1)
-    return new CollisionNode(edit, this.hash, newEntries)
+    return new CollisionNode(edit, this.hash, removeAt(this.entries, idx))
   }
 
   computeHash(): number {
@@ -474,31 +489,12 @@ class IndexedNode<K, V> extends Node<K, V> {
     return this._size
   }
 
-  get(shift: number, hash: number, key: K): Option.Option<V> {
-    const bit = bitpos(hash, shift)
-    if ((this.bitmap & bit) === 0) {
-      return Option.none()
-    }
-    const idx = index(this.bitmap, bit)
-    return this.children[idx].get(shift + SHIFT, hash, key)
-  }
-
-  has(shift: number, hash: number, key: K): boolean {
-    const bit = bitpos(hash, shift)
-    if ((this.bitmap & bit) === 0) {
-      return false
-    }
-    const idx = index(this.bitmap, bit)
-    return this.children[idx].has(shift + SHIFT, hash, key)
-  }
-
   set(
     edit: number,
     shift: number,
     hash: number,
     key: K,
-    value: V,
-    added: { value: boolean }
+    value: V
   ): Node<K, V> {
     if (this.canEdit(edit)) this._hash = undefined
     const bit = bitpos(hash, shift)
@@ -507,7 +503,7 @@ class IndexedNode<K, V> extends Node<K, V> {
     if ((this.bitmap & bit) !== 0) {
       // Existing child - update it
       const child = this.children[idx]
-      const newChild = child.set(edit, shift + SHIFT, hash, key, value, added)
+      const newChild = child.set(edit, shift + SHIFT, hash, key, value)
       if (child === newChild) {
         return this
       }
@@ -522,7 +518,7 @@ class IndexedNode<K, V> extends Node<K, V> {
       return new IndexedNode(edit, this.bitmap, newChildren)
     } else {
       // New child - insert
-      added.value = true
+      mutFlag = true
       const newChild = new LeafNode(edit, hash, key, value)
       const newBitmap = this.bitmap | bit
 
@@ -537,8 +533,7 @@ class IndexedNode<K, V> extends Node<K, V> {
         return this
       }
 
-      const newChildren = this.children.slice()
-      newChildren.splice(idx, 0, newChild)
+      const newChildren = insertAt(this.children, idx, newChild)
 
       if (newChildren.length > MAX_INDEX_NODE) {
         return this.expand(edit, newBitmap, newChildren)
@@ -552,8 +547,7 @@ class IndexedNode<K, V> extends Node<K, V> {
     edit: number,
     shift: number,
     hash: number,
-    key: K,
-    removed: { value: boolean }
+    key: K
   ): Node<K, V> | undefined {
     if (this.canEdit(edit)) this._hash = undefined
     const bit = bitpos(hash, shift)
@@ -563,9 +557,9 @@ class IndexedNode<K, V> extends Node<K, V> {
 
     const idx = index(this.bitmap, bit)
     const child = this.children[idx]
-    const newChild = child.remove(edit, shift + SHIFT, hash, key, removed)
+    const newChild = child.remove(edit, shift + SHIFT, hash, key)
 
-    if (!removed.value) {
+    if (!mutFlag) {
       return this
     }
 
@@ -589,9 +583,7 @@ class IndexedNode<K, V> extends Node<K, V> {
         return this
       }
 
-      const newChildren = this.children.slice()
-      newChildren.splice(idx, 1)
-      return new IndexedNode(edit, newBitmap, newChildren)
+      return new IndexedNode(edit, newBitmap, removeAt(this.children, idx))
     }
 
     if (child === newChild) {
@@ -651,32 +643,19 @@ class ArrayNode<K, V> extends Node<K, V> {
     return this._size
   }
 
-  get(shift: number, hash: number, key: K): Option.Option<V> {
-    const idx = mask(hash, shift)
-    const child = this.children[idx]
-    return child ? child.get(shift + SHIFT, hash, key) : Option.none()
-  }
-
-  has(shift: number, hash: number, key: K): boolean {
-    const idx = mask(hash, shift)
-    const child = this.children[idx]
-    return child ? child.has(shift + SHIFT, hash, key) : false
-  }
-
   set(
     edit: number,
     shift: number,
     hash: number,
     key: K,
-    value: V,
-    added: { value: boolean }
+    value: V
   ): Node<K, V> {
     if (this.canEdit(edit)) this._hash = undefined
     const idx = mask(hash, shift)
     const child = this.children[idx]
 
     if (child) {
-      const newChild = child.set(edit, shift + SHIFT, hash, key, value, added)
+      const newChild = child.set(edit, shift + SHIFT, hash, key, value)
       if (child === newChild) {
         return this
       }
@@ -690,7 +669,7 @@ class ArrayNode<K, V> extends Node<K, V> {
       newChildren[idx] = newChild
       return new ArrayNode(edit, this.count, newChildren)
     } else {
-      added.value = true
+      mutFlag = true
       const newChild = new LeafNode(edit, hash, key, value)
 
       if (this.canEdit(edit)) {
@@ -710,8 +689,7 @@ class ArrayNode<K, V> extends Node<K, V> {
     edit: number,
     shift: number,
     hash: number,
-    key: K,
-    removed: { value: boolean }
+    key: K
   ): Node<K, V> | undefined {
     if (this.canEdit(edit)) this._hash = undefined
     const idx = mask(hash, shift)
@@ -721,9 +699,9 @@ class ArrayNode<K, V> extends Node<K, V> {
       return this
     }
 
-    const newChild = child.remove(edit, shift + SHIFT, hash, key, removed)
+    const newChild = child.remove(edit, shift + SHIFT, hash, key)
 
-    if (!removed.value) {
+    if (!mutFlag) {
       return this
     }
 
@@ -922,15 +900,18 @@ export const make = <Entries extends ReadonlyArray<readonly [any, any]>>(
 export const fromIterable = <K, V>(entries: Iterable<readonly [K, V]>): HashMap<K, V> => {
   let root: Node<K, V> = emptyNode
   let size = 0
-  const added = { value: false }
-
-  for (const [key, value] of entries) {
-    const hash = Hash.hash(key) | 0
-    added.value = false
-    root = root.set(NaN, 0, hash, key, value, added)
-    if (added.value) {
-      size++
+  const prev = mutFlag
+  try {
+    for (const [key, value] of entries) {
+      const hash = Hash.hash(key) | 0
+      mutFlag = false
+      root = root.set(NaN, 0, hash, key, value)
+      if (mutFlag) {
+        size++
+      }
     }
+  } finally {
+    mutFlag = prev
   }
 
   return new HashMapImpl(false, 0, root, size)
@@ -943,28 +924,30 @@ export const isEmpty = <K, V>(self: HashMap<K, V>): boolean => (self as HashMapI
 export const get = dual<
   <K1 extends K, K>(key: K1) => <V>(self: HashMap<K, V>) => Option.Option<V>,
   <K1 extends K, K, V>(self: HashMap<K, V>, key: K1) => Option.Option<V>
->(2, <K, V>(self: HashMap<K, V>, key: K): Option.Option<V> => {
-  const impl = self as HashMapImpl<K, V>
-  return impl._root.get(0, Hash.hash(key) | 0, key)
-})
+>(
+  2,
+  <K, V>(self: HashMap<K, V>, key: K): Option.Option<V> =>
+    getNode((self as HashMapImpl<K, V>)._root, Hash.hash(key) | 0, key)
+)
 
 /** @internal */
 export const getHash = dual<
   <K1 extends K, K>(key: K1, hash: number) => <V>(self: HashMap<K, V>) => Option.Option<V>,
   <K1 extends K, K, V>(self: HashMap<K, V>, key: K1, hash: number) => Option.Option<V>
->(3, <K, V>(self: HashMap<K, V>, key: K, hash: number): Option.Option<V> => {
-  const impl = self as HashMapImpl<K, V>
-  return impl._root.get(0, hash | 0, key)
-})
+>(
+  3,
+  <K, V>(self: HashMap<K, V>, key: K, hash: number): Option.Option<V> =>
+    getNode((self as HashMapImpl<K, V>)._root, hash | 0, key)
+)
 
 /** @internal */
 export const getUnsafe = dual<
   <K1 extends K, K>(key: K1) => <V>(self: HashMap<K, V>) => V,
   <K1 extends K, K, V>(self: HashMap<K, V>, key: K1) => V
 >(2, <K, V>(self: HashMap<K, V>, key: K): V => {
-  const result = get(self, key)
-  if (Option.isSome(result)) {
-    return result.value
+  const value = lookup((self as HashMapImpl<K, V>)._root, Hash.hash(key) | 0, key)
+  if (value !== notFound) {
+    return value
   }
   throw new Error(`HashMap.getUnsafe: key not found: ${key}`)
 })
@@ -973,19 +956,21 @@ export const getUnsafe = dual<
 export const has = dual<
   <K1 extends K, K>(key: K1) => <V>(self: HashMap<K, V>) => boolean,
   <K1 extends K, K, V>(self: HashMap<K, V>, key: K1) => boolean
->(2, <K, V>(self: HashMap<K, V>, key: K): boolean => {
-  const impl = self as HashMapImpl<K, V>
-  return impl._root.has(0, Hash.hash(key) | 0, key)
-})
+>(
+  2,
+  <K, V>(self: HashMap<K, V>, key: K): boolean =>
+    lookup((self as HashMapImpl<K, V>)._root, Hash.hash(key) | 0, key) !== notFound
+)
 
 /** @internal */
 export const hasHash = dual<
   <K1 extends K, K>(key: K1, hash: number) => <V>(self: HashMap<K, V>) => boolean,
   <K1 extends K, K, V>(self: HashMap<K, V>, key: K1, hash: number) => boolean
->(3, <K, V>(self: HashMap<K, V>, key: K, hash: number): boolean => {
-  const impl = self as HashMapImpl<K, V>
-  return impl._root.has(0, hash | 0, key)
-})
+>(
+  3,
+  <K, V>(self: HashMap<K, V>, key: K, hash: number): boolean =>
+    lookup((self as HashMapImpl<K, V>)._root, hash | 0, key) !== notFound
+)
 
 /** @internal */
 export const hasBy = dual<
@@ -1002,16 +987,23 @@ export const hasBy = dual<
 
 const setHash = <K, V>(self: HashMap<K, V>, key: K, hash: number, value: V): HashMap<K, V> => {
   const impl = self as HashMapImpl<K, V>
-  const added = { value: false }
-
-  // Pass edit context: use current edit if editable, otherwise NaN (never matches any edit)
-  const edit = impl._editable ? impl._edit : NaN
-  const newRoot = impl._root.set(edit, 0, hash | 0, key, value, added)
+  const prev = mutFlag
+  mutFlag = false
+  let added: boolean
+  let newRoot: Node<K, V>
+  try {
+    // Pass edit context: use current edit if editable, otherwise NaN (never matches any edit)
+    const edit = impl._editable ? impl._edit : NaN
+    newRoot = impl._root.set(edit, 0, hash | 0, key, value)
+    added = mutFlag
+  } finally {
+    mutFlag = prev
+  }
 
   if (impl._editable) {
     // In-place mutation
     impl._root = newRoot
-    if (added.value) {
+    if (added) {
       impl._size++
     }
     return self
@@ -1022,7 +1014,7 @@ const setHash = <K, V>(self: HashMap<K, V>, key: K, hash: number, value: V): Has
     return self
   }
 
-  return new HashMapImpl(false, impl._edit, newRoot, impl._size + (added.value ? 1 : 0))
+  return new HashMapImpl(false, impl._edit, newRoot, impl._size + (added ? 1 : 0))
 }
 
 /** @internal */
@@ -1123,12 +1115,19 @@ export const union = dual<
 
 const removeHash = <K, V>(self: HashMap<K, V>, key: K, hash: number): HashMap<K, V> => {
   const impl = self as HashMapImpl<K, V>
-  const removed = { value: false }
+  const prev = mutFlag
+  mutFlag = false
+  let removed: boolean
+  let newRoot: Node<K, V> | undefined
+  try {
+    const edit = impl._editable ? impl._edit : NaN
+    newRoot = impl._root.remove(edit, 0, hash | 0, key)
+    removed = mutFlag
+  } finally {
+    mutFlag = prev
+  }
 
-  const edit = impl._editable ? impl._edit : NaN
-  const newRoot = impl._root.remove(edit, 0, hash | 0, key, removed)
-
-  if (!removed.value) {
+  if (!removed) {
     return self
   }
 

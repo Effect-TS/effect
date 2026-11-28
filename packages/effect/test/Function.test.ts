@@ -75,6 +75,24 @@ describe("Function", () => {
       )
       assert.strictEqual(F.pipe(2, sum(3)), 5)
     })
+
+    it("predicate receives IArguments and data-first preserves receiver", () => {
+      let seenTag = ""
+      const fn = F.dual(
+        (args) => {
+          seenTag = Object.prototype.toString.call(args)
+          return args.length === 2
+        },
+        function(this: { readonly bias: number } | undefined, self: number, that: number) {
+          return (this?.bias ?? 0) + self + that
+        }
+      )
+      const receiver = { bias: 10, fn }
+      assert.strictEqual(receiver.fn(2, 3), 15)
+      assert.strictEqual(seenTag, "[object Arguments]")
+      assert.strictEqual(F.pipe(2, fn(3)), 5)
+      assert.strictEqual(seenTag, "[object Arguments]")
+    })
   })
 
   describe("apply", () => {

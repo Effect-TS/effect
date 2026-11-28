@@ -178,19 +178,23 @@ export const makeUnsafe = <A, E = never>(): Deferred<A, E> => new DeferredImpl<A
 export const make = <A, E = never>(): Effect<Deferred<A, E>> => internalEffect.sync(() => makeUnsafe())
 
 const _await = <A, E>(self: Deferred<A, E>): Effect<A, E> =>
-  internalEffect.callbackNoSignal<A, E>((resume) => {
-    if (self.effect) return resume(self.effect)
-    self.resumes ??= []
-    self.resumes.push(resume)
-    return internalEffect.sync(() => {
-      // Completion resumes all waiters and clears `resumes`, so a cleanup
-      // running after completion has nothing to unregister.
-      const resumes = self.resumes
-      if (resumes === undefined) return
-      const index = resumes.indexOf(resume)
-      if (index >= 0) resumes.splice(index, 1)
-    })
-  }, self)
+  internalEffect.callbackOptions<A, E>(
+    (resume) => {
+      if (self.effect) return resume(self.effect)
+      self.resumes ??= []
+      self.resumes.push(resume)
+      return internalEffect.sync(() => {
+        // Completion resumes all waiters and clears `resumes`, so a cleanup
+        // running after completion has nothing to unregister.
+        const resumes = self.resumes
+        if (resumes === undefined) return
+        const index = resumes.indexOf(resume)
+        if (index >= 0) resumes.splice(index, 1)
+      })
+    },
+    false,
+    self
+  )
 
 export {
   /**

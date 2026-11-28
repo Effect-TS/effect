@@ -282,7 +282,7 @@ const ServiceProto: any = Object.assign(
   Effectable.Prototype<Service<never, any>>({
     label: "Service",
     evaluate(fiber) {
-      return exitSucceed(get(fiber.context, this))
+      return (fiber as any).succeedWith(get(fiber.context, this))
     }
   }),
   {

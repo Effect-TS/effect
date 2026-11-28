@@ -5820,5 +5820,28 @@ describe("Effect", () => {
         .map(({ type }) => type)
       assert.deepStrictEqual(leaks, [])
     })
+
+    it.effect("catchCause passes only cause to variadic and multi-parameter handlers", () =>
+      Effect.gen(function*() {
+        const observed: Array<number> = []
+        const a = yield* Effect.fail("err").pipe(
+          Effect.catchCause((...args: Array<unknown>) => {
+            observed.push(args.length)
+            return Effect.succeed("variadic")
+          })
+        )
+        const b = yield* Effect.fail("err").pipe(
+          Effect.catchCause(
+            (function(_cause: Cause.Cause<string>, extra?: unknown) {
+              observed.push(arguments.length)
+              assert.isUndefined(extra)
+              return Effect.succeed("two")
+            }) as (cause: Cause.Cause<string>) => Effect.Effect<string>
+          )
+        )
+        assert.strictEqual(a, "variadic")
+        assert.strictEqual(b, "two")
+        assert.deepStrictEqual(observed, [1, 1])
+      }))
   })
 })

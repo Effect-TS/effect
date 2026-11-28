@@ -257,13 +257,55 @@ describe("Scheduler", () => {
 
     it("falls back to setTimeout without postTask", async () => {
       const { Effect } = browser
-      vi.stubGlobal("scheduler", undefined)
-      const setTimeout = vi.spyOn(globalThis, "setTimeout")
+      for (const stub of [undefined, {}, { postTask: 1 }]) {
+        vi.stubGlobal("scheduler", stub)
+        const setTimeout = vi.spyOn(globalThis, "setTimeout")
+        try {
+          assert.strictEqual(await Effect.runPromise(Effect.as(Effect.yieldNow, 1)), 1)
+          assert.isAbove(setTimeout.mock.calls.length, 0)
+        } finally {
+          setTimeout.mockRestore()
+        }
+      }
+    })
+
+    it("reports thrown postTask errors via reportError without unhandled rejection", async () => {
+      const { Scheduler } = browser
+      const reported: Array<unknown> = []
+      const unhandled: Array<unknown> = []
+      const onUnhandled = (reason: unknown) => {
+        unhandled.push(reason)
+      }
+      process.on("unhandledRejection", onUnhandled)
+      vi.stubGlobal("reportError", (error: unknown) => {
+        reported.push(error)
+      })
+      vi.stubGlobal("scheduler", {
+        postTask(task: () => void) {
+          return new Promise<void>((resolve, reject) => {
+            realSetImmediate(() => {
+              try {
+                task()
+                resolve()
+              } catch (error) {
+                reject(error)
+              }
+            })
+          })
+        }
+      })
       try {
-        assert.strictEqual(await Effect.runPromise(Effect.as(Effect.yieldNow, 1)), 1)
-        assert.isAbove(setTimeout.mock.calls.length, 0)
+        const boom = new Error("postTask boom")
+        const dispatcher = new Scheduler.MixedScheduler().makeDispatcher()
+        dispatcher.scheduleTask(() => {
+          throw boom
+        }, 0)
+        await nextMacrotask()
+        await nextMacrotask()
+        assert.deepStrictEqual(reported, [boom])
+        assert.deepStrictEqual(unhandled, [])
       } finally {
-        setTimeout.mockRestore()
+        process.off("unhandledRejection", onUnhandled)
       }
     })
   })

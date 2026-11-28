@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Deferred, Effect, Fiber, Supervisor, TxRef } from "effect"
+import { Context, Deferred, Effect, Fiber, Latch, Pool, PubSub, Queue, Semaphore, Supervisor, TxRef } from "effect"
 
 type Event =
   | { readonly _tag: "start"; readonly fiber: Fiber.Fiber<unknown, unknown>; readonly parent: unknown }
@@ -154,6 +154,33 @@ describe("Supervisor", () => {
         assert.strictEqual((yield* blockOf(withOption)).blockedOn, blockedOn)
         assert.isTrue(signal?.aborted)
         assert.isUndefined((yield* blockOf(Effect.callback<void>(() => {}))).blockedOn)
+      }))
+
+    it.effect("runtime waits report their target resource in blockedOn", () =>
+      Effect.gen(function*() {
+        const target = yield* Effect.forkChild(Effect.never, { startImmediately: true })
+        assert.strictEqual((yield* blockOf(Fiber.join(target))).blockedOn, target)
+        assert.strictEqual((yield* blockOf(Fiber.await(target))).blockedOn, target)
+
+        const queue = yield* Queue.bounded<number>(1)
+        assert.strictEqual((yield* blockOf(Queue.take(queue))).blockedOn, queue)
+        yield* Queue.offer(queue, 1)
+        assert.strictEqual((yield* blockOf(Queue.offer(queue, 2))).blockedOn, queue)
+
+        const pubsub = yield* PubSub.unbounded<number>()
+        const sub = yield* PubSub.subscribe(pubsub)
+        assert.strictEqual((yield* blockOf(PubSub.take(sub))).blockedOn, sub)
+
+        const sem = Semaphore.makeUnsafe(0)
+        assert.strictEqual((yield* blockOf(sem.take(1))).blockedOn, sem)
+
+        const latch = Latch.makeUnsafe(false)
+        assert.strictEqual((yield* blockOf(latch.await)).blockedOn, latch)
+
+        const pool = yield* Pool.make({ acquire: Effect.succeed(1), size: 1 })
+        yield* Pool.get(pool)
+        assert.strictEqual((yield* blockOf(Effect.scoped(Pool.get(pool)))).blockedOn, pool)
+        yield* Fiber.interrupt(target)
       }))
   })
 

@@ -1002,4 +1002,25 @@ describe("Queue", () => {
       assert.deepStrictEqual(producerExit, Exit.succeed([]))
       assert.deepStrictEqual(done, Exit.void)
     }))
+
+  it.effect("take delivers dequeued item in the same step without losing messages on interruption", () =>
+    Effect.gen(function*() {
+      for (let budget = 1; budget <= 8; budget++) {
+        const queue = yield* Queue.bounded<number>(100)
+        for (let i = 0; i < 40; i++) yield* Queue.offer(queue, i)
+        const taken: Array<number> = []
+        const fiber = yield* Effect.gen(function*() {
+          for (let i = 0; i < 40; i++) {
+            const v = yield* Queue.take(queue)
+            taken.push(v)
+          }
+        }).pipe(
+          Effect.provideService(Scheduler.MaxOpsBeforeYield, budget),
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* Fiber.interrupt(fiber)
+        const remaining = yield* Queue.takeAll(queue)
+        assert.strictEqual(taken.length + remaining.length, 40)
+      }
+    }))
 })

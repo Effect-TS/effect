@@ -746,5 +746,41 @@ describe("HashMap", () => {
       expect(HashMap.has(map, key2)).toBe(false)
       expect(HashMap.has(map, key3)).toBe(true)
     })
+
+    it("isolates re-entrant set and remove calls inside Equal.equals", () => {
+      let calls = 0
+      let onEquals: (() => void) | undefined
+      class ReentrantKey implements Equal.Equal {
+        constructor(readonly id: number) {}
+        [Equal.symbol](that: Equal.Equal): boolean {
+          calls++
+          onEquals?.()
+          return that instanceof ReentrantKey && this.id === that.id
+        }
+        [Hash.symbol](): number {
+          return 7
+        }
+      }
+
+      const existing = new ReentrantKey(1)
+      let nested = HashMap.make(["a", 1])
+      const base = HashMap.make([existing, "v1"])
+      onEquals = () => {
+        nested = HashMap.set(nested, "b", 2)
+      }
+      const updated = HashMap.set(base, new ReentrantKey(1), "v2")
+      onEquals = undefined
+      assert.strictEqual(HashMap.size(updated), 1)
+      assert.strictEqual(HashMap.getUnsafe(updated, existing), "v2")
+      assert.strictEqual(HashMap.size(nested), 2)
+
+      onEquals = () => {
+        nested = HashMap.remove(nested, "a")
+      }
+      const removed = HashMap.remove(updated, new ReentrantKey(1))
+      assert.strictEqual(HashMap.size(removed), 0)
+      assert.strictEqual(HashMap.size(nested), 1)
+      assert.isAtLeast(calls, 2)
+    })
   })
 })

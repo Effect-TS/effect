@@ -1573,5 +1573,16 @@ describe("Pool", () => {
         yield* waitUntil(() => pool.state.items.size === 2)
         deepStrictEqual(yield* Pool.stats(pool), { idle: 1, used: 0, acquiring: 0, pending: 0, min: 2, max: 2 })
       }))
+
+    it.effect("updates idleSince on release for fixed pools", () =>
+      Effect.gen(function*() {
+        const pool = yield* Pool.make({ acquire: Effect.succeed("item"), size: 1 })
+        yield* waitUntil(() => pool.state.items.size === 1)
+        const item = Array.from(pool.state.items)[0]
+        const before = item.idleSince
+        yield* TestClock.adjust("50 millis")
+        yield* Effect.scoped(Pool.get(pool))
+        strictEqual(item.idleSince, before + 50)
+      }))
   })
 })

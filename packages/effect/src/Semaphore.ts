@@ -295,14 +295,18 @@ const takePermits = <A, E, R>(
     self.waiters.add(waiter)
     if (n < self.waiterPermitsLowerBound) self.waiterPermitsLowerBound = n
     internal.onExitUnsafe(fiber, remove)
-    const wait = restore(internal.callbackNoSignal<void>((resume) => {
-      // The fiber may have yielded since the last check, missing a wake.
-      if (firstAvailableWaiter(self) === waiter) {
-        resume(internal.void)
-      } else {
-        waiter.resume = resume
-      }
-    }, self))
+    const wait = restore(internal.callbackOptions<void>(
+      (resume) => {
+        // The fiber may have yielded since the last check, missing a wake.
+        if (firstAvailableWaiter(self) === waiter) {
+          resume(internal.void)
+        } else {
+          waiter.resume = resume
+        }
+      },
+      false,
+      self
+    ))
     // Claim the permits, let `onAcquire` guard them, then end the wait span,
     // all in one step so a scheduler yield cannot extend the span.
     const claim: Effect.Effect<A, E, R> = core.withFiber(() => {

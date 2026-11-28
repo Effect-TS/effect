@@ -1416,37 +1416,41 @@ export const takeAll = <A>(self: Subscription<A>): Effect.Effect<Arr.NonEmptyArr
   })
 
 const pollForItem = <A>(self: Subscription<A>) =>
-  internalEffect.callbackNoSignal<A>((resume) => {
-    if (self.shutdownFlag.current) return resume(Effect.interrupt)
-    if (Option.isSome(self.ended.current)) {
-      // Messages may have been published after the empty check, before this callback ran.
-      const message = self.pollers.length === 0
-        ? self.subscription.poll()
-        : MutableList.Empty
-      if (message !== MutableList.Empty) {
-        self.strategy.onPubSubEmptySpaceUnsafe(self.pubsub, self.subscribers)
-        return resume(Effect.succeed(message))
+  internalEffect.callbackOptions<A>(
+    (resume) => {
+      if (self.shutdownFlag.current) return resume(Effect.interrupt)
+      if (Option.isSome(self.ended.current)) {
+        // Messages may have been published after the empty check, before this callback ran.
+        const message = self.pollers.length === 0
+          ? self.subscription.poll()
+          : MutableList.Empty
+        if (message !== MutableList.Empty) {
+          self.strategy.onPubSubEmptySpaceUnsafe(self.pubsub, self.subscribers)
+          return resume(Effect.succeed(message))
+        }
+        return resume(Effect.succeed(self.ended.current.value))
       }
-      return resume(Effect.succeed(self.ended.current.value))
-    }
-    const deferred = Deferred.makeUnsafe<A>()
-    let set = self.subscribers.get(self.subscription)
-    if (!set) {
-      set = new Set()
-      self.subscribers.set(self.subscription, set)
-    }
-    set.add(self.pollers)
-    MutableList.append(self.pollers, deferred)
-    self.strategy.completePollersUnsafe(
-      self.pubsub,
-      self.subscribers,
-      self.subscription,
-      self.pollers
-    )
-    if (deferred.effect) return resume(deferred.effect)
-    deferred.resumes = [resume]
-    return Effect.sync(() => MutableList.remove(self.pollers, deferred))
-  }, self)
+      const deferred = Deferred.makeUnsafe<A>()
+      let set = self.subscribers.get(self.subscription)
+      if (!set) {
+        set = new Set()
+        self.subscribers.set(self.subscription, set)
+      }
+      set.add(self.pollers)
+      MutableList.append(self.pollers, deferred)
+      self.strategy.completePollersUnsafe(
+        self.pubsub,
+        self.subscribers,
+        self.subscription,
+        self.pollers
+      )
+      if (deferred.effect) return resume(deferred.effect)
+      deferred.resumes = [resume]
+      return Effect.sync(() => MutableList.remove(self.pollers, deferred))
+    },
+    false,
+    self
+  )
 
 /**
  * Takes up to the specified number of messages from the subscription without
@@ -2610,22 +2614,26 @@ export class BackPressureStrategy<in out A> implements PubSub.Strategy<A> {
     ended: MutableRef.MutableRef<Option.Option<A>>,
     owner?: PubSub<A>
   ): Effect.Effect<boolean> {
-    return internalEffect.callbackNoSignal<boolean>((resume) => {
-      // The publisher may have yielded since `publish` checked `ended`, and
-      // `end` only rejects publishers that are already registered.
-      if (Option.isSome(ended.current)) return resume(Effect.succeed(false))
-      const deferred = Deferred.makeUnsafe<boolean>()
-      this.offerUnsafe(elements, deferred)
-      this.onPubSubEmptySpaceUnsafe(pubsub, subscribers)
-      this.completeSubscribersUnsafe(pubsub, subscribers)
-      if (MutableRef.get(isShutdown)) {
-        this.removeUnsafe(deferred)
-        return resume(Effect.interrupt)
-      }
-      if (deferred.effect) return resume(deferred.effect)
-      deferred.resumes = [resume]
-      return Effect.sync(() => this.removeUnsafe(deferred))
-    }, owner)
+    return internalEffect.callbackOptions<boolean>(
+      (resume) => {
+        // The publisher may have yielded since `publish` checked `ended`, and
+        // `end` only rejects publishers that are already registered.
+        if (Option.isSome(ended.current)) return resume(Effect.succeed(false))
+        const deferred = Deferred.makeUnsafe<boolean>()
+        this.offerUnsafe(elements, deferred)
+        this.onPubSubEmptySpaceUnsafe(pubsub, subscribers)
+        this.completeSubscribersUnsafe(pubsub, subscribers)
+        if (MutableRef.get(isShutdown)) {
+          this.removeUnsafe(deferred)
+          return resume(Effect.interrupt)
+        }
+        if (deferred.effect) return resume(deferred.effect)
+        deferred.resumes = [resume]
+        return Effect.sync(() => this.removeUnsafe(deferred))
+      },
+      false,
+      owner
+    )
   }
 
   onPubSubEmptySpaceUnsafe(

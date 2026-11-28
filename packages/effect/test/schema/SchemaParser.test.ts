@@ -1354,5 +1354,42 @@ describe("SchemaParser", () => {
         assertTrue(SchemaIssue.isIssue(error.success))
       }
     })
+
+    it("struct and array fast paths preserve Proxy trap order and getter defect semantics", () => {
+      const traps: Array<string> = []
+      const proxy = new Proxy({ a: "ok", b: 1, tags: ["x", "y"] }, {
+        has(target, key) {
+          traps.push(`has:${String(key)}`)
+          return Reflect.has(target, key)
+        },
+        get(target, key, receiver) {
+          traps.push(`get:${String(key)}`)
+          return Reflect.get(target, key, receiver)
+        }
+      })
+      const schema = Schema.Struct({
+        a: Schema.String,
+        b: Schema.Number,
+        tags: Schema.Array(Schema.String)
+      })
+      const out = Schema.decodeUnknownSync(schema)(proxy)
+      deepStrictEqual(out, { a: "ok", b: 1, tags: ["x", "y"] })
+      deepStrictEqual(traps, ["has:a", "get:a", "has:b", "get:b", "has:tags", "get:tags"])
+
+      const badArray = SchemaParser.decodeUnknownExit(Schema.Array(Schema.String))(["ok", 123])
+      assertTrue(Exit.isFailure(badArray))
+
+      let getterCalls = 0
+      const throwing = {
+        get a() {
+          getterCalls++
+          throw new Error("getter boom")
+        }
+      }
+      const defectExit = SchemaParser.decodeUnknownExit(Schema.Struct({ a: Schema.String }))(throwing)
+      assertTrue(Exit.isFailure(defectExit))
+      assertTrue(Cause.hasDies(defectExit.cause))
+      strictEqual(getterCalls, 1)
+    })
   })
 })

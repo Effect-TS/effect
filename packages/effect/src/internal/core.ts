@@ -463,7 +463,8 @@ export interface Primitive {
     | undefined
   readonly [contAll]:
     | ((
-      fiber: FiberImpl
+      fiber: FiberImpl,
+      symbol?: contA | contE
     ) =>
       | ((value: unknown, fiber: FiberImpl) => Primitive | Yield)
       | undefined)
@@ -500,7 +501,8 @@ export const makePrimitiveProto = <Op extends string>(options: {
   ) => Primitive | Effect.Effect<any, any, any> | Yield
   readonly [contAll]?: (
     this: Primitive,
-    fiber: FiberImpl
+    fiber: FiberImpl,
+    symbol?: contA | contE
   ) => void | ((value: any, fiber: FiberImpl) => void)
 }): Primitive =>
   ({
@@ -550,7 +552,8 @@ export const makePrimitive = <
     this: Primitive & {
       readonly [args]: Parameters<Fn>[0]
     },
-    fiber: FiberImpl
+    fiber: FiberImpl,
+    symbol?: contA | contE
   ) => void | ((value: any, fiber: FiberImpl) => void)
 }): Fn => {
   const Proto = makePrimitiveProto(options as any)

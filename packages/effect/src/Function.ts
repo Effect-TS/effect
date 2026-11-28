@@ -112,17 +112,6 @@ export const dual: {
     body: DataFirst
   ): DataLast & DataFirst
 } = function(arity, body) {
-  if (typeof arity === "function") {
-    // Rest parameters rather than `arguments`: V8 spreads a captured arguments
-    // object through the slow iterator path, and materializing both is slower
-    // still. The predicate reads only `length` and indexes, which an array has.
-    return function(this: any, ...args: Array<any>) {
-      return arity(args as unknown as IArguments)
-        ? body.apply(this, args)
-        : ((self: any) => body(self, ...args)) as any
-    }
-  }
-
   switch (arity) {
     case 0:
     case 1:
@@ -130,35 +119,22 @@ export const dual: {
 
     case 2:
       return function(a, b) {
-        if (arguments.length >= 2) {
-          return body(a, b)
-        }
-        return function(self: any) {
-          return body(self, a)
-        }
+        return arguments.length >= 2 ? body(a, b) : (self: any) => body(self, a)
       }
 
     case 3:
       return function(a, b, c) {
-        if (arguments.length >= 3) {
-          return body(a, b, c)
-        }
-        return function(self: any) {
-          return body(self, a, b)
-        }
+        return arguments.length >= 3 ? body(a, b, c) : (self: any) => body(self, a, b)
       }
-
-    default:
-      return function() {
-        if (arguments.length >= arity) {
-          // @ts-expect-error
-          return body.apply(this, arguments)
-        }
-        const args = arguments
-        return function(self: any) {
-          return body(self, ...args)
-        }
-      }
+  }
+  return function(this: any) {
+    if (typeof arity === "function" ? arity(arguments) : arguments.length >= arity) {
+      return body.apply(this, arguments as any)
+    }
+    // Copy rather than capture `arguments`: a captured arguments object is
+    // materialized on every call, data-first ones included.
+    const args = Array.from(arguments)
+    return (self: any) => body(self, ...args)
   }
 }
 /**
