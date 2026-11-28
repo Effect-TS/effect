@@ -18219,6 +18219,12 @@ export const ModelsGetParams = Schema.Struct({
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
 
+export type ModelsGetPathParams = { readonly "model_id": string }
+
+export const ModelsGetPathParams = Schema.Struct({
+  "model_id": Schema.String.annotate({ "title": "Model Id", "description": "Model identifier or alias." })
+})
+
 export type ModelsGet200 = ModelInfo
 
 export const ModelsGet200 = ModelInfo
@@ -18339,6 +18345,12 @@ export const MessageBatchesRetrieveParams = Schema.Struct({
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
 
+export type MessageBatchesRetrievePathParams = { readonly "message_batch_id": string }
+
+export const MessageBatchesRetrievePathParams = Schema.Struct({
+  "message_batch_id": Schema.String.annotate({ "title": "Message Batch Id", "description": "ID of the Message Batch." })
+})
+
 export type MessageBatchesRetrieve200 = MessageBatch
 
 export const MessageBatchesRetrieve200 = MessageBatch
@@ -18369,6 +18381,12 @@ export const MessageBatchesDeleteParams = Schema.Struct({
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
 
+export type MessageBatchesDeletePathParams = { readonly "message_batch_id": string }
+
+export const MessageBatchesDeletePathParams = Schema.Struct({
+  "message_batch_id": Schema.String.annotate({ "title": "Message Batch Id", "description": "ID of the Message Batch." })
+})
+
 export type MessageBatchesDelete200 = DeleteMessageBatchResponse
 
 export const MessageBatchesDelete200 = DeleteMessageBatchResponse
@@ -18391,6 +18409,12 @@ export const MessageBatchesCancelParams = Schema.Struct({
     })
   ),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
+})
+
+export type MessageBatchesCancelPathParams = { readonly "message_batch_id": string }
+
+export const MessageBatchesCancelPathParams = Schema.Struct({
+  "message_batch_id": Schema.String.annotate({ "title": "Message Batch Id", "description": "ID of the Message Batch." })
 })
 
 export type MessageBatchesCancel200 = MessageBatch
@@ -18421,6 +18445,12 @@ export const MessageBatchesResultsParams = Schema.Struct({
       "Your unique API key for authentication.\n\nThis key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace."
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
+})
+
+export type MessageBatchesResultsPathParams = { readonly "message_batch_id": string }
+
+export const MessageBatchesResultsPathParams = Schema.Struct({
+  "message_batch_id": Schema.String.annotate({ "title": "Message Batch Id", "description": "ID of the Message Batch." })
 })
 
 export type MessageBatchesResults4XX = ErrorResponse
@@ -18581,6 +18611,12 @@ export const GetFileMetadataV1FilesFileIdGetParams = Schema.Struct({
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
 
+export type GetFileMetadataV1FilesFileIdGetPathParams = { readonly "file_id": string }
+
+export const GetFileMetadataV1FilesFileIdGetPathParams = Schema.Struct({
+  "file_id": Schema.String.annotate({ "title": "File Id", "description": "ID of the File." })
+})
+
 export type GetFileMetadataV1FilesFileIdGet200 = FileMetadataSchema
 
 export const GetFileMetadataV1FilesFileIdGet200 = FileMetadataSchema
@@ -18611,6 +18647,12 @@ export const DeleteFileV1FilesFileIdDeleteParams = Schema.Struct({
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
 
+export type DeleteFileV1FilesFileIdDeletePathParams = { readonly "file_id": string }
+
+export const DeleteFileV1FilesFileIdDeletePathParams = Schema.Struct({
+  "file_id": Schema.String.annotate({ "title": "File Id", "description": "ID of the File." })
+})
+
 export type DeleteFileV1FilesFileIdDelete200 = FileDeleteResponse
 
 export const DeleteFileV1FilesFileIdDelete200 = FileDeleteResponse
@@ -18639,6 +18681,12 @@ export const DownloadFileV1FilesFileIdContentGetParams = Schema.Struct({
       "Your unique API key for authentication.\n\nThis key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace."
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
+})
+
+export type DownloadFileV1FilesFileIdContentGetPathParams = { readonly "file_id": string }
+
+export const DownloadFileV1FilesFileIdContentGetPathParams = Schema.Struct({
+  "file_id": Schema.String.annotate({ "title": "File Id", "description": "ID of the File." })
 })
 
 export type DownloadFileV1FilesFileIdContentGet4XX = ErrorResponse
@@ -18751,6 +18799,15 @@ export const GetSkillV1SkillsSkillIdGetParams = Schema.Struct({
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
 
+export type GetSkillV1SkillsSkillIdGetPathParams = { readonly "skill_id": string }
+
+export const GetSkillV1SkillsSkillIdGetPathParams = Schema.Struct({
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  })
+})
+
 export type GetSkillV1SkillsSkillIdGet200 = SkillResource
 
 export const GetSkillV1SkillsSkillIdGet200 = SkillResource
@@ -18779,6 +18836,15 @@ export const DeleteSkillV1SkillsSkillIdDeleteParams = Schema.Struct({
       "Your unique API key for authentication.\n\nThis key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace."
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
+})
+
+export type DeleteSkillV1SkillsSkillIdDeletePathParams = { readonly "skill_id": string }
+
+export const DeleteSkillV1SkillsSkillIdDeletePathParams = Schema.Struct({
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  })
 })
 
 export type DeleteSkillV1SkillsSkillIdDelete200 = DeletedSkill
@@ -18830,6 +18896,15 @@ export const ListSkillVersionsV1SkillsSkillIdVersionsGetParams = Schema.Struct({
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
 
+export type ListSkillVersionsV1SkillsSkillIdVersionsGetPathParams = { readonly "skill_id": string }
+
+export const ListSkillVersionsV1SkillsSkillIdVersionsGetPathParams = Schema.Struct({
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  })
+})
+
 export type ListSkillVersionsV1SkillsSkillIdVersionsGet200 = ListSkillVersionResourcesResponse
 
 export const ListSkillVersionsV1SkillsSkillIdVersionsGet200 = ListSkillVersionResourcesResponse
@@ -18852,6 +18927,15 @@ export const CreateSkillVersionV1SkillsSkillIdVersionsPostParams = Schema.Struct
     })
   ),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
+})
+
+export type CreateSkillVersionV1SkillsSkillIdVersionsPostPathParams = { readonly "skill_id": string }
+
+export const CreateSkillVersionV1SkillsSkillIdVersionsPostPathParams = Schema.Struct({
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  })
 })
 
 export type CreateSkillVersionV1SkillsSkillIdVersionsPostRequestFormData =
@@ -18890,6 +18974,23 @@ export const GetSkillVersionV1SkillsSkillIdVersionsVersionGetParams = Schema.Str
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
 
+export type GetSkillVersionV1SkillsSkillIdVersionsVersionGetPathParams = {
+  readonly "skill_id": string
+  readonly "version": string
+}
+
+export const GetSkillVersionV1SkillsSkillIdVersionsVersionGetPathParams = Schema.Struct({
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  }),
+  "version": Schema.String.annotate({
+    "title": "Version",
+    "description":
+      "Identifies the skill version: a version ID, or the literal `latest` for the skill's most recent version.\n\nRequests carrying the `skills-2025-10-02` beta header address versions by their Unix epoch timestamp instead (e.g., \"1759178010641129\")."
+  })
+})
+
 export type GetSkillVersionV1SkillsSkillIdVersionsVersionGet200 = SkillVersionResource
 
 export const GetSkillVersionV1SkillsSkillIdVersionsVersionGet200 = SkillVersionResource
@@ -18918,6 +19019,23 @@ export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDeleteParams = Sche
       "Your unique API key for authentication.\n\nThis key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace."
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
+})
+
+export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDeletePathParams = {
+  readonly "skill_id": string
+  readonly "version": string
+}
+
+export const DeleteSkillVersionV1SkillsSkillIdVersionsVersionDeletePathParams = Schema.Struct({
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  }),
+  "version": Schema.String.annotate({
+    "title": "Version",
+    "description":
+      "Identifies the skill version by its version ID.\n\nRequests carrying the `skills-2025-10-02` beta header address versions by their Unix epoch timestamp instead (e.g., \"1759178010641129\")."
+  })
 })
 
 export type DeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete200 = DeletedSkillVersion
@@ -19071,6 +19189,12 @@ export const BetaModelsGetParams = Schema.Struct({
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
 
+export type BetaModelsGetPathParams = { readonly "model_id": string }
+
+export const BetaModelsGetPathParams = Schema.Struct({
+  "model_id": Schema.String.annotate({ "title": "Model Id", "description": "Model identifier or alias." })
+})
+
 export type BetaModelsGet200 = BetaModelInfo
 
 export const BetaModelsGet200 = BetaModelInfo
@@ -19212,6 +19336,12 @@ export const BetaMessageBatchesRetrieveParams = Schema.Struct({
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
 
+export type BetaMessageBatchesRetrievePathParams = { readonly "message_batch_id": string }
+
+export const BetaMessageBatchesRetrievePathParams = Schema.Struct({
+  "message_batch_id": Schema.String.annotate({ "title": "Message Batch Id", "description": "ID of the Message Batch." })
+})
+
 export type BetaMessageBatchesRetrieve200 = BetaMessageBatch
 
 export const BetaMessageBatchesRetrieve200 = BetaMessageBatch
@@ -19249,6 +19379,12 @@ export const BetaMessageBatchesDeleteParams = Schema.Struct({
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
 
+export type BetaMessageBatchesDeletePathParams = { readonly "message_batch_id": string }
+
+export const BetaMessageBatchesDeletePathParams = Schema.Struct({
+  "message_batch_id": Schema.String.annotate({ "title": "Message Batch Id", "description": "ID of the Message Batch." })
+})
+
 export type BetaMessageBatchesDelete200 = BetaDeleteMessageBatchResponse
 
 export const BetaMessageBatchesDelete200 = BetaDeleteMessageBatchResponse
@@ -19278,6 +19414,12 @@ export const BetaMessageBatchesCancelParams = Schema.Struct({
     })
   ),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
+})
+
+export type BetaMessageBatchesCancelPathParams = { readonly "message_batch_id": string }
+
+export const BetaMessageBatchesCancelPathParams = Schema.Struct({
+  "message_batch_id": Schema.String.annotate({ "title": "Message Batch Id", "description": "ID of the Message Batch." })
 })
 
 export type BetaMessageBatchesCancel200 = BetaMessageBatch
@@ -19315,6 +19457,12 @@ export const BetaMessageBatchesResultsParams = Schema.Struct({
       "Your unique API key for authentication.\n\nThis key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace."
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
+})
+
+export type BetaMessageBatchesResultsPathParams = { readonly "message_batch_id": string }
+
+export const BetaMessageBatchesResultsPathParams = Schema.Struct({
+  "message_batch_id": Schema.String.annotate({ "title": "Message Batch Id", "description": "ID of the Message Batch." })
 })
 
 export type BetaMessageBatchesResults4XX = BetaErrorResponse
@@ -19510,6 +19658,12 @@ export const BetaGetFileMetadataV1FilesFileIdGetParams = Schema.Struct({
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
 
+export type BetaGetFileMetadataV1FilesFileIdGetPathParams = { readonly "file_id": string }
+
+export const BetaGetFileMetadataV1FilesFileIdGetPathParams = Schema.Struct({
+  "file_id": Schema.String.annotate({ "title": "File Id", "description": "ID of the File." })
+})
+
 export type BetaGetFileMetadataV1FilesFileIdGet200 = BetaFileMetadataSchema
 
 export const BetaGetFileMetadataV1FilesFileIdGet200 = BetaFileMetadataSchema
@@ -19547,6 +19701,12 @@ export const BetaDeleteFileV1FilesFileIdDeleteParams = Schema.Struct({
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
 
+export type BetaDeleteFileV1FilesFileIdDeletePathParams = { readonly "file_id": string }
+
+export const BetaDeleteFileV1FilesFileIdDeletePathParams = Schema.Struct({
+  "file_id": Schema.String.annotate({ "title": "File Id", "description": "ID of the File." })
+})
+
 export type BetaDeleteFileV1FilesFileIdDelete200 = BetaFileDeleteResponse
 
 export const BetaDeleteFileV1FilesFileIdDelete200 = BetaFileDeleteResponse
@@ -19582,6 +19742,12 @@ export const BetaDownloadFileV1FilesFileIdContentGetParams = Schema.Struct({
       "Your unique API key for authentication.\n\nThis key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace."
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
+})
+
+export type BetaDownloadFileV1FilesFileIdContentGetPathParams = { readonly "file_id": string }
+
+export const BetaDownloadFileV1FilesFileIdContentGetPathParams = Schema.Struct({
+  "file_id": Schema.String.annotate({ "title": "File Id", "description": "ID of the File." })
 })
 
 export type BetaDownloadFileV1FilesFileIdContentGet4XX = BetaErrorResponse
@@ -19715,6 +19881,15 @@ export const BetaGetSkillV1SkillsSkillIdGetParams = Schema.Struct({
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
 
+export type BetaGetSkillV1SkillsSkillIdGetPathParams = { readonly "skill_id": string }
+
+export const BetaGetSkillV1SkillsSkillIdGetPathParams = Schema.Struct({
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  })
+})
+
 export type BetaGetSkillV1SkillsSkillIdGet200 = BetaSkillResource
 
 export const BetaGetSkillV1SkillsSkillIdGet200 = BetaSkillResource
@@ -19750,6 +19925,15 @@ export const BetaDeleteSkillV1SkillsSkillIdDeleteParams = Schema.Struct({
       "Your unique API key for authentication.\n\nThis key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace."
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
+})
+
+export type BetaDeleteSkillV1SkillsSkillIdDeletePathParams = { readonly "skill_id": string }
+
+export const BetaDeleteSkillV1SkillsSkillIdDeletePathParams = Schema.Struct({
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  })
 })
 
 export type BetaDeleteSkillV1SkillsSkillIdDelete200 = BetaDeletedSkill
@@ -19808,6 +19992,15 @@ export const BetaListSkillVersionsV1SkillsSkillIdVersionsGetParams = Schema.Stru
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
 
+export type BetaListSkillVersionsV1SkillsSkillIdVersionsGetPathParams = { readonly "skill_id": string }
+
+export const BetaListSkillVersionsV1SkillsSkillIdVersionsGetPathParams = Schema.Struct({
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  })
+})
+
 export type BetaListSkillVersionsV1SkillsSkillIdVersionsGet200 = BetaListSkillVersionResourcesResponse
 
 export const BetaListSkillVersionsV1SkillsSkillIdVersionsGet200 = BetaListSkillVersionResourcesResponse
@@ -19837,6 +20030,15 @@ export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPostParams = Schema.St
     })
   ),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
+})
+
+export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPostPathParams = { readonly "skill_id": string }
+
+export const BetaCreateSkillVersionV1SkillsSkillIdVersionsPostPathParams = Schema.Struct({
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  })
 })
 
 export type BetaCreateSkillVersionV1SkillsSkillIdVersionsPostRequestFormData =
@@ -19882,6 +20084,23 @@ export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGetParams = Schema
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
 
+export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGetPathParams = {
+  readonly "skill_id": string
+  readonly "version": string
+}
+
+export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGetPathParams = Schema.Struct({
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  }),
+  "version": Schema.String.annotate({
+    "title": "Version",
+    "description":
+      "Identifies the skill version: a version ID, or the literal `latest` for the skill's most recent version.\n\nRequests carrying the `skills-2025-10-02` beta header address versions by their Unix epoch timestamp instead (e.g., \"1759178010641129\")."
+  })
+})
+
 export type BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet200 = BetaSkillVersionResource
 
 export const BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGet200 = BetaSkillVersionResource
@@ -19919,6 +20138,23 @@ export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDeleteParams = 
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
 })
 
+export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDeletePathParams = {
+  readonly "skill_id": string
+  readonly "version": string
+}
+
+export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDeletePathParams = Schema.Struct({
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  }),
+  "version": Schema.String.annotate({
+    "title": "Version",
+    "description":
+      "Identifies the skill version by its version ID.\n\nRequests carrying the `skills-2025-10-02` beta header address versions by their Unix epoch timestamp instead (e.g., \"1759178010641129\")."
+  })
+})
+
 export type BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete200 = BetaDeletedSkillVersion
 
 export const BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete200 = BetaDeletedSkillVersion
@@ -19954,6 +20190,23 @@ export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionConten
       "Your unique API key for authentication.\n\nThis key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace."
   })),
   "anthropic-workspace-id": Schema.optionalKey(Schema.String)
+})
+
+export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGetPathParams = {
+  readonly "skill_id": string
+  readonly "version": string
+}
+
+export const BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGetPathParams = Schema.Struct({
+  "skill_id": Schema.String.annotate({
+    "title": "Skill Id",
+    "description": "Unique identifier for the skill.\n\nThe format and length of IDs may change over time."
+  }),
+  "version": Schema.String.annotate({
+    "title": "Version",
+    "description":
+      "Identifies the skill version by its version ID.\n\nRequests carrying the `skills-2025-10-02` beta header address versions by their Unix epoch timestamp instead (e.g., \"1759178010641129\")."
+  })
 })
 
 export type BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet4XX = BetaErrorResponse
@@ -20023,10 +20276,42 @@ export const make = <E, R>(
         )
       : (request) => Effect.flatMap(httpClient.execute(request), withOptionalResponse)
   }
-  const __encodePathParam = encodeURIComponent
+  const __encodePathParam = (
+    name: string,
+    value: unknown,
+    style: "simple" | "label" | "matrix",
+    explode: boolean
+  ): string => {
+    const encode = (value: unknown): string => {
+      if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") {
+        throw new TypeError("Path parameters must be scalars or arrays of scalars")
+      }
+      return encodeURIComponent(String(value)).replace(
+        /[!'()*]/g,
+        (char) => "%" + char.charCodeAt(0).toString(16).toUpperCase()
+      )
+    }
+    const values = Array.isArray(value) ? value.map(encode) : [encode(value)]
+    if (values.length === 0) throw new TypeError("Path parameter arrays must be non-empty")
+    switch (style) {
+      case "simple": {
+        const result = values.join(",")
+        if (result === "") throw new TypeError("Path parameters must be non-empty")
+        return result
+      }
+      case "label":
+        return "." + values.join(explode ? "." : ",")
+      case "matrix": {
+        const prefix = ";" + encode(name)
+        return explode
+          ? values.map((value) => prefix + (value === "" ? "" : "=" + value)).join("")
+          : prefix + "=" + values.join(",")
+      }
+    }
+  }
   const __makePathRequest = (
     method: (url: string) => HttpClientRequest.HttpClientRequest,
-    parameters: ReadonlyArray<string>,
+    parameters: ReadonlyArray<unknown>,
     getPath: () => string
   ) =>
     Effect.suspend(() => {
@@ -20040,7 +20325,7 @@ export const make = <E, R>(
             })
           })
         )
-      if (parameters.some((value) => value === "" || /^(?:\.|%2e){1,2}$/i.test(value))) {
+      if (parameters.some((value) => typeof value === "string" && (value === "" || /^(?:\.|%2e){1,2}$/i.test(value)))) {
         return fail("Path parameters must be non-empty and cannot be dot segments")
       }
       let path: string
@@ -20131,7 +20416,11 @@ export const make = <E, R>(
         }))
       ),
     "modelsGet": (modelId, options: Parameters<AnthropicClient["modelsGet"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [modelId], () => "/v1/models/" + __encodePathParam(modelId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [modelId],
+        () => "/v1/models/" + __encodePathParam("model_id", modelId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -20184,7 +20473,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [messageBatchId],
-        () => "/v1/messages/batches/" + __encodePathParam(messageBatchId) + ""
+        () => "/v1/messages/batches/" + __encodePathParam("message_batch_id", messageBatchId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -20205,7 +20494,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [messageBatchId],
-        () => "/v1/messages/batches/" + __encodePathParam(messageBatchId) + ""
+        () => "/v1/messages/batches/" + __encodePathParam("message_batch_id", messageBatchId, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -20226,7 +20515,8 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [messageBatchId],
-        () => "/v1/messages/batches/" + __encodePathParam(messageBatchId) + "/cancel"
+        () =>
+          "/v1/messages/batches/" + __encodePathParam("message_batch_id", messageBatchId, "simple", false) + "/cancel"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -20246,7 +20536,8 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [messageBatchId],
-        () => "/v1/messages/batches/" + __encodePathParam(messageBatchId) + "/results"
+        () =>
+          "/v1/messages/batches/" + __encodePathParam("message_batch_id", messageBatchId, "simple", false) + "/results"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -20266,7 +20557,7 @@ export const make = <E, R>(
     "messageBatchesResultsStream": (messageBatchId, options) =>
       Stream.unwrap(
         __makePathRequest(HttpClientRequest.get, [messageBatchId], () =>
-          "/v1/messages/batches/" + __encodePathParam(messageBatchId) + "/results")
+          "/v1/messages/batches/" + __encodePathParam("message_batch_id", messageBatchId, "simple", false) + "/results")
           .pipe(
             Effect.map((request) =>
               request.pipe(
@@ -20329,7 +20620,11 @@ export const make = <E, R>(
       fileId,
       options: Parameters<AnthropicClient["getFileMetadataV1FilesFileIdGet"]>[1]
     ) =>
-      __makePathRequest(HttpClientRequest.get, [fileId], () => "/v1/files/" + __encodePathParam(fileId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [fileId],
+        () => "/v1/files/" + __encodePathParam("file_id", fileId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -20349,7 +20644,11 @@ export const make = <E, R>(
       fileId,
       options: Parameters<AnthropicClient["deleteFileV1FilesFileIdDelete"]>[1]
     ) =>
-      __makePathRequest(HttpClientRequest.delete, [fileId], () => "/v1/files/" + __encodePathParam(fileId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [fileId],
+        () => "/v1/files/" + __encodePathParam("file_id", fileId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -20369,27 +20668,30 @@ export const make = <E, R>(
       fileId,
       options: Parameters<AnthropicClient["downloadFileV1FilesFileIdContentGet"]>[1]
     ) =>
-      __makePathRequest(HttpClientRequest.get, [fileId], () => "/v1/files/" + __encodePathParam(fileId) + "/content")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setHeaders({
-                "anthropic-version": options?.params?.["anthropic-version"] ?? undefined,
-                "x-api-key": options?.params?.["x-api-key"] ?? undefined,
-                "anthropic-workspace-id": options?.params?.["anthropic-workspace-id"] ?? undefined
-              }),
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeBinary,
-                "4xx": decodeError("DownloadFileV1FilesFileIdContentGet4XX", DownloadFileV1FilesFileIdContentGet4XX),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.get,
+        [fileId],
+        () => "/v1/files/" + __encodePathParam("file_id", fileId, "simple", false) + "/content"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setHeaders({
+              "anthropic-version": options?.params?.["anthropic-version"] ?? undefined,
+              "x-api-key": options?.params?.["x-api-key"] ?? undefined,
+              "anthropic-workspace-id": options?.params?.["anthropic-workspace-id"] ?? undefined
+            }),
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeBinary,
+              "4xx": decodeError("DownloadFileV1FilesFileIdContentGet4XX", DownloadFileV1FilesFileIdContentGet4XX),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "downloadFileV1FilesFileIdContentGetStream": (fileId, options) =>
       Stream.unwrap(
-        __makePathRequest(HttpClientRequest.get, [fileId], () => "/v1/files/" + __encodePathParam(fileId) + "/content")
-          .pipe(
+        __makePathRequest(HttpClientRequest.get, [fileId], () =>
+          "/v1/files/" + __encodePathParam("file_id", fileId, "simple", false) + "/content").pipe(
             Effect.map((request) =>
               request.pipe(
                 HttpClientRequest.setHeaders({
@@ -20434,7 +20736,11 @@ export const make = <E, R>(
         }))
       ),
     "getSkillV1SkillsSkillIdGet": (skillId, options: Parameters<AnthropicClient["getSkillV1SkillsSkillIdGet"]>[1]) =>
-      __makePathRequest(HttpClientRequest.get, [skillId], () => "/v1/skills/" + __encodePathParam(skillId) + "").pipe(
+      __makePathRequest(
+        HttpClientRequest.get,
+        [skillId],
+        () => "/v1/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + ""
+      ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
             HttpClientRequest.setHeaders({
@@ -20454,23 +20760,26 @@ export const make = <E, R>(
       skillId,
       options: Parameters<AnthropicClient["deleteSkillV1SkillsSkillIdDelete"]>[1]
     ) =>
-      __makePathRequest(HttpClientRequest.delete, [skillId], () => "/v1/skills/" + __encodePathParam(skillId) + "")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setHeaders({
-                "anthropic-version": options?.params?.["anthropic-version"] ?? undefined,
-                "x-api-key": options?.params?.["x-api-key"] ?? undefined,
-                "anthropic-workspace-id": options?.params?.["anthropic-workspace-id"] ?? undefined
-              }),
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(DeleteSkillV1SkillsSkillIdDelete200),
-                "4xx": decodeError("DeleteSkillV1SkillsSkillIdDelete4XX", DeleteSkillV1SkillsSkillIdDelete4XX),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.delete,
+        [skillId],
+        () => "/v1/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + ""
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setHeaders({
+              "anthropic-version": options?.params?.["anthropic-version"] ?? undefined,
+              "x-api-key": options?.params?.["x-api-key"] ?? undefined,
+              "anthropic-workspace-id": options?.params?.["anthropic-workspace-id"] ?? undefined
+            }),
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(DeleteSkillV1SkillsSkillIdDelete200),
+              "4xx": decodeError("DeleteSkillV1SkillsSkillIdDelete4XX", DeleteSkillV1SkillsSkillIdDelete4XX),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "listSkillVersionsV1SkillsSkillIdVersionsGet": (
       skillId,
       options: Parameters<AnthropicClient["listSkillVersionsV1SkillsSkillIdVersionsGet"]>[1]
@@ -20478,7 +20787,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [skillId],
-        () => "/v1/skills/" + __encodePathParam(skillId) + "/versions"
+        () => "/v1/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/versions"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -20509,7 +20818,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [skillId],
-        () => "/v1/skills/" + __encodePathParam(skillId) + "/versions"
+        () => "/v1/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/versions"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -20537,7 +20846,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [skillId, version],
-        () => "/v1/skills/" + __encodePathParam(skillId) + "/versions/" + __encodePathParam(version) + ""
+        () =>
+          "/v1/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/versions/" +
+          __encodePathParam("version", version, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -20565,7 +20876,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [skillId, version],
-        () => "/v1/skills/" + __encodePathParam(skillId) + "/versions/" + __encodePathParam(version) + ""
+        () =>
+          "/v1/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/versions/" +
+          __encodePathParam("version", version, "simple", false) + ""
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -20624,7 +20937,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [modelId],
-        () => "/v1/models/" + __encodePathParam(modelId) + "?beta=true"
+        () => "/v1/models/" + __encodePathParam("model_id", modelId, "simple", false) + "?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -20683,7 +20996,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [messageBatchId],
-        () => "/v1/messages/batches/" + __encodePathParam(messageBatchId) + "?beta=true"
+        () =>
+          "/v1/messages/batches/" + __encodePathParam("message_batch_id", messageBatchId, "simple", false) +
+          "?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -20705,7 +21020,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [messageBatchId],
-        () => "/v1/messages/batches/" + __encodePathParam(messageBatchId) + "?beta=true"
+        () =>
+          "/v1/messages/batches/" + __encodePathParam("message_batch_id", messageBatchId, "simple", false) +
+          "?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -20727,7 +21044,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [messageBatchId],
-        () => "/v1/messages/batches/" + __encodePathParam(messageBatchId) + "/cancel?beta=true"
+        () =>
+          "/v1/messages/batches/" + __encodePathParam("message_batch_id", messageBatchId, "simple", false) +
+          "/cancel?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -20751,7 +21070,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [messageBatchId],
-        () => "/v1/messages/batches/" + __encodePathParam(messageBatchId) + "/results?beta=true"
+        () =>
+          "/v1/messages/batches/" + __encodePathParam("message_batch_id", messageBatchId, "simple", false) +
+          "/results?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -20772,7 +21093,7 @@ export const make = <E, R>(
     "betaMessageBatchesResultsStream": (messageBatchId, options) =>
       Stream.unwrap(
         __makePathRequest(HttpClientRequest.get, [messageBatchId], () =>
-          "/v1/messages/batches/" + __encodePathParam(messageBatchId) +
+          "/v1/messages/batches/" + __encodePathParam("message_batch_id", messageBatchId, "simple", false) +
           "/results?beta=true").pipe(
             Effect.map((request) =>
               request.pipe(
@@ -20840,24 +21161,27 @@ export const make = <E, R>(
       fileId,
       options: Parameters<AnthropicClient["betaGetFileMetadataV1FilesFileIdGet"]>[1]
     ) =>
-      __makePathRequest(HttpClientRequest.get, [fileId], () => "/v1/files/" + __encodePathParam(fileId) + "?beta=true")
-        .pipe(
-          Effect.flatMap((request) =>
-            request.pipe(
-              HttpClientRequest.setHeaders({
-                "anthropic-beta": options?.params?.["anthropic-beta"] ?? undefined,
-                "anthropic-version": options?.params?.["anthropic-version"] ?? undefined,
-                "x-api-key": options?.params?.["x-api-key"] ?? undefined,
-                "anthropic-workspace-id": options?.params?.["anthropic-workspace-id"] ?? undefined
-              }),
-              withResponse(options?.config)(HttpClientResponse.matchStatus({
-                "2xx": decodeSuccess(BetaGetFileMetadataV1FilesFileIdGet200),
-                "4xx": decodeError("BetaGetFileMetadataV1FilesFileIdGet4XX", BetaGetFileMetadataV1FilesFileIdGet4XX),
-                orElse: unexpectedStatus
-              }))
-            )
+      __makePathRequest(
+        HttpClientRequest.get,
+        [fileId],
+        () => "/v1/files/" + __encodePathParam("file_id", fileId, "simple", false) + "?beta=true"
+      ).pipe(
+        Effect.flatMap((request) =>
+          request.pipe(
+            HttpClientRequest.setHeaders({
+              "anthropic-beta": options?.params?.["anthropic-beta"] ?? undefined,
+              "anthropic-version": options?.params?.["anthropic-version"] ?? undefined,
+              "x-api-key": options?.params?.["x-api-key"] ?? undefined,
+              "anthropic-workspace-id": options?.params?.["anthropic-workspace-id"] ?? undefined
+            }),
+            withResponse(options?.config)(HttpClientResponse.matchStatus({
+              "2xx": decodeSuccess(BetaGetFileMetadataV1FilesFileIdGet200),
+              "4xx": decodeError("BetaGetFileMetadataV1FilesFileIdGet4XX", BetaGetFileMetadataV1FilesFileIdGet4XX),
+              orElse: unexpectedStatus
+            }))
           )
-        ),
+        )
+      ),
     "betaDeleteFileV1FilesFileIdDelete": (
       fileId,
       options: Parameters<AnthropicClient["betaDeleteFileV1FilesFileIdDelete"]>[1]
@@ -20865,7 +21189,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [fileId],
-        () => "/v1/files/" + __encodePathParam(fileId) + "?beta=true"
+        () => "/v1/files/" + __encodePathParam("file_id", fileId, "simple", false) + "?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -20890,7 +21214,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [fileId],
-        () => "/v1/files/" + __encodePathParam(fileId) + "/content?beta=true"
+        () => "/v1/files/" + __encodePathParam("file_id", fileId, "simple", false) + "/content?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -20914,7 +21238,7 @@ export const make = <E, R>(
     "betaDownloadFileV1FilesFileIdContentGetStream": (fileId, options) =>
       Stream.unwrap(
         __makePathRequest(HttpClientRequest.get, [fileId], () =>
-          "/v1/files/" + __encodePathParam(fileId) + "/content?beta=true").pipe(
+          "/v1/files/" + __encodePathParam("file_id", fileId, "simple", false) + "/content?beta=true").pipe(
             Effect.map((request) =>
               request.pipe(
                 HttpClientRequest.setHeaders({
@@ -20968,7 +21292,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [skillId],
-        () => "/v1/skills/" + __encodePathParam(skillId) + "?beta=true"
+        () => "/v1/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -20993,7 +21317,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [skillId],
-        () => "/v1/skills/" + __encodePathParam(skillId) + "?beta=true"
+        () => "/v1/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -21018,7 +21342,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [skillId],
-        () => "/v1/skills/" + __encodePathParam(skillId) + "/versions?beta=true"
+        () => "/v1/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/versions?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -21050,7 +21374,7 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.post,
         [skillId],
-        () => "/v1/skills/" + __encodePathParam(skillId) + "/versions?beta=true"
+        () => "/v1/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/versions?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -21079,7 +21403,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.get,
         [skillId, version],
-        () => "/v1/skills/" + __encodePathParam(skillId) + "/versions/" + __encodePathParam(version) + "?beta=true"
+        () =>
+          "/v1/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/versions/" +
+          __encodePathParam("version", version, "simple", false) + "?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -21108,7 +21434,9 @@ export const make = <E, R>(
       __makePathRequest(
         HttpClientRequest.delete,
         [skillId, version],
-        () => "/v1/skills/" + __encodePathParam(skillId) + "/versions/" + __encodePathParam(version) + "?beta=true"
+        () =>
+          "/v1/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/versions/" +
+          __encodePathParam("version", version, "simple", false) + "?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -21138,7 +21466,8 @@ export const make = <E, R>(
         HttpClientRequest.get,
         [skillId, version],
         () =>
-          "/v1/skills/" + __encodePathParam(skillId) + "/versions/" + __encodePathParam(version) + "/content?beta=true"
+          "/v1/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/versions/" +
+          __encodePathParam("version", version, "simple", false) + "/content?beta=true"
       ).pipe(
         Effect.flatMap((request) =>
           request.pipe(
@@ -21165,22 +21494,21 @@ export const make = <E, R>(
           HttpClientRequest.get,
           [skillId, version],
           () =>
-            "/v1/skills/" + __encodePathParam(skillId) + "/versions/" + __encodePathParam(version) +
-            "/content?beta=true"
-        )
-          .pipe(
-            Effect.map((request) =>
-              request.pipe(
-                HttpClientRequest.setHeaders({
-                  "anthropic-beta": options?.params?.["anthropic-beta"] ?? undefined,
-                  "anthropic-version": options?.params?.["anthropic-version"] ?? undefined,
-                  "x-api-key": options?.params?.["x-api-key"] ?? undefined,
-                  "anthropic-workspace-id": options?.params?.["anthropic-workspace-id"] ?? undefined
-                }),
-                binaryRequest
-              )
+            "/v1/skills/" + __encodePathParam("skill_id", skillId, "simple", false) + "/versions/" +
+            __encodePathParam("version", version, "simple", false) + "/content?beta=true"
+        ).pipe(
+          Effect.map((request) =>
+            request.pipe(
+              HttpClientRequest.setHeaders({
+                "anthropic-beta": options?.params?.["anthropic-beta"] ?? undefined,
+                "anthropic-version": options?.params?.["anthropic-version"] ?? undefined,
+                "x-api-key": options?.params?.["x-api-key"] ?? undefined,
+                "anthropic-workspace-id": options?.params?.["anthropic-workspace-id"] ?? undefined
+              }),
+              binaryRequest
             )
           )
+        )
       )
   }
 }
@@ -21188,6 +21516,8 @@ export const make = <E, R>(
 export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never> {
   readonly httpClient: HttpClient.HttpClient.With<E, R>
   /**
+   * Create a Message
+   *
    * Send a structured list of input messages with text and/or image content, and the model will generate the next message in the conversation.
    *
    * The Messages API can be used for either single queries or stateless multi-turn conversations.
@@ -21219,6 +21549,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Create a Text Completion
+   *
    * [Legacy] Create a Text Completion.
    *
    * The Text Completions API is a legacy API. We recommend using the [Messages API](https://platform.claude.com/docs/en/api/messages) going forward.
@@ -21250,6 +21582,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * List Models
+   *
    * List available models.
    *
    * The Models API response can be used to determine which models are available for use in the API. More recently released models are listed first.
@@ -21273,13 +21607,15 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Get a Model
+   *
    * Get a specific model.
    *
    * The Models API response can be used to determine information about a specific model or resolve a model alias to a model ID.
    */
   readonly "modelsGet": {
     <Config extends OperationConfig | undefined = undefined>(
-      modelId: string,
+      modelId: (typeof ModelsGetPathParams.Encoded)["model_id"],
       options: { readonly params?: typeof ModelsGetParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<ModelsGet200, Config>,
@@ -21287,7 +21623,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      modelId: string,
+      modelId: (typeof ModelsGetPathParams.Encoded)["model_id"],
       options:
         | { readonly params?: typeof ModelsGetParams.Encoded | undefined; readonly config?: Config | undefined }
         | undefined
@@ -21298,6 +21634,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * List Message Batches
+   *
    * List all Message Batches within a Workspace. Most recently created batches are returned first.
    *
    * Learn more about the Message Batches API in our [user guide](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
@@ -21328,6 +21666,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Create a Message Batch
+   *
    * Send a batch of Message creation requests.
    *
    * The Message Batches API can be used to process multiple Messages API requests at once. Once a Message Batch is created, it begins processing immediately. Batches can take up to 24 hours to complete.
@@ -21365,13 +21705,15 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Retrieve a Message Batch
+   *
    * This endpoint is idempotent and can be used to poll for Message Batch completion. To access the results of a Message Batch, make a request to the `results_url` field in the response.
    *
    * Learn more about the Message Batches API in our [user guide](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
    */
   readonly "messageBatchesRetrieve": {
     <Config extends OperationConfig | undefined = undefined>(
-      messageBatchId: string,
+      messageBatchId: (typeof MessageBatchesRetrievePathParams.Encoded)["message_batch_id"],
       options: { readonly params?: typeof MessageBatchesRetrieveParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<MessageBatchesRetrieve200, Config>,
@@ -21382,7 +21724,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      messageBatchId: string,
+      messageBatchId: (typeof MessageBatchesRetrievePathParams.Encoded)["message_batch_id"],
       options: {
         readonly params?: typeof MessageBatchesRetrieveParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -21397,6 +21739,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Delete a Message Batch
+   *
    * Delete a Message Batch.
    *
    * Message Batches can only be deleted once they've finished processing. If you'd like to delete an in-progress batch, you must first cancel it.
@@ -21405,7 +21749,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "messageBatchesDelete": {
     <Config extends OperationConfig | undefined = undefined>(
-      messageBatchId: string,
+      messageBatchId: (typeof MessageBatchesDeletePathParams.Encoded)["message_batch_id"],
       options: { readonly params?: typeof MessageBatchesDeleteParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<MessageBatchesDelete200, Config>,
@@ -21416,7 +21760,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      messageBatchId: string,
+      messageBatchId: (typeof MessageBatchesDeletePathParams.Encoded)["message_batch_id"],
       options: {
         readonly params?: typeof MessageBatchesDeleteParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -21431,6 +21775,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Cancel a Message Batch
+   *
    * Batches may be canceled any time before processing ends. Once cancellation is initiated, the batch enters a `canceling` state, at which time the system may complete any in-progress, non-interruptible requests before finalizing cancellation.
    *
    * The number of canceled requests is specified in `request_counts`. To determine which requests were canceled, check the individual results within the batch. Note that cancellation may not result in any canceled requests if they were non-interruptible.
@@ -21439,7 +21785,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "messageBatchesCancel": {
     <Config extends OperationConfig | undefined = undefined>(
-      messageBatchId: string,
+      messageBatchId: (typeof MessageBatchesCancelPathParams.Encoded)["message_batch_id"],
       options: { readonly params?: typeof MessageBatchesCancelParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<MessageBatchesCancel200, Config>,
@@ -21450,7 +21796,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      messageBatchId: string,
+      messageBatchId: (typeof MessageBatchesCancelPathParams.Encoded)["message_batch_id"],
       options: {
         readonly params?: typeof MessageBatchesCancelParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -21465,6 +21811,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Retrieve Message Batch results
+   *
    * Streams the results of a Message Batch as a `.jsonl` file.
    *
    * Each line in the file is a JSON object containing the result of a single request in the Message Batch. Results are not guaranteed to be in the same order as requests. Use the `custom_id` field to match results to requests.
@@ -21473,7 +21821,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "messageBatchesResults": {
     <Config extends OperationConfig | undefined = undefined>(
-      messageBatchId: string,
+      messageBatchId: (typeof MessageBatchesResultsPathParams.Encoded)["message_batch_id"],
       options: { readonly params?: typeof MessageBatchesResultsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Uint8Array, Config>,
@@ -21484,7 +21832,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      messageBatchId: string,
+      messageBatchId: (typeof MessageBatchesResultsPathParams.Encoded)["message_batch_id"],
       options: {
         readonly params?: typeof MessageBatchesResultsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -21499,6 +21847,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Retrieve Message Batch results
+   *
    * Streams the results of a Message Batch as a `.jsonl` file.
    *
    * Each line in the file is a JSON object containing the result of a single request in the Message Batch. Results are not guaranteed to be in the same order as requests. Use the `custom_id` field to match results to requests.
@@ -21506,10 +21856,12 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    * Learn more about the Message Batches API in our [user guide](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
    */
   readonly "messageBatchesResultsStream": (
-    messageBatchId: string,
+    messageBatchId: (typeof MessageBatchesResultsPathParams.Encoded)["message_batch_id"],
     options: { readonly params?: typeof MessageBatchesResultsParams.Encoded | undefined } | undefined
   ) => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>
   /**
+   * Count tokens in a Message
+   *
    * Count the number of tokens in a Message.
    *
    * The Token Count API can be used to count the number of tokens in a Message, including tools, images, and documents, without creating it.
@@ -21612,7 +21964,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "getFileMetadataV1FilesFileIdGet": {
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof GetFileMetadataV1FilesFileIdGetPathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof GetFileMetadataV1FilesFileIdGetParams.Encoded | undefined
         readonly config: Config
@@ -21626,7 +21978,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof GetFileMetadataV1FilesFileIdGetPathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof GetFileMetadataV1FilesFileIdGetParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -21645,7 +21997,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "deleteFileV1FilesFileIdDelete": {
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof DeleteFileV1FilesFileIdDeletePathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof DeleteFileV1FilesFileIdDeleteParams.Encoded | undefined
         readonly config: Config
@@ -21659,7 +22011,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof DeleteFileV1FilesFileIdDeletePathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof DeleteFileV1FilesFileIdDeleteParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -21678,7 +22030,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "downloadFileV1FilesFileIdContentGet": {
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof DownloadFileV1FilesFileIdContentGetPathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof DownloadFileV1FilesFileIdContentGetParams.Encoded | undefined
         readonly config: Config
@@ -21692,7 +22044,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof DownloadFileV1FilesFileIdContentGetPathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof DownloadFileV1FilesFileIdContentGetParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -21710,7 +22062,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    * Download File
    */
   readonly "downloadFileV1FilesFileIdContentGetStream": (
-    fileId: string,
+    fileId: (typeof DownloadFileV1FilesFileIdContentGetPathParams.Encoded)["file_id"],
     options: { readonly params?: typeof DownloadFileV1FilesFileIdContentGetParams.Encoded | undefined } | undefined
   ) => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>
   /**
@@ -21779,7 +22131,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "getSkillV1SkillsSkillIdGet": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof GetSkillV1SkillsSkillIdGetPathParams.Encoded)["skill_id"],
       options: {
         readonly params?: typeof GetSkillV1SkillsSkillIdGetParams.Encoded | undefined
         readonly config: Config
@@ -21793,7 +22145,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof GetSkillV1SkillsSkillIdGetPathParams.Encoded)["skill_id"],
       options: {
         readonly params?: typeof GetSkillV1SkillsSkillIdGetParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -21812,7 +22164,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "deleteSkillV1SkillsSkillIdDelete": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof DeleteSkillV1SkillsSkillIdDeletePathParams.Encoded)["skill_id"],
       options: {
         readonly params?: typeof DeleteSkillV1SkillsSkillIdDeleteParams.Encoded | undefined
         readonly config: Config
@@ -21826,7 +22178,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof DeleteSkillV1SkillsSkillIdDeletePathParams.Encoded)["skill_id"],
       options: {
         readonly params?: typeof DeleteSkillV1SkillsSkillIdDeleteParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -21845,7 +22197,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "listSkillVersionsV1SkillsSkillIdVersionsGet": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof ListSkillVersionsV1SkillsSkillIdVersionsGetPathParams.Encoded)["skill_id"],
       options: {
         readonly params?: typeof ListSkillVersionsV1SkillsSkillIdVersionsGetParams.Encoded | undefined
         readonly config: Config
@@ -21862,7 +22214,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof ListSkillVersionsV1SkillsSkillIdVersionsGetPathParams.Encoded)["skill_id"],
       options: {
         readonly params?: typeof ListSkillVersionsV1SkillsSkillIdVersionsGetParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -21884,7 +22236,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "createSkillVersionV1SkillsSkillIdVersionsPost": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof CreateSkillVersionV1SkillsSkillIdVersionsPostPathParams.Encoded)["skill_id"],
       options: {
         readonly params?: typeof CreateSkillVersionV1SkillsSkillIdVersionsPostParams.Encoded | undefined
         readonly payload: typeof CreateSkillVersionV1SkillsSkillIdVersionsPostRequestFormData.Encoded
@@ -21902,7 +22254,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof CreateSkillVersionV1SkillsSkillIdVersionsPostPathParams.Encoded)["skill_id"],
       options: {
         readonly params?: typeof CreateSkillVersionV1SkillsSkillIdVersionsPostParams.Encoded | undefined
         readonly payload: typeof CreateSkillVersionV1SkillsSkillIdVersionsPostRequestFormData.Encoded
@@ -21925,8 +22277,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "getSkillVersionV1SkillsSkillIdVersionsVersionGet": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
-      version: string,
+      skillId: (typeof GetSkillVersionV1SkillsSkillIdVersionsVersionGetPathParams.Encoded)["skill_id"],
+      version: (typeof GetSkillVersionV1SkillsSkillIdVersionsVersionGetPathParams.Encoded)["version"],
       options: {
         readonly params?: typeof GetSkillVersionV1SkillsSkillIdVersionsVersionGetParams.Encoded | undefined
         readonly config: Config
@@ -21943,8 +22295,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
-      version: string,
+      skillId: (typeof GetSkillVersionV1SkillsSkillIdVersionsVersionGetPathParams.Encoded)["skill_id"],
+      version: (typeof GetSkillVersionV1SkillsSkillIdVersionsVersionGetPathParams.Encoded)["version"],
       options: {
         readonly params?: typeof GetSkillVersionV1SkillsSkillIdVersionsVersionGetParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -21966,8 +22318,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "deleteSkillVersionV1SkillsSkillIdVersionsVersionDelete": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
-      version: string,
+      skillId: (typeof DeleteSkillVersionV1SkillsSkillIdVersionsVersionDeletePathParams.Encoded)["skill_id"],
+      version: (typeof DeleteSkillVersionV1SkillsSkillIdVersionsVersionDeletePathParams.Encoded)["version"],
       options: {
         readonly params?: typeof DeleteSkillVersionV1SkillsSkillIdVersionsVersionDeleteParams.Encoded | undefined
         readonly config: Config
@@ -21984,8 +22336,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
-      version: string,
+      skillId: (typeof DeleteSkillVersionV1SkillsSkillIdVersionsVersionDeletePathParams.Encoded)["skill_id"],
+      version: (typeof DeleteSkillVersionV1SkillsSkillIdVersionsVersionDeletePathParams.Encoded)["version"],
       options: {
         readonly params?: typeof DeleteSkillVersionV1SkillsSkillIdVersionsVersionDeleteParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -22003,6 +22355,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Create a Message
+   *
    * Send a structured list of input messages with text and/or image content, and the model will generate the next message in the conversation.
    *
    * The Messages API can be used for either single queries or stateless multi-turn conversations.
@@ -22040,6 +22394,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * List Models
+   *
    * List available models.
    *
    * The Models API response can be used to determine which models are available for use in the API. More recently released models are listed first.
@@ -22064,13 +22420,15 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Get a Model
+   *
    * Get a specific model.
    *
    * The Models API response can be used to determine information about a specific model or resolve a model alias to a model ID.
    */
   readonly "betaModelsGet": {
     <Config extends OperationConfig | undefined = undefined>(
-      modelId: string,
+      modelId: (typeof BetaModelsGetPathParams.Encoded)["model_id"],
       options: { readonly params?: typeof BetaModelsGetParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<BetaModelsGet200, Config>,
@@ -22078,7 +22436,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      modelId: string,
+      modelId: (typeof BetaModelsGetPathParams.Encoded)["model_id"],
       options: {
         readonly params?: typeof BetaModelsGetParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -22090,6 +22448,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * List Message Batches
+   *
    * List all Message Batches within a Workspace. Most recently created batches are returned first.
    *
    * Learn more about the Message Batches API in our [user guide](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
@@ -22120,6 +22480,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Create a Message Batch
+   *
    * Send a batch of Message creation requests.
    *
    * The Message Batches API can be used to process multiple Messages API requests at once. Once a Message Batch is created, it begins processing immediately. Batches can take up to 24 hours to complete.
@@ -22157,13 +22519,15 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Retrieve a Message Batch
+   *
    * This endpoint is idempotent and can be used to poll for Message Batch completion. To access the results of a Message Batch, make a request to the `results_url` field in the response.
    *
    * Learn more about the Message Batches API in our [user guide](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
    */
   readonly "betaMessageBatchesRetrieve": {
     <Config extends OperationConfig | undefined = undefined>(
-      messageBatchId: string,
+      messageBatchId: (typeof BetaMessageBatchesRetrievePathParams.Encoded)["message_batch_id"],
       options: {
         readonly params?: typeof BetaMessageBatchesRetrieveParams.Encoded | undefined
         readonly config: Config
@@ -22177,7 +22541,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      messageBatchId: string,
+      messageBatchId: (typeof BetaMessageBatchesRetrievePathParams.Encoded)["message_batch_id"],
       options: {
         readonly params?: typeof BetaMessageBatchesRetrieveParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -22192,6 +22556,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Delete a Message Batch
+   *
    * Delete a Message Batch.
    *
    * Message Batches can only be deleted once they've finished processing. If you'd like to delete an in-progress batch, you must first cancel it.
@@ -22200,7 +22566,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "betaMessageBatchesDelete": {
     <Config extends OperationConfig | undefined = undefined>(
-      messageBatchId: string,
+      messageBatchId: (typeof BetaMessageBatchesDeletePathParams.Encoded)["message_batch_id"],
       options: { readonly params?: typeof BetaMessageBatchesDeleteParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<BetaMessageBatchesDelete200, Config>,
@@ -22211,7 +22577,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      messageBatchId: string,
+      messageBatchId: (typeof BetaMessageBatchesDeletePathParams.Encoded)["message_batch_id"],
       options: {
         readonly params?: typeof BetaMessageBatchesDeleteParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -22226,6 +22592,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Cancel a Message Batch
+   *
    * Batches may be canceled any time before processing ends. Once cancellation is initiated, the batch enters a `canceling` state, at which time the system may complete any in-progress, non-interruptible requests before finalizing cancellation.
    *
    * The number of canceled requests is specified in `request_counts`. To determine which requests were canceled, check the individual results within the batch. Note that cancellation may not result in any canceled requests if they were non-interruptible.
@@ -22234,7 +22602,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "betaMessageBatchesCancel": {
     <Config extends OperationConfig | undefined = undefined>(
-      messageBatchId: string,
+      messageBatchId: (typeof BetaMessageBatchesCancelPathParams.Encoded)["message_batch_id"],
       options: { readonly params?: typeof BetaMessageBatchesCancelParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<BetaMessageBatchesCancel200, Config>,
@@ -22245,7 +22613,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      messageBatchId: string,
+      messageBatchId: (typeof BetaMessageBatchesCancelPathParams.Encoded)["message_batch_id"],
       options: {
         readonly params?: typeof BetaMessageBatchesCancelParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -22260,6 +22628,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Retrieve Message Batch results
+   *
    * Streams the results of a Message Batch as a `.jsonl` file.
    *
    * Each line in the file is a JSON object containing the result of a single request in the Message Batch. Results are not guaranteed to be in the same order as requests. Use the `custom_id` field to match results to requests.
@@ -22268,7 +22638,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "betaMessageBatchesResults": {
     <Config extends OperationConfig | undefined = undefined>(
-      messageBatchId: string,
+      messageBatchId: (typeof BetaMessageBatchesResultsPathParams.Encoded)["message_batch_id"],
       options: { readonly params?: typeof BetaMessageBatchesResultsParams.Encoded | undefined; readonly config: Config }
     ): Effect.Effect<
       WithOptionalResponse<Uint8Array, Config>,
@@ -22279,7 +22649,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      messageBatchId: string,
+      messageBatchId: (typeof BetaMessageBatchesResultsPathParams.Encoded)["message_batch_id"],
       options: {
         readonly params?: typeof BetaMessageBatchesResultsParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -22294,6 +22664,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Retrieve Message Batch results
+   *
    * Streams the results of a Message Batch as a `.jsonl` file.
    *
    * Each line in the file is a JSON object containing the result of a single request in the Message Batch. Results are not guaranteed to be in the same order as requests. Use the `custom_id` field to match results to requests.
@@ -22301,10 +22673,12 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    * Learn more about the Message Batches API in our [user guide](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
    */
   readonly "betaMessageBatchesResultsStream": (
-    messageBatchId: string,
+    messageBatchId: (typeof BetaMessageBatchesResultsPathParams.Encoded)["message_batch_id"],
     options: { readonly params?: typeof BetaMessageBatchesResultsParams.Encoded | undefined } | undefined
   ) => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>
   /**
+   * Count tokens in a Message
+   *
    * Count the number of tokens in a Message.
    *
    * The Token Count API can be used to count the number of tokens in a Message, including tools, images, and documents, without creating it.
@@ -22407,7 +22781,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "betaGetFileMetadataV1FilesFileIdGet": {
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof BetaGetFileMetadataV1FilesFileIdGetPathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof BetaGetFileMetadataV1FilesFileIdGetParams.Encoded | undefined
         readonly config: Config
@@ -22421,7 +22795,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof BetaGetFileMetadataV1FilesFileIdGetPathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof BetaGetFileMetadataV1FilesFileIdGetParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -22440,7 +22814,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "betaDeleteFileV1FilesFileIdDelete": {
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof BetaDeleteFileV1FilesFileIdDeletePathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof BetaDeleteFileV1FilesFileIdDeleteParams.Encoded | undefined
         readonly config: Config
@@ -22454,7 +22828,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof BetaDeleteFileV1FilesFileIdDeletePathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof BetaDeleteFileV1FilesFileIdDeleteParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -22473,7 +22847,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "betaDownloadFileV1FilesFileIdContentGet": {
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof BetaDownloadFileV1FilesFileIdContentGetPathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof BetaDownloadFileV1FilesFileIdContentGetParams.Encoded | undefined
         readonly config: Config
@@ -22487,7 +22861,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      fileId: string,
+      fileId: (typeof BetaDownloadFileV1FilesFileIdContentGetPathParams.Encoded)["file_id"],
       options: {
         readonly params?: typeof BetaDownloadFileV1FilesFileIdContentGetParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -22505,7 +22879,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    * Download File
    */
   readonly "betaDownloadFileV1FilesFileIdContentGetStream": (
-    fileId: string,
+    fileId: (typeof BetaDownloadFileV1FilesFileIdContentGetPathParams.Encoded)["file_id"],
     options: { readonly params?: typeof BetaDownloadFileV1FilesFileIdContentGetParams.Encoded | undefined } | undefined
   ) => Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>
   /**
@@ -22574,7 +22948,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "betaGetSkillV1SkillsSkillIdGet": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof BetaGetSkillV1SkillsSkillIdGetPathParams.Encoded)["skill_id"],
       options: {
         readonly params?: typeof BetaGetSkillV1SkillsSkillIdGetParams.Encoded | undefined
         readonly config: Config
@@ -22588,7 +22962,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof BetaGetSkillV1SkillsSkillIdGetPathParams.Encoded)["skill_id"],
       options: {
         readonly params?: typeof BetaGetSkillV1SkillsSkillIdGetParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -22607,7 +22981,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "betaDeleteSkillV1SkillsSkillIdDelete": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof BetaDeleteSkillV1SkillsSkillIdDeletePathParams.Encoded)["skill_id"],
       options: {
         readonly params?: typeof BetaDeleteSkillV1SkillsSkillIdDeleteParams.Encoded | undefined
         readonly config: Config
@@ -22621,7 +22995,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof BetaDeleteSkillV1SkillsSkillIdDeletePathParams.Encoded)["skill_id"],
       options: {
         readonly params?: typeof BetaDeleteSkillV1SkillsSkillIdDeleteParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -22640,7 +23014,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "betaListSkillVersionsV1SkillsSkillIdVersionsGet": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof BetaListSkillVersionsV1SkillsSkillIdVersionsGetPathParams.Encoded)["skill_id"],
       options: {
         readonly params?: typeof BetaListSkillVersionsV1SkillsSkillIdVersionsGetParams.Encoded | undefined
         readonly config: Config
@@ -22657,7 +23031,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof BetaListSkillVersionsV1SkillsSkillIdVersionsGetPathParams.Encoded)["skill_id"],
       options: {
         readonly params?: typeof BetaListSkillVersionsV1SkillsSkillIdVersionsGetParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -22679,7 +23053,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "betaCreateSkillVersionV1SkillsSkillIdVersionsPost": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof BetaCreateSkillVersionV1SkillsSkillIdVersionsPostPathParams.Encoded)["skill_id"],
       options: {
         readonly params?: typeof BetaCreateSkillVersionV1SkillsSkillIdVersionsPostParams.Encoded | undefined
         readonly payload: typeof BetaCreateSkillVersionV1SkillsSkillIdVersionsPostRequestFormData.Encoded
@@ -22697,7 +23071,7 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
+      skillId: (typeof BetaCreateSkillVersionV1SkillsSkillIdVersionsPostPathParams.Encoded)["skill_id"],
       options: {
         readonly params?: typeof BetaCreateSkillVersionV1SkillsSkillIdVersionsPostParams.Encoded | undefined
         readonly payload: typeof BetaCreateSkillVersionV1SkillsSkillIdVersionsPostRequestFormData.Encoded
@@ -22720,8 +23094,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "betaGetSkillVersionV1SkillsSkillIdVersionsVersionGet": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
-      version: string,
+      skillId: (typeof BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGetPathParams.Encoded)["skill_id"],
+      version: (typeof BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGetPathParams.Encoded)["version"],
       options: {
         readonly params?: typeof BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGetParams.Encoded | undefined
         readonly config: Config
@@ -22738,8 +23112,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
-      version: string,
+      skillId: (typeof BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGetPathParams.Encoded)["skill_id"],
+      version: (typeof BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGetPathParams.Encoded)["version"],
       options: {
         readonly params?: typeof BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGetParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -22761,8 +23135,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
    */
   readonly "betaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
-      version: string,
+      skillId: (typeof BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDeletePathParams.Encoded)["skill_id"],
+      version: (typeof BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDeletePathParams.Encoded)["version"],
       options: {
         readonly params?: typeof BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDeleteParams.Encoded | undefined
         readonly config: Config
@@ -22779,8 +23153,8 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
-      version: string,
+      skillId: (typeof BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDeletePathParams.Encoded)["skill_id"],
+      version: (typeof BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDeletePathParams.Encoded)["version"],
       options: {
         readonly params?: typeof BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDeleteParams.Encoded | undefined
         readonly config?: Config | undefined
@@ -22798,12 +23172,16 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Download Skill Version Content
+   *
    * Download a skill version's content as a zip archive.
    */
   readonly "betaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGet": {
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
-      version: string,
+      skillId:
+        (typeof BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGetPathParams.Encoded)["skill_id"],
+      version:
+        (typeof BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGetPathParams.Encoded)["version"],
       options: {
         readonly params?:
           | typeof BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGetParams.Encoded
@@ -22822,8 +23200,10 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
       R
     >
     <Config extends OperationConfig | undefined = undefined>(
-      skillId: string,
-      version: string,
+      skillId:
+        (typeof BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGetPathParams.Encoded)["skill_id"],
+      version:
+        (typeof BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGetPathParams.Encoded)["version"],
       options: {
         readonly params?:
           | typeof BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGetParams.Encoded
@@ -22843,11 +23223,15 @@ export interface AnthropicClient<E = HttpClientError.HttpClientError, R = never>
     >
   }
   /**
+   * Download Skill Version Content
+   *
    * Download a skill version's content as a zip archive.
    */
   readonly "betaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGetStream": (
-    skillId: string,
-    version: string,
+    skillId:
+      (typeof BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGetPathParams.Encoded)["skill_id"],
+    version:
+      (typeof BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGetPathParams.Encoded)["version"],
     options: {
       readonly params?:
         | typeof BetaDownloadSkillVersionContentV1SkillsSkillIdVersionsVersionContentGetParams.Encoded
