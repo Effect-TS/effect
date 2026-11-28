@@ -732,6 +732,39 @@ describe("Cause", () => {
       assert.strictEqual(original.reasons.length, 1)
     })
 
+    it("keeps the cause and its reasons when every annotation is already present", () => {
+      const Key = Context.Service<string>("CauseTest/Key")
+      const Other = Context.Service<string>("CauseTest/Other")
+      const cause = Cause.annotate(Cause.combine(Cause.fail("a"), Cause.die("b")), Context.make(Key, "first"))
+
+      assert.strictEqual(Cause.annotate(cause, Context.make(Key, "second")), cause)
+
+      const partly = Cause.fromReasons([cause.reasons[0], Cause.makeFailReason("c")])
+      const annotated = Cause.annotate(partly, Context.make(Key, "second"))
+      assert.notStrictEqual(annotated, partly)
+      assert.strictEqual(annotated.reasons[0], partly.reasons[0])
+      assert.strictEqual(annotated.reasons[1].annotations.get(Key.key), "second")
+
+      const overwritten = Cause.annotate(cause, Context.make(Key, "second"), { overwrite: true })
+      assert.strictEqual(overwritten.reasons[0].annotations.get(Key.key), "second")
+      const added = Cause.annotate(cause, Context.make(Other, "other"))
+      assert.strictEqual(added.reasons[0].annotations.get(Key.key), "first")
+      assert.strictEqual(added.reasons[0].annotations.get(Other.key), "other")
+    })
+
+    it("a failure keeps the stack frame of the innermost traced call", () => {
+      const inner = Effect.fn("inner")(function*() {
+        return yield* Effect.fail("boom")
+      })
+      const outer = Effect.fn("outer")(function*() {
+        return yield* inner().pipe(Effect.ensuring(Effect.void), Effect.ensuring(Effect.void))
+      })
+      const exit = Effect.runSyncExit(outer())
+      runtimeAssert(Exit.isFailure(exit))
+      const frame = exit.cause.reasons[0].annotations.get(Cause.StackTrace.key) as { readonly name: string }
+      assert.strictEqual(frame.name, "inner")
+    })
+
     describe("reasons with their own annotate method", () => {
       class Key extends Context.Service<Key, number>()("Key") {}
       const makeReason = (received: Array<Context.Context<never>>) => {
