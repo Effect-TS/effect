@@ -24,7 +24,9 @@ export const missingExit = succeed(missing)
 export const sameExit: Success<unknown> = Object.assign(succeed(missing), { [missing]: true })
 
 /** @internal */
-export const isSameExit = (result: object): boolean => (result as { readonly [missing]?: boolean })[missing] === true
+// The identity check covers this module's own parsers without a property read.
+export const isSameExit = (result: object): boolean =>
+  result === sameExit || (result as { readonly [missing]?: boolean })[missing] === true
 
 /** @internal */
 export const toOption = <A>(value: A): Option.Option<A> => value === missing ? Option.none() : Option.some(value as A)

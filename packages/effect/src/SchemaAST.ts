@@ -654,8 +654,8 @@ export const Context: new(
     isOptional: boolean,
     isMutable: boolean,
     /** Used for constructor default values (e.g. `withConstructorDefault` API) */
-    constructorDefault: Effect.Effect<unknown, SchemaIssue.Issue> | undefined = undefined,
-    annotations: Schema.Annotations.Key<unknown> | undefined = undefined
+    constructorDefault?: Effect.Effect<unknown, SchemaIssue.Issue> | undefined,
+    annotations?: Schema.Annotations.Key<unknown> | undefined
   ) {
     this.isOptional = isOptional
     this.isMutable = isMutable
@@ -702,10 +702,10 @@ abstract class ASTNodeImpl implements ASTNode {
   readonly context: Context | undefined
 
   constructor(
-    annotations: Schema.Annotations.Annotations | undefined = undefined,
-    checks: Checks | undefined = undefined,
-    encoding: Encoding | undefined = undefined,
-    context: Context | undefined = undefined
+    annotations?: Schema.Annotations.Annotations | undefined,
+    checks?: Checks | undefined,
+    encoding?: Encoding | undefined,
+    context?: Context | undefined
   ) {
     this.annotations = annotations
     this.checks = checks
@@ -3299,7 +3299,7 @@ export function getAST<S extends { readonly ast: AST }>(self: S): S["ast"] {
 /** @internal */
 export function tuple<Elements extends Schema.Tuple.Elements>(
   elements: Elements,
-  checks: Checks | undefined = undefined
+  checks?: Checks | undefined
 ): Arrays {
   return new Arrays(false, elements.map((e) => e.ast), [], undefined, checks)
 }
@@ -4196,7 +4196,7 @@ export const FilterGroup: new<E>(
 
   constructor(
     checks: readonly [Check<E>, ...Array<Check<E>>],
-    annotations: Schema.Annotations.Filter | undefined = undefined
+    annotations?: Schema.Annotations.Filter | undefined
   ) {
     super()
     this.checks = checks

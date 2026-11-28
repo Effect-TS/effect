@@ -113,13 +113,8 @@ export const dual: {
   ): DataLast & DataFirst
 } = function(arity, body) {
   if (typeof arity === "function") {
-    // Rest parameters rather than `arguments`: V8 spreads a captured arguments
-    // object through the slow iterator path, and materializing both is slower
-    // still. The predicate reads only `length` and indexes, which an array has.
-    return function(this: any, ...args: Array<any>) {
-      return arity(args as unknown as IArguments)
-        ? body.apply(this, args)
-        : ((self: any) => body(self, ...args)) as any
+    return function(this: any) {
+      return arity(arguments) ? body.apply(this, arguments as any) : dataLast(body, arguments)
     }
   }
 
@@ -149,17 +144,18 @@ export const dual: {
       }
 
     default:
-      return function() {
-        if (arguments.length >= arity) {
-          // @ts-expect-error
-          return body.apply(this, arguments)
-        }
-        const args = arguments
-        return function(self: any) {
-          return body(self, ...args)
-        }
+      return function(this: any) {
+        return arguments.length >= arity ? body.apply(this, arguments as any) : dataLast(body, arguments)
       }
   }
+}
+
+// V8 spreads a captured `arguments` object through its slow iterator path, so
+// the data-last closure captures a copy instead.
+const dataLast = (body: (...args: Array<any>) => any, args: IArguments) => {
+  const copy = new Array(args.length)
+  for (let i = 0; i < copy.length; i++) copy[i] = args[i]
+  return (self: any) => body(self, ...copy)
 }
 /**
  * Applies a function to a given value.

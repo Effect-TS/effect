@@ -255,29 +255,65 @@ describe("Scheduler", () => {
       assert.isTrue(released)
     })
 
-    it("falls back to setTimeout without postTask", async () => {
-      const { Effect } = browser
-      vi.stubGlobal("scheduler", undefined)
-      const setTimeout = vi.spyOn(globalThis, "setTimeout")
+    it("reports a throwing task as an uncaught error rather than a rejection", async () => {
+      const { Scheduler } = browser
+      const boom = new Error("boom")
+      const rethrows: Array<() => void> = []
+      const setTimeout = vi.spyOn(globalThis, "setTimeout").mockImplementation(
+        ((f: () => void) => {
+          rethrows.push(f)
+          return 0
+        }) as any
+      )
       try {
-        assert.strictEqual(await Effect.runPromise(Effect.as(Effect.yieldNow, 1)), 1)
-        assert.isAbove(setTimeout.mock.calls.length, 0)
+        new Scheduler.MixedScheduler().makeDispatcher().scheduleTask(() => {
+          throw boom
+        }, 0)
+        await new Promise((resolve) => realSetImmediate(resolve))
       } finally {
         setTimeout.mockRestore()
       }
+      assert.strictEqual(postTaskRejections.length, 0)
+      assert.strictEqual(rethrows.length, 1)
+      assert.throws(rethrows[0], boom)
     })
+
+    for (const [name, global] of [["without a scheduler", undefined], ["with a scheduler lacking postTask", {}]]) {
+      it(`falls back to setTimeout ${name}`, async () => {
+        const { Effect } = browser
+        vi.stubGlobal("scheduler", global)
+        const setTimeout = vi.spyOn(globalThis, "setTimeout")
+        try {
+          assert.strictEqual(await Effect.runPromise(Effect.as(Effect.yieldNow, 1)), 1)
+          assert.isAbove(setTimeout.mock.calls.length, 0)
+        } finally {
+          setTimeout.mockRestore()
+        }
+      })
+    }
   })
 })
 
 const nextMacrotask = () => new Promise((resolve) => setTimeout(resolve, 0))
 
-// Stands in for the browser's scheduler.postTask: queues a real macrotask.
+// Stands in for the browser's scheduler.postTask: queues a real macrotask and
+// returns a promise that rejects when the task throws.
 const realSetImmediate = globalThis.setImmediate
 let postTaskCalls = 0
+const postTaskRejections: Array<unknown> = []
 const fakeTaskScheduler = {
   postTask(task: () => void) {
     postTaskCalls++
-    realSetImmediate(task)
+    return new Promise<void>((resolve, reject) =>
+      realSetImmediate(() => {
+        try {
+          resolve(task())
+        } catch (error) {
+          postTaskRejections.push(error)
+          reject(error)
+        }
+      })
+    )
   }
 }
 

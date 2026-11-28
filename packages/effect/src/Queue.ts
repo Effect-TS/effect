@@ -695,13 +695,9 @@ export const offer: {
 } = dual(
   2,
   <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): Effect<boolean> =>
-    internalEffect.suspend(() =>
-      offerUnsafe(self, message)
-        ? exitTrue
-        : self.state._tag === "Open" && self.strategy === "suspend"
-        ? offerOrWait(self, message)
-        : exitFalse
-    )
+    self.strategy === "suspend"
+      ? offerOrWait(self, message)
+      : internalEffect.sync(() => offerUnsafe(self, message))
 )
 
 /**

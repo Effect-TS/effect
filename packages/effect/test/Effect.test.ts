@@ -4582,6 +4582,21 @@ describe("Effect", () => {
         )
         assert.deepStrictEqual(result, "e2")
       }))
+    it.effect("calls handlers with the cause alone", () =>
+      Effect.gen(function*() {
+        const counts: Array<number> = []
+        const unary = function(_cause: Cause.Cause<string>) {
+          counts.push(arguments.length)
+          return Effect.succeed(1)
+        }
+        const binary = function(_cause: Cause.Cause<string>, extra?: unknown) {
+          counts.push(arguments.length, extra === undefined ? 0 : 1)
+          return Effect.succeed(2)
+        }
+        assert.strictEqual(yield* Effect.catchCause(Effect.fail("e"), unary), 1)
+        assert.strictEqual(yield* Effect.fail("e").pipe(Effect.catchCause(binary)), 2)
+        assert.deepStrictEqual(counts, [1, 1, 0])
+      }))
   })
 
   describe("transaction (composable transactions)", () => {

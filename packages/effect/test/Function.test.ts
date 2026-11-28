@@ -75,6 +75,28 @@ describe("Function", () => {
       )
       assert.strictEqual(F.pipe(2, sum(3)), 5)
     })
+
+    it("predicate-based - receives the arguments object and forwards the receiver", () => {
+      const seen: Array<string> = []
+      const obj = {
+        base: 10,
+        add: F.dual(
+          (args: IArguments) => {
+            seen.push(Object.prototype.toString.call(args))
+            return args.length === 2
+          },
+          function(this: { base: number } | undefined, self: number, that: number) {
+            return (this?.base ?? 0) + self + that
+          }
+        )
+      }
+      assert.strictEqual(obj.add(1, 2), 13)
+      const args = [2] as const
+      const dataLast = obj.add(...args)
+      assert.strictEqual(dataLast(1), 3)
+      assert.strictEqual(dataLast(5), 7)
+      assert.deepStrictEqual(seen, ["[object Arguments]", "[object Arguments]"])
+    })
   })
 
   describe("apply", () => {

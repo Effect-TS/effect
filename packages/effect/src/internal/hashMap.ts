@@ -110,9 +110,6 @@ abstract class Node<K, V> {
   abstract readonly _tag: "EmptyNode" | "LeafNode" | "IndexedNode" | "CollisionNode" | "ArrayNode"
   abstract readonly edit: number
   abstract get size(): number
-  // `hash` must be a 32-bit integer: callers coerce with `| 0` before entering the trie.
-  abstract get(shift: number, hash: number, key: K): Option.Option<V>
-  abstract has(shift: number, hash: number, key: K): boolean
   abstract set(
     edit: number,
     shift: number,
@@ -160,14 +157,6 @@ class EmptyNode<K, V> extends Node<K, V> {
 
   get size(): number {
     return 0
-  }
-
-  get(_shift: number, _hash: number, _key: K): Option.Option<V> {
-    return Option.none()
-  }
-
-  has(_shift: number, _hash: number, _key: K): boolean {
-    return false
   }
 
   set(
@@ -225,17 +214,6 @@ class LeafNode<K, V> extends Node<K, V> {
 
   get size(): number {
     return 1
-  }
-
-  get(_shift: number, hash: number, key: K): Option.Option<V> {
-    if (this.hash === hash && Equal_.equals(this.key, key)) {
-      return Option.some(this.value)
-    }
-    return Option.none()
-  }
-
-  has(_shift: number, hash: number, key: K): boolean {
-    return this.hash === hash && Equal_.equals(this.key, key)
   }
 
   set(
@@ -325,32 +303,6 @@ class CollisionNode<K, V> extends Node<K, V> {
 
   get size(): number {
     return this.entries.length
-  }
-
-  get(_shift: number, hash: number, key: K): Option.Option<V> {
-    if (this.hash !== hash) {
-      return Option.none()
-    }
-
-    for (const [k, v] of this.entries) {
-      if (Equal_.equals(k, key)) {
-        return Option.some(v)
-      }
-    }
-    return Option.none()
-  }
-
-  has(_shift: number, hash: number, key: K): boolean {
-    if (this.hash !== hash) {
-      return false
-    }
-
-    for (const [k] of this.entries) {
-      if (Equal_.equals(k, key)) {
-        return true
-      }
-    }
-    return false
   }
 
   set(
@@ -472,24 +424,6 @@ class IndexedNode<K, V> extends Node<K, V> {
       this._size = this.children.reduce((acc, child) => acc + child.size, 0)
     }
     return this._size
-  }
-
-  get(shift: number, hash: number, key: K): Option.Option<V> {
-    const bit = bitpos(hash, shift)
-    if ((this.bitmap & bit) === 0) {
-      return Option.none()
-    }
-    const idx = index(this.bitmap, bit)
-    return this.children[idx].get(shift + SHIFT, hash, key)
-  }
-
-  has(shift: number, hash: number, key: K): boolean {
-    const bit = bitpos(hash, shift)
-    if ((this.bitmap & bit) === 0) {
-      return false
-    }
-    const idx = index(this.bitmap, bit)
-    return this.children[idx].has(shift + SHIFT, hash, key)
   }
 
   set(
@@ -649,18 +583,6 @@ class ArrayNode<K, V> extends Node<K, V> {
       this._size = this.children.reduce<number>((acc, child) => acc + (child?.size ?? 0), 0)
     }
     return this._size
-  }
-
-  get(shift: number, hash: number, key: K): Option.Option<V> {
-    const idx = mask(hash, shift)
-    const child = this.children[idx]
-    return child ? child.get(shift + SHIFT, hash, key) : Option.none()
-  }
-
-  has(shift: number, hash: number, key: K): boolean {
-    const idx = mask(hash, shift)
-    const child = this.children[idx]
-    return child ? child.has(shift + SHIFT, hash, key) : false
   }
 
   set(
@@ -936,6 +858,35 @@ export const fromIterable = <K, V>(entries: Iterable<readonly [K, V]>): HashMap<
   return new HashMapImpl(false, 0, root, size)
 }
 
+const absent: unique symbol = Symbol()
+
+// Finds the value stored under `key` with a loop over the trie levels rather
+// than a recursive method call per level, which is polymorphic across the node
+// classes. `hash` must be a 32-bit integer, so callers coerce it with `| 0`.
+const lookup = <K, V>(root: Node<K, V>, hash: number, key: K): V | typeof absent => {
+  let node: Node<K, V> | undefined = root
+  for (let shift = 0; node !== undefined; shift += SHIFT) {
+    if (node instanceof IndexedNode) {
+      const bit = bitpos(hash, shift)
+      if ((node.bitmap & bit) === 0) return absent
+      node = node.children[index(node.bitmap, bit)]
+    } else if (node instanceof ArrayNode) {
+      node = node.children[mask(hash, shift)]
+    } else if (node instanceof LeafNode) {
+      return node.hash === hash && Equal_.equals(node.key, key) ? node.value : absent
+    } else if (node instanceof CollisionNode) {
+      if (node.hash !== hash) return absent
+      for (const [k, v] of node.entries) {
+        if (Equal_.equals(k, key)) return v
+      }
+      return absent
+    } else {
+      return absent
+    }
+  }
+  return absent
+}
+
 /** @internal */
 export const isEmpty = <K, V>(self: HashMap<K, V>): boolean => (self as HashMapImpl<K, V>).size === 0
 
@@ -944,8 +895,8 @@ export const get = dual<
   <K1 extends K, K>(key: K1) => <V>(self: HashMap<K, V>) => Option.Option<V>,
   <K1 extends K, K, V>(self: HashMap<K, V>, key: K1) => Option.Option<V>
 >(2, <K, V>(self: HashMap<K, V>, key: K): Option.Option<V> => {
-  const impl = self as HashMapImpl<K, V>
-  return impl._root.get(0, Hash.hash(key) | 0, key)
+  const value = lookup((self as HashMapImpl<K, V>)._root, Hash.hash(key) | 0, key)
+  return value === absent ? Option.none() : Option.some(value)
 })
 
 /** @internal */
@@ -953,8 +904,8 @@ export const getHash = dual<
   <K1 extends K, K>(key: K1, hash: number) => <V>(self: HashMap<K, V>) => Option.Option<V>,
   <K1 extends K, K, V>(self: HashMap<K, V>, key: K1, hash: number) => Option.Option<V>
 >(3, <K, V>(self: HashMap<K, V>, key: K, hash: number): Option.Option<V> => {
-  const impl = self as HashMapImpl<K, V>
-  return impl._root.get(0, hash | 0, key)
+  const value = lookup((self as HashMapImpl<K, V>)._root, hash | 0, key)
+  return value === absent ? Option.none() : Option.some(value)
 })
 
 /** @internal */
@@ -974,8 +925,7 @@ export const has = dual<
   <K1 extends K, K>(key: K1) => <V>(self: HashMap<K, V>) => boolean,
   <K1 extends K, K, V>(self: HashMap<K, V>, key: K1) => boolean
 >(2, <K, V>(self: HashMap<K, V>, key: K): boolean => {
-  const impl = self as HashMapImpl<K, V>
-  return impl._root.has(0, Hash.hash(key) | 0, key)
+  return lookup((self as HashMapImpl<K, V>)._root, Hash.hash(key) | 0, key) !== absent
 })
 
 /** @internal */
@@ -983,8 +933,7 @@ export const hasHash = dual<
   <K1 extends K, K>(key: K1, hash: number) => <V>(self: HashMap<K, V>) => boolean,
   <K1 extends K, K, V>(self: HashMap<K, V>, key: K1, hash: number) => boolean
 >(3, <K, V>(self: HashMap<K, V>, key: K, hash: number): boolean => {
-  const impl = self as HashMapImpl<K, V>
-  return impl._root.has(0, hash | 0, key)
+  return lookup((self as HashMapImpl<K, V>)._root, hash | 0, key) !== absent
 })
 
 /** @internal */

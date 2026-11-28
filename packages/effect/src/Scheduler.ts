@@ -135,7 +135,19 @@ const setTimer: (f: () => void) => () => void = "setImmediate" in globalThis
     const scheduler = (globalThis as { scheduler?: { postTask?: (f: () => void) => unknown } }).scheduler
     if (typeof scheduler?.postTask !== "function") return setTimeoutTimer(f)
     let cancelled = false
-    scheduler.postTask(() => cancelled || f())
+    scheduler.postTask(() => {
+      if (cancelled) return
+      try {
+        f()
+      } catch (error) {
+        // A throwing task rejects the promise `postTask` returns, which would
+        // surface as an unhandled rejection. Rethrow it from a timer so it is
+        // reported as an uncaught error, as on the `setTimeout` path.
+        setTimeout(() => {
+          throw error
+        }, 0)
+      }
+    })
     return (): void => {
       cancelled = true
     }
