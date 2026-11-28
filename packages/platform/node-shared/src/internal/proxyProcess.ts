@@ -369,14 +369,14 @@ class Proxy implements ProxiedProcessOwner {
     let immediate: ReturnType<typeof setImmediate> | undefined
     const timer = setTimeout(() => {
       // A blocked event loop runs due timers before polling IPC, so defer to
-      // the check phase to let already-queued replies be processed first
+      // the check phase to let already-queued replies be processed first. Keep
+      // the immediate referenced so I/O poll returns promptly in an idle parent.
       immediate = setImmediate(() => {
         this.timers.delete(key)
         this.stop(
           Object.assign(new Error(`The proxy process did not respond within ${millis} ms`), { code: "ETIMEDOUT" })
         )
       })
-      immediate.unref()
     }, millis)
     // Whatever waits for the reply keeps the application running
     timer.unref()
