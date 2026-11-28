@@ -462,11 +462,17 @@ export const isRedactedName = (
   name: string,
   patterns: ReadonlyArray<string | RegExp>
 ): boolean => {
-  const lowerName = name.toLowerCase()
-  for (let i = 0; i < patterns.length; i++) {
-    const pattern = patterns[i]
+  let lowered = loweredPatterns.get(patterns)
+  if (lowered === undefined) {
+    lowered = patterns.map((pattern) => typeof pattern === "string" ? pattern.toLowerCase() : pattern)
+    loweredPatterns.set(patterns, lowered)
+  }
+  let lowerName: string | undefined
+  for (let i = 0; i < lowered.length; i++) {
+    const pattern = lowered[i]
     if (typeof pattern === "string") {
-      if (pattern.toLowerCase() === lowerName) {
+      // Header names are stored in lower case, so most matches need no conversion.
+      if (pattern === name || pattern === (lowerName ??= name.toLowerCase())) {
         return true
       }
     } else if (name.search(pattern) !== -1) {
@@ -475,6 +481,9 @@ export const isRedactedName = (
   }
   return false
 }
+
+// The list is read from a context reference, so the same array comes back for every header.
+const loweredPatterns = new WeakMap<ReadonlyArray<string | RegExp>, ReadonlyArray<string | RegExp>>()
 
 /**
  * Context reference listing header names or patterns that should be redacted when `Headers` are inspected or rendered.
